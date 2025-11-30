@@ -10,7 +10,11 @@ To get a local copy up and running follow these simple steps.
 
 ### Prerequisites
 
-[Install uv.](https://docs.astral.sh/uv/getting-started/installation/#installing-uv)
+[Install uv](https://docs.astral.sh/uv/getting-started/installation/#installing-uv)
+
+```sh
+python -m pip install --upgrade pip uv
+```
 
 ### Installation
 
