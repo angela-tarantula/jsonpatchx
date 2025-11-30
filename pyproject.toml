@@ -12,4 +12,5 @@ dependencies = [
 dev = [
     "mypy>=1.19.0",
     "pytest>=9.0.1",
+    "ruff>=0.14.7",
 ]
