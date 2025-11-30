@@ -1,5 +1,4 @@
-from collections.abc import MutableMapping
-from typing import Literal, overload
+from jsonpatch.models import Operation
 
 
 class JsonPatchException(Exception):
@@ -23,14 +22,8 @@ class JsonPatchConflict(JsonPatchException):
 class MissingMember(InvalidJsonPatch):
     """A required member of a JSON Patch operation is missing."""
 
-    @overload
-    def __init__(self, operation: MutableMapping, member: Literal["op"]) -> None: ...
-
-    @overload
-    def __init__(self, operation: str, member: str) -> None: ...
-
-    def __init__(self, operation: str | MutableMapping, member: str):
-        super().__init__(f"Missing required {member=} in {operation=}")
+    def __init__(self, operation: Operation, member: str) -> None:
+        super().__init__(f"Missing required {member=} in {operation.name=}")
         self.operation = operation
         self.member = member
 
@@ -38,18 +31,20 @@ class MissingMember(InvalidJsonPatch):
 class UnrecognizedOperation(InvalidJsonPatch):
     """A JSON Patch operation is invalid."""
 
-    def __init__(self, operation: str):
-        super().__init__(f"Unrecognized {operation=}")
+    def __init__(self, operation: Operation) -> None:
+        super().__init__(f"Unrecognized {operation.name=}")
         self.operation = operation
 
 
 class MemberTypeMismatch(InvalidJsonPatch):
     """A member in a JSON Patch operation has an invalid type."""
 
-    def __init__(self, operation: str, member: str, expected_type: type):
+    def __init__(
+        self, operation: Operation, member: str, expected_type: type
+    ) -> None:
         expected_type_name = getattr(expected_type, "__name__", str(expected_type))
         super().__init__(
-            f"Expected type {expected_type_name} for {member=} in {operation=}."
+            f"Expected type {expected_type_name} for {member=} in {operation.name=}."
         )
         self.operation = operation
         self.member = member
@@ -59,8 +54,12 @@ class MemberTypeMismatch(InvalidJsonPatch):
 class MemberValueMismatch(InvalidJsonPatch):
     """A member in a JSON Patch operation has an invalid value."""
 
-    def __init__(self, operation: str, member: str, details: str):
-        super().__init__(f"Invalid value for {member=} in {operation=}: {details}")
+    def __init__(
+        self, operation: Operation, member: str, details: str
+    ) -> None:
+        super().__init__(
+            f"Invalid value for {member=} in {operation.name=}: {details}"
+        )
         self.operation = operation
         self.member = member
         self.details = details
