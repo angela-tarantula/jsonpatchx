@@ -1,4 +1,5 @@
 from collections.abc import MutableMapping
+from typing import Literal, overload
 
 
 class JsonPatchException(Exception):
@@ -8,7 +9,13 @@ class JsonPatchException(Exception):
 
 
 class InvalidJsonPatch(JsonPatchException):
-    """A JSON Patch is invalid."""
+    """A JSON Patch is intrinsically invalid."""
+
+    pass
+
+
+class JsonPatchConflict(JsonPatchException):
+    """A JSON Patch is incompatible with the target document."""
 
     pass
 
@@ -16,13 +23,19 @@ class InvalidJsonPatch(JsonPatchException):
 class MissingMember(InvalidJsonPatch):
     """A required member of a JSON Patch operation is missing."""
 
+    @overload
+    def __init__(self, operation: MutableMapping, member: Literal["op"]) -> None: ...
+
+    @overload
+    def __init__(self, operation: str, member: str) -> None: ...
+
     def __init__(self, operation: str | MutableMapping, member: str):
         super().__init__(f"Missing required {member=} in {operation=}")
         self.operation = operation
         self.member = member
 
 
-class UnrecognizedOperation(JsonPatchException):
+class UnrecognizedOperation(InvalidJsonPatch):
     """A JSON Patch operation is invalid."""
 
     def __init__(self, operation: str):
@@ -51,12 +64,6 @@ class MemberValueMismatch(InvalidJsonPatch):
         self.operation = operation
         self.member = member
         self.details = details
-
-
-class JsonPatchConflict(JsonPatchException):
-    """Exception raised for conflicts during JSON Patch application."""
-
-    pass
 
 
 class JsonPatchTestFailed(JsonPatchException):
