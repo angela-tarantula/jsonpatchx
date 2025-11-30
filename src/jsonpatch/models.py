@@ -7,10 +7,8 @@ from jsonpatch.exceptions import MissingMember
 class Operation:
     """An unvalidated operation."""
 
-    def __init__(self, definition_map: MutableMapping, *args, **kwargs):
+    def __init__(self, definition_map: MutableMapping):
         self._definition = MappingProxyType(definition_map)
-        self.args = args
-        self.kwargs = kwargs
 
     @property
     def definition(self) -> MappingProxyType:
@@ -47,8 +45,8 @@ class Operation:
 class PatchOperation(Operation):
     """A validated JSON Patch operation."""
 
-    def __init__(self, definition_map: MutableMapping, *args, **kwargs):
-        super().__init__(definition_map, *args, **kwargs)
+    def __init__(self, definition_map: MutableMapping):
+        super().__init__(definition_map)
         self.validate()
 
     def validate(self) -> None:
