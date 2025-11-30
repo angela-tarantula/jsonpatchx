@@ -1,4 +1,5 @@
 # json-patch
+[![CI](https://github.com/angela-tarantula/jsonpatch/actions/workflows/python-app.yml/badge.svg?branch=main)](https://github.com/marketplace/actions/super-linter)
 
 ## About The Project
 
