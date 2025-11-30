@@ -1,4 +1,9 @@
-from jsonpatch.models import Operation
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from jsonpatch.models import Operation
 
 
 class JsonPatchException(Exception):
@@ -39,9 +44,7 @@ class UnrecognizedOperation(InvalidJsonPatch):
 class MemberTypeMismatch(InvalidJsonPatch):
     """A member in a JSON Patch operation has an invalid type."""
 
-    def __init__(
-        self, operation: Operation, member: str, expected_type: type
-    ) -> None:
+    def __init__(self, operation: Operation, member: str, expected_type: type) -> None:
         expected_type_name = getattr(expected_type, "__name__", str(expected_type))
         super().__init__(
             f"Expected type {expected_type_name} for {member=} in {operation.name=}."
@@ -54,12 +57,8 @@ class MemberTypeMismatch(InvalidJsonPatch):
 class MemberValueMismatch(InvalidJsonPatch):
     """A member in a JSON Patch operation has an invalid value."""
 
-    def __init__(
-        self, operation: Operation, member: str, details: str
-    ) -> None:
-        super().__init__(
-            f"Invalid value for {member=} in {operation.name=}: {details}"
-        )
+    def __init__(self, operation: Operation, member: str, details: str) -> None:
+        super().__init__(f"Invalid value for {member=} in {operation.name=}: {details}")
         self.operation = operation
         self.member = member
         self.details = details
