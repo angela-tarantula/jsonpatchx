@@ -1,5 +1,6 @@
 from collections.abc import ItemsView, KeysView, Mapping, ValuesView
-from typing import Any, Protocol, Type
+from types import MappingProxyType
+from typing import Any, Hashable, Protocol, Type
 
 from jsonpointer import (  # type: ignore[import-untyped]
     JsonPointer,
@@ -19,11 +20,13 @@ class JsonPointerProtocol(Protocol):
     def __init__(self, pointer: str) -> None: ...
 
 
-class Operation(Mapping):
+class Operation(Mapping, Hashable):
     """An unvalidated operation."""
 
+    __slots__ = ("__definition_map",)
+
     def __init__(self, definition_map: Mapping) -> None:
-        self.__definition_map = definition_map
+        self.__definition_map = MappingProxyType(definition_map)
 
     def __contains__(self, item: Any) -> bool:
         return item in self.__definition_map
@@ -36,9 +39,6 @@ class Operation(Mapping):
 
     def __iter__(self):
         return iter(self.__definition_map)
-
-    def __reversed__(self):
-        return reversed(self.__definition_map)
 
     def __hash__(self):
         return hash(frozenset(self.items()))
@@ -74,6 +74,8 @@ class Operation(Mapping):
 
 class PatchOperation(Operation):
     """A validated JSON Patch operation."""
+
+    __slots__ = ("pointer_cls", "path_pointer")
 
     def __init__(
         self,
