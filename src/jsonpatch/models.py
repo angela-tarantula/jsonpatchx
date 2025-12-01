@@ -2,7 +2,10 @@ from collections.abc import Iterator, MutableMapping
 from types import MappingProxyType
 from typing import Any, Final
 
-from jsonpointer import JsonPointer, JsonPointerException
+from jsonpointer import (  # type: ignore[import-untyped] # TODO: implement JsonPointer protocol
+    JsonPointer,
+    JsonPointerException,
+)
 
 from jsonpatch.exceptions import (
     MemberTypeMismatch,
@@ -55,9 +58,14 @@ class Operation:
 class PatchOperation(Operation):
     """A validated JSON Patch operation."""
 
-    def __init__(self, definition_map: MutableMapping, pointer_cls=JsonPointer) -> None:
+    def __init__(
+        self,
+        definition_map: MutableMapping,
+        pointer_cls: Any = JsonPointer,  # TODO: implement JsonPointer protocol
+    ) -> None:
         super().__init__(definition_map)
         self.pointer_cls = pointer_cls
+        self.path_pointer: Any  # TODO: implement JsonPointer protocol
         self.validate()
 
     def validate(self) -> None:

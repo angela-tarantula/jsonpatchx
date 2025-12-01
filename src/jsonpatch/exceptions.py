@@ -60,9 +60,7 @@ class MemberValueMismatch(InvalidJsonPatch):
     """A member in a JSON Patch operation has an invalid value."""
 
     def __init__(self, operation: Operation, member: str, details: str) -> None:
-        super().__init__(
-            f"Invalid value for {member=} in {operation.name=}: {details}"
-        )
+        super().__init__(f"Invalid value for {member=} in {operation.name=}: {details}")
         self.operation = operation
         self.member = member
         self.details = details
