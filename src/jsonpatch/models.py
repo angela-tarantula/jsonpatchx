@@ -83,7 +83,7 @@ class PatchOperation(Operation):
                 try:
                     self.path_pointer = self.pointer_cls(self["path"])
                 except JsonPointerException as e:
-                    raise MemberValueMismatch(self, "path", e) from e
+                    raise MemberValueMismatch(self, "path", str(e)) from e
             case self.pointer_cls():
                 self.path_pointer = self["path"]
             case _:
