@@ -67,6 +67,6 @@ class MemberValueMismatch(InvalidJsonPatch):
 
 
 class JsonPatchTestFailed(JsonPatchException):
-    """Exception raised when a test operation in JSON Patch fails."""
+    """A JSON Patch test operation failed."""
 
     pass
