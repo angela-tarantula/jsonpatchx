@@ -1,8 +1,8 @@
 from collections.abc import Iterator, MutableMapping
 from types import MappingProxyType
-from typing import Any
+from typing import Any, Protocol, Type
 
-from jsonpointer import (  # type: ignore[import-untyped] # TODO: implement JsonPointer protocol
+from jsonpointer import (  # type: ignore[import-untyped]
     JsonPointer,
     JsonPointerException,
 )
@@ -12,6 +12,12 @@ from jsonpatch.exceptions import (
     MemberValueMismatch,
     MissingMember,
 )
+
+
+class JsonPointerProtocol(Protocol):
+    """Protocol for JSON Pointer implementations."""
+
+    def __init__(self, pointer: str) -> None: ...
 
 
 class Operation:
@@ -58,11 +64,11 @@ class PatchOperation(Operation):
     def __init__(
         self,
         definition_map: MutableMapping,
-        pointer_cls: Any = JsonPointer,  # TODO: implement JsonPointer protocol
+        pointer_cls: Type[JsonPointerProtocol] = JsonPointer,
     ) -> None:
         super().__init__(definition_map)
         self.pointer_cls = pointer_cls
-        self.path_pointer: Any  # TODO: implement JsonPointer protocol
+        self.path_pointer: JsonPointerProtocol
         self.validate()
 
     def validate(self) -> None:
@@ -81,13 +87,12 @@ class PatchOperation(Operation):
         """Validate the 'path' member of the operation."""
         if "path" not in self:
             raise MissingMember(self, "path")
-        match type(self["path"]):
-            case str():
-                try:
-                    self.path_pointer = self.pointer_cls(self["path"])
-                except JsonPointerException as e:
-                    raise MemberValueMismatch(self, "path", str(e)) from e
-            case self.pointer_cls():
-                self.path_pointer = self["path"]
-            case _:
-                raise MemberTypeMismatch(self, "path")
+        if isinstance(self["path"], str):
+            try:
+                self.path_pointer = self.pointer_cls(self["path"])
+            except JsonPointerException as e:
+                raise MemberValueMismatch(self, "path", str(e)) from e
+        elif isinstance(self["path"], self.pointer_cls):
+            self.path_pointer = self["path"]
+        else:
+            raise MemberTypeMismatch(self, "path")
