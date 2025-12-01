@@ -1,6 +1,6 @@
 from collections.abc import Iterator, MutableMapping
 from types import MappingProxyType
-from typing import Any, Final
+from typing import Any
 
 from jsonpointer import (  # type: ignore[import-untyped] # TODO: implement JsonPointer protocol
     JsonPointer,
@@ -11,22 +11,19 @@ from jsonpatch.exceptions import (
     MemberTypeMismatch,
     MemberValueMismatch,
     MissingMember,
-    UnrecognizedOperation,
 )
-
-VALID_OPS: Final = {"add", "remove", "replace", "move", "copy", "test"}
 
 
 class Operation:
     """An unvalidated operation."""
 
     def __init__(self, definition_map: MutableMapping) -> None:
-        self._definition = MappingProxyType(definition_map)
+        self.__definition = MappingProxyType(definition_map)
 
     @property
     def definition(self) -> MappingProxyType:
         """Returns the operation definition as a read-only mapping."""
-        return self._definition
+        return self.__definition
 
     def __contains__(self, item: str) -> bool:
         return item in self.definition
@@ -79,8 +76,6 @@ class PatchOperation(Operation):
             raise MissingMember(self, "op")
         if not isinstance(self["op"], str):
             raise MemberTypeMismatch(self, "op")
-        if self["op"] not in VALID_OPS:
-            raise UnrecognizedOperation(self)
 
     def _validate_path(self) -> None:
         """Validate the 'path' member of the operation."""
