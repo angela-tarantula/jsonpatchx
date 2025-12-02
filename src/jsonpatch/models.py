@@ -1,5 +1,5 @@
-from collections.abc import ItemsView, KeysView, Mapping, ValuesView
-from types import MappingProxyType
+from collections.abc import ItemsView, Iterator, KeysView, Mapping, ValuesView
+from types import MappingProxyType, NotImplementedType
 from typing import Any, Hashable, Protocol, Type
 
 from jsonpointer import (  # type: ignore[import-untyped]
@@ -37,13 +37,13 @@ class Operation(Mapping, Hashable):
     def __len__(self) -> int:
         return len(self.__definition_map)
 
-    def __iter__(self):
+    def __iter__(self) -> Iterator[Any]:
         return iter(self.__definition_map)
 
-    def __hash__(self):
+    def __hash__(self) -> int:
         return hash(frozenset(self.items()))
 
-    def __eq__(self, other: Any) -> bool:
+    def __eq__(self, other: Any) -> bool | NotImplementedType:
         if not isinstance(other, Operation):
             return NotImplemented
         return self.__definition_map == other.__definition_map
@@ -67,12 +67,19 @@ class Operation(Mapping, Hashable):
         return self.__definition_map.items()
 
     @property
-    def name(self) -> str:
-        """Returns the best description of the operation."""
+    def name(self) -> str | NotImplementedType:
+        """Returns the name of the operation."""
         op_value = self.get("op")
-        if isinstance(op_value, str):
-            return op_value
-        return str(self.__definition_map)
+        if not isinstance(op_value, str):
+            return NotImplemented
+        return op_value
+
+    @property
+    def _identifier(self) -> str:
+        """Returns the best identifier of the operation for debugging."""
+        if self.name is NotImplemented:
+            return repr(dict(self))
+        return self.name
 
 
 class PatchOperation(Operation):
@@ -89,6 +96,15 @@ class PatchOperation(Operation):
         self.pointer_cls = pointer_cls
         self.path_pointer: JsonPointerProtocol
         self.validate()
+
+    @property
+    def name(self) -> str:
+        """Returns the name of the operation."""
+        if super().name is NotImplemented:
+            raise RuntimeError(
+                f"Internal validation failed: 'op' member is missing or invalid: {self!r}"
+            )
+        return super().name
 
     def validate(self) -> None:
         """Validate that the operation is a JSON Patch operation."""
