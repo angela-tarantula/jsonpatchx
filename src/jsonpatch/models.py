@@ -1,5 +1,5 @@
 from collections.abc import ItemsView, Iterator, KeysView, Mapping, ValuesView
-from types import MappingProxyType, NotImplementedType
+from types import MappingProxyType
 from typing import Any, Hashable, Protocol, Type
 
 from jsonpointer import (  # type: ignore[import-untyped]
@@ -43,7 +43,7 @@ class Operation(Mapping, Hashable):
     def __hash__(self) -> int:
         return hash(frozenset(self.items()))
 
-    def __eq__(self, other: Any) -> bool | NotImplementedType:
+    def __eq__(self, other: Any) -> bool:
         if not isinstance(other, Operation):
             return NotImplemented
         return self.__definition_map == other.__definition_map
@@ -67,7 +67,7 @@ class Operation(Mapping, Hashable):
         return self.__definition_map.items()
 
     @property
-    def name(self) -> str | NotImplementedType:
+    def name(self) -> str:
         """Returns the name of the operation."""
         op_value = self.get("op")
         if not isinstance(op_value, str):
