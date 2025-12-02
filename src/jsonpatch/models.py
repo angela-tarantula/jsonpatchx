@@ -67,9 +67,12 @@ class Operation(Mapping, Hashable):
         return self.__definition_map.items()
 
     @property
-    def name(self) -> Any:
+    def name(self) -> str:
         """Returns the best description of the operation."""
-        return self.get("op", default=str(self.__definition_map))
+        op_value = self.get("op")
+        if isinstance(op_value, str):
+            return op_value
+        return str(self.__definition_map)
 
 
 class PatchOperation(Operation):
