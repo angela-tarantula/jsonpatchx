@@ -31,10 +31,7 @@ class JsonPointerValidator(JsonPointer):
         except JsonPointerException as e:
             raise ValueError(f"Invalid JSON Pointer: {v!r}") from e
 
-# Tell mypy that JsonPointerType is a str or a JsonPointer, but tell Pydantic to coerce it to JsonPointerValidator
-JsonPointerType: TypeAlias = Annotated[str | JsonPointer, JsonPointerValidator]
-
-class JsonValueType:
+class JsonValueValidator:
     """Any JSON-serializable value."""
 
     @classmethod
@@ -56,8 +53,10 @@ class JsonValueType:
             raise ValueError(f"Value is not JSON-serializable: {v!r}") from e
         return v
 
-class PatchOpType(Protocol):
-    op: str
+# Tell mypy that JsonPointerType is a str or a JsonPointer, but tell Pydantic to coerce it use JsonPointerValidator
+JsonPointerType: TypeAlias = Annotated[str | JsonPointer, JsonPointerValidator]
+# Tell mypy JsonValueType can be any object, but tell Pydantic to use JsonValueValidator
+JsonValueType: TypeAlias = Annotated[Any, JsonValueValidator]
 
 
 class PatchOpBase(BaseModel):
