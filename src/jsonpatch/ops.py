@@ -1,6 +1,16 @@
 import json
-from typing import Annotated, Any, Iterable, Literal, Type, TypeAlias, Union, get_args, get_origin
 from abc import ABC
+from typing import (
+    Annotated,
+    Any,
+    Iterable,
+    Literal,
+    Type,
+    TypeAlias,
+    Union,
+    get_args,
+    get_origin,
+)
 
 from jsonpointer import (  # type: ignore[import-untyped]
     JsonPointer,
@@ -9,12 +19,13 @@ from jsonpointer import (  # type: ignore[import-untyped]
 from pydantic import BaseModel, Field, GetCoreSchemaHandler, TypeAdapter
 from pydantic_core import core_schema
 
+
 class InvalidOperationSchema(Exception):
     """Raised when OperationSchema is invalid."""
 
+
 class InvalidPatchSchema(Exception):
     """Raised when PatchSchema is constructed with incompatible OperationSchemas."""
-
 
 
 class JsonPointerValidator:
@@ -39,6 +50,7 @@ class JsonPointerValidator:
         except JsonPointerException as e:
             raise ValueError(f"Invalid JSON Pointer: {v!r}") from e
 
+
 class JsonValueValidator:
     """Any JSON-serializable value."""
 
@@ -60,6 +72,7 @@ class JsonValueValidator:
         except TypeError as e:
             raise ValueError(f"Value is not JSON-serializable: {v!r}") from e
         return v
+
 
 # Tell mypy that JsonPointerType is a str or a JsonPointer, but tell Pydantic to coerce it use JsonPointerValidator
 JsonPointerType: TypeAlias = Annotated[str | JsonPointer, JsonPointerValidator]
@@ -88,8 +101,7 @@ class OperationSchema(BaseModel, ABC):
         # 2. Ensure op is Literal[...]
         if origin is not Literal:
             raise InvalidOperationSchema(
-                f"{cls.__name__}.op must be typing.Literal[...], "
-                f"got {op_anno!r}"
+                f"{cls.__name__}.op must be typing.Literal[...], got {op_anno!r}"
             )
 
         # 3. Ensure at least one literal value is specified
@@ -107,13 +119,21 @@ class OperationSchema(BaseModel, ABC):
                     f"got {value!r} (type {type(value)})"
                 )
 
+    @classmethod
+    def names(cls) -> tuple[str]:
+        ann = getattr(cls, "__annotations__", {})
+        op_anno = ann["op"]
+        return get_args(op_anno)
+
 
 class AddOp(OperationSchema):
     op: Literal["add"] = "add"
     path: JsonPointerType
     value: JsonValueType
 
+
 c = AddOp(path="/", value=3)
+
 
 class RemoveOp(OperationSchema):
     op: Literal["remove"] = "remove"
@@ -155,8 +175,6 @@ BuiltinPatchAdapter: TypeAdapter[list[BuiltinOpUnion]] = TypeAdapter(
 )
 
 
-
-
 class PatchSchema:
     """
     A JSON Patch schema defined by a set of Pydantic models
@@ -167,21 +185,32 @@ class PatchSchema:
         if not op_models:
             raise InvalidPatchSchema("PatchSchema requires at least one op model")
 
-        # Map op literal -> model to detect collisions
-        # op_value_to_model: dict[str, Type[OperationSchema]] = {}
-
+        # Ensure the sets of OperationSchema identifiers are disjoint
+        op_value_to_model: dict[str, Type[OperationSchema]] = {}
         for model in op_models:
-            # check that the sets of model op stringliterals are disjoint
-            pass
+            for name in model.names():
+                other_model = op_value_to_model.get(name)
+                if other_model:
+                    raise InvalidPatchSchema(
+                        f"{model.__name__} and {other_model.__name__} cannot share {name!r} as an op identifier"
+                    )
+                op_value_to_model[name] = model
 
-        # If we get here, the schema is consistent.
+        # If we get here, the PatchSchema is consistent.
         # Build the discriminated union and adapters.
         union_type: TypeAlias = Annotated[  # type: ignore[valid-type] # I know what I'm doing
             Union[tuple(op_models)],
             Field(discriminator="op"),
         ]
-        self._op_adapter: TypeAdapter[union_type] = TypeAdapter(union_type)
-        self._patch_adapter: TypeAdapter[list[union_type]] = TypeAdapter(list[union_type])
+        try:
+            self._op_adapter: TypeAdapter[union_type] = TypeAdapter(union_type)
+        except Exception as e:
+            raise InvalidPatchSchema(
+                f"Duplicate op literal in models {', '.join(m.__name__ for m in op_models)}"
+            ) from e
+        self._patch_adapter: TypeAdapter[list[union_type]] = TypeAdapter(
+            list[union_type]
+        )
 
     def parse_op(self, raw: dict[str, Any]) -> OperationSchema:
         """Validate & coerce a single operation dict."""
@@ -190,8 +219,6 @@ class PatchSchema:
     def parse_patch(self, raw: Iterable[dict[str, Any]]) -> list[OperationSchema]:
         """Validate & coerce a list of operation dicts."""
         return self._patch_adapter.validate_python(list(raw))
-
-
 
 
 if __name__ == "__main__":
