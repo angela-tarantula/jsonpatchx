@@ -73,7 +73,7 @@ def test_valid_operation_schema(subtests: Subtests) -> None:
         assert op.value == 3
 
 
-def test_patch_schema_parse_happy_path() -> None:
+def test_patch_schema_parse_happy_path(subtests: Subtests) -> None:
     class IncrementOp(OperationSchema):
         op: Literal["increment"] = "increment"
         path: str
@@ -85,15 +85,17 @@ def test_patch_schema_parse_happy_path() -> None:
 
     schema = PatchSchema(IncrementOp, ToggleOp)
 
-    op = schema.parse_op({"op": "increment", "path": "/foo", "value": 3})
-    assert isinstance(op, IncrementOp)
-    assert op.path == "/foo"
-    assert op.value == 3
+    with subtests.test("parse_op succeeds"):
+        op = schema.parse_op({"op": "increment", "path": "/foo", "value": 3})
+        assert isinstance(op, IncrementOp)
+        assert op.path == "/foo"
+        assert op.value == 3
 
-    patch = schema.parse_patch(
-        [
-            {"op": "increment", "path": "/foo", "value": 1},
-            {"op": "toggle", "path": "/foo"},
-        ]
-    )
-    assert [type(p) for p in patch] == [IncrementOp, ToggleOp]
+    with subtests.test("parse_patch succeeds"):
+        patch = schema.parse_patch(
+            [
+                {"op": "increment", "path": "/foo", "value": 1},
+                {"op": "toggle", "path": "/foo"},
+            ]
+        )
+        assert [type(p) for p in patch] == [IncrementOp, ToggleOp]
