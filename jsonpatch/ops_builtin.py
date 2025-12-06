@@ -1,4 +1,4 @@
-from typing import Annotated, Literal, TypeAlias, Union
+from typing import Annotated, ClassVar, Literal, TypeAlias, Union
 
 from pydantic import Field, TypeAdapter
 
@@ -10,9 +10,6 @@ class AddOp(OperationSchema):
     op: Literal["add"] = "add"
     path: JsonPointerType
     value: JsonValueType
-
-
-c = AddOp(path="/", value=3)
 
 
 class RemoveOp(OperationSchema):
@@ -69,3 +66,12 @@ if __name__ == "__main__":
 
     ops = BuiltinPatchAdapter.validate_python(raw_patch)
     # -> list[AddOp | RemoveOp | ...]
+
+    c = AddOp(path="/", value=3)
+
+
+    class Animal:
+        dog: ClassVar[str]
+
+    class Canine(Animal):
+        dog: ClassVar[Literal["dog"]]
