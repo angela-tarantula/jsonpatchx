@@ -98,7 +98,7 @@ class Operation(Mapping[str, object]):
     @property
     def op(self) -> str:
         """Return the operation type (the value of the 'op' key)."""
-        return self._data["op"]
+        return self._data["op"] # type: ignore[return-value]
 
     def __contains__(self, item: object) -> bool:
         return item in self._data
