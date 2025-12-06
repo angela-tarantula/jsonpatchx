@@ -1,5 +1,5 @@
 import json
-from abc import ABC
+from abc import ABC#, abstractmethod
 from typing import (
     Annotated,
     Any,
@@ -19,13 +19,20 @@ from jsonpointer import (  # type: ignore[import-untyped]
 from pydantic import BaseModel, Field, GetCoreSchemaHandler, TypeAdapter
 from pydantic_core import core_schema
 
+class PatchError(Exception):
+    """Base class for JSON patch exceptions."""
 
-class InvalidOperationSchema(Exception):
-    """Raised when OperationSchema is invalid."""
+class InvalidOperationSchema(PatchError):
+    """An OperationSchema is invalid."""
 
+class InvalidPatchSchema(PatchError):
+    """A PatchSchema has incompatible OperationSchemas."""
 
-class InvalidPatchSchema(Exception):
-    """Raised when PatchSchema is constructed with incompatible OperationSchemas."""
+class PatchApplicationError(PatchError):
+    """A JSON Patch failed."""
+
+class TestOpFailed(PatchApplicationError):
+    """A test operation failed"""
 
 
 class JsonPointerValidator:
@@ -120,10 +127,14 @@ class OperationSchema(BaseModel, ABC):
                 )
 
     @classmethod
-    def names(cls) -> tuple[str]:
+    def names(cls) -> tuple[str, ...]:
         ann = getattr(cls, "__annotations__", {})
         op_anno = ann["op"]
         return get_args(op_anno)
+
+    # @abstractmethod
+    # def apply(self, doc: JsonValueType) -> JsonValueType:
+    #     """Apply this operation to a JSON document."""
 
 
 class AddOp(OperationSchema):
@@ -220,6 +231,7 @@ class PatchSchema:
         """Validate & coerce a list of operation dicts."""
         return self._patch_adapter.validate_python(list(raw))
 
+BuiltinPatchSchema: PatchSchema = PatchSchema(AddOp, RemoveOp, ReplaceOp, MoveOp, CopyOp, TestOp)
 
 if __name__ == "__main__":
     raw = {"op": "add", "path": "/4", "value": "bar"}
