@@ -9,6 +9,13 @@ from jsonpointer import (  # type: ignore[import-untyped]
 from pydantic import BaseModel, Field, GetCoreSchemaHandler, TypeAdapter
 from pydantic_core import core_schema
 
+class InvalidOperationSchema(Exception):
+    """Raised when OperationSchema is invalid."""
+
+class InvalidPatchSchema(Exception):
+    """Raised when PatchSchema is constructed with incompatible OperationSchemas."""
+
+
 
 class JsonPointerValidator:
     """Pydantic-aware wrapper for jsonpointer.JsonPointer."""
@@ -60,73 +67,104 @@ JsonPointerType: TypeAlias = Annotated[str | JsonPointer, JsonPointerValidator]
 JsonValueType: TypeAlias = Annotated[Any, JsonValueValidator]
 
 
-class PatchOpBase(BaseModel, ABC):
+class OperationSchema(BaseModel, ABC):
     """Base for all patch operations."""
 
     def __init_subclass__(cls, **kwargs: Any) -> None:
+        """Validate the operation schema."""
         super().__init_subclass__(**kwargs)
 
-        # Don't enforce on the base class itself
-        if cls is PatchOpBase:
-            return
+        ann = getattr(cls, "__annotations__", {})
 
         # 1. Ensure 'op' exists
-        ann = getattr(cls, "__annotations__", {})
         if "op" not in ann:
-            raise TypeError(
+            raise InvalidOperationSchema(
                 f"{cls.__name__} must define an 'op' field annotated as Literal[...]"
             )
 
         op_anno = ann["op"]
         origin = get_origin(op_anno)
 
-        # 2. Ensure it's Literal[...] (or a union of Literals if you want)
+        # 2. Ensure it's Literal[...]
         if origin is not Literal:
-            raise TypeError(
+            raise InvalidOperationSchema(
                 f"{cls.__name__}.op must be typing.Literal[...], "
                 f"got {op_anno!r}"
             )
 
-        # 3. Ensure all Literal values are strings
-        for value in get_args(op_anno):
+        # 3. Ensure there's at least one literal value
+        literal_values = get_args(op_anno)
+        if not literal_values:
+            raise InvalidOperationSchema(
+                f"{cls.__name__}.op Literal must have at least one value"
+            )
+
+        # 4. Ensure every literal value is a string
+        for value in literal_values:
             if not isinstance(value, str):
-                raise TypeError(
+                raise InvalidOperationSchema(
                     f"{cls.__name__}.op Literal values must be str; "
                     f"got {value!r} (type {type(value)})"
                 )
 
+        # 5. Ensure all "fields" have type hints
+        for name, value in cls.__dict__.items():
+            # Ignore private / dunder names
+            if name.startswith("_"):
+                continue
 
-class AddOp(PatchOpBase):
+            # Skip descriptors/method-like things
+            if isinstance(value, (classmethod, staticmethod, property)):
+                continue
+
+            # Skip callables (functions, classes, etc.)
+            if callable(value):
+                continue
+
+            # Skip model_config
+            if name == "model_config":
+                continue
+
+            # If it's not annotated, it's probably meant to be a field,
+            # so we require a type hint.
+            if name not in ann:
+                raise InvalidOperationSchema(
+                    f"{cls.__name__}.{name!r} must have a type annotation; "
+                    "all operation fields must be typed"
+                )
+
+
+class AddOp(OperationSchema):
     op: Literal["add"] = "add"
     path: JsonPointerType
     value: JsonValueType
 
 c = AddOp(path="/", value=3)
 
-class RemoveOp(PatchOpBase):
+class RemoveOp(OperationSchema):
     op: Literal["remove"] = "remove"
     path: JsonPointerType
 
 
-class ReplaceOp(PatchOpBase):
+class ReplaceOp(OperationSchema):
     op: Literal["replace"] = "replace"
     path: JsonPointerType
     value: JsonValueType
 
 
-class MoveOp(PatchOpBase):
+class MoveOp(OperationSchema):
     op: Literal["move"] = "move"
     from_: JsonPointerType = Field(alias="from")
     path: JsonPointerType
 
 
-class CopyOp(PatchOpBase):
+class CopyOp(OperationSchema):
     op: Literal["copy"] = "copy"
     from_: JsonPointerType = Field(alias="from")
     path: JsonPointerType
 
 
-class TestOp(PatchOpBase):
+class TestOp(OperationSchema):
     op: Literal["test"] = "test"
     path: JsonPointerType
     value: JsonValueType
@@ -144,10 +182,6 @@ BuiltinPatchAdapter: TypeAdapter[list[BuiltinOpUnion]] = TypeAdapter(
 
 
 
-class InvalidPatchSchema(Exception):
-    """Raised when PatchSchema is constructed with invalid op models."""
-
-
 
 class PatchSchema:
     """
@@ -155,55 +189,16 @@ class PatchSchema:
     discriminated by their 'op' Literal field.
     """
 
-    def __init__(self, *op_models: Type[PatchOpBase]) -> None:
+    def __init__(self, *op_models: Type[OperationSchema]) -> None:
         if not op_models:
             raise InvalidPatchSchema("PatchSchema requires at least one op model")
 
         # Map op literal -> model to detect collisions
-        op_value_to_model: dict[str, Type[PatchOpBase]] = {}
+        # op_value_to_model: dict[str, Type[OperationSchema]] = {}
 
         for model in op_models:
-            # 1. Ensure 'op' field exists
-            try:
-                field = model.model_fields["op"]  # pydantic v2
-            except KeyError:
-                raise InvalidPatchSchema(
-                    f"{model.__name__} has no 'op' field; "
-                    "each operation model must define op: Literal[...]"
-                )
-
-            # 2. Ensure annotation is Literal[...]
-            annotation = field.annotation
-            origin = get_origin(annotation)
-            is_literal = (origin is not None) and (origin.__qualname__ == "Literal")
-            if not is_literal:
-                raise InvalidPatchSchema(
-                    f"{model.__name__}.op must be typing.Literal[...] "
-                    f"(got {annotation!r})"
-                )
-
-            # 3. Extract Literal values and ensure they are unique strings
-            literal_values = get_args(annotation)
-            if not literal_values:
-                raise InvalidPatchSchema(
-                    f"{model.__name__}.op Literal must have at least one value"
-                )
-
-            for value in literal_values:
-                if not isinstance(value, str):
-                    raise InvalidPatchSchema(
-                        f"{model.__name__}.op Literal values must be str; "
-                        f"got {value!r} (type {type(value)})"
-                    )
-
-                if value in op_value_to_model:
-                    other = op_value_to_model[value]
-                    raise InvalidPatchSchema(
-                        "Duplicate op literal "
-                        f"{value!r} in {model.__name__} and {other.__name__}"
-                    )
-
-                op_value_to_model[value] = model
+            # check that the sets of model op stringliterals are disjoint
+            pass
 
         # If we get here, the schema is consistent.
         # Build the discriminated union and adapters.
@@ -214,11 +209,11 @@ class PatchSchema:
         self._op_adapter: TypeAdapter[union_type] = TypeAdapter(union_type)
         self._patch_adapter: TypeAdapter[list[union_type]] = TypeAdapter(list[union_type])
 
-    def parse_op(self, raw: dict[str, Any]) -> PatchOpBase:
+    def parse_op(self, raw: dict[str, Any]) -> OperationSchema:
         """Validate & coerce a single operation dict."""
         return self._op_adapter.validate_python(raw)
 
-    def parse_patch(self, raw: Iterable[dict[str, Any]]) -> list[PatchOpBase]:
+    def parse_patch(self, raw: Iterable[dict[str, Any]]) -> list[OperationSchema]:
         """Validate & coerce a list of operation dicts."""
         return self._patch_adapter.validate_python(list(raw))
 
