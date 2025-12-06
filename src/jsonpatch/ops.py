@@ -1,5 +1,5 @@
 import json
-from typing import Annotated, Any, Iterable, Literal, Protocol, Type, TypeAlias, Union, get_args, get_origin, LiteralString
+from typing import Annotated, Any, Iterable, Literal, Type, TypeAlias, Union, get_args, get_origin
 
 from jsonpointer import (  # type: ignore[import-untyped]
     JsonPointer,
@@ -9,7 +9,7 @@ from pydantic import BaseModel, Field, GetCoreSchemaHandler, TypeAdapter
 from pydantic_core import core_schema
 
 
-class JsonPointerValidator(JsonPointer):
+class JsonPointerValidator:
     """Pydantic-aware wrapper for jsonpointer.JsonPointer."""
 
     @classmethod
@@ -62,13 +62,43 @@ JsonValueType: TypeAlias = Annotated[Any, JsonValueValidator]
 class PatchOpBase(BaseModel):
     """Base for all patch operations."""
 
-    pass
+    def __init_subclass__(cls, **kwargs: Any) -> None:
+        super().__init_subclass__(**kwargs)
+
+        # Don't enforce on the base class itself
+        if cls is PatchOpBase:
+            return
+
+        # 1. Ensure 'op' exists
+        ann = getattr(cls, "__annotations__", {})
+        if "op" not in ann:
+            raise TypeError(
+                f"{cls.__name__} must define an 'op' field annotated as Literal[...]"
+            )
+
+        op_anno = ann["op"]
+        origin = get_origin(op_anno)
+
+        # 2. Ensure it's Literal[...] (or a union of Literals if you want)
+        if origin is not Literal:
+            raise TypeError(
+                f"{cls.__name__}.op must be typing.Literal[...], "
+                f"got {op_anno!r}"
+            )
+
+        # 3. Ensure all Literal values are strings
+        for value in get_args(op_anno):
+            if not isinstance(value, str):
+                raise TypeError(
+                    f"{cls.__name__}.op Literal values must be str; "
+                    f"got {value!r} (type {type(value)})"
+                )
 
 
 class AddOp(PatchOpBase):
     op: Literal["add"] = "add"
     path: JsonPointerType
-    value: Annotated[Any, JsonValueType]
+    value: JsonValueType
 
 c = AddOp(path="/", value=3)
 
@@ -181,7 +211,7 @@ class PatchSchema:
             Field(discriminator="op"),
         ]
         self._op_adapter: TypeAdapter[union_type] = TypeAdapter(union_type)
-        self._patch_adapter: TypeAdapter[union_type] = TypeAdapter(list[union_type])
+        self._patch_adapter: TypeAdapter[list[union_type]] = TypeAdapter(list[union_type])
 
     def parse_op(self, raw: dict[str, Any]) -> PatchOpBase:
         """Validate & coerce a single operation dict."""
