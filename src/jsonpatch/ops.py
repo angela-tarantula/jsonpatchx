@@ -1,5 +1,6 @@
 import json
 from typing import Annotated, Any, Iterable, Literal, Type, TypeAlias, Union, get_args, get_origin
+from abc import ABC
 
 from jsonpointer import (  # type: ignore[import-untyped]
     JsonPointer,
@@ -59,7 +60,7 @@ JsonPointerType: TypeAlias = Annotated[str | JsonPointer, JsonPointerValidator]
 JsonValueType: TypeAlias = Annotated[Any, JsonValueValidator]
 
 
-class PatchOpBase(BaseModel):
+class PatchOpBase(BaseModel, ABC):
     """Base for all patch operations."""
 
     def __init_subclass__(cls, **kwargs: Any) -> None:
