@@ -85,14 +85,14 @@ class OperationSchema(BaseModel, ABC):
         op_anno = ann["op"]
         origin = get_origin(op_anno)
 
-        # 2. Ensure it's Literal[...]
+        # 2. Ensure op is Literal[...]
         if origin is not Literal:
             raise InvalidOperationSchema(
                 f"{cls.__name__}.op must be typing.Literal[...], "
                 f"got {op_anno!r}"
             )
 
-        # 3. Ensure there's at least one literal value
+        # 3. Ensure at least one literal value is specified
         literal_values = get_args(op_anno)
         if not literal_values:
             raise InvalidOperationSchema(
@@ -105,32 +105,6 @@ class OperationSchema(BaseModel, ABC):
                 raise InvalidOperationSchema(
                     f"{cls.__name__}.op Literal values must be str; "
                     f"got {value!r} (type {type(value)})"
-                )
-
-        # 5. Ensure all "fields" have type hints
-        for name, value in cls.__dict__.items():
-            # Ignore private / dunder names
-            if name.startswith("_"):
-                continue
-
-            # Skip descriptors/method-like things
-            if isinstance(value, (classmethod, staticmethod, property)):
-                continue
-
-            # Skip callables (functions, classes, etc.)
-            if callable(value):
-                continue
-
-            # Skip model_config
-            if name == "model_config":
-                continue
-
-            # If it's not annotated, it's probably meant to be a field,
-            # so we require a type hint.
-            if name not in ann:
-                raise InvalidOperationSchema(
-                    f"{cls.__name__}.{name!r} must have a type annotation; "
-                    "all operation fields must be typed"
                 )
 
 
