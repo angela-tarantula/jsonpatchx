@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from jsonpatch.models import Operation, PatchOperation
+    from jsonpatch.models import ffOperation, PatchOperation
 
 
 class JsonPatchException(Exception):
@@ -27,7 +27,7 @@ class JsonPatchConflict(JsonPatchException):
 class MissingMember(InvalidJsonPatch):
     """A required member of a JSON Patch operation is missing."""
 
-    def __init__(self, operation: Operation, member: str) -> None:
+    def __init__(self, operation: ffOperation, member: str) -> None:
         super().__init__(
             f"Missing required member '{member}' in operation '{operation._identifier}'"
         )
@@ -46,7 +46,7 @@ class UnrecognizedPatchOperation(InvalidJsonPatch):
 class MemberTypeMismatch(InvalidJsonPatch):
     """A member in a JSON Patch operation has an invalid type."""
 
-    def __init__(self, operation: Operation, member: str) -> None:
+    def __init__(self, operation: ffOperation, member: str) -> None:
         value = operation.get(member)
         unexpected_type = type(value)
         unexpected_type_name = getattr(
@@ -63,7 +63,7 @@ class MemberTypeMismatch(InvalidJsonPatch):
 class MemberValueMismatch(InvalidJsonPatch):
     """A member in a JSON Patch operation has an invalid value."""
 
-    def __init__(self, operation: Operation, member: str, details: str) -> None:
+    def __init__(self, operation: ffOperation, member: str, details: str) -> None:
         super().__init__(
             f"Invalid value for member '{member}' in operation '{operation._identifier}': {details}"
         )
