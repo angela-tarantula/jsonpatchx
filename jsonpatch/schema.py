@@ -112,8 +112,8 @@ class PatchSchema:
             Union[tuple(op_models)],  # pyright: ignore[reportInvalidTypeArguments, reportInvalidTypeForm]
             Field(discriminator="op"),
         ]
-        self._op_adapter: TypeAdapter[union_type] = TypeAdapter(union_type)
-        self._patch_adapter: TypeAdapter[list[union_type]] = TypeAdapter(
+        self._op_adapter: TypeAdapter[OperationSchema] = TypeAdapter(union_type)
+        self._patch_adapter: TypeAdapter[list[OperationSchema]] = TypeAdapter(
             list[union_type]
         )
 
