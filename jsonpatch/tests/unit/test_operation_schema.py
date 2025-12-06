@@ -24,7 +24,7 @@ def test_operation_schema_op_literal_values_must_be_strings() -> None:
     with pytest.raises(InvalidOperationSchema):
 
         class NonStringLiteral(OperationSchema):
-            op: Literal[1] = 1  # type: ignore[assignment]
+            op: Literal[1] = 1
             path: str
 
 

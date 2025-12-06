@@ -1,4 +1,4 @@
-from typing import Annotated, ClassVar, Literal, TypeAlias, Union
+from typing import Annotated, Literal, TypeAlias, Union
 
 from pydantic import Field, TypeAdapter
 
@@ -68,10 +68,3 @@ if __name__ == "__main__":
     # -> list[AddOp | RemoveOp | ...]
 
     c = AddOp(path="/", value=3)
-
-
-    class Animal:
-        dog: ClassVar[str]
-
-    class Canine(Animal):
-        dog: ClassVar[Literal["dog"]]

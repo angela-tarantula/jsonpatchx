@@ -3,15 +3,14 @@ from abc import ABC  # , abstractmethod
 from typing import (
     Annotated,
     Any,
-    ClassVar,
     Iterable,
     Literal,
     Type,
     TypeAlias,
     Union,
-    cast,
     get_args,
     get_origin,
+    override,
 )
 
 from pydantic import BaseModel, Field, TypeAdapter
@@ -22,8 +21,7 @@ from jsonpatch.exceptions import InvalidOperationSchema, InvalidPatchSchema
 class OperationSchema(BaseModel, ABC):
     """Base for all patch operations."""
 
-    op: str
-
+    @override
     def __init_subclass__(cls, **kwargs: Any) -> None:
         """Validate the operation schema."""
         super().__init_subclass__(**kwargs)
@@ -109,8 +107,7 @@ class PatchSchema:
         # If we get here, the PatchSchema is consistent. Build the discriminated union and adapters.
         # Suppress errors because we know we're creating dynamic runtime TypeAlias.
         union_type: TypeAlias = Annotated[  # type: ignore[valid-type]
-            Union[tuple(op_models)],  # pyright: ignore[reportInvalidTypeArguments, reportInvalidTypeForm]
-            Field(discriminator="op"),
+            Union[tuple(op_models)], Field(discriminator="op")
         ]
         self._op_adapter: TypeAdapter[OperationSchema] = TypeAdapter(union_type)
         self._patch_adapter: TypeAdapter[list[OperationSchema]] = TypeAdapter(
