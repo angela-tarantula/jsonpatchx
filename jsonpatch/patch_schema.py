@@ -87,14 +87,17 @@ class PatchSchema:
 
     @property
     def op_map(self) -> Mapping[str, Type[OperationSchema]]:
+        """The mapping of each operation identifier to its operation schema."""
         return self._model_map
 
     @property
     def op_models(self) -> tuple[Type[OperationSchema], ...]:
+        """The operation schemas that this patch schema recognizes."""
         return tuple(self._model_map.values())
 
     @property
-    def union_type(self) -> TypeAlias:
+    def op_union_type(self) -> TypeAlias:
+        """The discriminated union type of all operation schemas."""
         return self._union_type
 
     def parse_op(self, raw: dict[str, Any]) -> OperationSchema:
