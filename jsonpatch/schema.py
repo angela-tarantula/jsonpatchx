@@ -39,7 +39,7 @@ class OperationSchema(BaseModel, ABC):
         super().__init_subclass__(**kwargs)
         if not cls._is_annotated_correctly():
             raise InvalidOperationSchema(
-                f"'{cls.__name__}'.op field requires Literal[str, ...] annotation"
+                f"OperationSchema '{cls.__name__}'.op must be annotated as Literal[str, ...]"
             )
         cls._op_literals = get_args(cls.__annotations__["op"])
 
@@ -125,6 +125,18 @@ class PatchSchema:
             list[union_type]
         )
         return union_type, op_adapter, patch_adapter
+
+    @property
+    def op_map(self) -> Mapping[str, Type[OperationSchema]]:
+        return self._model_map
+
+    @property
+    def op_models(self) -> tuple[Type[OperationSchema], ...]:
+        return tuple(self._model_map.values())
+
+    @property
+    def union_type(self) -> TypeAlias:
+        return self._union_type
 
     def parse_op(self, raw: dict[str, Any]) -> OperationSchema:
         """Validate & coerce a single operation dict."""
