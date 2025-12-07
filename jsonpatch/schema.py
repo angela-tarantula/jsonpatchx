@@ -30,6 +30,7 @@ class OperationSchema(BaseModel, ABC):
     represented as strongly-typed Pydantic models.
     """
 
+    model_config = ConfigDict(frozen=True)
     _op_literals: ClassVar[tuple[str]]
 
     @override
