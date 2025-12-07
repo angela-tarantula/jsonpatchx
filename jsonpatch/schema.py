@@ -3,6 +3,7 @@ from abc import ABC, abstractmethod
 from typing import (
     Annotated,
     Any,
+    ClassVar,
     Iterable,
     Literal,
     Type,
@@ -21,6 +22,8 @@ from jsonpatch.types import JsonValueType
 
 class OperationSchema(BaseModel, ABC):
     """Base for all patch operations."""
+
+    _op_identifiers: ClassVar[tuple[str]]
 
     @override
     def __init_subclass__(cls, **kwargs: Any) -> None:
@@ -57,11 +60,7 @@ class OperationSchema(BaseModel, ABC):
                     f"got {value!r} (type {type(value)})"
                 )
 
-    @classmethod
-    def _op_discriminators(cls) -> tuple[str, ...]:
-        ann = cls.__annotations__
-        op_anno: Any = ann["op"]
-        return get_args(op_anno)
+        cls._op_identifiers = literal_values
 
     @abstractmethod
     def apply(self, doc: JsonValueType) -> JsonValueType:
@@ -96,15 +95,15 @@ class PatchSchema:
                 )
 
         # Ensure the sets of OperationSchema identifiers are disjoint
-        _op_map: dict[str, Type[OperationSchema]] = {}
+        _model_map: dict[str, Type[OperationSchema]] = {}
         for model in op_models:
-            for op in model._op_discriminators():
-                other_model = _op_map.get(op)
+            for op in model._op_identifiers:
+                other_model = _model_map.get(op)
                 if other_model:
                     raise InvalidPatchSchema(
                         f"{model.__name__} and {other_model.__name__} cannot share '{op}' as an op identifier"
                     )
-                _op_map[op] = model
+                _model_map[op] = model
 
         # If we get here, the PatchSchema is consistent. Build the discriminated union and adapters.
         # Suppress errors because we know we're creating dynamic runtime TypeAlias.
@@ -119,7 +118,7 @@ class PatchSchema:
         # Stash these to enable introspection (for debugging, generating docs/tooling, etc)
         self._union_type = union_type
         self._op_models = list(op_models)
-        self._op_map = _op_map
+        self._model_map = _model_map
 
     def parse_op(self, raw: dict[str, Any]) -> OperationSchema:
         """Validate & coerce a single operation dict."""
