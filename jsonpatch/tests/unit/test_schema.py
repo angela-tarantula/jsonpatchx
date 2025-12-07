@@ -5,7 +5,8 @@ from pydantic import ValidationError
 from pytest import Subtests
 
 from jsonpatch.exceptions import InvalidOperationSchema, InvalidPatchSchema
-from jsonpatch.schema import OperationSchema, PatchSchema
+from jsonpatch.operation_schema import OperationSchema
+from jsonpatch.patch_schema import PatchSchema
 from jsonpatch.types import JsonValueType
 
 

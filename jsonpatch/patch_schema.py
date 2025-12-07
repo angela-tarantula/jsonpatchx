@@ -1,62 +1,21 @@
-from abc import ABC, abstractmethod
 from inspect import isabstract, isclass
 from types import MappingProxyType
 from typing import (
     Annotated,
     Any,
-    ClassVar,
     Iterable,
-    Literal,
     Mapping,
+    Self,
     Type,
     TypeAlias,
     Union,
-    Unpack,
-    cast,
-    get_args,
-    get_origin,
-    override,
 )
 
-from pydantic import BaseModel, ConfigDict, Field, TypeAdapter
+from pydantic import Field, TypeAdapter
 
-from jsonpatch.exceptions import InvalidOperationSchema, InvalidPatchSchema
-from jsonpatch.types import JsonValueType
-
-
-class OperationSchema(BaseModel, ABC):
-    """
-    The base class for declarative JSON Patch operation schemas,
-    represented as strongly-typed Pydantic models.
-    """
-
-    model_config = ConfigDict(frozen=True)
-    _op_literals: ClassVar[tuple[str]]
-
-    @override
-    def __init_subclass__(cls, **kwargs: Unpack[ConfigDict]) -> None:
-        """Validate the operation schema."""
-        super().__init_subclass__(**kwargs)
-        if not cls._is_annotated_correctly():
-            raise InvalidOperationSchema(
-                f"OperationSchema '{cls.__name__}'.op must be annotated as Literal[str, ...]"
-            )
-        cls._op_literals = get_args(cls.__annotations__["op"])
-
-    @classmethod
-    def _is_annotated_correctly(cls) -> bool:
-        """Confirms 'op' field is annotated as Literal[str, ...]"""
-        return bool(
-            (op_anno := cls.__annotations__.get("op"))  # op is annotated
-            and (cast(object, get_origin(op_anno)) is Literal)  # op is Literal
-            and bool(literal_vals := get_args(op_anno))  # op is Literal[...]
-            and all(isinstance(v, str) for v in literal_vals)  # op is Literal[str, ...]
-        )
-
-    @abstractmethod
-    def apply(self, doc: JsonValueType) -> JsonValueType:
-        """Apply this operation to a JSON document."""
-        ...
+from jsonpatch.exceptions import InvalidPatchSchema
+from jsonpatch.operation_schema import OperationSchema
+from jsonpatch.ops_builtin import AddOp, CopyOp, MoveOp, RemoveOp, ReplaceOp, TestOp
 
 
 class PatchSchema:
@@ -145,3 +104,18 @@ class PatchSchema:
     def parse_patch(self, raw: Iterable[dict[str, Any]]) -> list[OperationSchema]:
         """Validate & coerce a list of operation dicts."""
         return self._patch_adapter.validate_python(list(raw))
+
+    @classmethod
+    def with_defaults(cls, *extra_ops: Type[OperationSchema]) -> Self:
+        return cls(AddOp, RemoveOp, ReplaceOp, MoveOp, CopyOp, TestOp, *extra_ops)
+
+
+if __name__ == "__main__":
+    raw = {"op": "add", "path": "/4", "value": "bar"}
+
+    op = PatchSchema.with_defaults().parse_op(raw)
+    raw_patch = [
+        {"op": "add", "path": "/foo", "value": "bar"},
+        {"op": "remove", "path": "/foo"},
+    ]
+    ops = PatchSchema.with_defaults().parse_patch(raw_patch)

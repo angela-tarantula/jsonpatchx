@@ -53,7 +53,8 @@ from jsonpatch.exceptions import (
     PatchError,
     TestOpFailed,
 )
-from jsonpatch.schema import OperationSchema, PatchSchema
+from jsonpatch.operation_schema import OperationSchema
+from jsonpatch.patch_schema import PatchSchema
 from jsonpatch.types import JsonPointerType, JsonValueType
 
 __all__ = [

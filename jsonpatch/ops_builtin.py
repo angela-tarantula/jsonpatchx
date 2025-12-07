@@ -2,7 +2,7 @@ from typing import Literal, override
 
 from pydantic import Field
 
-from jsonpatch.schema import OperationSchema, PatchSchema
+from jsonpatch.operation_schema import OperationSchema
 from jsonpatch.types import JsonPointerType, JsonValueType
 
 
@@ -63,17 +63,3 @@ class TestOp(OperationSchema):
     @override
     def apply(self, doc: JsonValueType) -> JsonValueType:
         return NotImplemented
-
-
-BuiltinPatchSchema: PatchSchema = PatchSchema(
-    AddOp, RemoveOp, ReplaceOp, MoveOp, CopyOp, TestOp
-)
-
-if __name__ == "__main__":
-    raw = {"op": "add", "path": "/4", "value": "bar"}
-    op = BuiltinPatchSchema.parse_op(raw)
-    raw_patch = [
-        {"op": "add", "path": "/foo", "value": "bar"},
-        {"op": "remove", "path": "/foo"},
-    ]
-    ops = BuiltinPatchSchema.parse_patch(raw_patch)

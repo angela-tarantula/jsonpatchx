@@ -9,7 +9,7 @@ from pydantic import GetCoreSchemaHandler, GetJsonSchemaHandler
 from pydantic_core import core_schema
 
 
-class JsonPointerValidator:
+class PydanticJsonPointer:
     """Pydantic-aware wrapper for jsonpointer.JsonPointer."""
 
     @classmethod
@@ -43,7 +43,7 @@ class JsonPointerValidator:
             raise ValueError(f"Invalid JSON Pointer: {v!r}") from e
 
 
-class JsonValueValidator:
+class PydanticJsonValue:
     """Any JSON-serializable value."""
 
     @classmethod
@@ -66,7 +66,7 @@ class JsonValueValidator:
         return v
 
 
-# Tell mypy that JsonPointerType is a str or a JsonPointer, but tell Pydantic to coerce it use JsonPointerValidator
-JsonPointerType: TypeAlias = Annotated[str | JsonPointer, JsonPointerValidator]
-# Tell mypy JsonValueType can be any object, but tell Pydantic to use JsonValueValidator
-JsonValueType: TypeAlias = Annotated[Any, JsonValueValidator]
+# Tell mypy that JsonPointerType is a str or a JsonPointer, but tell Pydantic to coerce it use PydanticJsonPointer
+JsonPointerType: TypeAlias = Annotated[str | JsonPointer, PydanticJsonPointer]
+# Tell mypy JsonValueType can be any object, but tell Pydantic to use PydanticJsonValue
+JsonValueType: TypeAlias = Annotated[Any, PydanticJsonValue]
