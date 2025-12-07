@@ -1,5 +1,5 @@
 import inspect
-from abc import ABC  # , abstractmethod
+from abc import ABC, abstractmethod
 from typing import (
     Annotated,
     Any,
@@ -16,6 +16,7 @@ from typing import (
 from pydantic import BaseModel, Field, TypeAdapter
 
 from jsonpatch.exceptions import InvalidOperationSchema, InvalidPatchSchema
+from jsonpatch.types import JsonValueType
 
 
 class OperationSchema(BaseModel, ABC):
@@ -26,13 +27,13 @@ class OperationSchema(BaseModel, ABC):
         """Validate the operation schema."""
         super().__init_subclass__(**kwargs)
 
-        ann = getattr(cls, "__annotations__", {})
+        ann = cls.__annotations__
 
         # 1. Ensure 'op' exists
         if "op" not in ann:
             raise InvalidOperationSchema(f"'{cls.__name__}' must define an 'op' field")
 
-        op_anno = ann["op"]
+        op_anno: Any = ann["op"]
         origin = get_origin(op_anno)
 
         # 2. Ensure op is Literal[...]
@@ -58,13 +59,14 @@ class OperationSchema(BaseModel, ABC):
 
     @classmethod
     def _op_discriminators(cls) -> tuple[str, ...]:
-        ann = getattr(cls, "__annotations__", {})
-        op_anno = ann["op"]
+        ann = cls.__annotations__
+        op_anno: Any = ann["op"]
         return get_args(op_anno)
 
-    # @abstractmethod
-    # def apply(self, doc: JsonValueType) -> JsonValueType:
-    #     """Apply this operation to a JSON document."""
+    @abstractmethod
+    def apply(self, doc: JsonValueType) -> JsonValueType:
+        """Apply this operation to a JSON document."""
+        ...
 
 
 class PatchSchema:
@@ -80,16 +82,16 @@ class PatchSchema:
         typing_expectation = "PatchSchema expects concrete OperationSchema classes"
         for m in op_models:
             if not inspect.isclass(m):
-                raise TypeError(
+                raise InvalidPatchSchema(
                     f"{typing_expectation}, but received an instance of type '{type(m).__name__}': {m!r}"
                 )
             if not issubclass(m, OperationSchema):
-                raise TypeError(
+                raise InvalidPatchSchema(
                     f"{typing_expectation}, but received an unrelated class '{m.__name__}'."
                 )
             if inspect.isabstract(m):
                 missing = ", ".join(sorted(m.__abstractmethods__))
-                raise TypeError(
+                raise InvalidPatchSchema(
                     f"{typing_expectation}, but received an abstract class '{m.__name__}'. Missing implementations for: {missing}."
                 )
 

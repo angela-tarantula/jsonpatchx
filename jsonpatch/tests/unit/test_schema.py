@@ -1,4 +1,4 @@
-from typing import Literal
+from typing import Literal, override
 
 import pytest
 from pydantic import ValidationError
@@ -6,6 +6,7 @@ from pytest import Subtests
 
 from jsonpatch.exceptions import InvalidOperationSchema, InvalidPatchSchema
 from jsonpatch.schema import OperationSchema, PatchSchema
+from jsonpatch.types import JsonValueType
 
 
 def test_invalid_operation_schema(subtests: Subtests) -> None:
@@ -36,41 +37,93 @@ def test_invalid_operation_schema(subtests: Subtests) -> None:
                 op: Literal[1] = 1
                 path: str
 
+    with subtests.test("pydantic enforces field type hints"):
+
+        class AppleOp(OperationSchema):
+            op: Literal["apple"]
+
+            @override
+            def apply(self, doc: JsonValueType) -> JsonValueType:
+                return None
+
+        with pytest.raises(ValidationError):
+            AppleOp(op="orange")  # type: ignore[arg-type]
+
 
 def test_invalid_patch_schema(subtests: Subtests) -> None:
+    class FirstOp(OperationSchema):
+        op: Literal["dup"] = "dup"
+
+        @override
+        def apply(self, doc: JsonValueType) -> JsonValueType:
+            return None
+
+    class SecondOp(OperationSchema):
+        op: Literal["dup"] = "dup"
+
+        @override
+        def apply(self, doc: JsonValueType) -> JsonValueType:
+            return None
+
+    class AbstractOp(OperationSchema):
+        op: Literal["abstract"] = "abstract"
+
     with subtests.test("PatchSchema requires at least one model"):
         with pytest.raises(InvalidPatchSchema):
             PatchSchema()
 
-    with subtests.test("PatchSchema rejects duplicate op identifiers"):
-
-        class FirstOp(OperationSchema):
-            op: Literal["dup"] = "dup"
-            path: str
-
-        class SecondOp(OperationSchema):
-            op: Literal["dup"] = "dup"
-            path: str
-
+    with subtests.test("PatchSchema requires unique op identifiers"):
         with pytest.raises(InvalidPatchSchema):
             PatchSchema(FirstOp, SecondOp)
 
+    with subtests.test("PatchSchema rejects non-OperationSchema input"):
+        with pytest.raises(InvalidPatchSchema):
+            PatchSchema(str)  # type: ignore[arg-type]
+
+        with pytest.raises(InvalidPatchSchema):
+            PatchSchema(42)  # type: ignore[arg-type]
+
+    with subtests.test("PatchSchema rejects OperationSchema base class"):
+        with pytest.raises(InvalidPatchSchema):
+            PatchSchema(OperationSchema)  # type: ignore[type-abstract]
+
+    with subtests.test("PatchSchema rejects abstract OperationSchema subclasses"):
+        with pytest.raises(InvalidPatchSchema):
+            PatchSchema(AbstractOp)  # type: ignore[type-abstract]
+
+    with subtests.test("PatchSchema rejects OperationSchema instances"):
+        with pytest.raises(InvalidPatchSchema):
+            PatchSchema(FirstOp())  # type: ignore[arg-type]
+
 
 def test_valid_operation_schema(subtests: Subtests) -> None:
-    class IncrementOp(OperationSchema):
-        op: Literal["increment"] = "increment"
-        path: str
-        value: int = 1
-
-    with subtests.test("pydantic enforces op literal"):
-        with pytest.raises(ValidationError):
-            IncrementOp(op="add", path="/", value=3)  # type: ignore[arg-type]
-
     with subtests.test("valid op instantiation succeeds"):
+
+        class IncrementOp(OperationSchema):
+            op: Literal["increment"] = "increment"
+            path: str
+            value: int = 1
+
+            @override
+            def apply(self, doc: JsonValueType) -> JsonValueType:
+                return None
+
         op = IncrementOp(path="/", value=3)
         assert op.op == "increment"
         assert op.path == "/"
         assert op.value == 3
+
+    with subtests.test("op can take multiple literals"):
+
+        class OrganizeOp(OperationSchema):
+            op: Literal["organize", "organise"]
+
+            @override
+            def apply(self, doc: JsonValueType) -> JsonValueType:
+                return None
+
+        OrganizeOp(op="organize")
+        OrganizeOp(op="organise")
 
 
 def test_patch_schema_parse_happy_path(subtests: Subtests) -> None:
@@ -79,9 +132,17 @@ def test_patch_schema_parse_happy_path(subtests: Subtests) -> None:
         path: str
         value: int = 1
 
+        @override
+        def apply(self, doc: JsonValueType) -> JsonValueType:
+            return None
+
     class ToggleOp(OperationSchema):
         op: Literal["toggle"] = "toggle"
         path: str
+
+        @override
+        def apply(self, doc: JsonValueType) -> JsonValueType:
+            return None
 
     schema = PatchSchema(IncrementOp, ToggleOp)
 
