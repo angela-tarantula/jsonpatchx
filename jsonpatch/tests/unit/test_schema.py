@@ -49,6 +49,21 @@ def test_invalid_operation_schema(subtests: Subtests) -> None:
         with pytest.raises(ValidationError):
             AppleOp(op="orange")  # type: ignore[arg-type]
 
+    with subtests.test("pydantic enforces immutability of OperationSchemas"):
+
+        class Orange(OperationSchema):
+            op: Literal["orange"] = "orange"
+            value: str
+
+            @override
+            def apply(self, doc: JsonValueType) -> JsonValueType:
+                return None
+
+        orange = Orange(value="peel")
+
+        with pytest.raises(ValidationError):
+            orange.value = "ripe"
+
 
 def test_invalid_patch_schema(subtests: Subtests) -> None:
     class FirstOp(OperationSchema):
