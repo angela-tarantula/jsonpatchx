@@ -9,12 +9,14 @@ from typing import (
     Type,
     TypeAlias,
     Union,
+    Unpack,
+    cast,
     get_args,
     get_origin,
     override,
 )
 
-from pydantic import BaseModel, Field, TypeAdapter
+from pydantic import BaseModel, ConfigDict, Field, TypeAdapter
 
 from jsonpatch.exceptions import InvalidOperationSchema, InvalidPatchSchema
 from jsonpatch.types import JsonValueType
@@ -26,41 +28,24 @@ class OperationSchema(BaseModel, ABC):
     _op_identifiers: ClassVar[tuple[str]]
 
     @override
-    def __init_subclass__(cls, **kwargs: Any) -> None:
+    def __init_subclass__(cls, **kwargs: Unpack[ConfigDict]) -> None:
         """Validate the operation schema."""
         super().__init_subclass__(**kwargs)
-
-        ann = cls.__annotations__
-
-        # 1. Ensure 'op' exists
-        if "op" not in ann:
-            raise InvalidOperationSchema(f"'{cls.__name__}' must define an 'op' field")
-
-        op_anno: Any = ann["op"]
-        origin = get_origin(op_anno)
-
-        # 2. Ensure op is Literal[...]
-        if origin is not Literal:
+        if not cls._is_annotated_correctly():
             raise InvalidOperationSchema(
-                f"'{cls.__name__!r}.op' must be typing.Literal[...], got {op_anno!r}"
+                f"'{cls.__name__}'.op field requires Literal[str, ...] annotation"
             )
+        cls._op_identifiers = get_args(cls.__annotations__["op"])
 
-        # 3. Ensure at least one literal value is specified
-        literal_values = get_args(op_anno)
-        if not literal_values:
-            raise InvalidOperationSchema(
-                f"'{cls.__name__}.op' Literal must have at least one value"
-            )
-
-        # 4. Ensure every literal value is a string
-        for value in literal_values:
-            if not isinstance(value, str):
-                raise InvalidOperationSchema(
-                    f"'{cls.__name__}.op' Literal values must be str; "
-                    f"got {value!r} (type {type(value)})"
-                )
-
-        cls._op_identifiers = literal_values
+    @classmethod
+    def _is_annotated_correctly(cls) -> bool:
+        """Confirms 'op' field is annotated as Literal[str, ...]"""
+        return bool(
+            (op_anno := cls.__annotations__.get("op"))  # op is annotated
+            and (cast(object, get_origin(op_anno)) is Literal)  # op is Literal
+            and bool(literal_vals := get_args(op_anno))  # op is Literal[...]
+            and all(isinstance(v, str) for v in literal_vals)  # op is Literal[str, ...]
+        )
 
     @abstractmethod
     def apply(self, doc: JsonValueType) -> JsonValueType:
