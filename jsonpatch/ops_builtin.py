@@ -1,6 +1,6 @@
-from typing import Annotated, Literal, TypeAlias, Union, override
+from typing import Literal, override
 
-from pydantic import Field, TypeAdapter
+from pydantic import Field
 
 from jsonpatch.schema import OperationSchema, PatchSchema
 from jsonpatch.types import JsonPointerType, JsonValueType
@@ -65,30 +65,15 @@ class TestOp(OperationSchema):
         return NotImplemented
 
 
-BuiltinOpUnion: TypeAlias = Annotated[
-    Union[AddOp, RemoveOp, ReplaceOp, MoveOp, CopyOp, TestOp],
-    Field(discriminator="op"),
-]
-
-BuiltinOpAdapter: TypeAdapter[BuiltinOpUnion] = TypeAdapter(BuiltinOpUnion)
-BuiltinPatchAdapter: TypeAdapter[list[BuiltinOpUnion]] = TypeAdapter(
-    list[BuiltinOpUnion]
-)
-
-
 BuiltinPatchSchema: PatchSchema = PatchSchema(
     AddOp, RemoveOp, ReplaceOp, MoveOp, CopyOp, TestOp
 )
 
 if __name__ == "__main__":
     raw = {"op": "add", "path": "/4", "value": "bar"}
-    op = BuiltinOpAdapter.validate_python(raw)
+    op = BuiltinPatchSchema.parse_op(raw)
     raw_patch = [
         {"op": "add", "path": "/foo", "value": "bar"},
         {"op": "remove", "path": "/foo"},
     ]
-
-    ops = BuiltinPatchAdapter.validate_python(raw_patch)
-    # -> list[AddOp | RemoveOp | ...]
-
-    c = AddOp(path="/", value=3)
+    ops = BuiltinPatchSchema.parse_patch(raw_patch)
