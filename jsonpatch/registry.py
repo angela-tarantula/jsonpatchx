@@ -52,17 +52,17 @@ class OperationRegistry:
 
     @staticmethod
     def _build_model_map(
-        *op_models: Type[OperationSchema],
-    ) -> Mapping[str, Type[OperationSchema]]:
+        *op_models: type[OperationSchema],
+    ) -> Mapping[str, type[OperationSchema]]:
         """Build a mapping of op name -> model. Ensure all identifiers are disjoint."""
-        model_map: dict[str, Type[OperationSchema]] = {}
-
+        model_map: dict[str, type[OperationSchema]] = {}
         for model in op_models:
             for op_literal in model._op_literals:
                 if op_literal in model_map:
                     other = model_map[op_literal]
                     raise InvalidOperationRegistry(
-                        f"{model.__name__} and {other.__name__} cannot share '{op_literal}' as an op identifier"
+                        f"{model.__name__} and {other.__name__} cannot share "
+                        f"'{op_literal}' as an op identifier"
                     )
                 model_map[op_literal] = model
         return MappingProxyType(model_map)
