@@ -111,16 +111,22 @@ class OperationRegistry:
         return self._patch_adapter.validate_python(list(raw))
 
     @classmethod
-    def with_defaults(cls, *extra_ops: Type[OperationSchema]) -> Self:
+    def standard(cls) -> Self:
+        """Standard RFC 6902 ops."""
+        return cls.with_standard()
+
+    @classmethod
+    def with_standard(cls, *extra_ops: type[OperationSchema]) -> Self:
+        """Built-in RFC 6902 ops, plus any extras."""
         return cls(AddOp, RemoveOp, ReplaceOp, MoveOp, CopyOp, TestOp, *extra_ops)
 
 
 if __name__ == "__main__":
     raw = {"op": "add", "path": "/4", "value": "bar"}
 
-    op = OperationRegistry.with_defaults().parse_op(raw)
+    op = OperationRegistry.standard().parse_op(raw)
     raw_patch = [
         {"op": "add", "path": "/foo", "value": "bar"},
         {"op": "remove", "path": "/foo"},
     ]
-    ops = OperationRegistry.with_defaults().parse_patch(raw_patch)
+    ops = OperationRegistry.standard().parse_patch(raw_patch)
