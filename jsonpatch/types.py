@@ -36,7 +36,9 @@ class PydanticJsonPointer:
         return json_schema
 
     @classmethod
-    def _validate(cls, v: str) -> JsonPointer:
+    def _validate(cls, v: str | JsonPointer) -> JsonPointer:
+        if isinstance(v, JsonPointer):
+            return v
         try:
             return JsonPointer(v)
         except JsonPointerException as e:
