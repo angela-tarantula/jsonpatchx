@@ -10,7 +10,7 @@ Public API surface:
 
 - Exceptions:
     - InvalidOperationSchema
-    - InvalidPatchSchema
+    - InvalidOperationRegistry
     - PatchApplicationError
     - PatchError
     - TestOpFailed
@@ -19,55 +19,35 @@ Public API surface:
     - JsonPointerType
     - JsonValueType
 
-- Schema system:
+- Operatation Specs:
     - OperationSchema
-    - PatchSchema
-
-Built-in operations that live in ``jsonpatch.ops_builtin``:
-
- - OperationSchemas:
-    - AddOp
-    - RemoveOp
-    - ReplaceOp
-    - MoveOp
-    - CopyOp
-    - TestOp
-
- - PatchSchemas:
-    - BuiltinPatchSchema
-
- - TypeAliases:
-    - OpUnion
-
- - TypeAdapters:
-    - BuiltinOpAdapter
-    - BuiltinPatchAdapter
+    - OperationRegistry
 """
 
 from __future__ import annotations
 
 from jsonpatch.exceptions import (
+    InvalidOperationRegistry,
     InvalidOperationSchema,
-    InvalidPatchSchema,
     PatchApplicationError,
     PatchError,
     TestOpFailed,
 )
-from jsonpatch.operation_schema import OperationSchema
-from jsonpatch.patch_schema import PatchSchema
+from jsonpatch.registry import OperationRegistry
+from jsonpatch.schema import OperationSchema
 from jsonpatch.types import JsonPointerType, JsonValueType
 
 __all__ = [
     # exceptions
     "InvalidOperationSchema",
-    "InvalidPatchSchema",
+    "InvalidOperationRegistry",
     "PatchApplicationError",
     "PatchError",
     "TestOpFailed",
     # types
     "JsonPointerType",
     "JsonValueType",
-    # schema system
+    # operation specs
     "OperationSchema",
-    "PatchSchema",
+    "OperationRegistry",
 ]

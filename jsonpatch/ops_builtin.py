@@ -2,7 +2,7 @@ from typing import Literal, override
 
 from pydantic import Field
 
-from jsonpatch.operation_schema import OperationSchema
+from jsonpatch.schema import OperationSchema
 from jsonpatch.types import JsonPointerType, JsonValueType
 
 

@@ -13,15 +13,17 @@ from typing import (
 
 from pydantic import Field, TypeAdapter
 
-from jsonpatch.exceptions import InvalidPatchSchema
-from jsonpatch.operation_schema import OperationSchema
+from jsonpatch.exceptions import InvalidOperationRegistry
 from jsonpatch.ops_builtin import AddOp, CopyOp, MoveOp, RemoveOp, ReplaceOp, TestOp
+from jsonpatch.schema import OperationSchema
 
 
-class PatchSchema:
+class OperationRegistry:
     """
-    A JSON Patch schema defined by a set of OperationSchema Pydantic models
-    discriminated by their 'op' Literal field.
+    A registry of JSON Patch operations, backed by OperationSchema subclasses.
+
+    - Maps 'op' identifiers to OperationSchema types
+    - Builds a discriminated union for validation / OpenAPI
     """
 
     def __init__(self, *op_models: Type[OperationSchema]) -> None:
@@ -37,15 +39,15 @@ class PatchSchema:
     def _validate_models(*op_models: Type[OperationSchema]) -> None:
         """Confirm all OperationSchemas are instantiable for dispatching."""
         if not op_models:
-            raise InvalidPatchSchema(
-                "PatchSchema requires at least one OperationSchema"
+            raise InvalidOperationRegistry(
+                "OperationRegistry requires at least one OperationSchema"
             )
         if not all(
             isclass(m) and issubclass(m, OperationSchema) and not isabstract(m)
             for m in op_models
         ):
-            raise InvalidPatchSchema(
-                "PatchSchema expects concrete OperationSchema subclasses"
+            raise InvalidOperationRegistry(
+                "OperationRegistry expects concrete OperationSchema subclasses"
             )
 
     @staticmethod
@@ -59,7 +61,7 @@ class PatchSchema:
             for op_literal in model._op_literals:
                 if op_literal in model_map:
                     other = model_map[op_literal]
-                    raise InvalidPatchSchema(
+                    raise InvalidOperationRegistry(
                         f"{model.__name__} and {other.__name__} cannot share '{op_literal}' as an op identifier"
                     )
                 model_map[op_literal] = model
@@ -116,9 +118,9 @@ class PatchSchema:
 if __name__ == "__main__":
     raw = {"op": "add", "path": "/4", "value": "bar"}
 
-    op = PatchSchema.with_defaults().parse_op(raw)
+    op = OperationRegistry.with_defaults().parse_op(raw)
     raw_patch = [
         {"op": "add", "path": "/foo", "value": "bar"},
         {"op": "remove", "path": "/foo"},
     ]
-    ops = PatchSchema.with_defaults().parse_patch(raw_patch)
+    ops = OperationRegistry.with_defaults().parse_patch(raw_patch)

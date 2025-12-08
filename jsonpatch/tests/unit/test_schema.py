@@ -4,9 +4,9 @@ import pytest
 from pydantic import ValidationError
 from pytest import Subtests
 
-from jsonpatch.exceptions import InvalidOperationSchema, InvalidPatchSchema
-from jsonpatch.operation_schema import OperationSchema
-from jsonpatch.patch_schema import PatchSchema
+from jsonpatch.exceptions import InvalidOperationRegistry, InvalidOperationSchema
+from jsonpatch.registry import OperationRegistry
+from jsonpatch.schema import OperationSchema
 from jsonpatch.types import JsonValueType
 
 
@@ -84,32 +84,32 @@ def test_invalid_patch_schema(subtests: Subtests) -> None:
     class AbstractOp(OperationSchema):
         op: Literal["abstract"] = "abstract"
 
-    with subtests.test("PatchSchema requires at least one model"):
-        with pytest.raises(InvalidPatchSchema):
-            PatchSchema()
+    with subtests.test("OperationRegistry requires at least one model"):
+        with pytest.raises(InvalidOperationRegistry):
+            OperationRegistry()
 
-    with subtests.test("PatchSchema requires unique op identifiers"):
-        with pytest.raises(InvalidPatchSchema):
-            PatchSchema(FirstOp, SecondOp)
+    with subtests.test("OperationRegistry requires unique op identifiers"):
+        with pytest.raises(InvalidOperationRegistry):
+            OperationRegistry(FirstOp, SecondOp)
 
-    with subtests.test("PatchSchema rejects non-OperationSchema input"):
-        with pytest.raises(InvalidPatchSchema):
-            PatchSchema(str)  # type: ignore[arg-type]
+    with subtests.test("OperationRegistry rejects non-OperationSchema input"):
+        with pytest.raises(InvalidOperationRegistry):
+            OperationRegistry(str)  # type: ignore[arg-type]
 
-        with pytest.raises(InvalidPatchSchema):
-            PatchSchema(42)  # type: ignore[arg-type]
+        with pytest.raises(InvalidOperationRegistry):
+            OperationRegistry(42)  # type: ignore[arg-type]
 
-    with subtests.test("PatchSchema rejects OperationSchema base class"):
-        with pytest.raises(InvalidPatchSchema):
-            PatchSchema(OperationSchema)  # type: ignore[type-abstract]
+    with subtests.test("OperationRegistry rejects OperationSchema base class"):
+        with pytest.raises(InvalidOperationRegistry):
+            OperationRegistry(OperationSchema)  # type: ignore[type-abstract]
 
-    with subtests.test("PatchSchema rejects abstract OperationSchema subclasses"):
-        with pytest.raises(InvalidPatchSchema):
-            PatchSchema(AbstractOp)  # type: ignore[type-abstract]
+    with subtests.test("OperationRegistry rejects abstract OperationSchema subclasses"):
+        with pytest.raises(InvalidOperationRegistry):
+            OperationRegistry(AbstractOp)  # type: ignore[type-abstract]
 
-    with subtests.test("PatchSchema rejects OperationSchema instances"):
-        with pytest.raises(InvalidPatchSchema):
-            PatchSchema(FirstOp())  # type: ignore[arg-type]
+    with subtests.test("OperationRegistry rejects OperationSchema instances"):
+        with pytest.raises(InvalidOperationRegistry):
+            OperationRegistry(FirstOp())  # type: ignore[arg-type]
 
 
 def test_valid_operation_schema(subtests: Subtests) -> None:
@@ -160,7 +160,7 @@ def test_patch_schema_parse_happy_path(subtests: Subtests) -> None:
         def apply(self, doc: JsonValueType) -> JsonValueType:
             return None
 
-    schema = PatchSchema(IncrementOp, ToggleOp)
+    schema = OperationRegistry(IncrementOp, ToggleOp)
 
     with subtests.test("parse_op succeeds"):
         op = schema.parse_op({"op": "increment", "path": "/foo", "value": 3})

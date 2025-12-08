@@ -6,8 +6,8 @@ class InvalidOperationSchema(PatchError):
     """An OperationSchema is invalid."""
 
 
-class InvalidPatchSchema(PatchError):
-    """A PatchSchema has incompatible OperationSchemas."""
+class InvalidOperationRegistry(PatchError):
+    """A OperationRegistry has incompatible OperationSchemas."""
 
 
 class PatchApplicationError(PatchError):
