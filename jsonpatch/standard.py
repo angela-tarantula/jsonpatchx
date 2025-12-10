@@ -1,8 +1,7 @@
 import json
-from collections.abc import Collection, Mapping, Sequence
+from collections.abc import Mapping, Sequence
 from typing import Hashable, Self, overload, override
 
-from jsonpatch.builtins import STANDARD_OPS
 from jsonpatch.exceptions import PatchApplicationError, PatchError
 from jsonpatch.registry import OperationRegistry
 from jsonpatch.schema import OperationSchema
@@ -40,27 +39,29 @@ class JsonPatch(Sequence[OperationSchema], Hashable):
         self,
         python: Sequence[Mapping[str, JsonValueType]],
         *,
-        op_schemas: Collection[type[OperationSchema]] = STANDARD_OPS,
         registry: OperationRegistry | None = None,
     ):
-        """Construct a JsonPatch from a list of operations."""
-        if registry is None:
-            registry = OperationRegistry(*op_schemas)
-        self._registry = registry
-        self._ops: Sequence[OperationSchema] = self._registry.parse_python_patch(python)
+        """
+        Construct a JsonPatch from a list of operations.
+
+        If no registry is provided, the standard RFC 6902 registry is used.
+        """
+        self._registry = registry or OperationRegistry.standard()
+        self._ops: list[OperationSchema] = self._registry.parse_python_patch(python)
 
     @classmethod
     def from_string(
         cls,
         text: JsonTextType,
         *,
-        op_schemas: Collection[type[OperationSchema]] = STANDARD_OPS,
         registry: OperationRegistry | None = None,
     ) -> Self:
-        """Construct a JsonPatch from a JSON-formatted string."""
+        """Construct a JsonPatch from a JSON-formatted string.
+
+        If no registry is provided, the standard RFC 6902 registry is used.
+        """
         instance = cls.__new__(cls)
-        if registry is None:
-            registry = OperationRegistry(*op_schemas)
+        registry = registry or OperationRegistry.standard()
         instance._registry = registry
         instance._ops = registry.parse_json_patch(text)
         return instance
@@ -111,6 +112,13 @@ class JsonPatch(Sequence[OperationSchema], Hashable):
     @override
     def __repr__(self) -> str:
         return f"{self.__class__.__name__}({self})"
+
+    def __add__(self, other: object) -> Self:
+        if not isinstance(other, JsonPatch):
+            return NotImplemented
+        instance = self.__new__(self.__class__)
+        instance._ops = self._ops + other._ops
+        return instance
 
 
 def apply_patch(
