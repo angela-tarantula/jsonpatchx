@@ -1,3 +1,7 @@
+"""
+Type aliases are at the bottom. Above them are all the Pydantic-aware metadata classes.
+"""
+
 import json
 from typing import Annotated, Any
 
@@ -108,11 +112,7 @@ class PydanticJsonText:
         return v
 
 
-# Tell mypy that JsonPointerType is a str or a JsonPointer, but tell Pydantic to coerce it use PydanticJsonPointer to coerce
+# Tell mypy et al; Pydantic uses the metadata classes above.
 type JsonPointerType = Annotated[str | JsonPointer, PydanticJsonPointer]
-
-# Tell mypy JsonValueType can be any object, but tell Pydantic to use PydanticJsonValue to validate
 type JsonValueType = Annotated[object, PydanticJsonValue]
-
-# Tell mypy JsonTextType can be json text type, but tell Pydantic to use PydanticJsonText to validate
 type JsonTextType = Annotated[str | bytes | bytearray, PydanticJsonText]
