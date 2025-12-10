@@ -16,19 +16,38 @@ Public API surface:
 
 - Core types:
     - JsonPointerType
+    - JsonTextType
     - JsonValueType
 
-- Operatation Specs:
+- Operation specs:
     - OperationSchema
     - OperationRegistry
 
 - Classics:
     - JsonPatch
     - apply_patch
+
+- Built-ins:
+    - STANDARD_OPS
+    - AddOp
+    - RemoveOp
+    - ReplaceOp
+    - MoveOp
+    - CopyOp
+    - TestOp
 """
 
 from __future__ import annotations
 
+from jsonpatch.builtins import (
+    AddOp,
+    CopyOp,
+    MoveOp,
+    RemoveOp,
+    ReplaceOp,
+    STANDARD_OPS,
+    TestOp,
+)
 from jsonpatch.exceptions import (
     InvalidJsonPatch,
     InvalidOperationRegistry,
@@ -57,6 +76,14 @@ __all__ = [
     # operation specs
     "OperationSchema",
     "OperationRegistry",
+    # built-ins
+    "STANDARD_OPS",
+    "AddOp",
+    "RemoveOp",
+    "ReplaceOp",
+    "MoveOp",
+    "CopyOp",
+    "TestOp",
     # classics
     "JsonPatch",
     "apply_patch",
