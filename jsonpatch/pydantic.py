@@ -1,4 +1,4 @@
-from typing import ClassVar, Generic, Type, TypeAliasType, TypeVar
+from typing import ClassVar, Generic, TypeAliasType, TypeVar
 
 from pydantic import BaseModel, ConfigDict, create_model
 
@@ -6,6 +6,7 @@ from jsonpatch.exceptions import InvalidJsonPatch
 from jsonpatch.registry import OperationRegistry
 from jsonpatch.schema import OperationSchema
 from jsonpatch.standard import _apply_ops
+from jsonpatch.types import JsonValueType
 
 ModelT = TypeVar("ModelT", bound=BaseModel)
 
@@ -23,7 +24,7 @@ class _BasePatchModel(BaseModel):
 
     model_config = ConfigDict(frozen=True)
 
-    __target_model__: ClassVar[Type[BaseModel]]
+    __target_model__: ClassVar[type[BaseModel]]
     __registry__: ClassVar[OperationRegistry]
 
     def apply(self, target: BaseModel) -> BaseModel:
@@ -46,6 +47,8 @@ class _BasePatchModel(BaseModel):
 
 class JsonPatchFor(Generic[ModelT]):
     """
+    Factory for Pydantic-aware JsonPatch models.
+
     JsonPatchFor[User]                      -> uses standard RFC 6902 registry
     JsonPatchFor[(User, registry)]          -> uses a custom OperationRegistry
 
@@ -64,7 +67,7 @@ class JsonPatchFor(Generic[ModelT]):
 
     def __class_getitem__(
         cls, param: type[BaseModel] | tuple[type[BaseModel], OperationRegistry]
-    ) -> Type[_BasePatchModel]:
+    ) -> type[_BasePatchModel]:
         # Provide user-friendly errors that guide proper usage:
         #   JsonPatchFor[User]
         #   JsonPatchFor[(User, registry)]
@@ -93,7 +96,7 @@ class JsonPatchFor(Generic[ModelT]):
     def _create_patch_model(
         model: type[BaseModel],
         registry: OperationRegistry,
-    ) -> Type[_BasePatchModel]:
+    ) -> type[_BasePatchModel]:
         """Dynamically create the Pydantic model class."""
         op_union: TypeAliasType = registry.union
 
@@ -106,3 +109,74 @@ class JsonPatchFor(Generic[ModelT]):
         PatchModel.__target_model__ = model
         PatchModel.__registry__ = registry
         return PatchModel
+
+
+class _BasePatchBody(BaseModel):
+    """
+    Base class for dynamically-created patch-body models used with plain JSON docs.
+
+    Each subclass is expected to have:
+
+    - __root__: list[registry.union]
+    - __registry__: the OperationRegistry used for those operations
+    """
+
+    model_config = ConfigDict(frozen=True)
+
+    __registry__: ClassVar[OperationRegistry]
+
+    def apply(self, doc: JsonValueType) -> JsonValueType:
+        """
+        Apply this patch to an arbitrary JSON document.
+
+        This does NOT know about any Pydantic model; it just:
+        - Uses the validated ops in __root__
+        - Applies them via the shared _apply_ops
+        - Returns the patched JSON
+        """
+        try:
+            ops: list[OperationSchema] = self.__root__  # type: ignore[attr-defined]
+            assert isinstance(ops, list)
+        except (AttributeError, AssertionError) as e:  # defensive
+            raise InvalidJsonPatch("Patch Model is malformed") from e
+
+        return _apply_ops(ops, doc)
+
+
+def make_json_patch_body(
+    registry: OperationRegistry | None = None,
+    *,
+    name: str | None = None,
+) -> type[_BasePatchBody]:
+    """
+    Factory for "plain JSON patch body" Pydantic models, intended for FastAPI/OpenAPI.
+
+    Usage:
+
+        registry = OperationRegistry.with_standard(IncrementOp)
+        ConfigPatchBody = make_json_patch_body(registry, name="ConfigPatch")
+
+        @app.patch("/configs/{config_id}")
+        def patch_config(config_id: str, patch: ConfigPatchBody):
+            doc = load_config(config_id)       # plain dict / JSON
+            updated = patch.apply(doc)         # typed ops, untyped document
+            save_config(config_id, updated)
+            return updated
+
+    If `registry` is omitted, the standard RFC 6902 is used.
+    """
+
+    registry = registry or OperationRegistry.standard()
+    op_union = registry.union
+
+    model_name = name or "JsonPatchBody"
+
+    PatchBodyModel = create_model(
+        model_name,
+        __base__=_BasePatchBody,
+        __root__=(list[op_union], ...),  # type: ignore[valid-type]
+    )
+
+    PatchBodyModel.__registry__ = registry
+
+    return PatchBodyModel
