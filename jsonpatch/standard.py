@@ -3,29 +3,51 @@ from collections.abc import Collection, Mapping, Sequence
 from typing import Hashable, Self, overload, override
 
 from jsonpatch.builtins import STANDARD_OPS
-from jsonpatch.exceptions import PatchApplicationError
+from jsonpatch.exceptions import PatchApplicationError, PatchError
 from jsonpatch.registry import OperationRegistry
 from jsonpatch.schema import OperationSchema
 from jsonpatch.types import JsonTextType, JsonValueType
 
 
+def _apply_ops(
+    ops: Sequence[OperationSchema],
+    doc: JsonValueType,
+) -> JsonValueType:
+    """
+    Core operation application loop shared by JsonPatch and model-aware patches.
+
+    Error semantics:
+    - PatchError subclasses from op.apply() are propagated.
+    - Unexpected exceptions are wrapped in PatchApplicationError.
+    """
+    for index, op in enumerate(ops):
+        try:
+            doc = op.apply(doc)
+        except PatchError:
+            # Domain-specific patch errors (e.g. TestOpFailed) should propagate unchanged.
+            raise
+        except Exception as e:
+            raise PatchApplicationError(
+                f"Error applying {op!r} at index {index}: {e}"
+            ) from e
+    return doc
+
+
 class JsonPatch(Sequence[OperationSchema], Hashable):
-    __slots__ = ("_ops",)
+    __slots__ = ("_ops", "_registry")
 
     def __init__(
         self,
-        patch: Sequence[Mapping[str, JsonValueType]],
+        python: Sequence[Mapping[str, JsonValueType]],
         *,
         op_schemas: Collection[type[OperationSchema]] = STANDARD_OPS,
+        registry: OperationRegistry | None = None,
     ):
-        """Construct a JsonPatch from a list of operations.
-
-        Args:
-            patch (Sequence[Mapping[str, JsonValueType]]): A list of JSON patch operations.
-            ops (Collection[type[OperationSchema]], optional): OperationSchemas that the JsonPatch will recognize. Defaults to STANDARD_OPS.
-        """
-        registry = OperationRegistry(*op_schemas)
-        self._ops: list[OperationSchema] = registry.parse_python_patch(patch)
+        """Construct a JsonPatch from a list of operations."""
+        if registry is None:
+            registry = OperationRegistry(*op_schemas)
+        self._registry = registry
+        self._ops: Sequence[OperationSchema] = self._registry.parse_python_patch(python)
 
     @classmethod
     def from_string(
@@ -33,18 +55,13 @@ class JsonPatch(Sequence[OperationSchema], Hashable):
         text: JsonTextType,
         *,
         op_schemas: Collection[type[OperationSchema]] = STANDARD_OPS,
+        registry: OperationRegistry | None = None,
     ) -> Self:
-        """Construct a JsonPatch from a JSON-formatted string.
-
-        Args:
-            text (JsonTextType): JSON-formatted string.
-            ops (Collection[type[OperationSchema]], optional): OperationSchemas that the JsonPatch will recognize. Defaults to STANDARD_OPS.
-
-        Returns:
-            Self: A JsonPatch instance.
-        """
-        registry = OperationRegistry(*op_schemas)
+        """Construct a JsonPatch from a JSON-formatted string."""
         instance = cls.__new__(cls)
+        if registry is None:
+            registry = OperationRegistry(*op_schemas)
+        instance._registry = registry
         instance._ops = registry.parse_json_patch(text)
         return instance
 
@@ -60,21 +77,7 @@ class JsonPatch(Sequence[OperationSchema], Hashable):
 
     def apply(self, doc: JsonValueType) -> JsonValueType:
         """Apply the JsonPatch to an object."""
-        for index, op in enumerate(self._ops):
-            try:
-                doc = op.apply(doc)
-            except Exception as e:
-                raise PatchApplicationError(
-                    f"Failed to apply operation {op!r} at patch index {index}: {e}"
-                ) from e
-        return doc
-
-    def __add__(self, other: object) -> Self:
-        if not isinstance(other, JsonPatch):
-            return NotImplemented
-        instance = self.__new__(self.__class__)
-        instance._ops = self._ops + other._ops
-        return instance
+        return _apply_ops(self._ops, doc)
 
     @override
     def __len__(self) -> int:
@@ -82,7 +85,6 @@ class JsonPatch(Sequence[OperationSchema], Hashable):
 
     @overload
     def __getitem__(self, index: int) -> OperationSchema: ...
-
     @overload
     def __getitem__(self, index: slice) -> Sequence[OperationSchema]: ...
 
