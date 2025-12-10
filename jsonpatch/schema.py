@@ -22,9 +22,7 @@ class OperationSchema(BaseModel, ABC):
     Base class for declarative JSON Patch operation schemas,
     represented as strongly-typed Pydantic models.
 
-    Requirements for subclasses:
-
-    1. The 'op' field is required, it must be annotated as Literal, and the Literal values must all be strings.
+    Ensures the 'op' is annotated as a Literal of strings.
     """
 
     model_config = ConfigDict(frozen=True)
@@ -32,7 +30,7 @@ class OperationSchema(BaseModel, ABC):
 
     @override
     def __init_subclass__(cls, **kwargs: Unpack[ConfigDict]) -> None:
-        """Validate the operation schema when subclassed."""
+        """Validate the operation schema."""
         super().__init_subclass__(**kwargs)
 
         if not (literals := cls._extract_op_literals()):

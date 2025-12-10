@@ -8,7 +8,6 @@ Public API surface:
 
 - Exceptions:
     - InvalidOperationSchema
-    - OperationValidationError
     - InvalidOperationRegistry
     - InvalidJsonPatch
     - PatchApplicationError
@@ -34,7 +33,6 @@ from jsonpatch.exceptions import (
     InvalidJsonPatch,
     InvalidOperationRegistry,
     InvalidOperationSchema,
-    OperationValidationError,
     PatchApplicationError,
     PatchError,
     TestOpFailed,
@@ -49,7 +47,6 @@ __all__ = [
     "InvalidJsonPatch",
     "InvalidOperationSchema",
     "InvalidOperationRegistry",
-    "OperationValidationError",
     "PatchApplicationError",
     "PatchError",
     "TestOpFailed",
