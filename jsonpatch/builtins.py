@@ -1,4 +1,4 @@
-from typing import Literal, override
+from typing import Final, Literal, override
 
 from pydantic import Field
 
@@ -13,7 +13,7 @@ class AddOp(OperationSchema):
 
     @override
     def apply(self, doc: JsonValueType) -> JsonValueType:
-        return NotImplemented
+        raise NotImplementedError
 
 
 class RemoveOp(OperationSchema):
@@ -22,7 +22,7 @@ class RemoveOp(OperationSchema):
 
     @override
     def apply(self, doc: JsonValueType) -> JsonValueType:
-        return NotImplemented
+        raise NotImplementedError
 
 
 class ReplaceOp(OperationSchema):
@@ -32,7 +32,7 @@ class ReplaceOp(OperationSchema):
 
     @override
     def apply(self, doc: JsonValueType) -> JsonValueType:
-        return NotImplemented
+        raise NotImplementedError
 
 
 class MoveOp(OperationSchema):
@@ -42,7 +42,7 @@ class MoveOp(OperationSchema):
 
     @override
     def apply(self, doc: JsonValueType) -> JsonValueType:
-        return NotImplemented
+        raise NotImplementedError
 
 
 class CopyOp(OperationSchema):
@@ -52,7 +52,7 @@ class CopyOp(OperationSchema):
 
     @override
     def apply(self, doc: JsonValueType) -> JsonValueType:
-        return NotImplemented
+        raise NotImplementedError
 
 
 class TestOp(OperationSchema):
@@ -62,4 +62,26 @@ class TestOp(OperationSchema):
 
     @override
     def apply(self, doc: JsonValueType) -> JsonValueType:
-        return NotImplemented
+        raise NotImplementedError
+
+
+STANDARD_OPS: Final[tuple[type[OperationSchema], ...]] = (
+    AddOp,
+    RemoveOp,
+    ReplaceOp,
+    MoveOp,
+    CopyOp,
+    TestOp,
+)
+
+
+class IncrementOp(OperationSchema):
+    op: Literal["increment"] = "increment"
+    path: JsonPointerType
+    value: int = Field(gt=0)
+
+
+class DecrementOp(OperationSchema):
+    op: Literal["decrement"] = "decrement"
+    path: JsonPointerType
+    value: int = Field(lt=0)

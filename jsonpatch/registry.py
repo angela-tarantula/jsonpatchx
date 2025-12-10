@@ -1,21 +1,14 @@
+from collections.abc import Mapping, Sequence, Set
 from inspect import isabstract, isclass
 from types import MappingProxyType
-from typing import (
-    Annotated,
-    Any,
-    Iterable,
-    Mapping,
-    Self,
-    Type,
-    TypeAlias,
-    Union,
-)
+from typing import Annotated, Self, TypeAliasType, Union, override
 
 from pydantic import Field, TypeAdapter
 
+from jsonpatch.builtins import STANDARD_OPS
 from jsonpatch.exceptions import InvalidOperationRegistry
-from jsonpatch.ops_builtin import AddOp, CopyOp, MoveOp, RemoveOp, ReplaceOp, TestOp
 from jsonpatch.schema import OperationSchema
+from jsonpatch.types import JsonTextType, JsonValueType
 
 
 class OperationRegistry:
@@ -26,37 +19,37 @@ class OperationRegistry:
     - Builds a discriminated union for validation / OpenAPI
     """
 
-    def __init__(self, *op_models: Type[OperationSchema]) -> None:
-        self._validate_models(*op_models)
-        self._model_map = self._build_model_map(*op_models)
+    __slots__ = ("_model_map", "_op_adapter", "_patch_adapter", "_union_type")
 
-        union_type, op_adapter, patch_adapter = self._build_adapters(*op_models)
+    def __init__(self, *op_schemas: type[OperationSchema]) -> None:
+        self._validate_models(*op_schemas)
+        self._model_map = self._build_model_map(*op_schemas)
+
+        union_type, op_adapter, patch_adapter = self._build_adapters(*op_schemas)
+        self._union_type = union_type
         self._op_adapter = op_adapter
         self._patch_adapter = patch_adapter
-        self._union_type = union_type  # For introspection/debugging
 
     @staticmethod
-    def _validate_models(*op_models: Type[OperationSchema]) -> None:
+    def _validate_models(*op_schemas: type[OperationSchema]) -> None:
         """Confirm all OperationSchemas are instantiable for dispatching."""
-        if not op_models:
-            raise InvalidOperationRegistry(
-                "OperationRegistry requires at least one OperationSchema"
-            )
-        if not all(
-            isclass(m) and issubclass(m, OperationSchema) and not isabstract(m)
-            for m in op_models
-        ):
-            raise InvalidOperationRegistry(
-                "OperationRegistry expects concrete OperationSchema subclasses"
-            )
+        if not op_schemas:
+            raise InvalidOperationRegistry("At least one OperationSchema is required")
+        for op in op_schemas:
+            if not isclass(op):
+                raise InvalidOperationRegistry(f"{op!r} is not a class")
+            if not issubclass(op, OperationSchema):
+                raise InvalidOperationRegistry(f"{op!r} is not an OperationSchema")
+            if isabstract(op):
+                raise InvalidOperationRegistry(f"{op!r} cannot be abstract")
 
     @staticmethod
     def _build_model_map(
-        *op_models: type[OperationSchema],
+        *op_schemas: type[OperationSchema],
     ) -> Mapping[str, type[OperationSchema]]:
         """Build a mapping of op name -> model. Ensure all identifiers are disjoint."""
         model_map: dict[str, type[OperationSchema]] = {}
-        for model in op_models:
+        for model in op_schemas:
             for op_literal in model._op_literals:
                 if op_literal in model_map:
                     other = model_map[op_literal]
@@ -69,17 +62,18 @@ class OperationRegistry:
 
     @staticmethod
     def _build_adapters(
-        *op_models: Type[OperationSchema],
+        *op_schemas: type[OperationSchema],
     ) -> tuple[
-        TypeAlias, TypeAdapter[OperationSchema], TypeAdapter[list[OperationSchema]]
+        TypeAliasType,
+        TypeAdapter[OperationSchema],
+        TypeAdapter[list[OperationSchema]],
     ]:
         """
         Build the discriminated union and Pydantic adapters for parsing ops and patches.
-
-        Suppresses type-checker complaints because the Annotated union is a runtime-defined alias.
         """
-        union_type: TypeAlias = Annotated[  # type: ignore[valid-type]
-            Union[tuple(op_models)], Field(discriminator="op")
+        # Union[tuple(op_schemas)] is the runtime-friendly way to build a Union dynamically
+        type union_type = Annotated[  # type: ignore[valid-type]
+            Union[tuple(op_schemas)], Field(discriminator="op")
         ]
         op_adapter: TypeAdapter[OperationSchema] = TypeAdapter(union_type)
         patch_adapter: TypeAdapter[list[OperationSchema]] = TypeAdapter(
@@ -88,45 +82,61 @@ class OperationRegistry:
         return union_type, op_adapter, patch_adapter
 
     @property
-    def op_map(self) -> Mapping[str, Type[OperationSchema]]:
-        """The mapping of each operation identifier to its operation schema."""
+    def ops_by_name(self) -> Mapping[str, type[OperationSchema]]:
         return self._model_map
 
     @property
-    def op_models(self) -> tuple[Type[OperationSchema], ...]:
-        """The operation schemas that this patch schema recognizes."""
-        return tuple(self._model_map.values())
+    def ops(self) -> Set[type[OperationSchema]]:
+        return frozenset(self._model_map.values())
 
     @property
-    def op_union_type(self) -> TypeAlias:
+    def union(self) -> TypeAliasType:
         """The discriminated union type of all operation schemas."""
         return self._union_type
 
-    def parse_op(self, raw: dict[str, Any]) -> OperationSchema:
+    def parse_python_op(self, obj: Mapping[str, JsonValueType]) -> OperationSchema:
         """Validate & coerce a single operation dict."""
-        return self._op_adapter.validate_python(raw)
+        return self._op_adapter.validate_python(
+            obj, strict=True, by_alias=True, by_name=False, extra="forbid"
+        )
 
-    def parse_patch(self, raw: Iterable[dict[str, Any]]) -> list[OperationSchema]:
-        """Validate & coerce a list of operation dicts."""
-        return self._patch_adapter.validate_python(list(raw))
+    def parse_python_patch(
+        self, python: Sequence[Mapping[str, JsonValueType]]
+    ) -> list[OperationSchema]:
+        """Validate & coerce a sequence of operation dicts."""
+        return self._patch_adapter.validate_python(
+            python, strict=True, by_alias=True, by_name=False, extra="forbid"
+        )
+
+    def parse_json_patch(self, text: JsonTextType) -> list[OperationSchema]:
+        """Validate & coerce a JSON Patch."""
+        return self._patch_adapter.validate_json(
+            text, strict=True, by_alias=True, by_name=False, extra="forbid"
+        )
+
+    @override
+    def __repr__(self) -> str:
+        ops = ", ".join(m.__name__ for m in self.ops)
+        return f"{self.__class__.__name__}({ops})"
 
     @classmethod
     def standard(cls) -> Self:
         """Standard RFC 6902 ops."""
-        return cls.with_standard()
+        return cls(*STANDARD_OPS)
 
     @classmethod
     def with_standard(cls, *extra_ops: type[OperationSchema]) -> Self:
-        """Built-in RFC 6902 ops, plus any extras."""
-        return cls(AddOp, RemoveOp, ReplaceOp, MoveOp, CopyOp, TestOp, *extra_ops)
+        """Built-in RFC 6902 ops, plus extras."""
+        return cls(*STANDARD_OPS, *extra_ops)
 
 
 if __name__ == "__main__":
     raw = {"op": "add", "path": "/4", "value": "bar"}
 
-    op = OperationRegistry.standard().parse_op(raw)
+    op = OperationRegistry.standard().parse_python_op(raw)
     raw_patch = [
-        {"op": "add", "path": "/foo", "value": "bar"},
-        {"op": "remove", "path": "/foo"},
+        {"op": "move", "path": "/foo", "from": "/bar"},
+        {"op": "add", "path": "/bar", "value": "baz"},
+        {"op": "add", "path": "/bar", "value": "baz"},
     ]
-    ops = OperationRegistry.standard().parse_patch(raw_patch)
+    ops = OperationRegistry.standard().parse_python_patch(raw_patch)

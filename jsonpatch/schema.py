@@ -24,10 +24,7 @@ class OperationSchema(BaseModel, ABC):
 
     Requirements for subclasses:
 
-    - Must declare an 'op' field annotated as either:
-        * Literal["...", ...]
-        * Annotated[Literal["...", ...], ...]
-    - 'op' literal values must all be strings.
+    1. The 'op' field is required, it must be annotated as Literal, and the Literal values must all be strings.
     """
 
     model_config = ConfigDict(frozen=True)
@@ -35,12 +32,12 @@ class OperationSchema(BaseModel, ABC):
 
     @override
     def __init_subclass__(cls, **kwargs: Unpack[ConfigDict]) -> None:
-        """Validate the operation schema."""
+        """Validate the operation schema when subclassed."""
         super().__init_subclass__(**kwargs)
 
         if not (literals := cls._extract_op_literals()):
             raise InvalidOperationSchema(
-                f"OperationSchema '{cls.__name__}'.op must be annotated as Literal[str, ...]"
+                f"OperationSchema '{cls.__name__}'.op must be annotated as Literal of string(s)."
             )
         cls._op_literals = literals
 
