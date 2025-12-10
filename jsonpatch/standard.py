@@ -10,7 +10,7 @@ from jsonpatch.types import JsonTextType, JsonValueType
 
 
 class JsonPatch(Sequence[OperationSchema], Hashable):
-    __slots__ = "_ops",
+    __slots__ = ("_ops",)
 
     def __init__(
         self,

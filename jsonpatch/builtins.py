@@ -65,14 +65,16 @@ class TestOp(OperationSchema):
         raise NotImplementedError
 
 
-STANDARD_OPS: Final[frozenset[type[OperationSchema]]] = frozenset([
-    AddOp,
-    RemoveOp,
-    ReplaceOp,
-    MoveOp,
-    CopyOp,
-    TestOp,
-])
+STANDARD_OPS: Final[frozenset[type[OperationSchema]]] = frozenset(
+    [
+        AddOp,
+        RemoveOp,
+        ReplaceOp,
+        MoveOp,
+        CopyOp,
+        TestOp,
+    ]
+)
 
 
 # Example domain-specific ops:

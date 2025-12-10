@@ -71,7 +71,7 @@ class OperationRegistry:
         """
         Build the discriminated union and Pydantic adapters for parsing ops and patches.
         """
-        type union_type = Annotated[  # type: ignore[valid-type] Complaining about dynamic runtime type for Pydantic.
+        type union_type = Annotated[  # type: ignore[valid-type] # Complaining about dynamic runtime type for Pydantic.
             Union[tuple(op_schemas)], Field(discriminator="op")
         ]
         op_adapter: TypeAdapter[OperationSchema] = TypeAdapter(union_type)
