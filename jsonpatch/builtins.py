@@ -75,6 +75,9 @@ STANDARD_OPS: Final[tuple[type[OperationSchema], ...]] = (
 )
 
 
+# Example domain-specific ops:
+
+
 class IncrementOp(OperationSchema):
     op: Literal["increment"] = "increment"
     path: JsonPointerType

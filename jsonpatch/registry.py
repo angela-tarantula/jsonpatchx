@@ -71,8 +71,7 @@ class OperationRegistry:
         """
         Build the discriminated union and Pydantic adapters for parsing ops and patches.
         """
-        # Union[tuple(op_schemas)] is the runtime-friendly way to build a Union dynamically
-        type union_type = Annotated[  # type: ignore[valid-type]
+        type union_type = Annotated[  # type: ignore[valid-type] Complaining about dynamic runtime type for Pydantic.
             Union[tuple(op_schemas)], Field(discriminator="op")
         ]
         op_adapter: TypeAdapter[OperationSchema] = TypeAdapter(union_type)
@@ -83,10 +82,12 @@ class OperationRegistry:
 
     @property
     def ops_by_name(self) -> Mapping[str, type[OperationSchema]]:
+        """The mapping of each operation identifier to its operation schema."""
         return self._model_map
 
     @property
     def ops(self) -> Set[type[OperationSchema]]:
+        """The operation schemas that this registry recognizes."""
         return frozenset(self._model_map.values())
 
     @property
@@ -95,7 +96,11 @@ class OperationRegistry:
         return self._union_type
 
     def parse_python_op(self, obj: Mapping[str, JsonValueType]) -> OperationSchema:
-        """Validate & coerce a single operation dict."""
+        """
+        Validate & coerce a single operation dict.
+
+        Example python: {"op": "remove", "path": "/foo/bar"}
+        """
         return self._op_adapter.validate_python(
             obj, strict=True, by_alias=True, by_name=False, extra="forbid"
         )
@@ -103,13 +108,21 @@ class OperationRegistry:
     def parse_python_patch(
         self, python: Sequence[Mapping[str, JsonValueType]]
     ) -> list[OperationSchema]:
-        """Validate & coerce a sequence of operation dicts."""
+        """
+        Validate & coerce a sequence of operation dicts.
+
+        Example python: [{"op": "remove", "path": "/foo/bar"}, {"op": "add", "path": "/baz", "value": 42}]
+        """
         return self._patch_adapter.validate_python(
             python, strict=True, by_alias=True, by_name=False, extra="forbid"
         )
 
     def parse_json_patch(self, text: JsonTextType) -> list[OperationSchema]:
-        """Validate & coerce a JSON Patch."""
+        """
+        Validate & coerce a JSON Patch.
+
+        Example text: '[{"op": "remove", "path": "/foo/bar"}, {"op": "add", "path": "/baz", "value": 42}]'
+        """
         return self._patch_adapter.validate_json(
             text, strict=True, by_alias=True, by_name=False, extra="forbid"
         )

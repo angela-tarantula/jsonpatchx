@@ -106,9 +106,7 @@ class PydanticJsonText:
         try:
             json.loads(v)
         except (TypeError, ValueError) as e:
-            raise InvalidOperationSchema(
-                f"String is not JSON-formatted: {v!r}"
-            ) from e
+            raise InvalidOperationSchema(f"String is not JSON-formatted: {v!r}") from e
         return v
 
 
