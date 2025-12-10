@@ -40,12 +40,12 @@ Public API surface:
 from __future__ import annotations
 
 from jsonpatch.builtins import (
+    STANDARD_OPS,
     AddOp,
     CopyOp,
     MoveOp,
     RemoveOp,
     ReplaceOp,
-    STANDARD_OPS,
     TestOp,
 )
 from jsonpatch.exceptions import (

@@ -110,7 +110,7 @@ class PydanticJsonText:
         return v
 
 
-# Tell mypy et al; Pydantic uses the metadata classes above.
+# Tell mypy et al; Pydantic uses the metadata classes above to validate.
 type JsonPointerType = Annotated[str | JsonPointer, PydanticJsonPointer]
 type JsonValueType = Annotated[object, PydanticJsonValue]
 type JsonTextType = Annotated[str | bytes | bytearray, PydanticJsonText]
