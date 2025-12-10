@@ -37,17 +37,20 @@ class JsonPatch(Sequence[OperationSchema], Hashable):
 
     def __init__(
         self,
-        python: Sequence[Mapping[str, JsonValueType]],
+        patch: Sequence[Mapping[str, JsonValueType]],
         *,
         registry: OperationRegistry | None = None,
     ):
         """
-        Construct a JsonPatch from a list of operations.
+        Construct a JsonPatch from a sequence of operation dicts.
 
-        If no registry is provided, the standard RFC 6902 registry is used.
+        Args:
+            patch: A sequence of JSON Patch operations as dicts.
+            registry: OperationRegistry to use for parsing/validation. If omitted,
+                      the standard RFC 6902 registry is used.
         """
         self._registry = registry or OperationRegistry.standard()
-        self._ops: list[OperationSchema] = self._registry.parse_python_patch(python)
+        self._ops: list[OperationSchema] = self._registry.parse_python_patch(patch)
 
     @classmethod
     def from_string(
@@ -56,9 +59,13 @@ class JsonPatch(Sequence[OperationSchema], Hashable):
         *,
         registry: OperationRegistry | None = None,
     ) -> Self:
-        """Construct a JsonPatch from a JSON-formatted string.
+        """
+        Construct a JsonPatch from a JSON-formatted string.
 
-        If no registry is provided, the standard RFC 6902 registry is used.
+        Args:
+            text: JSON-formatted string/bytes/bytearray for a JSON Patch document.
+            registry: OperationRegistry to use for parsing/validation. If omitted,
+                      the standard RFC 6902 registry is used.
         """
         instance = cls.__new__(cls)
         registry = registry or OperationRegistry.standard()
