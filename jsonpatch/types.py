@@ -8,7 +8,7 @@ from jsonpointer import (  # type: ignore[import-untyped]
 from pydantic import GetCoreSchemaHandler, GetJsonSchemaHandler
 from pydantic_core import core_schema
 
-from jsonpatch.exceptions import OperationValidationError
+from jsonpatch.exceptions import InvalidOperationSchema
 
 
 class PydanticJsonPointer:
@@ -49,7 +49,7 @@ class PydanticJsonPointer:
         try:
             return JsonPointer(v)
         except JsonPointerException as e:
-            raise OperationValidationError(f"Invalid JSON Pointer: {v!r}") from e
+            raise InvalidOperationSchema(f"Invalid JSON Pointer: {v!r}") from e
 
     @classmethod
     def _serialize(cls, v: JsonPointer) -> str:
@@ -75,7 +75,7 @@ class PydanticJsonValue:
         try:
             json.dumps(v)
         except (TypeError, ValueError) as e:
-            raise OperationValidationError(
+            raise InvalidOperationSchema(
                 f"Value is not JSON-serializable: {v!r}"
             ) from e
         return v
@@ -102,7 +102,7 @@ class PydanticJsonText:
         try:
             json.loads(v)
         except (TypeError, ValueError) as e:
-            raise OperationValidationError(
+            raise InvalidOperationSchema(
                 f"String is not JSON-formatted: {v!r}"
             ) from e
         return v

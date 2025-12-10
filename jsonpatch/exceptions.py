@@ -1,26 +1,22 @@
 class PatchError(Exception):
-    """Base class for JSON patch exceptions."""
+    """Base class for JSON Patch errors."""
 
 
 class InvalidOperationSchema(PatchError):
-    """An OperationSchema is invalid."""
-
-
-class OperationValidationError(PatchError):
-    """An OperationSchema instance was invalid."""
+    """An OperationSchema definition or instance is invalid."""
 
 
 class InvalidOperationRegistry(PatchError):
-    """A OperationRegistry has incompatible OperationSchemas."""
+    """An OperationRegistry has incompatible OperationSchemas."""
 
 
 class InvalidJsonPatch(PatchError):
-    """A JsonPatch is invalid."""
+    """A JsonPatch document is invalid or malformed."""
 
 
 class PatchApplicationError(PatchError):
-    """A JSON Patch failed."""
+    """A JSON Patch failed during application."""
 
 
 class TestOpFailed(PatchApplicationError):
-    """A test operation failed"""
+    """A test operation failed."""
