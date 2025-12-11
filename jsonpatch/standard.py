@@ -104,6 +104,7 @@ class JsonPatch(Sequence[OperationSchema], Hashable):
 
     @override
     def __hash__(self) -> int:
+        # Hashing is best-effort, like frozen dataclasses/BaseModels.
         return hash(tuple(self._ops))
 
     @override
@@ -123,7 +124,10 @@ class JsonPatch(Sequence[OperationSchema], Hashable):
     def __add__(self, other: object) -> Self:
         if not isinstance(other, JsonPatch):
             return NotImplemented
+        if self._registry is not other._registry:
+            raise TypeError("Cannot add JsonPatch instances with different registries")
         instance = self.__new__(self.__class__)
+        instance._registry = self._registry
         instance._ops = self._ops + other._ops
         return instance
 
