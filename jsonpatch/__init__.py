@@ -37,8 +37,6 @@ Public API surface:
     - TestOp
 """
 
-from __future__ import annotations
-
 from jsonpatch.builtins import (
     STANDARD_OPS,
     AddOp,

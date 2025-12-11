@@ -1,7 +1,3 @@
-"""
-Type aliases are at the bottom. Above them are all the Pydantic-aware metadata classes.
-"""
-
 import json
 from typing import Annotated, Any
 
@@ -13,6 +9,11 @@ from pydantic import GetCoreSchemaHandler, GetJsonSchemaHandler
 from pydantic_core import core_schema
 
 from jsonpatch.exceptions import InvalidOperationSchema
+
+# These are the core custom types. Below them are the classes that Pydantic uses to validate them.
+type JsonPointerType = Annotated[str | JsonPointer, PydanticJsonPointer]
+type JsonValueType = Annotated[object, PydanticJsonValue]
+type JsonTextType = Annotated[str | bytes | bytearray, PydanticJsonText]
 
 
 class PydanticJsonPointer:
@@ -108,9 +109,3 @@ class PydanticJsonText:
         except (TypeError, ValueError) as e:
             raise InvalidOperationSchema(f"String is not JSON-formatted: {v!r}") from e
         return v
-
-
-# Tell mypy et al; Pydantic uses the metadata classes above to validate.
-type JsonPointerType = Annotated[str | JsonPointer, PydanticJsonPointer]
-type JsonValueType = Annotated[object, PydanticJsonValue]
-type JsonTextType = Annotated[str | bytes | bytearray, PydanticJsonText]
