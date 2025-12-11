@@ -1,7 +1,7 @@
 from collections.abc import Mapping, Sequence, Set
 from inspect import isabstract, isclass
 from types import MappingProxyType
-from typing import Annotated, Self, TypeAliasType, Union, override
+from typing import Annotated, ClassVar, Self, TypeAliasType, Union, override
 
 from pydantic import Field, TypeAdapter
 
@@ -20,6 +20,7 @@ class OperationRegistry:
     """
 
     __slots__ = ("_model_map", "_op_adapter", "_patch_adapter", "_union_type")
+    _standard: ClassVar[Self | None]
 
     def __init__(self, *op_schemas: type[OperationSchema]) -> None:
         self._validate_models(*op_schemas)
@@ -135,7 +136,9 @@ class OperationRegistry:
     @classmethod
     def standard(cls) -> Self:
         """Standard RFC 6902 ops."""
-        return cls(*STANDARD_OPS)
+        if cls._standard is None:
+            cls._standard = cls(*STANDARD_OPS)
+        return cls._standard
 
     @classmethod
     def with_standard(cls, *extra_ops: type[OperationSchema]) -> Self:

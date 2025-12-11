@@ -1,3 +1,4 @@
+from collections.abc import Set
 from typing import Final, Literal, override
 
 from pydantic import Field
@@ -65,7 +66,7 @@ class TestOp(OperationSchema):
         raise NotImplementedError
 
 
-STANDARD_OPS: Final[frozenset[type[OperationSchema]]] = frozenset(
+STANDARD_OPS: Final[Set[type[OperationSchema]]] = frozenset(
     [
         AddOp,
         RemoveOp,
