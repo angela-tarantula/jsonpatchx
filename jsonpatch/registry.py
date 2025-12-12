@@ -20,7 +20,7 @@ class OperationRegistry:
     """
 
     __slots__ = ("_model_map", "_op_adapter", "_patch_adapter", "_union_type")
-    _standard: ClassVar[Self | None]
+    _standard: ClassVar[Self | None] = None
 
     def __init__(self, *op_schemas: type[OperationSchema]) -> None:
         self._validate_models(*op_schemas)

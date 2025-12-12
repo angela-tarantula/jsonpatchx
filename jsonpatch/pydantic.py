@@ -37,7 +37,7 @@ class _BasePatchModel(BaseModel):
         try:
             ops: list[OperationSchema] = self.__root__  # type: ignore[attr-defined]
             assert isinstance(ops, list)
-        except (AttributeError, AssertionError) as e:  # defensive
+        except (AttributeError, AssertionError) as e:  # defensive, not expected
             raise InvalidJsonPatch("Patch Model is malformed") from e
 
         data = target.model_dump()
@@ -137,7 +137,7 @@ class _BasePatchBody(BaseModel):
         try:
             ops: list[OperationSchema] = self.__root__  # type: ignore[attr-defined]
             assert isinstance(ops, list)
-        except (AttributeError, AssertionError) as e:  # defensive
+        except (AttributeError, AssertionError) as e:  # defensive, not expected
             raise InvalidJsonPatch("Patch Model is malformed") from e
 
         return _apply_ops(ops, doc)
