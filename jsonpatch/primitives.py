@@ -30,7 +30,7 @@ def resolve_last(
     """
     Return (container, key) such that container[key] is the target.
 
-    - If path is the root, returns (doc, None).
+    - If pointer is the root, returns (doc, None).
     - Raises PatchApplicationError on resolution failure.
     """
     ptr = _ensure_pointer(pointer)
@@ -56,3 +56,13 @@ def resolve_last_sequence(
     if not isinstance(subobj, MutableSequence):
         raise PatchApplicationError(f"Expected array at {pointer}")
     return subobj, part  # type: ignore[return-value] # if doc is valid JSON, the mapping must have string keys
+
+
+def get(doc: JsonValueType, pointer: JsonPointerType) -> JsonValueType:
+    subobj, part = resolve_last(doc, pointer)
+    if part is None:
+        return subobj
+    try:
+        return subobj[part]  # type: ignore[index] # if invalid, raise error
+    except (KeyError, IndexError) as e:
+        raise PatchApplicationError(str(e))
