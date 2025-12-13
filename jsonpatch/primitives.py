@@ -7,7 +7,6 @@ unable to deduce that `key` must be a `str`. Most `type: ignore` are workarounds
 I did not want to litter the implementations with `typing.cast` calls. Hopefully that issue gets fixed.
 """
 
-from collections.abc import Mapping, Sequence
 from typing import Literal, MutableMapping, MutableSequence
 
 from jsonpointer import (  # type: ignore[import-untyped]
@@ -35,14 +34,14 @@ def cast_to_pointer(path: JsonPointerType) -> JsonPointer:
     try:
         return JsonPointer(path)
     except JsonPointerException as e:
-        raise PatchApplicationError(f"string '{path}' is not a jsonpointer") from e
+        raise PatchApplicationError(f"expected '{path}' to be a jsonpointer") from e
 
 
 def resolve_last(
     doc: JsonValueType, path: JsonPointerType
 ) -> (
-    tuple[Mapping[str, JsonValueType], str]
-    | tuple[Sequence[JsonValueType], int | Literal["-"]]
+    tuple[MutableMapping[str, JsonValueType], str]
+    | tuple[MutableSequence[JsonValueType], int | Literal["-"]]
 ):
     """
     Return `(container, key)` such that `container[key]` is the target of the path.
@@ -63,13 +62,18 @@ def resolve_last(
         - But the key is not guaranteed to a valid index/key of the container.
         - If the key is invalid, trying `container[key]` will raise `KeyError` or `TypeError`.
     """
-    assert not is_root(path), "the root has no path to resolve"
+    assert not is_root(path), "tried to resolve a path to last, but got root"
     ptr = cast_to_pointer(path)
 
     try:
-        return ptr.to_last(doc)  # type: ignore[no-any-return]
+        container, key = ptr.to_last(doc)
     except JsonPointerException as e:
         raise PatchApplicationError(str(e)) from e
+
+    if not isinstance(container, (MutableMapping, MutableSequence)):
+        raise PatchApplicationError(f"container '{container}' is immutable")
+
+    return container, key  # type: ignore[return-value]
 
 
 def resolve_last_mapping(
@@ -78,7 +82,7 @@ def resolve_last_mapping(
     """Confirms that `path`, a jsonpointer, leads to a JSON object (`Mapping`). Returns `(mapping, key)`."""
     mapping, key = resolve_last(doc, path)
     if not isinstance(mapping, MutableMapping):
-        raise PatchApplicationError(f"Expected object at {path}")
+        raise PatchApplicationError(f"expected object at '{path}'")
     return mapping, key  # type: ignore[return-value]
 
 
@@ -88,7 +92,7 @@ def resolve_last_sequence(
     """Confirms that `path`, a jsonpointer, leads to a JSON array (`Sequence`). Returns `(array, key)`."""
     array, key = resolve_last(doc, path)
     if not isinstance(array, MutableSequence):
-        raise PatchApplicationError(f"Expected array at {path}")
+        raise PatchApplicationError(f"expected array at '{path}'")
     return array, key  # type: ignore[return-value]
 
 
@@ -116,17 +120,51 @@ def set(
 
     if isinstance(container, MutableMapping):
         try:
-            container[key] = value
+            container[key] = value  # type: ignore[index]
         except KeyError as e:
             raise PatchApplicationError(str(e)) from e
     elif isinstance(container, MutableSequence):
         index = key if key != "-" else len(container)
         if index > len(container):  # type: ignore[operator]
-            raise PatchApplicationError("can't insert outside of list")
+            raise PatchApplicationError("couldn't insert outside of list")
         container.insert(index, value)  # type: ignore[arg-type]
-    else:
-        raise PatchApplicationError(
-            f"jsonpointer '{path}' points to immutable {type(container).__class__.__name__}, "
-            f"cannot set '{value}' at '{key}'"
-        )
     return doc
+
+
+def remove(doc: JsonValueType, path: JsonPointerType) -> JsonValueType:
+    if is_root(path):
+        # Sensible default for deleting root. Users can always customize RemoveOperation to forbid deleting root.
+        # Reasoning: json.loads('null') is valid, json.loads('') is invalid. The former is empty JSON, latter is invalid.
+        return None
+    try:
+        get(doc, path)
+    except PatchApplicationError as e:
+        raise PatchApplicationError(
+            f"the target location '{path}' does not exist and cannot be removed"
+        ) from e
+
+    container, key = resolve_last(doc, path)
+    del container[key]  # type: ignore[arg-type]
+    return doc
+
+
+def move(
+    doc: JsonValueType,
+    from_path: JsonPointerType,
+    to_path: JsonPointerType,
+    value: JsonValueType,
+) -> JsonValueType:
+    from_path, to_path = cast_to_pointer(from_path), cast_to_pointer(to_path)
+    if is_root(to_path):
+        return get(doc, from_path)  # replace root
+    if from_path == to_path:
+        return doc  # no-op
+    if is_root(from_path) or to_path.contains(from_path):
+        raise PatchApplicationError(
+            f"the 'from' location '{from_path}' is be a proper prefix of the 'path' location '{to_path}', "
+            f"but a location cannot be moved into one of its children"
+        )
+
+    value = get(doc, from_path)
+    doc = remove(doc, from_path)
+    return set(doc, to_path, value)
