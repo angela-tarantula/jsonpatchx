@@ -12,6 +12,7 @@ follow the two-function Protocol.
 """
 
 from copy import deepcopy
+from functools import lru_cache
 from typing import Literal, MutableMapping, MutableSequence
 
 from jsonpointer import (  # type: ignore[import-untyped]
@@ -28,6 +29,7 @@ def is_root(path: JSONPointer) -> bool:
     return path == ""
 
 
+@lru_cache
 def cast_to_pointer(path: JSONPointer) -> JsonPointer:
     try:
         return JsonPointer(path)
@@ -167,6 +169,8 @@ def move(
     doc: JSONValue,
     from_path: JSONPointer,
     to_path: JSONPointer,
+    *,
+    forbid_nested: bool = True,
 ) -> JSONValue:
     from_ptr, to_ptr = (
         cast_to_pointer(from_path),
@@ -176,13 +180,22 @@ def move(
         return get(doc, from_path)  # replace root
     if from_path == to_path:
         return doc  # no-op
-    if is_root(from_path) or to_ptr.contains(from_ptr):
-        raise PatchApplicationError(
-            f"the 'from' location '{from_path}' is a proper prefix of the 'path' location '{to_path}', "
-            f"but a location cannot be moved into one of its children"
-        )
+
+    # check if this is a nested move
+    is_nested: bool = is_root(from_path) or to_ptr.contains(
+        from_ptr
+    )  # there is a bug in JsonPointer where no pointer contains the root pointer
 
     value = get(doc, from_path)
+    if is_nested:
+        if forbid_nested:
+            raise PatchApplicationError(
+                f"the 'from' location '{from_path}' is a proper prefix of the 'path' location '{to_path}', "
+                f"but a location cannot be moved into one of its children"
+            )
+        else:
+            value = deepcopy(value)
+
     doc = remove(doc, from_path)
     return add(doc, to_path, value)
 
