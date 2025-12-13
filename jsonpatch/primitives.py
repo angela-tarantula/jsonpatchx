@@ -1,5 +1,10 @@
-from collections.abc import Hashable
-from typing import MutableMapping, MutableSequence
+"""
+Primitive helper functions for defining custom `apply()` in OperationSchemas.`
+
+Assumes valid inputs.
+"""
+
+from typing import Literal, MutableMapping, MutableSequence
 
 from jsonpointer import (  # type: ignore[import-untyped]
     JsonPointer,
@@ -9,12 +14,18 @@ from jsonpointer import (  # type: ignore[import-untyped]
 from jsonpatch.exceptions import PatchApplicationError
 from jsonpatch.types import JsonPointerType, JsonValueType
 
-# NOTE: The JSON document is assumed to be valid. This has certain implications:
-#   1. Dicts must have string keys
+
+def is_root(path: JsonPointerType) -> bool:
+    """True if the path points to root."""
+    return str(path) == ""
 
 
-def _ensure_pointer(path: JsonPointerType) -> JsonPointer:
-    """Cast a JsonPointerType into a JsonPointer."""
+def _cast_to_pointer(path: JsonPointerType) -> JsonPointer:
+    """
+    This is no-op if Pydantic pre-validates JsonPointerTypes, but users can opt out of
+    pre-validation by annotating their path variables as str. This functions ensures
+    that any strings intended to be used as jsonpointers have the proper syntax.
+    """
     if isinstance(path, JsonPointer):
         return path
     try:
@@ -24,45 +35,87 @@ def _ensure_pointer(path: JsonPointerType) -> JsonPointer:
 
 
 def resolve_last(
-    doc: JsonValueType,
-    pointer: JsonPointerType,
-) -> tuple[JsonValueType, Hashable]:
+    doc: JsonValueType, path: JsonPointerType
+) -> (
+    tuple[MutableMapping[str, JsonValueType], str]
+    | tuple[MutableSequence[JsonValueType], int | Literal["-"]]
+):
     """
     Return (container, key) such that container[key] is the target.
 
-    - If pointer is the root, returns (doc, None).
-    - Raises PatchApplicationError on resolution failure.
+    Args:
+        doc (JsonValueType): A JSON document, assumed to be valid.
+        path (JsonPointerType): A jsonpointer, not assumed to be valid.
+                                May not point to root (nothing to resolve).
+
+    Details:
+        The target can be set or overwritten with `container[key] = value`.
+        The target can be removed with `del container[key]`.
+        The target can be accessed with `value = container[key]`.
+        But the key is not guaranteed to a valid index/key of the container.
+        If the key is invalid, trying container[key] will raise KeyError or TypeError.
+
+    Returns:
+        (container, key)
+        When the container is a sequence, the index will be a positive integer or "-".
+        When the container is a mapping, the index will be a string.
     """
-    ptr = _ensure_pointer(pointer)
+    assert not is_root(path), "the root has no path to resolve"
+    ptr = _cast_to_pointer(path)
+
     try:
-        return ptr.to_last(doc)  # type: ignore[no-any-return] #
+        return ptr.to_last(doc)  # type: ignore[no-any-return]
     except JsonPointerException as e:
         raise PatchApplicationError(str(e)) from e
 
 
 def resolve_last_mapping(
-    doc: JsonValueType, pointer: JsonPointerType
-) -> tuple[MutableMapping[str, JsonValueType], Hashable]:
-    subobj, part = resolve_last(doc, pointer)
-    if not isinstance(subobj, MutableMapping):
-        raise PatchApplicationError(f"Expected object at {pointer}")
-    return subobj, part
+    doc: JsonValueType, path: JsonPointerType
+) -> tuple[MutableMapping[str, JsonValueType], str]:
+    """Confirms that a jsonpointer leads to a JSON object. Returns (mapping, key)."""
+    mapping, key = resolve_last(doc, path)
+    if not isinstance(mapping, MutableMapping):
+        raise PatchApplicationError(f"Expected object at {path}")
+    return mapping, key  # type: ignore[return-value]
 
 
 def resolve_last_sequence(
-    doc: JsonValueType, pointer: JsonPointerType
-) -> tuple[MutableMapping[str, JsonValueType], Hashable]:
-    subobj, part = resolve_last(doc, pointer)
-    if not isinstance(subobj, MutableSequence):
-        raise PatchApplicationError(f"Expected array at {pointer}")
-    return subobj, part  # type: ignore[return-value] # if doc is valid JSON, the mapping must have string keys
+    doc: JsonValueType, path: JsonPointerType
+) -> tuple[MutableSequence[JsonValueType], int | Literal["-"]]:
+    """Confirms that a jsonpointer leads to a JSON array. Returns (array, key)."""
+    array, key = resolve_last(doc, path)
+    if not isinstance(array, MutableSequence):
+        raise PatchApplicationError(f"Expected array at {path}")
+    return array, key  # type: ignore[return-value]
 
 
-def get(doc: JsonValueType, pointer: JsonPointerType) -> JsonValueType:
-    subobj, part = resolve_last(doc, pointer)
-    if part is None:
-        return subobj
+def get(doc: JsonValueType, path: JsonPointerType) -> JsonValueType:
+    if is_root(path):
+        return doc
+
+    container, key = resolve_last(doc, path)
+
     try:
-        return subobj[part]  # type: ignore[index] # if invalid, raise error
+        return container[key]  # type: ignore[index]
     except (KeyError, IndexError) as e:
-        raise PatchApplicationError(str(e))
+        raise PatchApplicationError(str(e)) from e
+    except TypeError as e:
+        raise PatchApplicationError("array cannot be accessed with '-' key") from e
+
+
+def set(
+    doc: JsonValueType, path: JsonPointerType, value: JsonValueType
+) -> JsonValueType:
+    if is_root(path):
+        return value
+
+    container, key = resolve_last(doc, path)
+
+    if key == "-" and isinstance(container, MutableSequence):
+        container.append(value)
+    else:
+        try:
+            container[key] = value  # type: ignore[index]
+        except (KeyError, IndexError) as e:
+            raise PatchApplicationError(str(e)) from e
+    return doc
