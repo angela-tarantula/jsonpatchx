@@ -7,6 +7,7 @@ unable to deduce that `key` must be a `str`. Most `type: ignore` are workarounds
 I did not want to litter the implementations with `typing.cast` calls. Hopefully that issue gets fixed.
 """
 
+from copy import deepcopy
 from typing import Literal, MutableMapping, MutableSequence
 
 from jsonpointer import (  # type: ignore[import-untyped]
@@ -182,3 +183,15 @@ def move(
     value = get(doc, from_path)
     doc = remove(doc, from_path)
     return add(doc, to_path, value)
+
+
+def copy(
+    doc: JsonValueType,
+    from_path: JsonPointerType,
+    to_path: JsonPointerType,
+    value: JsonValueType,
+) -> JsonValueType:
+    from_path, to_path = cast_to_pointer(from_path), cast_to_pointer(to_path)
+    value = get(doc, from_path)
+    value_copy = deepcopy(value)
+    return add(doc, to_path, value_copy)
