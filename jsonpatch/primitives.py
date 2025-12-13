@@ -19,7 +19,7 @@ from jsonpointer import (  # type: ignore[import-untyped]
     JsonPointerException,
 )
 
-from jsonpatch.exceptions import PatchApplicationError
+from jsonpatch.exceptions import PatchApplicationError, TestOpFailed
 from jsonpatch.types import JsonPointerType, JsonValueType
 
 
@@ -77,7 +77,7 @@ def resolve_last(
 
     if not isinstance(container, (MutableMapping, MutableSequence)):
         raise PatchApplicationError(
-            f"container '{container}' is neither MutableMapping nor MutableSequence"
+            f"container at '{path}' is neither MutableMapping nor MutableSequence"
         )
 
     return container, key  # type: ignore[return-value]
@@ -111,8 +111,12 @@ def get(doc: JsonValueType, path: JsonPointerType) -> JsonValueType:
 
     try:
         return container[key]  # type: ignore[index]
-    except (KeyError, IndexError) as e:  # missing key or out-of-index
-        raise PatchApplicationError(str(e)) from e
+    except KeyError as e:
+        raise PatchApplicationError(
+            f"key '{key}' does not exist at location '{path}'"
+        ) from e
+    except IndexError as e:
+        raise PatchApplicationError(f"index '{key}' is out of range at '{path}'") from e
     except TypeError as e:
         raise PatchApplicationError("array cannot be accessed with '-' key") from e
 
@@ -126,10 +130,7 @@ def add(
     container, key = resolve_last(doc, path)
 
     if isinstance(container, MutableMapping):
-        try:
-            container[key] = value  # type: ignore[index]
-        except KeyError as e:
-            raise PatchApplicationError(str(e)) from e
+        container[key] = value  # type: ignore[index]
     elif isinstance(container, MutableSequence):
         index = key if key != "-" else len(container)
         if index > len(container):  # type: ignore[operator]
@@ -173,7 +174,6 @@ def move(
     doc: JsonValueType,
     from_path: JsonPointerType,
     to_path: JsonPointerType,
-    value: JsonValueType,
 ) -> JsonValueType:
     from_path, to_path = cast_to_pointer(from_path), cast_to_pointer(to_path)
     if is_root(to_path):
@@ -182,7 +182,7 @@ def move(
         return doc  # no-op
     if is_root(from_path) or to_path.contains(from_path):
         raise PatchApplicationError(
-            f"the 'from' location '{from_path}' is be a proper prefix of the 'path' location '{to_path}', "
+            f"the 'from' location '{from_path}' is a proper prefix of the 'path' location '{to_path}', "
             f"but a location cannot be moved into one of its children"
         )
 
@@ -195,9 +195,19 @@ def copy(
     doc: JsonValueType,
     from_path: JsonPointerType,
     to_path: JsonPointerType,
-    value: JsonValueType,
 ) -> JsonValueType:
     from_path, to_path = cast_to_pointer(from_path), cast_to_pointer(to_path)
     value = get(doc, from_path)
     value_copy = deepcopy(value)
     return add(doc, to_path, value_copy)
+
+
+def test(
+    doc: JsonValueType, path: JsonPointerType, value: JsonValueType
+) -> JsonValueType:
+    curr = get(doc, path)
+    if curr != value:
+        raise TestOpFailed(
+            f"test at path '{path}' failed, got {curr} but expected {value}"
+        )
+    return doc
