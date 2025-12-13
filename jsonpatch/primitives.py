@@ -76,7 +76,9 @@ def resolve_last(
         raise PatchApplicationError(str(e)) from e
 
     if not isinstance(container, (MutableMapping, MutableSequence)):
-        raise PatchApplicationError(f"container '{container}' is neither MutableMapping nor MutableSequence")
+        raise PatchApplicationError(
+            f"container '{container}' is neither MutableMapping nor MutableSequence"
+        )
 
     return container, key  # type: ignore[return-value]
 
@@ -109,7 +111,7 @@ def get(doc: JsonValueType, path: JsonPointerType) -> JsonValueType:
 
     try:
         return container[key]  # type: ignore[index]
-    except (KeyError, IndexError) as e: # missing key or out-of-index
+    except (KeyError, IndexError) as e:  # missing key or out-of-index
         raise PatchApplicationError(str(e)) from e
     except TypeError as e:
         raise PatchApplicationError("array cannot be accessed with '-' key") from e
@@ -159,7 +161,7 @@ def replace(
     value: JsonValueType,
 ) -> JsonValueType:
     try:
-        value = get(doc, path)
+        get(doc, path)
     except PatchApplicationError as e:
         raise PatchApplicationError(
             f"the target location '{path}' does not exist and cannot be replaced"
