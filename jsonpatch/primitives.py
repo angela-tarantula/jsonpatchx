@@ -157,7 +157,7 @@ def replace(
     value: JSONValue,
 ) -> JSONValue:
     try:
-        get(doc, path)
+        doc = remove(doc, path)
     except PatchApplicationError as e:
         raise PatchApplicationError(
             f"the target location '{path}' does not exist and cannot be replaced"
@@ -210,8 +210,8 @@ def copy(
         cast_to_pointer(to_path),
     )  # catch pointer errors early
     value = get(doc, from_path)
-    value_copy = deepcopy(value)
-    return add(doc, to_path, value_copy)
+    value = deepcopy(value)
+    return add(doc, to_path, value)
 
 
 def test(doc: JSONValue, path: JSONPointer, value: JSONValue) -> JSONValue:
