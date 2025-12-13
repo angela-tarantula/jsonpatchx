@@ -110,7 +110,7 @@ def get(doc: JsonValueType, path: JsonPointerType) -> JsonValueType:
         raise PatchApplicationError("array cannot be accessed with '-' key") from e
 
 
-def set(
+def add(
     doc: JsonValueType, path: JsonPointerType, value: JsonValueType
 ) -> JsonValueType:
     if is_root(path):
@@ -148,6 +148,20 @@ def remove(doc: JsonValueType, path: JsonPointerType) -> JsonValueType:
     return doc
 
 
+def replace(
+    doc: JsonValueType,
+    path: JsonPointerType,
+    value: JsonValueType,
+) -> JsonValueType:
+    try:
+        value = get(doc, path)
+    except PatchApplicationError as e:
+        raise PatchApplicationError(
+            f"the target location '{path}' does not exist and cannot be replaced"
+        ) from e
+    return add(doc, path, value)
+
+
 def move(
     doc: JsonValueType,
     from_path: JsonPointerType,
@@ -167,4 +181,4 @@ def move(
 
     value = get(doc, from_path)
     doc = remove(doc, from_path)
-    return set(doc, to_path, value)
+    return add(doc, to_path, value)
