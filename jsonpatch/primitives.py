@@ -5,6 +5,10 @@ Mypy is not yet advanced enough to narrow the union of tuples: https://github.co
 For example, when `resolve_last` returns a `(container, key)` in which `container` is a `Mapping`, mypy is
 unable to deduce that `key` must be a `str`. Most `type: ignore` are workarounds for this false-positive.
 I did not want to litter the implementations with `typing.cast` calls. Hopefully that issue gets fixed.
+
+The only JsonPointer operations this library depends on are JsonPointer.to_last() and JsonPointer.contains().
+This is by design to minimize tight coupling and make it easy to provide custom jsonpointer classes that
+follow the two-function Protocol.
 """
 
 from copy import deepcopy
