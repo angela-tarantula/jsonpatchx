@@ -20,39 +20,34 @@ from jsonpointer import (  # type: ignore[import-untyped]
 )
 
 from jsonpatch.exceptions import PatchApplicationError, TestOpFailed
-from jsonpatch.types import JsonPointerType, JsonValueType
+from jsonpatch.types import JSONPointer, JSONValue
 
 
-def is_root(path: JsonPointerType) -> bool:
+def is_root(path: JSONPointer) -> bool:
     """`True` if the `path` points to root, `False` otherwise."""
-    return str(path) == ""
+    return path == ""
 
 
-def cast_to_pointer(path: JsonPointerType) -> JsonPointer:
-    """
-    This is no-op if `Pydantic` pre-validates `JsonPointerTypes`, but users can opt out of
-    pre-validation by annotating their path variables as `str`. This functions ensures
-    that any paths intended to be used as jsonpointers have the proper syntax.
-    """
-    if isinstance(path, JsonPointer):
-        return path
+def cast_to_pointer(path: JSONPointer) -> JsonPointer:
     try:
         return JsonPointer(path)
-    except JsonPointerException as e:
+    except (
+        JsonPointerException
+    ) as e:  # defensive - if user opts out of Pydantic pre-validation
         raise PatchApplicationError(f"expected '{path}' to be a jsonpointer") from e
 
 
 def resolve_last(
-    doc: JsonValueType, path: JsonPointerType
+    doc: JSONValue, path: JSONPointer
 ) -> (
-    tuple[MutableMapping[str, JsonValueType], str]
-    | tuple[MutableSequence[JsonValueType], int | Literal["-"]]
+    tuple[MutableMapping[str, JSONValue], str]
+    | tuple[MutableSequence[JSONValue], int | Literal["-"]]
 ):
     """
     Return `(container, key)` such that `container[key]` is the target of the path.
 
     Args:
-        doc (JsonValueType): A JSON document, assumed to be valid.
+        doc (JSONValue): A JSON document, assumed to be valid.
         path (JsonPointerType): A jsonpointer, not assumed to be valid.
                                 May not point to root (nothing to resolve).
 
@@ -84,8 +79,8 @@ def resolve_last(
 
 
 def resolve_last_mapping(
-    doc: JsonValueType, path: JsonPointerType
-) -> tuple[MutableMapping[str, JsonValueType], str]:
+    doc: JSONValue, path: JSONPointer
+) -> tuple[MutableMapping[str, JSONValue], str]:
     """Confirms that `path`, a jsonpointer, leads to a JSON object (`Mapping`). Returns `(mapping, key)`."""
     mapping, key = resolve_last(doc, path)
     if not isinstance(mapping, MutableMapping):
@@ -94,8 +89,8 @@ def resolve_last_mapping(
 
 
 def resolve_last_sequence(
-    doc: JsonValueType, path: JsonPointerType
-) -> tuple[MutableSequence[JsonValueType], int | Literal["-"]]:
+    doc: JSONValue, path: JSONPointer
+) -> tuple[MutableSequence[JSONValue], int | Literal["-"]]:
     """Confirms that `path`, a jsonpointer, leads to a JSON array (`Sequence`). Returns `(array, key)`."""
     array, key = resolve_last(doc, path)
     if not isinstance(array, MutableSequence):
@@ -103,7 +98,7 @@ def resolve_last_sequence(
     return array, key  # type: ignore[return-value]
 
 
-def get(doc: JsonValueType, path: JsonPointerType) -> JsonValueType:
+def get(doc: JSONValue, path: JSONPointer) -> JSONValue:
     if is_root(path):
         return doc
 
@@ -121,9 +116,7 @@ def get(doc: JsonValueType, path: JsonPointerType) -> JsonValueType:
         raise PatchApplicationError("array cannot be accessed with '-' key") from e
 
 
-def add(
-    doc: JsonValueType, path: JsonPointerType, value: JsonValueType
-) -> JsonValueType:
+def add(doc: JSONValue, path: JSONPointer, value: JSONValue) -> JSONValue:
     if is_root(path):
         return value
 
@@ -139,7 +132,7 @@ def add(
     return doc
 
 
-def remove(doc: JsonValueType, path: JsonPointerType) -> JsonValueType:
+def remove(doc: JSONValue, path: JSONPointer) -> JSONValue:
     if is_root(path):
         # Sensible default for deleting root. Users can always customize RemoveOperation to forbid deleting root.
         # Reasoning: json.loads('null') is valid, json.loads('') is invalid. The former is empty JSON, latter is invalid.
@@ -157,10 +150,10 @@ def remove(doc: JsonValueType, path: JsonPointerType) -> JsonValueType:
 
 
 def replace(
-    doc: JsonValueType,
-    path: JsonPointerType,
-    value: JsonValueType,
-) -> JsonValueType:
+    doc: JSONValue,
+    path: JSONPointer,
+    value: JSONValue,
+) -> JSONValue:
     try:
         get(doc, path)
     except PatchApplicationError as e:
@@ -171,16 +164,19 @@ def replace(
 
 
 def move(
-    doc: JsonValueType,
-    from_path: JsonPointerType,
-    to_path: JsonPointerType,
-) -> JsonValueType:
-    from_path, to_path = cast_to_pointer(from_path), cast_to_pointer(to_path)
+    doc: JSONValue,
+    from_path: JSONPointer,
+    to_path: JSONPointer,
+) -> JSONValue:
+    from_ptr, to_ptr = (
+        cast_to_pointer(from_path),
+        cast_to_pointer(to_path),
+    )  # catch pointer errors early
     if is_root(to_path):
         return get(doc, from_path)  # replace root
     if from_path == to_path:
         return doc  # no-op
-    if is_root(from_path) or to_path.contains(from_path):
+    if is_root(from_path) or to_ptr.contains(from_ptr):
         raise PatchApplicationError(
             f"the 'from' location '{from_path}' is a proper prefix of the 'path' location '{to_path}', "
             f"but a location cannot be moved into one of its children"
@@ -192,19 +188,20 @@ def move(
 
 
 def copy(
-    doc: JsonValueType,
-    from_path: JsonPointerType,
-    to_path: JsonPointerType,
-) -> JsonValueType:
-    from_path, to_path = cast_to_pointer(from_path), cast_to_pointer(to_path)
+    doc: JSONValue,
+    from_path: JSONPointer,
+    to_path: JSONPointer,
+) -> JSONValue:
+    _, __ = (
+        cast_to_pointer(from_path),
+        cast_to_pointer(to_path),
+    )  # catch pointer errors early
     value = get(doc, from_path)
     value_copy = deepcopy(value)
     return add(doc, to_path, value_copy)
 
 
-def test(
-    doc: JsonValueType, path: JsonPointerType, value: JsonValueType
-) -> JsonValueType:
+def test(doc: JSONValue, path: JSONPointer, value: JSONValue) -> JSONValue:
     curr = get(doc, path)
     if curr != value:
         raise TestOpFailed(

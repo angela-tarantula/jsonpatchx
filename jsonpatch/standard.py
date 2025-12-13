@@ -5,13 +5,13 @@ from typing import Hashable, Self, overload, override
 from jsonpatch.exceptions import PatchApplicationError, PatchError
 from jsonpatch.registry import OperationRegistry
 from jsonpatch.schema import OperationSchema
-from jsonpatch.types import JsonTextType, JsonValueType
+from jsonpatch.types import JSONText, JSONValue
 
 
 def _apply_ops(
     ops: Sequence[OperationSchema],
-    doc: JsonValueType,
-) -> JsonValueType:
+    doc: JSONValue,
+) -> JSONValue:
     """
     Core operation application loop shared by JsonPatch and model-aware patches.
 
@@ -37,7 +37,7 @@ class JsonPatch(Sequence[OperationSchema], Hashable):
 
     def __init__(
         self,
-        patch: Sequence[Mapping[str, JsonValueType]],
+        patch: Sequence[Mapping[str, JSONValue]],
         *,
         registry: OperationRegistry | None = None,
     ):
@@ -55,7 +55,7 @@ class JsonPatch(Sequence[OperationSchema], Hashable):
     @classmethod
     def from_string(
         cls,
-        text: JsonTextType,
+        text: JSONText,
         *,
         registry: OperationRegistry | None = None,
     ) -> Self:
@@ -73,6 +73,16 @@ class JsonPatch(Sequence[OperationSchema], Hashable):
         instance._ops = registry.parse_json_patch(text)
         return instance
 
+    @classmethod
+    def _from_operations(
+        cls, ops: list[OperationSchema], *, registry: OperationRegistry | None = None
+    ) -> Self:
+        instance = cls.__new__(cls)
+        registry = registry or OperationRegistry.standard()
+        instance._registry = registry
+        instance._ops = ops
+        return instance
+
     @property
     def ops(self) -> Sequence[OperationSchema]:
         """The sequence of operations."""
@@ -83,7 +93,7 @@ class JsonPatch(Sequence[OperationSchema], Hashable):
         payload = [op.model_dump(mode="json", by_alias=True) for op in self._ops]
         return json.dumps(payload)
 
-    def apply(self, doc: JsonValueType) -> JsonValueType:
+    def apply(self, doc: JSONValue) -> JSONValue:
         """Apply the JsonPatch to an object."""
         return _apply_ops(self._ops, doc)
 
@@ -126,21 +136,16 @@ class JsonPatch(Sequence[OperationSchema], Hashable):
             return NotImplemented
         if self._registry is not other._registry:
             raise TypeError("Cannot add JsonPatch instances with different registries")
-        instance = self.__new__(self.__class__)
-        instance._registry = self._registry
-        instance._ops = self._ops + other._ops
-        return instance
+        return self._from_operations(self._ops + other._ops, registry=self._registry)
 
 
-def apply_patch(
-    doc: JsonValueType, patch: Sequence[Mapping[str, JsonValueType]]
-) -> JsonValueType:
+def apply_patch(doc: JSONValue, patch: Sequence[Mapping[str, JSONValue]]) -> JSONValue:
     """Apply standard JSON Patch to an object."""
     return JsonPatch(patch).apply(doc)
 
 
 if __name__ == "__main__":
-    raw: list[dict[str, JsonValueType]] = [
+    raw: list[dict[str, JSONValue]] = [
         {"op": "add", "path": "/foo", "value": "bar"},
         {"op": "add", "path": "/baz", "value": [1, 2, 3]},
         {"op": "remove", "path": "/baz/1"},
@@ -154,6 +159,6 @@ if __name__ == "__main__":
     )
     assert patch._ops == patch2._ops
 
-    doc: dict[str, JsonValueType] = {}
+    doc: dict[str, JSONValue] = {}
     result = patch.apply(doc)
     assert result == apply_patch(doc, raw)

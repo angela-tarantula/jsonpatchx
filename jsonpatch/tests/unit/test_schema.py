@@ -7,7 +7,7 @@ from pytest import Subtests
 from jsonpatch.exceptions import InvalidOperationRegistry, InvalidOperationSchema
 from jsonpatch.registry import OperationRegistry
 from jsonpatch.schema import OperationSchema
-from jsonpatch.types import JsonValueType
+from jsonpatch.types import JSONValue
 
 
 def test_invalid_operation_schema(subtests: Subtests) -> None:
@@ -44,7 +44,7 @@ def test_invalid_operation_schema(subtests: Subtests) -> None:
             op: Literal["apple"]
 
             @override
-            def apply(self, doc: JsonValueType) -> JsonValueType:
+            def apply(self, doc: JSONValue) -> JSONValue:
                 return None
 
         with pytest.raises(ValidationError):
@@ -57,7 +57,7 @@ def test_invalid_operation_schema(subtests: Subtests) -> None:
             value: str
 
             @override
-            def apply(self, doc: JsonValueType) -> JsonValueType:
+            def apply(self, doc: JSONValue) -> JSONValue:
                 return None
 
         orange = Orange(value="peel")
@@ -71,14 +71,14 @@ def test_invalid_operation_registry(subtests: Subtests) -> None:
         op: Literal["dup"] = "dup"
 
         @override
-        def apply(self, doc: JsonValueType) -> JsonValueType:
+        def apply(self, doc: JSONValue) -> JSONValue:
             return None
 
     class SecondOp(OperationSchema):
         op: Literal["dup"] = "dup"
 
         @override
-        def apply(self, doc: JsonValueType) -> JsonValueType:
+        def apply(self, doc: JSONValue) -> JSONValue:
             return None
 
     class AbstractOp(OperationSchema):
@@ -121,7 +121,7 @@ def test_valid_operation_schema(subtests: Subtests) -> None:
             value: int = 1
 
             @override
-            def apply(self, doc: JsonValueType) -> JsonValueType:
+            def apply(self, doc: JSONValue) -> JSONValue:
                 return None
 
         op = IncrementOp(path="/", value=3)
@@ -135,7 +135,7 @@ def test_valid_operation_schema(subtests: Subtests) -> None:
             op: Literal["organize", "organise"]
 
             @override
-            def apply(self, doc: JsonValueType) -> JsonValueType:
+            def apply(self, doc: JSONValue) -> JSONValue:
                 return None
 
         OrganizeOp(op="organize")
@@ -149,7 +149,7 @@ def test_patch_schema_parse_happy_path(subtests: Subtests) -> None:
         value: int = 1
 
         @override
-        def apply(self, doc: JsonValueType) -> JsonValueType:
+        def apply(self, doc: JSONValue) -> JSONValue:
             return None
 
     class ToggleOp(OperationSchema):
@@ -157,7 +157,7 @@ def test_patch_schema_parse_happy_path(subtests: Subtests) -> None:
         path: str
 
         @override
-        def apply(self, doc: JsonValueType) -> JsonValueType:
+        def apply(self, doc: JSONValue) -> JSONValue:
             return None
 
     schema = OperationRegistry(IncrementOp, ToggleOp)

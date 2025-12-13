@@ -14,7 +14,7 @@ from typing import (
 from pydantic import BaseModel, ConfigDict
 
 from jsonpatch.exceptions import InvalidOperationSchema
-from jsonpatch.types import JsonValueType
+from jsonpatch.types import JSONValue
 
 
 class OperationSchema(BaseModel, ABC):
@@ -72,6 +72,6 @@ class OperationSchema(BaseModel, ABC):
         return cast(tuple[str, ...], literal_vals)
 
     @abstractmethod
-    def apply(self, doc: JsonValueType) -> JsonValueType:
+    def apply(self, doc: JSONValue) -> JSONValue:
         """Apply this operation to a JSON document."""
         ...

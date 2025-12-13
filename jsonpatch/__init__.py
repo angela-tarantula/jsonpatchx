@@ -15,9 +15,9 @@ Public API surface:
     - TestOpFailed
 
 - Core types:
-    - JsonPointerType
-    - JsonTextType
-    - JsonValueType
+    - JSONPointer
+    - JSONText
+    - JSONValue
 
 - Operation specs:
     - OperationSchema
@@ -57,7 +57,7 @@ from jsonpatch.exceptions import (
 from jsonpatch.registry import OperationRegistry
 from jsonpatch.schema import OperationSchema
 from jsonpatch.standard import JsonPatch, apply_patch
-from jsonpatch.types import JsonPointerType, JsonTextType, JsonValueType
+from jsonpatch.types import JSONPointer, JSONText, JSONValue
 
 __all__ = [
     # exceptions
@@ -68,9 +68,9 @@ __all__ = [
     "PatchError",
     "TestOpFailed",
     # types
-    "JsonPointerType",
-    "JsonTextType",
-    "JsonValueType",
+    "JSONPointer",
+    "JSONText",
+    "JSONValue",
     # operation specs
     "OperationSchema",
     "OperationRegistry",

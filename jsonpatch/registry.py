@@ -8,7 +8,7 @@ from pydantic import Field, TypeAdapter
 from jsonpatch.builtins import STANDARD_OPS
 from jsonpatch.exceptions import InvalidOperationRegistry
 from jsonpatch.schema import OperationSchema
-from jsonpatch.types import JsonTextType, JsonValueType
+from jsonpatch.types import JSONText, JSONValue
 
 
 class OperationRegistry:
@@ -96,7 +96,7 @@ class OperationRegistry:
         """The discriminated union type of all operation schemas."""
         return self._union_type
 
-    def parse_python_op(self, obj: Mapping[str, JsonValueType]) -> OperationSchema:
+    def parse_python_op(self, obj: Mapping[str, JSONValue]) -> OperationSchema:
         """
         Validate & coerce a single operation dict.
 
@@ -107,7 +107,7 @@ class OperationRegistry:
         )
 
     def parse_python_patch(
-        self, python: Sequence[Mapping[str, JsonValueType]]
+        self, python: Sequence[Mapping[str, JSONValue]]
     ) -> list[OperationSchema]:
         """
         Validate & coerce a sequence of operation dicts.
@@ -118,7 +118,7 @@ class OperationRegistry:
             python, strict=True, by_alias=True, by_name=False, extra="forbid"
         )
 
-    def parse_json_patch(self, text: JsonTextType) -> list[OperationSchema]:
+    def parse_json_patch(self, text: JSONText) -> list[OperationSchema]:
         """
         Validate & coerce a JSON Patch.
 

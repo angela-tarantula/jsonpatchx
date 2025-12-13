@@ -6,7 +6,7 @@ from jsonpatch.exceptions import InvalidJsonPatch
 from jsonpatch.registry import OperationRegistry
 from jsonpatch.schema import OperationSchema
 from jsonpatch.standard import _apply_ops
-from jsonpatch.types import JsonValueType
+from jsonpatch.types import JSONValue
 
 ModelT = TypeVar("ModelT", bound=BaseModel)
 
@@ -125,7 +125,7 @@ class _BasePatchBody(BaseModel):
 
     __registry__: ClassVar[OperationRegistry]
 
-    def apply(self, doc: JsonValueType) -> JsonValueType:
+    def apply(self, doc: JSONValue) -> JSONValue:
         """
         Apply this patch to an arbitrary JSON document.
 
