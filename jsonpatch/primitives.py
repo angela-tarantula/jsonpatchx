@@ -198,7 +198,7 @@ def resolve_last(
     except JsonPointerException as e:
         raise PatchApplicationError(f"unable to resolve path '{path}': {e}") from e
 
-    EXPECTED = {  # (mutable, container)
+    EXPECTED = {
         (True, "object"): MutableMapping,
         (False, "object"): Mapping,
         (True, "array"): MutableSequence,
@@ -206,11 +206,11 @@ def resolve_last(
         (True, None): (MutableMapping, MutableSequence),
         (False, None): (Mapping, Sequence),
     }
-    assert isinstance(path_container, EXPECTED[(mutable, container)])
+    assert isinstance(path_container, EXPECTED[(mutable, container)])  # type: ignore[arg-type]
 
     if exists:
         try:
-            return path_container[path_key]  # type: ignore[index]
+            path_container[path_key]
         except (
             KeyError,
             IndexError,
@@ -218,65 +218,62 @@ def resolve_last(
         ) as e:  # missing key, index out of bounds, or using "-" on array
             raise PatchApplicationError(f"target at '{path}' does not exist") from e
 
-    return path_container, path_key  # type: ignore[return-value]
+    return path_container, path_key
 
 
-def exists(doc: JSONValue, *paths: JSONPointer, mutable: bool = False) -> bool:
-    try:
-        for path in paths:
-            if not is_root(path):
-                resolve_last(doc, path, exists=True, mutable=mutable)
-    except PatchApplicationError:
-        return False
-    else:
+def assert_valid(doc: JSONValue, *paths: JSONPointer) -> None:
+    for path in paths:
+        if not is_root(path):
+            resolve_last(doc, path, exists=False, mutable=False)
+
+
+def assert_exists(doc: JSONValue, *paths: JSONPointer, mutable: bool = False) -> None:
+    for path in paths:
+        if not is_root(path):
+            resolve_last(doc, path, exists=True, mutable=mutable)
+
+
+def is_parent_path(*, parent_path: JSONPointer, child_path: JSONPointer) -> bool:
+    # Need to handle the root case separately for now due to a bug in JsonPointer.contains()
+    # wherein any jp1.contains(jp2)==False for all jp1 whenever jp2 is the root jsonpointer.
+    if is_root(parent_path):
         return True
+
+    parent_ptr, child_ptr = cast_to_pointer(parent_path), cast_to_pointer(child_path)
+    return child_ptr.contains(parent_ptr)  # type: ignore[no-any-return] # JsonPatch is untyped, but this is correct
 
 
 def get(doc: JSONValue, path: JSONPointer) -> JSONValue:
     if is_root(path):
         return doc
     container, key = resolve_last(doc, path, exists=True, mutable=False)
-    return container[key]  # type: ignore[index]
+    return container[key]  # type: ignore[index] # mypy is not advanced enough to narrow tuples
 
 
-def add(
-    doc: JSONValue, path: JSONPointer, value: JSONValue, *, strict: bool = False
-) -> JSONValue:
-    if strict and exists(doc, path):
-        raise PatchApplicationError(f"target at '{path}' already exists")
-
+def add(doc: JSONValue, path: JSONPointer, value: JSONValue) -> JSONValue:
     if is_root(path):
-        return value
+        return value  # replace root
 
     container, key = resolve_last(doc, path, exists=False, mutable=True)
 
     if isinstance(container, MutableMapping):
-        container[key] = value  # type: ignore[index]
+        container[key] = value  # type: ignore[index] # mypy is not advanced enough to narrow tuples
     elif isinstance(container, MutableSequence):
         if key == "-":
             key = len(container)
+        # we know key is an int now, but mypy isn't smart enough yet
         if key > len(container):  # type: ignore[operator]
             raise PatchApplicationError(f"target at '{path}' is out of range")
+        assert key >= 0, "JsonPointer implementation changed"  # type: ignore[operator]
         container.insert(key, value)  # type: ignore[arg-type]
     return doc
 
 
-def remove(doc: JSONValue, path: JSONPointer, *, strict: bool = True) -> JSONValue:
+def remove(doc: JSONValue, path: JSONPointer) -> JSONValue:
     if is_root(path):
         raise PatchApplicationError("cannot remove the root")
-
-    # case: target doesn't exist
-    try:
-        get(doc, path)
-    except PatchApplicationError as e:
-        if strict:
-            raise e
-        else:
-            return doc
-
-    # case: target exists
     container, key = resolve_last(doc, path, exists=True, mutable=True)
-    del container[key]  # type: ignore[arg-type]
+    del container[key]  # type: ignore[arg-type] # mypy is not advanced enough to narrow tuples
     return doc
 
 
@@ -286,7 +283,7 @@ def replace(
     value: JSONValue,
 ) -> JSONValue:
     if is_root(path):
-        return value
+        return value  # replace root
     doc = remove(doc, path)
     return add(doc, path, value)
 
@@ -296,23 +293,21 @@ def move(
     from_path: JSONPointer,
     to_path: JSONPointer,
 ) -> JSONValue:
-    from_ptr, to_ptr = (
-        cast_to_pointer(from_path),
-        cast_to_pointer(to_path),
-    )  # catch pointer errors early
-    validate_mutability(doc, from_path)  # manually trigger mutability error earlier
-    validate_mutability(doc, to_path)
+    assert_exists(doc, from_path, to_path)
     if from_path == to_path:
         return doc  # no-op
     if is_root(to_path):
         return get(doc, from_path)  # replace root
 
     # check if this is a nested move
-    if (
-        is_root(from_path) or to_ptr.contains(from_ptr)
-    ):  # there is a bug in JsonPointer where no pointer is considered to 'contain' the root pointer, so must separately check if from_path is root
-        raise PatchApplicationError(f"path '{to_path}' cannot contain '{from_path}'")
+    if is_parent_path(parent_path=from_path, child_path=to_path):
+        raise PatchApplicationError(
+            f"path '{from_path}' cannot be moved into its child path '{to_path}'"
+        )
 
+    assert_exists(
+        doc, from_path, to_path, mutable=True
+    )  # now we need to make sure it's mutable
     value = get(doc, from_path)
     doc = remove(doc, from_path)
     return add(doc, to_path, value)
@@ -327,8 +322,8 @@ def copy(
         cast_to_pointer(from_path),
         cast_to_pointer(to_path),
     )  # catch pointer errors early
-    validate_mutability(doc, from_path)
-    validate_mutability(doc, to_path)
+    # validate_mutability(doc, from_path)
+    # validate_mutability(doc, to_path)
     if from_path == to_path:
         return doc  # no-op
     value = get(doc, from_path)
@@ -352,8 +347,8 @@ def swap(
         cast_to_pointer(first_path),
         cast_to_pointer(second_path),
     )  # catch pointer errors early
-    validate_mutability(doc, first_path)
-    validate_mutability(doc, second_path)
+    # validate_mutability(doc, first_path)
+    # validate_mutability(doc, second_path)
     if first_path == second_path:
         return doc  # no-op
     if is_root(first_path):
