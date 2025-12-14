@@ -2,7 +2,7 @@
 Primitive helper functions for defining custom `apply()` in OperationSchemas.`
 
 Mypy is not yet advanced enough to narrow the union of tuples: https://github.com/python/mypy/issues/9791.
-For example, when `resolve_last` returns a `(container, key)` in which `container` is a `Mapping`, mypy is
+For example, when `resolve_last` returns a `(container, key)` in which `container` is a `MutableMapping`, mypy is
 unable to deduce that `key` must be a `str`. Most `type: ignore` are workarounds for this false-positive.
 I did not want to litter the implementations with `typing.cast` calls. Hopefully that issue gets fixed.
 
@@ -11,10 +11,10 @@ This is by design to minimize tight coupling and make it easy to provide custom 
 follow the two-function Protocol.
 """
 
-from collections.abc import Mapping, Sequence
+from collections.abc import Mapping, MutableMapping, MutableSequence, Sequence
 from copy import deepcopy
 from functools import lru_cache
-from typing import Literal, MutableMapping, MutableSequence
+from typing import Literal
 
 from jsonpointer import (  # type: ignore[import-untyped]
     JsonPointer,
@@ -47,10 +47,10 @@ def are_equal(first: JSONValue, second: JSONValue) -> bool:
     This function defines equality according to JSON rules rather than
     Python's default equality semantics. In particular:
 
-    - Booleans are not considered equal to numbers (e.g., True != 1).
-    - Integers and floats are compared numerically (e.g., 1 == 1.0).
+    - Booleans are not considered equal to numbers (e.g., `True != 1`).
+    - Integers and floats are compared numerically (e.g., `1 == 1.0`).
     - Mappings (dict-like objects) are compared by keys and values,
-      regardless of their concrete class (e.g., dict vs OrderedDict).
+      regardless of their concrete class (e.g., `dict` vs `defaultdict`).
     - Sequences (list-like objects) are compared by order and contents,
       regardless of their concrete class.
     - Comparison is recursive for nested structures.
@@ -88,12 +88,12 @@ def are_equal(first: JSONValue, second: JSONValue) -> bool:
             are_equal(first[k], second[k]) for k in first
         )  # optimization: the DFS can be iterative to avoid stackoverflow
 
-    # Sequence types (e.g., list, deque, custom list-like) but not str/bytes
+    # Sequence types (e.g., list, deque, custom list-like) but not str
     if (
         isinstance(first, Sequence)
         and isinstance(second, Sequence)
-        and not isinstance(first, (str, bytes))
-        and not isinstance(second, (str, bytes))
+        and not isinstance(first, str)
+        and not isinstance(second, str)
     ):
         if len(first) != len(second):
             return False
@@ -120,8 +120,8 @@ def resolve_last(
     Returns:
         container_and_key (tuple[JSONObject, JSONString] | tuple[JSONArray, int | Literal["-"]]):
         A tuple `(container, key)` such that `container[key]` is the target of the path.
-        - When the container is a `Sequence`, the key will be a non-negative `int` or `Literal["-"]`.
-        - When the container is a `Mapping`, the key will be a string.
+        - When the container is a `MutableSequence`, the key will be a non-negative `int` or `Literal["-"]`.
+        - When the container is a `MutableMapping`, the key will be a string.
         - The target can be set or overwritten with `container[key] = value`.
         - The target can be removed with `del container[key]`.
         - The target can be accessed with `value = container[key]`.
@@ -148,7 +148,7 @@ def resolve_last(
 def resolve_last_mapping(
     doc: JSONValue, path: JSONPointer
 ) -> tuple[MutableMapping[str, JSONValue], str]:
-    """Confirms that `path`, a jsonpointer, leads to a JSON object (`Mapping`). Returns `(mapping, key)`."""
+    """Confirms that `path`, a jsonpointer, leads to a mutable JSON object. Returns `(mapping, key)`."""
     mapping, key = resolve_last(doc, path)
     if not isinstance(mapping, MutableMapping):
         raise PatchApplicationError(f"expected object at '{path}'")
@@ -158,7 +158,7 @@ def resolve_last_mapping(
 def resolve_last_sequence(
     doc: JSONValue, path: JSONPointer
 ) -> tuple[MutableSequence[JSONValue], int | Literal["-"]]:
-    """Confirms that `path`, a jsonpointer, leads to a JSON array (`Sequence`). Returns `(array, key)`."""
+    """Confirms that `path`, a jsonpointer, leads to a mutable JSON array. Returns `(array, key)`."""
     array, key = resolve_last(doc, path)
     if not isinstance(array, MutableSequence):
         raise PatchApplicationError(f"expected array at '{path}'")
@@ -216,6 +216,7 @@ def replace(
 ) -> JSONValue:
     if is_root(path):
         return value
+    # path must exist prior, and path cannot be something like "/foo/-"
     doc = remove(doc, path)
     return add(doc, path, value)
 
@@ -261,11 +262,11 @@ def copy(
     return add(doc, to_path, value)
 
 
-def test(doc: JSONValue, path: JSONPointer, value: JSONValue) -> JSONValue:
-    curr = get(doc, path)
-    if not are_equal(curr, value):
+def test(doc: JSONValue, path: JSONPointer, expected: JSONValue) -> JSONValue:
+    value = get(doc, path)
+    if not are_equal(value, expected):
         raise TestOpFailed(
-            f"test at path '{path}' failed, got {curr} but expected {value}"
+            f"test at path '{path}' failed, got {value} but expected {expected}"
         )
     return doc
 
