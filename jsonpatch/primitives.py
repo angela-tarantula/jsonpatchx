@@ -11,6 +11,7 @@ This is by design to minimize tight coupling and make it easy to provide custom 
 follow the two-function Protocol.
 """
 
+from collections.abc import Mapping, Sequence
 from copy import deepcopy
 from functools import lru_cache
 from typing import Literal, MutableMapping, MutableSequence
@@ -37,6 +38,68 @@ def cast_to_pointer(path: JSONPointer) -> JsonPointer:
         JsonPointerException
     ) as e:  # defensive - if user opts out of Pydantic pre-validation
         raise PatchApplicationError(f"expected '{path}' to be a jsonpointer") from e
+
+
+def are_equal(first: JSONValue, second: JSONValue) -> bool:
+    """
+    Compare two JSON-like values for semantic equality.
+
+    This function defines equality according to JSON rules rather than
+    Python's default equality semantics. In particular:
+
+    - Booleans are not considered equal to numbers (e.g., True != 1).
+    - Integers and floats are compared numerically (e.g., 1 == 1.0).
+    - Mappings (dict-like objects) are compared by keys and values,
+      regardless of their concrete class (e.g., dict vs OrderedDict).
+    - Sequences (list-like objects) are compared by order and contents,
+      regardless of their concrete class.
+    - Comparison is recursive for nested structures.
+
+    Args:
+        first (JSONValue): First JSON value
+        second (JSONValue): Second JSON value
+
+    Returns:
+        equality_result (bool): True if the two values are JSON-semantically equal, False otherwise.
+    """
+
+    # Reject mismatched types for JSON primitives
+    if isinstance(first, bool) or isinstance(second, bool):
+        # Make sure both are bool (avoid True == 1)
+        if type(first) is bool and type(second) is bool:
+            return first == second
+        return False
+
+    # Numbers: both must be int/float (but not bool)
+    if isinstance(first, (int, float)) and isinstance(second, (int, float)):
+        return float(first) == float(second)
+
+    # Strings and null
+    if isinstance(first, str) and isinstance(second, str):
+        return first == second
+    if first is None and second is None:
+        return True
+
+    # Mapping types (e.g., dict, defaultdict, custom dict-like)
+    if isinstance(first, Mapping) and isinstance(second, Mapping):
+        if set(first.keys()) != set(second.keys()):
+            return False
+        return all(
+            are_equal(first[k], second[k]) for k in first
+        )  # optimization: the DFS can be iterative to avoid stackoverflow
+
+    # Sequence types (e.g., list, deque, custom list-like) but not str/bytes
+    if (
+        isinstance(first, Sequence)
+        and isinstance(second, Sequence)
+        and not isinstance(first, (str, bytes))
+        and not isinstance(second, (str, bytes))
+    ):
+        if len(first) != len(second):
+            return False
+        return all(are_equal(a, b) for a, b in zip(first, second))
+
+    return False
 
 
 def resolve_last(
@@ -200,7 +263,7 @@ def copy(
 
 def test(doc: JSONValue, path: JSONPointer, value: JSONValue) -> JSONValue:
     curr = get(doc, path)
-    if curr != value:
+    if not are_equal(curr, value):
         raise TestOpFailed(
             f"test at path '{path}' failed, got {curr} but expected {value}"
         )
