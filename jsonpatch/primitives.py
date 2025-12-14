@@ -221,6 +221,17 @@ def resolve_last(
     return path_container, path_key  # type: ignore[return-value]
 
 
+def exists(doc: JSONValue, *paths: JSONPointer, mutable: bool = False) -> bool:
+    try:
+        for path in paths:
+            if not is_root(path):
+                resolve_last(doc, path, exists=True, mutable=mutable)
+    except PatchApplicationError:
+        return False
+    else:
+        return True
+
+
 def get(doc: JSONValue, path: JSONPointer) -> JSONValue:
     if is_root(path):
         return doc
@@ -228,7 +239,12 @@ def get(doc: JSONValue, path: JSONPointer) -> JSONValue:
     return container[key]  # type: ignore[index]
 
 
-def add(doc: JSONValue, path: JSONPointer, value: JSONValue) -> JSONValue:
+def add(
+    doc: JSONValue, path: JSONPointer, value: JSONValue, *, strict: bool = False
+) -> JSONValue:
+    if strict and exists(doc, path):
+        raise PatchApplicationError(f"target at '{path}' already exists")
+
     if is_root(path):
         return value
 
@@ -249,14 +265,16 @@ def remove(doc: JSONValue, path: JSONPointer, *, strict: bool = True) -> JSONVal
     if is_root(path):
         raise PatchApplicationError("cannot remove the root")
 
+    # case: target doesn't exist
     try:
         get(doc, path)
     except PatchApplicationError as e:
         if strict:
-            raise e  # path missing, give specific error
+            raise e
         else:
-            return doc  # path already missing
+            return doc
 
+    # case: target exists
     container, key = resolve_last(doc, path, exists=True, mutable=True)
     del container[key]  # type: ignore[arg-type]
     return doc
@@ -269,7 +287,6 @@ def replace(
 ) -> JSONValue:
     if is_root(path):
         return value
-    # path must exist prior, and path cannot be something like "/foo/-"
     doc = remove(doc, path)
     return add(doc, path, value)
 
