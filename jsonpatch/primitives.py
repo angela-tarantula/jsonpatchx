@@ -21,7 +21,7 @@ from jsonpointer import (  # type: ignore[import-untyped]
 )
 
 from jsonpatch.exceptions import PatchApplicationError, TestOpFailed
-from jsonpatch.types import JSONPointer, JSONValue
+from jsonpatch.types import JSONArray, JSONObject, JSONPointer, JSONString, JSONValue
 
 
 def is_root(path: JSONPointer) -> bool:
@@ -41,21 +41,22 @@ def cast_to_pointer(path: JSONPointer) -> JsonPointer:
 
 def resolve_last(
     doc: JSONValue, path: JSONPointer
-) -> (
-    tuple[MutableMapping[str, JSONValue], str]
-    | tuple[MutableSequence[JSONValue], int | Literal["-"]]
-):
+) -> tuple[JSONObject, JSONString] | tuple[JSONArray, int | Literal["-"]]:
     """
-    Return `(container, key)` such that `container[key]` is the target of the path.
+    Get `(container, key)` such that `container[key]` is the target of the path.
 
     Args:
         doc (JSONValue): A JSON document, assumed to be valid.
-        path (JsonPointerType): A jsonpointer, not assumed to be valid.
-                                May not point to root (nothing to resolve).
+        path (JSONPointer): A jsonpointer, not assumed to be valid.
+                                Must not point to root (nothing to resolve).
 
+    Raises:
+        PatchApplicationError: If `path` points to the root, or if the resolved `container`
+                                is neither `MutableMapping` nor `MutableSequence`.
 
     Returns:
-        `(container, key)`
+        container_and_key (tuple[JSONObject, JSONString] | tuple[JSONArray, int | Literal["-"]]):
+        A tuple `(container, key)` such that `container[key]` is the target of the path.
         - When the container is a `Sequence`, the index will be a non-negative `int` or `Literal["-"]`.
         - When the container is a `Mapping`, the index will be a string.
         - The target can be set or overwritten with `container[key] = value`.
@@ -69,6 +70,7 @@ def resolve_last(
 
     try:
         container, key = ptr.to_last(doc)
+        # A limitation of JsonPointer is accepting negative indices for JSON arrays. To enable this feature, custom JsonPointer is required.
     except JsonPointerException as e:
         raise PatchApplicationError(str(e)) from e
 
@@ -108,14 +110,8 @@ def get(doc: JSONValue, path: JSONPointer) -> JSONValue:
 
     try:
         return container[key]  # type: ignore[index]
-    except KeyError as e:
-        raise PatchApplicationError(
-            f"key '{key}' does not exist at location '{path}'"
-        ) from e
-    except IndexError as e:
-        raise PatchApplicationError(f"index '{key}' is out of range at '{path}'") from e
-    except TypeError as e:
-        raise PatchApplicationError("array cannot be accessed with '-' key") from e
+    except (KeyError, IndexError, TypeError) as e:
+        raise PatchApplicationError(f"target at '{path}' does not exist") from e
 
 
 def add(doc: JSONValue, path: JSONPointer, value: JSONValue) -> JSONValue:
@@ -129,23 +125,22 @@ def add(doc: JSONValue, path: JSONPointer, value: JSONValue) -> JSONValue:
     elif isinstance(container, MutableSequence):
         index = key if key != "-" else len(container)
         if index > len(container):  # type: ignore[operator]
-            raise PatchApplicationError("couldn't insert outside of list")
+            raise PatchApplicationError(f"target at '{path}' is out of range")
         container.insert(index, value)  # type: ignore[arg-type]
     return doc
 
 
-def remove(doc: JSONValue, path: JSONPointer) -> JSONValue:
+def remove(doc: JSONValue, path: JSONPointer, *, strict: bool = True) -> JSONValue:
     if is_root(path):
-        # Sensible default for deleting root. Users can always customize RemoveOperation to forbid deleting root.
-        # Reasoning: json.loads('null') is valid, json.loads('') is invalid. The former is empty JSON, latter is invalid.
-        return None
+        raise PatchApplicationError("cannot remove the root")
+
     try:
         get(doc, path)
     except PatchApplicationError as e:
-        raise PatchApplicationError(
-            f"the target location '{path}' does not exist and cannot be removed"
-        ) from e
-
+        if strict:
+            raise e  # path missing, give specific error
+        else:
+            return doc  # path already missing
     container, key = resolve_last(doc, path)
     del container[key]  # type: ignore[arg-type]
     return doc
@@ -156,12 +151,9 @@ def replace(
     path: JSONPointer,
     value: JSONValue,
 ) -> JSONValue:
-    try:
-        doc = remove(doc, path)
-    except PatchApplicationError as e:
-        raise PatchApplicationError(
-            f"the target location '{path}' does not exist and cannot be replaced"
-        ) from e
+    if is_root(path):
+        return value
+    doc = remove(doc, path)
     return add(doc, path, value)
 
 
@@ -169,33 +161,23 @@ def move(
     doc: JSONValue,
     from_path: JSONPointer,
     to_path: JSONPointer,
-    *,
-    forbid_nested: bool = True,
 ) -> JSONValue:
     from_ptr, to_ptr = (
         cast_to_pointer(from_path),
         cast_to_pointer(to_path),
     )  # catch pointer errors early
-    if is_root(to_path):
-        return get(doc, from_path)  # replace root
     if from_path == to_path:
         return doc  # no-op
+    if is_root(to_path):
+        return get(doc, from_path)  # replace root
 
     # check if this is a nested move
-    is_nested: bool = is_root(from_path) or to_ptr.contains(
-        from_ptr
-    )  # there is a bug in JsonPointer where no pointer contains the root pointer
+    if (
+        is_root(from_path) or to_ptr.contains(from_ptr)
+    ):  # there is a bug in JsonPointer where no pointer is considered to 'contain' the root pointer, so must separately check if from_path is root
+        raise PatchApplicationError(f"path '{to_path}' cannot contain '{from_path}'")
 
     value = get(doc, from_path)
-    if is_nested:
-        if forbid_nested:
-            raise PatchApplicationError(
-                f"the 'from' location '{from_path}' is a proper prefix of the 'path' location '{to_path}', "
-                f"but a location cannot be moved into one of its children"
-            )
-        else:
-            value = deepcopy(value)
-
     doc = remove(doc, from_path)
     return add(doc, to_path, value)
 
@@ -209,6 +191,8 @@ def copy(
         cast_to_pointer(from_path),
         cast_to_pointer(to_path),
     )  # catch pointer errors early
+    if from_path == to_path:
+        return doc  # no-op
     value = get(doc, from_path)
     value = deepcopy(value)
     return add(doc, to_path, value)
@@ -221,3 +205,31 @@ def test(doc: JSONValue, path: JSONPointer, value: JSONValue) -> JSONValue:
             f"test at path '{path}' failed, got {curr} but expected {value}"
         )
     return doc
+
+
+def swap(
+    doc: JSONValue, first_path: JSONPointer, second_path: JSONPointer
+) -> JSONValue:
+    first_ptr, second_ptr = (
+        cast_to_pointer(first_path),
+        cast_to_pointer(second_path),
+    )  # catch pointer errors early
+    if first_path == second_path:
+        return doc  # no-op
+    if is_root(first_path):
+        return get(doc, second_path)
+    if is_root(second_path):
+        return get(doc, first_path)
+
+    # check if this is a nested swap
+    if second_ptr.contains(first_ptr) or first_ptr.contains(second_ptr):
+        parent, child = (
+            (first_path, second_path)
+            if second_ptr.contains(first_ptr)
+            else (second_path, first_path)
+        )
+        raise PatchApplicationError(f"path '{parent}' cannot contain '{child}'")
+
+    first_path_value = get(doc, first_path)
+    doc = move(doc, second_path, first_path)
+    return add(doc, second_path, first_path_value)

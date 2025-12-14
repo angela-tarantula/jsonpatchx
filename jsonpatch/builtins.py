@@ -19,7 +19,7 @@ class AddOp(OperationSchema):
 
 class RemoveOp(OperationSchema):
     op: Literal["remove"] = "remove"
-    path: JSONPointer
+    path: JSONPointer = Field(min_length=1)
 
     @override
     def apply(self, doc: JSONValue) -> JSONValue:
