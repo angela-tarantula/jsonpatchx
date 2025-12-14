@@ -179,6 +179,13 @@ def get(doc: JSONValue, path: JSONPointer) -> JSONValue:
         raise PatchApplicationError(f"target at '{path}' does not exist") from e
 
 
+def check_paths(doc: JSONValue, *paths: JSONPointer, mutable: bool = True) -> None:
+    for path in paths:
+        get(doc, path)  # raises error if path is immutable
+        if mutable:
+            validate_mutability(doc, path)
+
+
 def add(doc: JSONValue, path: JSONPointer, value: JSONValue) -> JSONValue:
     if is_root(path):
         return value
