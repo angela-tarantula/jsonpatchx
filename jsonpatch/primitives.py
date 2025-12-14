@@ -57,13 +57,13 @@ def resolve_last(
     Returns:
         container_and_key (tuple[JSONObject, JSONString] | tuple[JSONArray, int | Literal["-"]]):
         A tuple `(container, key)` such that `container[key]` is the target of the path.
-        - When the container is a `Sequence`, the index will be a non-negative `int` or `Literal["-"]`.
-        - When the container is a `Mapping`, the index will be a string.
+        - When the container is a `Sequence`, the key will be a non-negative `int` or `Literal["-"]`.
+        - When the container is a `Mapping`, the key will be a string.
         - The target can be set or overwritten with `container[key] = value`.
         - The target can be removed with `del container[key]`.
         - The target can be accessed with `value = container[key]`.
-        - But the key is not guaranteed to a valid index/key of the container.
-        - If the key is invalid, trying `container[key]` will raise `KeyError` or `TypeError`.
+        - The key is not guaranteed to a valid for the container.
+        - If the key is invalid, accessing `container[key]` may raise `KeyError`, `IndexError`, or `TypeError`.
     """
     assert not is_root(path), "tried to resolve a path to last, but got root"
     ptr = cast_to_pointer(path)
