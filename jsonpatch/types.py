@@ -111,7 +111,7 @@ class PydanticJsonValueValidator:
     @classmethod
     def _validate(cls, v: object) -> object:
         try:
-            json.dumps(v)
+            json.dumps(v, allow_nan=False) # TODO: use orjson! it turns out {4:4, "4":4} can dump to '{"4": 4, "4": 3}'
         except (TypeError, ValueError) as e:
             raise InvalidOperationSchema(
                 f"Value is not JSON-serializable: {v!r}"
