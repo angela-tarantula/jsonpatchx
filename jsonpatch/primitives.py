@@ -139,15 +139,17 @@ def resolve_last(
 
     if not isinstance(container, (MutableMapping, MutableSequence)):
         raise PatchApplicationError(
-            f"container at '{path}' is neither MutableMapping nor MutableSequence"
+            f"container of '{path}' is neither MutableMapping nor MutableSequence"
         )
 
     return container, key  # type: ignore[return-value]
 
 
-def resolve_last_mapping(
-    doc: JSONValue, path: JSONPointer
-) -> tuple[MutableMapping[str, JSONValue], str]:
+def validate_mutability(doc: JSONValue, path: JSONPointer) -> None:
+    resolve_last(doc, path)  # raises error if path is immutable
+
+
+def resolve_last_mapping(doc: JSONValue, path: JSONPointer) -> tuple[JSONObject, str]:
     """Confirms that `path`, a jsonpointer, leads to a mutable JSON object. Returns `(mapping, key)`."""
     mapping, key = resolve_last(doc, path)
     if not isinstance(mapping, MutableMapping):
@@ -157,7 +159,7 @@ def resolve_last_mapping(
 
 def resolve_last_sequence(
     doc: JSONValue, path: JSONPointer
-) -> tuple[MutableSequence[JSONValue], int | Literal["-"]]:
+) -> tuple[JSONArray, int | Literal["-"]]:
     """Confirms that `path`, a jsonpointer, leads to a mutable JSON array. Returns `(array, key)`."""
     array, key = resolve_last(doc, path)
     if not isinstance(array, MutableSequence):
@@ -230,6 +232,8 @@ def move(
         cast_to_pointer(from_path),
         cast_to_pointer(to_path),
     )  # catch pointer errors early
+    validate_mutability(doc, from_path)  # manually trigger mutability error earlier
+    validate_mutability(doc, to_path)
     if from_path == to_path:
         return doc  # no-op
     if is_root(to_path):
@@ -255,6 +259,8 @@ def copy(
         cast_to_pointer(from_path),
         cast_to_pointer(to_path),
     )  # catch pointer errors early
+    validate_mutability(doc, from_path)
+    validate_mutability(doc, to_path)
     if from_path == to_path:
         return doc  # no-op
     value = get(doc, from_path)
@@ -278,6 +284,8 @@ def swap(
         cast_to_pointer(first_path),
         cast_to_pointer(second_path),
     )  # catch pointer errors early
+    validate_mutability(doc, first_path)
+    validate_mutability(doc, second_path)
     if first_path == second_path:
         return doc  # no-op
     if is_root(first_path):
