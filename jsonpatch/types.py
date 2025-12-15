@@ -127,13 +127,14 @@ type JSONPointer = Annotated[str, PydanticJsonPointerValidator]
 type JSONText = Annotated[str | bytes | bytearray, PydanticJsonTextValidator]
 
 type JSONBoolean = bool
+type JSONNumber = int | float  # TODO: make validator so Pydantic coerces to float
 type JSONString = str
 type JSONNull = None
-type JSONNumber = int | float
+type JSONPrimitive = JSONBoolean | JSONNumber | JSONString | JSONNull
+
 type JSONArray = MutableSequence[JSONValue]
 type JSONObject = MutableMapping[str, JSONValue]
 
 type JSONValue = Annotated[
-    JSONBoolean | JSONNumber | JSONString | JSONNull | JSONArray | JSONObject,
-    PydanticJsonValueValidator,
+    JSONPrimitive | JSONArray | JSONObject, PydanticJsonValueValidator
 ]
