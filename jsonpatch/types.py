@@ -15,7 +15,7 @@ from jsonpatch.exceptions import InvalidOperationSchema
 
 
 class PydanticJsonPointerValidator:
-    """Pydantic-aware wrapper for jsonpointers."""
+    """Pydantic-aware wrapper for JSON Pointers."""
 
     @classmethod
     def __get_pydantic_core_schema__(
@@ -33,7 +33,7 @@ class PydanticJsonPointerValidator:
         core_schema: core_schema.CoreSchema,
         handler: GetJsonSchemaHandler,
     ) -> dict[str, object]:
-        """Expose JSONPointer as a string with a 'json-pointer' format hint."""
+        """Expose JSON Pointer as a string with a 'json-pointer' format hint."""
         json_schema = handler(core_schema)
         json_schema.update({"format": "json-pointer"})
         return json_schema
@@ -48,7 +48,7 @@ class PydanticJsonPointerValidator:
 
 
 class PydanticJsonTextValidator:
-    """A Pydantic-aware wrapper for JSON-formatted text."""
+    """Pydantic-aware wrapper for JSON-formatted text."""
 
     @classmethod
     def __get_pydantic_core_schema__(
@@ -69,7 +69,7 @@ class PydanticJsonTextValidator:
         core_schema: core_schema.CoreSchema,
         handler: GetJsonSchemaHandler,
     ) -> dict[str, object]:
-        """Expose JSONText as a string with a 'json' format hint."""
+        """Expose JSON text as a string with a 'json' format hint."""
         json_schema = handler(core_schema)
         # OpenAPI can't really express bytes/bytearray here, so describe the most common representation
         json_schema.update({"type": "string", "format": "json"})
@@ -85,7 +85,7 @@ class PydanticJsonTextValidator:
 
 
 class PydanticJsonValueValidator:
-    """A Pydantic-aware wrapper for any JSON-serializable value."""
+    """Pydantic-aware wrapper for any JSON-serializable value."""
 
     @classmethod
     def __get_pydantic_core_schema__(
@@ -93,7 +93,7 @@ class PydanticJsonValueValidator:
         source_type: type[Any],
         handler: GetCoreSchemaHandler,
     ) -> core_schema.CoreSchema:
-        # Use a very permissive schema at the core level and let the validator enforce JSON-serializability
+        # Use a permissive schema and let the validator enforce JSON-serializability
         return core_schema.no_info_after_validator_function(
             cls._validate,
             core_schema.any_schema(),
@@ -111,10 +111,9 @@ class PydanticJsonValueValidator:
 
     @classmethod
     def _validate(cls, v: object) -> object:
+        # Forbid NaN because it's not valid JSON
         try:
-            json.dumps(
-                v, allow_nan=False
-            )  # TODO: use orjson! it turns out {4:4, "4":4} can dump to '{"4": 4, "4": 3}'
+            json.dumps(v, allow_nan=False)  # TODO: use orjson? it turns out {"4":4, 4:3} can dump to '{"4": 4, "4": 3}'
         except (TypeError, ValueError) as e:
             raise InvalidOperationSchema(
                 f"Value is not JSON-serializable: {v!r}"
@@ -122,13 +121,13 @@ class PydanticJsonValueValidator:
         return v
 
 
-# Core types
+# Core JSON type aliases
 
 type JSONPointer = Annotated[str, PydanticJsonPointerValidator]
 type JSONText = Annotated[str | bytes | bytearray, PydanticJsonTextValidator]
 
 type JSONBoolean = bool
-type JSONNumber = int | float  # TODO: make validator so Pydantic coerces to float
+type JSONNumber = int | float
 type JSONString = str
 type JSONNull = None
 type JSONPrimitive = JSONBoolean | JSONNumber | JSONString | JSONNull
