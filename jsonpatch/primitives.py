@@ -1,22 +1,46 @@
 """
-Primitive helper functions for defining custom `apply()` in OperationSchemas`. They all assume `doc` is valid JSON-serializable.
+Primitive helper functions for defining custom `apply()` methods on `OperationSchema`
+implementations.
 
-Mypy is not yet advanced enough to narrow the union of tuples: https://github.com/python/mypy/issues/9791.
-For example, when `resolve_last` returns a `(container, key)` in which `container` is a `MutableMapping`, mypy is
-unable to deduce that `key` must be a `str`. Most `type: ignore` are workarounds for this false-positive.
-I did not want to litter the implementations with `typing.cast` calls. Hopefully that issue gets fixed.
+These helpers centralize the tricky, low-level JSON Pointer and container manipulation
+logic so that custom operations can be implemented declaratively in terms of:
 
-The only JsonPointer operations this library depends on are JsonPointer.to_last() and JsonPointer.contains().
-This is by design to minimize tight coupling and make it easy to provide custom jsonpointer classes that
-follow the two-function Protocol.
+    - "get the value at this JSON Pointer"
+    - "add/replace/remove at this JSON Pointer"
+    - "move/copy between JSON Pointers"
+    - "transform the value at this JSON Pointer"
 
-# A limitation of JsonPointer is accepting negative indices for JSON arrays. To enable this feature, custom JsonPointer is required.
+
+Type-checker note
+-----------------
+Mypy is not yet advanced enough to narrow the union of tuples returned by
+`resolve_last()`: https://github.com/python/mypy/issues/9791. For example, when
+`resolve_last()` returns a `(container, key)` pair where `container` is a
+`MutableMapping`, mypy cannot infer that `key` must be a `str`. Most of the
+`type: ignore` comments in this module are workarounds for that false positive.
+They avoid littering the implementation with `typing.cast` calls.
+
+
+JsonPointer dependency
+----------------------
+The only `JsonPointer` operations this library relies on are:
+
+    - `JsonPointer.to_last(doc)`  → `(container, key)`
+    - `JsonPointer.contains(other_pointer)` → bool
+
+This is deliberate: it minimizes tight coupling to any particular `jsonpointer`
+implementation and makes it easy to support custom pointer classes that satisfy
+a simple two-method protocol.
+
+Also: one limitation of JsonPointer is that it's not able to accept negative indices
+for JSON arrays. To enable this feature, upstream changes to JsonPointer would be
+required.
 """
 
 from collections.abc import Mapping, MutableMapping, MutableSequence, Sequence
 from copy import deepcopy
 from functools import lru_cache
-from typing import Literal, overload
+from typing import Callable, Literal, TypeVar, overload
 
 from jsonpointer import (  # type: ignore[import-untyped]
     JsonPointer,
@@ -32,6 +56,8 @@ from jsonpatch.types import (
     MutableJSONArray,
     MutableJSONObject,
 )
+
+# NOTE: All of these primitives do rely on one thing: that `doc` is a valid JSON-serializable python object
 
 
 def are_equal(
@@ -410,3 +436,27 @@ def swap(
     first_path_value = get(doc, first_path)
     doc_intermediate = move(doc, second_path, first_path)
     return add(doc_intermediate, second_path, first_path_value)
+
+
+T = TypeVar("T")
+
+
+def transform(
+    doc: JSONValue,
+    path: JSONPointer,
+    func: Callable[[T], T],
+    *,
+    expect_type: type[T] | tuple[type, ...] | None = None,
+) -> JSONValue:
+    """
+    Read the value at `path`, optionally assert it has a type, apply func, and write it back.
+    """
+    value = get(doc, path)
+
+    if expect_type is not None and not isinstance(value, expect_type):
+        raise PatchApplicationError(
+            f"expected {expect_type} at '{path}', got {type(value)}"
+        )
+
+    new_value = func(value)  # type: ignore[arg-type]
+    return replace(doc, path, new_value)
