@@ -113,7 +113,9 @@ class PydanticJsonValueValidator:
     def _validate(cls, v: object) -> object:
         # Forbid NaN because it's not valid JSON
         try:
-            json.dumps(v, allow_nan=False)  # TODO: use orjson? it turns out {"4":4, 4:3} can dump to '{"4": 4, "4": 3}'
+            json.dumps(
+                v, allow_nan=False
+            )  # TODO: use orjson? it turns out {"4":4, 4:3} can dump to '{"4": 4, "4": 3}'
         except (TypeError, ValueError) as e:
             raise InvalidOperationSchema(
                 f"Value is not JSON-serializable: {v!r}"
@@ -127,7 +129,7 @@ type JSONPointer = Annotated[str, PydanticJsonPointerValidator]
 type JSONText = Annotated[str | bytes | bytearray, PydanticJsonTextValidator]
 
 type JSONBoolean = bool
-type JSONNumber = int | float
+type JSONNumber = int | float  # TODO: don't let pydantic coerce bool to int
 type JSONString = str
 type JSONNull = None
 type JSONPrimitive = JSONBoolean | JSONNumber | JSONString | JSONNull
