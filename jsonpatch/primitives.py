@@ -9,6 +9,8 @@ I did not want to litter the implementations with `typing.cast` calls. Hopefully
 The only JsonPointer operations this library depends on are JsonPointer.to_last() and JsonPointer.contains().
 This is by design to minimize tight coupling and make it easy to provide custom jsonpointer classes that
 follow the two-function Protocol.
+
+# A limitation of JsonPointer is accepting negative indices for JSON arrays. To enable this feature, custom JsonPointer is required.
 """
 
 from collections.abc import Mapping, MutableMapping, MutableSequence, Sequence
@@ -108,7 +110,7 @@ def resolve_last(
     path: JSONPointer,
     *,
     exists: Literal[False],
-    mutable: bool,
+    mutable: bool | None = None,
     container: Literal["object", "array"] | None = None,
 ) -> tuple[JSONObject, str] | tuple[JSONArray, int | Literal["-"]]: ...
 
@@ -119,7 +121,7 @@ def resolve_last(
     path: JSONPointer,
     *,
     exists: Literal[True],
-    mutable: bool,
+    mutable: bool | None = None,
     container: Literal["object", "array"] | None = None,
 ) -> tuple[JSONObject, str] | tuple[JSONArray, int]: ...
 
@@ -129,14 +131,14 @@ def resolve_last(
     path: JSONPointer,
     *,
     exists: bool,
-    mutable: bool,
+    mutable: bool | None = None,
     container: Literal["object", "array"] | None = None,
 ) -> tuple[JSONObject, str] | tuple[JSONArray, int | Literal["-"]]:
     """
     Resolve a JSON Pointer to its parent container and final token.
 
     This function resolves `path` against `doc` and returns `(container, key)` such that
-    `container[key]` refers to the value designated by `path` (i.e., `path's` *target*).
+    `container[key]` refers to the value designated by `path` (i.e., the `path`'s *target*).
 
     - The target can be accessed with `value = container[key]`.
     - The target can be set or overwritten with `container[key] = value`.
@@ -152,27 +154,28 @@ def resolve_last(
     Keyword-only parameters
     -----------------------
     exists:
-        If True, require that the target already exists (or else raise `PatchApplicationError`):
+        If True, raise `PatchApplicationError` if the target does not exist:
         - for objects: `key` must be present
         - for arrays: `key` must be an in-bounds index (and must not be "-")
     mutable:
-        Controls the accepted mutability of the resolved container:
-        - True  -> container must be mutable (either MutableMapping or MutableSequence)
-        - False -> container may be immutable (either Mapping or Sequence)
+        Controls the required mutability of the resolved container:
+        - True  -> container must be mutable
+        - False -> container must be immutable
+        - None (default) -> neither is enforced
     container:
         Optionally constrain the expected container type:
-        - "object" -> Mapping
-        - "array"  -> Sequence
-        - None     -> either Mapping or Sequence
+        - "object" -> JSONObject only
+        - "array"  -> JSONArray only
+        - None (default) -> neither is enforced
 
     Returns
     -------
     (container, key):
         A tuple consisting of:
-        - `container`: the resolved parent container (mapping or sequence)
+        - `container`: the resolved parent container (JSONObject or JSONArray)
         - `key`: the final token of the pointer
-            * mapping key: `str`
-            * array index: `int` (non-negative) or `"-"`. If `exists=True`,
+            * JSONObject key: `str`
+            * JSONArray index: `int` (non-negative) or `"-"`. If `exists=True`,
                             it will always be a non-negative `int` within bounds.
 
         Notes:
@@ -185,29 +188,50 @@ def resolve_last(
         - if `path` points to the root
         - if `path` cannot be resolved
         - if `exists=True` and the target does not exist
-        - if `container="mapping"` but the container is not a JSONObject
+        - if `container="object"` but the container is not a JSONObject
         - if `container="array"` but the container is not a JSONArray
-        - if `mutability=True` but the container is not mutable
+        - if `mutable=True` but the container is not mutable
+        - if `mutable=False` but the container is mutable
     """
-    assert not is_root(path), "tried to resolve a path to last, but got root"
+    if is_root(path):
+        raise PatchApplicationError("tried to resolve a path to last, but got root")
+
     ptr = cast_to_pointer(path)
 
     try:
         path_container, path_key = ptr.to_last(doc)
-        # A limitation of JsonPointer is accepting negative indices for JSON arrays. To enable this feature, custom JsonPointer is required.
+        assert isinstance(path_container, (Mapping, Sequence)), (
+            "JsonPointer implementation changed"
+        )
     except JsonPointerException as e:
         raise PatchApplicationError(f"unable to resolve path '{path}': {e}") from e
 
-    EXPECTED = {
-        (True, "object"): MutableMapping,
-        (False, "object"): Mapping,
-        (True, "array"): MutableSequence,
-        (False, "array"): Sequence,
-        (True, None): (MutableMapping, MutableSequence),
-        (False, None): (Mapping, Sequence),
-    }
-    assert isinstance(path_container, EXPECTED[(mutable, container)])  # type: ignore[arg-type]
+    # container check
+    container_type = type(path_container).__name__
+    if container == "object":
+        if not isinstance(path_container, Mapping):
+            raise PatchApplicationError(
+                f"expected object container at '{path}', got {container_type}"
+            )
+    elif container == "array":
+        if not isinstance(path_container, Sequence):
+            raise PatchApplicationError(
+                f"expected array container at '{path}', got {container_type}"
+            )
 
+    # mutability check
+    if mutable is not None:
+        is_mutable = isinstance(path_container, (MutableMapping, MutableSequence))
+        if is_mutable is not mutable:
+            if mutable:
+                raise PatchApplicationError(
+                    f"expected mutable container at '{path}', got {container_type}"
+                )
+            raise PatchApplicationError(
+                f"expected immutable container at '{path}', got {container_type}"
+            )
+
+    # existence check
     if exists:
         try:
             path_container[path_key]
@@ -224,10 +248,12 @@ def resolve_last(
 def assert_valid(doc: JSONValue, *paths: JSONPointer) -> None:
     for path in paths:
         if not is_root(path):
-            resolve_last(doc, path, exists=False, mutable=False)
+            resolve_last(doc, path, exists=False)
 
 
-def assert_exists(doc: JSONValue, *paths: JSONPointer, mutable: bool = False) -> None:
+def assert_exists(
+    doc: JSONValue, *paths: JSONPointer, mutable: bool | None = None
+) -> None:
     for path in paths:
         if not is_root(path):
             resolve_last(doc, path, exists=True, mutable=mutable)
@@ -246,7 +272,7 @@ def is_parent_path(*, parent_path: JSONPointer, child_path: JSONPointer) -> bool
 def get(doc: JSONValue, path: JSONPointer) -> JSONValue:
     if is_root(path):
         return doc
-    container, key = resolve_last(doc, path, exists=True, mutable=False)
+    container, key = resolve_last(doc, path, exists=True)
     return container[key]  # type: ignore[index] # mypy is not advanced enough to narrow tuples
 
 
@@ -305,9 +331,7 @@ def move(
             f"path '{from_path}' cannot be moved into its child path '{to_path}'"
         )
 
-    assert_exists(
-        doc, from_path, to_path, mutable=True
-    )  # now we need to make sure it's mutable
+    assert_exists(doc, from_path, to_path, mutable=True)
     value = get(doc, from_path)
     doc = remove(doc, from_path)
     return add(doc, to_path, value)
