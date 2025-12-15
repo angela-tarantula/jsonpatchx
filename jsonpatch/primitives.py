@@ -1,5 +1,5 @@
 """
-Primitive helper functions for defining custom `apply()` in OperationSchemas.`
+Primitive helper functions for defining custom `apply()` in OperationSchemas`. They all assume `doc` is valid JSON-serializable.
 
 Mypy is not yet advanced enough to narrow the union of tuples: https://github.com/python/mypy/issues/9791.
 For example, when `resolve_last` returns a `(container, key)` in which `container` is a `MutableMapping`, mypy is
@@ -68,7 +68,7 @@ def are_equal(
 
     # Numbers: both must be int/float (but not bool)
     if isinstance(first, (int, float)) and isinstance(second, (int, float)):
-        return float(first) == float(second)
+        return float(first) == float(second)  # TODO: avoid lossy conversion
 
     # Strings and null
     if isinstance(first, str) and isinstance(second, str):
@@ -174,7 +174,7 @@ def resolve_last(
     - The target can be accessed with `value = container[key]`.
     - The target can be set or overwritten with `container[key] = value`.
     - The target can be removed with `del container[key]`.
-    - If target does not exist, acccessing `container[key]` will raise `KeyError`, `IndexError`, or `TypeError`
+    - If target does not exist, accessing `container[key]` will raise `KeyError`, `IndexError`, or `TypeError`
 
     Parameters
     ----------
@@ -186,7 +186,7 @@ def resolve_last(
     Keyword-only parameters
     -----------------------
     exists:
-        Requires the target to exist or not (for JSONObject: if `key` is present; for arrays: if `key` is an in-bounds index and not "-"):
+        Requires the target to exist or not (for JSONObject: if `key` is present; for arrays: if `key` is valid index):
         - True  -> target must exist
         - False -> target must not exist
         - None (default) -> neither is enforced
@@ -231,8 +231,8 @@ def resolve_last(
     try:
         path_container, path_key = ptr.to_last(doc)
         assert isinstance(path_container, (Mapping, Sequence)) and not isinstance(
-            path_container, (str, bytes)
-        ), "JsonPointer implementation changed"
+            path_container, (str, bytes, bytearray)
+        ), "JsonPointer implementation changed"  # TODO: confirm this
     except JsonPointerException as e:
         raise PatchApplicationError(f"unable to resolve path '{path}': {e}") from e
 
