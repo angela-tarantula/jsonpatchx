@@ -24,10 +24,19 @@ from jsonpointer import (  # type: ignore[import-untyped]
 )
 
 from jsonpatch.exceptions import PatchApplicationError, TestOpFailed
-from jsonpatch.types import JSONArray, JSONObject, JSONPointer, JSONValue
+from jsonpatch.types import (
+    JSONArray,
+    JSONObject,
+    JSONPointer,
+    JSONValue,
+    MutableJSONArray,
+    MutableJSONObject,
+)
 
 
-def are_equal(first: JSONValue, second: JSONValue) -> bool:
+def are_equal(
+    first: JSONValue, second: JSONValue
+) -> bool:  # TODO: just use orjson and compare strings?
     """
     Compare two JSON-like values for semantic equality.
 
@@ -109,10 +118,21 @@ def resolve_last(
     doc: JSONValue,
     path: JSONPointer,
     *,
-    exists: Literal[False],
-    mutable: bool | None = None,
+    exists: Literal[True],
+    mutable: Literal[True],
     container: Literal["object", "array"] | None = None,
-) -> tuple[JSONObject, str] | tuple[JSONArray, int | Literal["-"]]: ...
+) -> tuple[MutableJSONObject, str] | tuple[MutableJSONArray, int]: ...
+
+
+@overload
+def resolve_last(
+    doc: JSONValue,
+    path: JSONPointer,
+    *,
+    exists: Literal[False] | None = None,
+    mutable: Literal[True],
+    container: Literal["object", "array"] | None = None,
+) -> tuple[MutableJSONObject, str] | tuple[MutableJSONArray, int | Literal["-"]]: ...
 
 
 @overload
@@ -126,11 +146,22 @@ def resolve_last(
 ) -> tuple[JSONObject, str] | tuple[JSONArray, int]: ...
 
 
+@overload
 def resolve_last(
     doc: JSONValue,
     path: JSONPointer,
     *,
-    exists: bool,
+    exists: bool | None = None,
+    mutable: bool | None = None,
+    container: Literal["object", "array"] | None = None,
+) -> tuple[JSONObject, str] | tuple[JSONArray, int | Literal["-"]]: ...
+
+
+def resolve_last(
+    doc: JSONValue,
+    path: JSONPointer,
+    *,
+    exists: bool | None = None,
     mutable: bool | None = None,
     container: Literal["object", "array"] | None = None,
 ) -> tuple[JSONObject, str] | tuple[JSONArray, int | Literal["-"]]:
@@ -143,6 +174,7 @@ def resolve_last(
     - The target can be accessed with `value = container[key]`.
     - The target can be set or overwritten with `container[key] = value`.
     - The target can be removed with `del container[key]`.
+    - If target does not exist, acccessing `container[key]` will raise `KeyError`, `IndexError`, or `TypeError`
 
     Parameters
     ----------
@@ -154,9 +186,10 @@ def resolve_last(
     Keyword-only parameters
     -----------------------
     exists:
-        If True, raise `PatchApplicationError` if the target does not exist:
-        - for objects: `key` must be present
-        - for arrays: `key` must be an in-bounds index (and must not be "-")
+        Requires the target to exist or not (for JSONObject: if `key` is present; for arrays: if `key` is an in-bounds index and not "-"):
+        - True  -> target must exist
+        - False -> target must not exist
+        - None (default) -> neither is enforced
     mutable:
         Controls the required mutability of the resolved container:
         - True  -> container must be mutable
@@ -178,16 +211,13 @@ def resolve_last(
             * JSONArray index: `int` (non-negative) or `"-"`. If `exists=True`,
                             it will always be a non-negative `int` within bounds.
 
-        Notes:
-        - The `key` is not guaranteed to be valid when `exists=False`; attempting
-          `container[key]` may raise `KeyError`, `IndexError`, or `TypeError`.
-
     Raises
     ------
     PatchApplicationError:
         - if `path` points to the root
-        - if `path` cannot be resolved
+        - if `path` on `doc` cannot be resolved
         - if `exists=True` and the target does not exist
+        - if `exists=False` and the target does exist
         - if `container="object"` but the container is not a JSONObject
         - if `container="array"` but the container is not a JSONArray
         - if `mutable=True` but the container is not mutable
@@ -200,23 +230,22 @@ def resolve_last(
 
     try:
         path_container, path_key = ptr.to_last(doc)
-        assert isinstance(path_container, (Mapping, Sequence)), (
-            "JsonPointer implementation changed"
-        )
+        assert isinstance(path_container, (Mapping, Sequence)) and not isinstance(
+            path_container, (str, bytes)
+        ), "JsonPointer implementation changed"
     except JsonPointerException as e:
         raise PatchApplicationError(f"unable to resolve path '{path}': {e}") from e
 
     # container check
-    container_type = type(path_container).__name__
     if container == "object":
         if not isinstance(path_container, Mapping):
             raise PatchApplicationError(
-                f"expected object container at '{path}', got {container_type}"
+                f"expected object container at '{path}', got {type(path_container)!r}"
             )
     elif container == "array":
         if not isinstance(path_container, Sequence):
             raise PatchApplicationError(
-                f"expected array container at '{path}', got {container_type}"
+                f"expected array container at '{path}', got {type(path_container)!r}"
             )
 
     # mutability check
@@ -225,22 +254,22 @@ def resolve_last(
         if is_mutable is not mutable:
             if mutable:
                 raise PatchApplicationError(
-                    f"expected mutable container at '{path}', got {container_type}"
+                    f"expected mutable container at '{path}', got {type(path_container)!r}"
                 )
             raise PatchApplicationError(
-                f"expected immutable container at '{path}', got {container_type}"
+                f"expected immutable container at '{path}', got {type(path_container)!r}"
             )
 
     # existence check
-    if exists:
-        try:
-            path_container[path_key]
-        except (
-            KeyError,
-            IndexError,
-            TypeError,
-        ) as e:  # missing key, index out of bounds, or using "-" on array
+    try:
+        path_container[path_key]
+    except (KeyError, IndexError, TypeError) as e:
+        # missing key, index out of bounds, or using "-" on array
+        if exists:
             raise PatchApplicationError(f"target at '{path}' does not exist") from e
+    else:
+        if exists is False:
+            raise PatchApplicationError(f"target at '{path}' exists")
 
     return path_container, path_key
 
@@ -248,15 +277,18 @@ def resolve_last(
 def assert_valid(doc: JSONValue, *paths: JSONPointer) -> None:
     for path in paths:
         if not is_root(path):
-            resolve_last(doc, path, exists=False)
+            resolve_last(doc, path)
 
 
-def assert_exists(
-    doc: JSONValue, *paths: JSONPointer, mutable: bool | None = None
+def assert_targets(
+    doc: JSONValue,
+    *paths: JSONPointer,
+    exists: bool | None = None,
+    mutable: bool | None = None,
 ) -> None:
     for path in paths:
         if not is_root(path):
-            resolve_last(doc, path, exists=True, mutable=mutable)
+            resolve_last(doc, path, exists=exists, mutable=mutable)
 
 
 def is_parent_path(*, parent_path: JSONPointer, child_path: JSONPointer) -> bool:
@@ -280,7 +312,7 @@ def add(doc: JSONValue, path: JSONPointer, value: JSONValue) -> JSONValue:
     if is_root(path):
         return value  # replace root
 
-    container, key = resolve_last(doc, path, exists=False, mutable=True)
+    container, key = resolve_last(doc, path, mutable=True)
 
     if isinstance(container, MutableMapping):
         container[key] = value  # type: ignore[index] # mypy is not advanced enough to narrow tuples
@@ -310,8 +342,8 @@ def replace(
 ) -> JSONValue:
     if is_root(path):
         return value  # replace root
-    doc = remove(doc, path)
-    return add(doc, path, value)
+    doc_intermediate = remove(doc, path)
+    return add(doc_intermediate, path, value)
 
 
 def move(
@@ -319,7 +351,7 @@ def move(
     from_path: JSONPointer,
     to_path: JSONPointer,
 ) -> JSONValue:
-    assert_exists(doc, from_path, to_path)
+    assert_targets(doc, from_path, exists=True, mutable=True)
     if from_path == to_path:
         return doc  # no-op
     if is_root(to_path):
@@ -331,10 +363,9 @@ def move(
             f"path '{from_path}' cannot be moved into its child path '{to_path}'"
         )
 
-    assert_exists(doc, from_path, to_path, mutable=True)
     value = get(doc, from_path)
-    doc = remove(doc, from_path)
-    return add(doc, to_path, value)
+    doc_intermediate = remove(doc, from_path)
+    return add(doc_intermediate, to_path, value)
 
 
 def copy(
@@ -342,17 +373,11 @@ def copy(
     from_path: JSONPointer,
     to_path: JSONPointer,
 ) -> JSONValue:
-    _, __ = (
-        cast_to_pointer(from_path),
-        cast_to_pointer(to_path),
-    )  # catch pointer errors early
-    # validate_mutability(doc, from_path)
-    # validate_mutability(doc, to_path)
+    value = get(doc, from_path)
     if from_path == to_path:
         return doc  # no-op
-    value = get(doc, from_path)
-    value = deepcopy(value)
-    return add(doc, to_path, value)
+    value_copy = deepcopy(value)
+    return add(doc, to_path, value_copy)
 
 
 def test(doc: JSONValue, path: JSONPointer, expected: JSONValue) -> JSONValue:
@@ -367,12 +392,7 @@ def test(doc: JSONValue, path: JSONPointer, expected: JSONValue) -> JSONValue:
 def swap(
     doc: JSONValue, first_path: JSONPointer, second_path: JSONPointer
 ) -> JSONValue:
-    first_ptr, second_ptr = (
-        cast_to_pointer(first_path),
-        cast_to_pointer(second_path),
-    )  # catch pointer errors early
-    # validate_mutability(doc, first_path)
-    # validate_mutability(doc, second_path)
+    assert_targets(doc, first_path, second_path, exists=True, mutable=True)
     if first_path == second_path:
         return doc  # no-op
     if is_root(first_path):
@@ -381,14 +401,12 @@ def swap(
         return get(doc, first_path)
 
     # check if this is a nested swap
-    if second_ptr.contains(first_ptr) or first_ptr.contains(second_ptr):
-        parent, child = (
-            (first_path, second_path)
-            if second_ptr.contains(first_ptr)
-            else (second_path, first_path)
-        )
-        raise PatchApplicationError(f"path '{parent}' cannot contain '{child}'")
+    for parent, child in [(first_path, second_path), (second_path, first_path)]:
+        if is_parent_path(parent_path=parent, child_path=child):
+            raise PatchApplicationError(
+                f"path '{parent}' cannot be moved into its child path '{child}'"
+            )
 
     first_path_value = get(doc, first_path)
-    doc = move(doc, second_path, first_path)
-    return add(doc, second_path, first_path_value)
+    doc_intermediate = move(doc, second_path, first_path)
+    return add(doc_intermediate, second_path, first_path_value)

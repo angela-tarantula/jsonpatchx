@@ -1,7 +1,8 @@
 from __future__ import annotations
 
 import json
-from typing import Annotated, Any, MutableMapping, MutableSequence
+from collections.abc import Mapping, MutableMapping, MutableSequence, Sequence
+from typing import Annotated, Any
 
 from jsonpointer import (  # type: ignore[import-untyped]
     JsonPointer,
@@ -132,9 +133,12 @@ type JSONString = str
 type JSONNull = None
 type JSONPrimitive = JSONBoolean | JSONNumber | JSONString | JSONNull
 
-type JSONArray = MutableSequence[JSONValue]
-type JSONObject = MutableMapping[str, JSONValue]
+type JSONArray = Sequence[JSONValue]
+type JSONObject = Mapping[str, JSONValue]
 
 type JSONValue = Annotated[
     JSONPrimitive | JSONArray | JSONObject, PydanticJsonValueValidator
 ]
+
+type MutableJSONArray = MutableSequence[JSONValue]
+type MutableJSONObject = MutableMapping[str, JSONValue]
