@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from collections.abc import Mapping, MutableMapping, MutableSequence, Sequence
 from typing import Annotated, Any, TypeVar
 
 from jsonpointer import (  # type: ignore[import-untyped]
@@ -42,11 +43,8 @@ class PydanticJsonValueValidator:
 
     @classmethod
     def _validate(cls, v: VALUE_GENERIC) -> VALUE_GENERIC:
-        # Forbid NaN because it's not valid JSON
         try:
-            json.dumps(
-                v, allow_nan=False
-            )  # TODO: use orjson? it turns out {"4":4, 4:3} can dump to '{"4": 4, "4": 3}'
+            json.dumps(v, allow_nan=False)  # TODO: switch to orjson
         except (TypeError, ValueError) as e:
             raise InvalidOperationSchema(
                 f"Value is not JSON-serializable: {v!r}"
@@ -56,6 +54,8 @@ class PydanticJsonValueValidator:
 
 class StrictJSONNumberValidator:
     """Pydantic-aware wrapper for JSON numbers."""
+
+    NUMBER_GENERIC = TypeVar("NUMBER_GENERIC", int, float)
 
     @classmethod
     def __get_pydantic_core_schema__(
@@ -80,13 +80,11 @@ class StrictJSONNumberValidator:
         handler: GetJsonSchemaHandler,
     ) -> dict[str, object]:
         json_schema = handler(schema)
-        json_schema.update(
-            {"description": "number (int|float)"}  # TODO: anything else?
-        )
+        json_schema.update({"description": "number (int|float)"})
         return json_schema
 
     @classmethod
-    def _validate(cls, v: object) -> int | float:
+    def _validate(cls, v: NUMBER_GENERIC) -> NUMBER_GENERIC:
         if isinstance(v, bool) or not isinstance(v, (int, float)):
             raise InvalidOperationSchema(
                 f"Expected JSON number (int|float), not {v.__class__.__name__}: {v!r}"
@@ -108,11 +106,12 @@ type JSONValue = Annotated[
 ]
 
 T = TypeVar("T")
-U = TypeVar("U")
 
-# I'd prefer Sequence/Mapping, but "hello" is technically Sequence[T]
-type JSONArray[T] = list[T]
-type JSONObject[U] = dict[str, U]
+type JSONArray[T] = Sequence[T]
+type JSONObject[T] = Mapping[str, T]
+
+type MutableJSONArray[T] = MutableSequence[T]
+type MutableJSONObject[T] = MutableMapping[str, T]
 
 
 class PydanticJsonPointerValidator:

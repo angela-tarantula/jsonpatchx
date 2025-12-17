@@ -54,6 +54,8 @@ from jsonpatch.types import (
     JSONObject,
     JSONPointer,
     JSONValue,
+    MutableJSONArray,
+    MutableJSONObject,
 )
 
 # NOTE: All of these primitives do rely on one thing: that `doc` is a valid JSON-serializable python object
@@ -152,7 +154,9 @@ def resolve_last(
     exists: Literal[True],
     mutable: Literal[True],
     container: Literal["object", "array"] | None = None,
-) -> tuple[JSONObject, str] | tuple[JSONArray, int]: ...
+) -> (
+    tuple[MutableJSONObject[JSONValue], str] | tuple[MutableJSONArray[JSONValue], int]
+): ...
 
 
 @overload
@@ -163,7 +167,10 @@ def resolve_last(
     exists: Literal[False] | None = None,
     mutable: Literal[True],
     container: Literal["object", "array"] | None = None,
-) -> tuple[JSONObject, str] | tuple[JSONArray, int | Literal["-"]]: ...
+) -> (
+    tuple[MutableJSONObject[JSONValue], str]
+    | tuple[MutableJSONArray[JSONValue], int | Literal["-"]]
+): ...
 
 
 @overload
@@ -174,7 +181,7 @@ def resolve_last(
     exists: Literal[True],
     mutable: bool | None = None,
     container: Literal["object", "array"] | None = None,
-) -> tuple[JSONObject, str] | tuple[JSONArray, int]: ...
+) -> tuple[JSONObject[JSONValue], str] | tuple[JSONArray[JSONValue], int]: ...
 
 
 @overload
@@ -185,7 +192,9 @@ def resolve_last(
     exists: bool | None = None,
     mutable: bool | None = None,
     container: Literal["object", "array"] | None = None,
-) -> tuple[JSONObject, str] | tuple[JSONArray, int | Literal["-"]]: ...
+) -> (
+    tuple[JSONObject[JSONValue], str] | tuple[JSONArray[JSONValue], int | Literal["-"]]
+): ...
 
 
 def resolve_last(
@@ -195,7 +204,9 @@ def resolve_last(
     exists: bool | None = None,
     mutable: bool | None = None,
     container: Literal["object", "array"] | None = None,
-) -> tuple[JSONObject, str] | tuple[JSONArray, int | Literal["-"]]:
+) -> (
+    tuple[JSONObject[JSONValue], str] | tuple[JSONArray[JSONValue], int | Literal["-"]]
+):
     """
     Resolve a JSON Pointer to its *parent container* and final token.
 
