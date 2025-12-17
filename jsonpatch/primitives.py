@@ -54,8 +54,6 @@ from jsonpatch.types import (
     JSONObject,
     JSONPointer,
     JSONValue,
-    MutableJSONArray,
-    MutableJSONObject,
 )
 
 # NOTE: All of these primitives do rely on one thing: that `doc` is a valid JSON-serializable python object
@@ -154,7 +152,7 @@ def resolve_last(
     exists: Literal[True],
     mutable: Literal[True],
     container: Literal["object", "array"] | None = None,
-) -> tuple[MutableJSONObject, str] | tuple[MutableJSONArray, int]: ...
+) -> tuple[JSONObject, str] | tuple[JSONArray, int]: ...
 
 
 @overload
@@ -165,7 +163,7 @@ def resolve_last(
     exists: Literal[False] | None = None,
     mutable: Literal[True],
     container: Literal["object", "array"] | None = None,
-) -> tuple[MutableJSONObject, str] | tuple[MutableJSONArray, int | Literal["-"]]: ...
+) -> tuple[JSONObject, str] | tuple[JSONArray, int | Literal["-"]]: ...
 
 
 @overload

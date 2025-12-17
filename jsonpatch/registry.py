@@ -8,7 +8,7 @@ from pydantic import Field, TypeAdapter
 from jsonpatch.builtins import STANDARD_OPS
 from jsonpatch.exceptions import InvalidOperationRegistry
 from jsonpatch.schema import OperationSchema
-from jsonpatch.types import JSONText, JSONValue
+from jsonpatch.types import JSONValue
 
 
 class OperationRegistry:
@@ -118,7 +118,7 @@ class OperationRegistry:
             python, strict=True, by_alias=True, by_name=False, extra="forbid"
         )
 
-    def parse_json_patch(self, text: JSONText) -> list[OperationSchema]:
+    def parse_json_patch(self, text: str | bytes | bytearray) -> list[OperationSchema]:
         """
         Validate & coerce a JSON Patch.
 

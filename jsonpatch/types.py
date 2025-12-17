@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import json
-from collections.abc import Mapping, MutableMapping, MutableSequence, Sequence
 from typing import Annotated, Any, TypeVar
 
 from jsonpointer import (  # type: ignore[import-untyped]
@@ -14,49 +13,10 @@ from pydantic_core import core_schema
 from jsonpatch.exceptions import InvalidOperationSchema
 
 
-class PydanticJsonTextValidator:
-    """Pydantic-aware wrapper for JSON-formatted text."""
-
-    TEXT = TypeVar("TEXT", str, bytes, bytearray)
-
-    @classmethod
-    def __get_pydantic_core_schema__(
-        cls,
-        source_type: type[object],
-        handler: GetCoreSchemaHandler,
-    ) -> core_schema.CoreSchema:
-        return core_schema.no_info_after_validator_function(
-            cls._validate,
-            core_schema.union_schema(
-                [core_schema.str_schema(), core_schema.bytes_schema()]
-            ),
-        )
-
-    @classmethod
-    def __get_pydantic_json_schema__(
-        cls, core_schema: core_schema.CoreSchema, handler: GetJsonSchemaHandler
-    ) -> dict[str, object]:
-        """Expose JSON text as a string with a 'json' format hint."""
-        json_schema = handler(core_schema)
-        # OpenAPI can't really express bytes/bytearray here, so describe the most common representation
-        json_schema.update({"type": "string", "format": "json"})
-        return json_schema
-
-    @classmethod
-    def _validate(cls, v: TEXT) -> TEXT:
-        try:
-            json.loads(v)
-        except (TypeError, ValueError) as e:
-            raise InvalidOperationSchema(
-                f"{type(v).__class__.__name__} is not JSON-formatted: {v!r}"
-            ) from e
-        return v
-
-
 class PydanticJsonValueValidator:
     """Pydantic-aware wrapper for any JSON-serializable value."""
 
-    VALUE = TypeVar("VALUE")
+    VALUE_GENERIC = TypeVar("VALUE_GENERIC")
 
     @classmethod
     def __get_pydantic_core_schema__(
@@ -81,7 +41,7 @@ class PydanticJsonValueValidator:
         return json_schema
 
     @classmethod
-    def _validate(cls, v: VALUE) -> VALUE:
+    def _validate(cls, v: VALUE_GENERIC) -> VALUE_GENERIC:
         # Forbid NaN because it's not valid JSON
         try:
             json.dumps(
@@ -106,7 +66,10 @@ class StrictJSONNumberValidator:
         return core_schema.no_info_after_validator_function(
             cls._validate,
             core_schema.union_schema(
-                [core_schema.int_schema(), core_schema.float_schema()]
+                [
+                    core_schema.int_schema(strict=True),
+                    core_schema.float_schema(strict=True),
+                ]
             ),
         )
 
@@ -133,23 +96,23 @@ class StrictJSONNumberValidator:
 
 # Core JSON type aliases
 
-type JSONText = Annotated[str | bytes | bytearray, PydanticJsonTextValidator]
-
 type JSONBoolean = bool
-type JSONNumber = int | float  # TODO: don't let pydantic coerce bool to int
+type JSONNumber = Annotated[int | float, StrictJSONNumberValidator]
 type JSONString = str
 type JSONNull = None
 type JSONPrimitive = JSONBoolean | JSONNumber | JSONString | JSONNull
 
-type JSONArray = Sequence[JSONValue]
-type JSONObject = Mapping[str, JSONValue]
-
 type JSONValue = Annotated[
-    JSONPrimitive | JSONArray | JSONObject, PydanticJsonValueValidator
+    JSONPrimitive | JSONArray[JSONValue] | JSONObject[JSONValue],
+    PydanticJsonValueValidator,
 ]
 
-type MutableJSONArray = MutableSequence[JSONValue]
-type MutableJSONObject = MutableMapping[str, JSONValue]
+T = TypeVar("T")
+U = TypeVar("U")
+
+# I'd prefer Sequence/Mapping, but "hello" is technically Sequence[T]
+type JSONArray[T] = list[T]
+type JSONObject[U] = dict[str, U]
 
 
 class PydanticJsonPointerValidator:

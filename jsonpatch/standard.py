@@ -5,7 +5,7 @@ from typing import Hashable, Self, overload, override
 from jsonpatch.exceptions import PatchApplicationError, PatchError
 from jsonpatch.registry import OperationRegistry
 from jsonpatch.schema import OperationSchema
-from jsonpatch.types import JSONText, JSONValue
+from jsonpatch.types import JSONValue
 
 
 def _apply_ops(
@@ -55,7 +55,7 @@ class JsonPatch(Sequence[OperationSchema], Hashable):
     @classmethod
     def from_string(
         cls,
-        text: JSONText,
+        text: str | bytes | bytearray,
         *,
         registry: OperationRegistry | None = None,
     ) -> Self:
