@@ -125,13 +125,13 @@ def are_equal(
     return False
 
 
-def is_root(path: JSONPointer) -> bool:
+def is_root(path: JSONPointer[JSONValue]) -> bool:
     """Return ``True`` if `path` points to the root (``""``), otherwise ``False``."""
     return path == ""
 
 
 @lru_cache
-def cast_to_pointer(path: JSONPointer) -> JsonPointer:
+def cast_to_pointer(path: JSONPointer[JSONValue]) -> JsonPointer:
     """
     Convert a `JSONPointer` string into a `JsonPointer` instance.
 
@@ -149,7 +149,7 @@ def cast_to_pointer(path: JSONPointer) -> JsonPointer:
 @overload
 def resolve_last(
     doc: JSONValue,
-    path: JSONPointer,
+    path: JSONPointer[JSONValue],
     *,
     exists: Literal[True],
     mutable: Literal[True],
@@ -162,7 +162,7 @@ def resolve_last(
 @overload
 def resolve_last(
     doc: JSONValue,
-    path: JSONPointer,
+    path: JSONPointer[JSONValue],
     *,
     exists: Literal[False] | None = None,
     mutable: Literal[True],
@@ -176,7 +176,7 @@ def resolve_last(
 @overload
 def resolve_last(
     doc: JSONValue,
-    path: JSONPointer,
+    path: JSONPointer[JSONValue],
     *,
     exists: Literal[True],
     mutable: bool | None = None,
@@ -187,7 +187,7 @@ def resolve_last(
 @overload
 def resolve_last(
     doc: JSONValue,
-    path: JSONPointer,
+    path: JSONPointer[JSONValue],
     *,
     exists: bool | None = None,
     mutable: bool | None = None,
@@ -199,7 +199,7 @@ def resolve_last(
 
 def resolve_last(
     doc: JSONValue,
-    path: JSONPointer,
+    path: JSONPointer[JSONValue],
     *,
     exists: bool | None = None,
     mutable: bool | None = None,
@@ -319,7 +319,7 @@ def resolve_last(
     return path_container, path_key
 
 
-def assert_valid(doc: JSONValue, *paths: JSONPointer) -> None:
+def assert_valid(doc: JSONValue, *paths: JSONPointer[JSONValue]) -> None:
     """
     Assert that all provided pointers are syntactically valid and resolvable.
 
@@ -340,7 +340,7 @@ def assert_valid(doc: JSONValue, *paths: JSONPointer) -> None:
 
 def assert_targets(
     doc: JSONValue,
-    *paths: JSONPointer,
+    *paths: JSONPointer[JSONValue],
     exists: bool | None = None,
     mutable: bool | None = None,
 ) -> None:
@@ -364,7 +364,9 @@ def assert_targets(
             resolve_last(doc, path, exists=exists, mutable=mutable)
 
 
-def is_parent_path(*, parent_path: JSONPointer, child_path: JSONPointer) -> bool:
+def is_parent_path(
+    *, parent_path: JSONPointer[JSONValue], child_path: JSONPointer[JSONValue]
+) -> bool:
     """Return True if `parent_path` is a strict parent of `child_path`."""
     # Fail fast
     parent_ptr, child_ptr = cast_to_pointer(parent_path), cast_to_pointer(child_path)
@@ -382,7 +384,7 @@ def is_parent_path(*, parent_path: JSONPointer, child_path: JSONPointer) -> bool
     return child_ptr.contains(parent_ptr)  # type: ignore[no-any-return]
 
 
-def get(doc: JSONValue, path: JSONPointer) -> JSONValue:
+def get(doc: JSONValue, path: JSONPointer[JSONValue]) -> JSONValue:
     """
     Return the value at `path` within `doc`.
 
@@ -397,7 +399,7 @@ def get(doc: JSONValue, path: JSONPointer) -> JSONValue:
     return container[key]  # type: ignore[index] # mypy is not advanced enough to narrow tuples
 
 
-def add(doc: JSONValue, path: JSONPointer, value: JSONValue) -> JSONValue:
+def add(doc: JSONValue, path: JSONPointer[JSONValue], value: JSONValue) -> JSONValue:
     """
     Add `value` at `path` within `doc` (RFC 6902 `add` semantics).
 
@@ -430,7 +432,7 @@ def add(doc: JSONValue, path: JSONPointer, value: JSONValue) -> JSONValue:
     return doc
 
 
-def remove(doc: JSONValue, path: JSONPointer) -> JSONValue:
+def remove(doc: JSONValue, path: JSONPointer[JSONValue]) -> JSONValue:
     """
     Remove the value at `path` within `doc` (RFC 6902 `remove` semantics).
 
@@ -449,7 +451,7 @@ def remove(doc: JSONValue, path: JSONPointer) -> JSONValue:
 
 def replace(
     doc: JSONValue,
-    path: JSONPointer,
+    path: JSONPointer[JSONValue],
     value: JSONValue,
 ) -> JSONValue:
     """
@@ -469,8 +471,8 @@ def replace(
 
 def move(
     doc: JSONValue,
-    from_path: JSONPointer,
-    to_path: JSONPointer,
+    from_path: JSONPointer[JSONValue],
+    to_path: JSONPointer[JSONValue],
 ) -> JSONValue:
     """
     Move a value from `from_path` to `to_path` (RFC 6902 `move` semantics).
@@ -507,8 +509,8 @@ def move(
 
 def copy(
     doc: JSONValue,
-    from_path: JSONPointer,
-    to_path: JSONPointer,
+    from_path: JSONPointer[JSONValue],
+    to_path: JSONPointer[JSONValue],
 ) -> JSONValue:
     """
     Copy a value from `from_path` to `to_path` (RFC 6902 `copy` semantics).
@@ -526,7 +528,9 @@ def copy(
     return add(doc, to_path, value_copy)
 
 
-def test(doc: JSONValue, path: JSONPointer, expected: JSONValue) -> JSONValue:
+def test(
+    doc: JSONValue, path: JSONPointer[JSONValue], expected: JSONValue
+) -> JSONValue:
     """
     Test that the value at `path` equals `expected` (RFC 6902 `test` semantics).
 
@@ -546,8 +550,8 @@ def test(doc: JSONValue, path: JSONPointer, expected: JSONValue) -> JSONValue:
 
 def swap(
     doc: JSONValue,
-    first_path: JSONPointer,
-    second_path: JSONPointer,
+    first_path: JSONPointer[JSONValue],
+    second_path: JSONPointer[JSONValue],
 ) -> JSONValue:
     """
     Swap the values at `first_path` and `second_path`.
@@ -579,7 +583,7 @@ def swap(
 
 def transform(
     doc: JSONValue,
-    path: JSONPointer,
+    path: JSONPointer[JSONValue],
     func: Callable[[T], T],
     *,
     expect_type: type[T]
@@ -620,7 +624,7 @@ def transform(
 
 def append(
     doc: JSONValue,
-    path: JSONPointer,
+    path: JSONPointer[JSONValue],
     value: JSONValue,
 ) -> JSONValue:
     """
@@ -648,7 +652,7 @@ def append(
 
 def extend(
     doc: JSONValue,
-    path: JSONPointer,
+    path: JSONPointer[JSONValue],
     values: Sequence[JSONValue],
 ) -> JSONValue:
     """
@@ -675,7 +679,7 @@ def extend(
 # TODO: update for JSONObject
 
 
-def toggle_bool(doc: JSONValue, path: JSONPointer) -> JSONValue:
+def toggle_bool(doc: JSONValue, path: JSONPointer[JSONValue]) -> JSONValue:
     """
     Toggle a boolean value at `path`.
 
@@ -697,7 +701,7 @@ def toggle_bool(doc: JSONValue, path: JSONPointer) -> JSONValue:
 
 def increment_number(
     doc: JSONValue,
-    path: JSONPointer,
+    path: JSONPointer[JSONValue],
     amount: JSONNumber = 1,
 ) -> JSONValue:
     """
@@ -718,7 +722,7 @@ def increment_number(
 
 def decrement_number(
     doc: JSONValue,
-    path: JSONPointer,
+    path: JSONPointer[JSONValue],
     amount: JSONNumber = 1,
 ) -> JSONValue:
     """

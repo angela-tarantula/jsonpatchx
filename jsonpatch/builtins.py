@@ -4,12 +4,12 @@ from typing import Final, Literal, override
 from pydantic import Field
 
 from jsonpatch.schema import OperationSchema
-from jsonpatch.types import JSONPointer, JSONValue
+from jsonpatch.types import JSONNumber, JSONPointer, JSONValue
 
 
 class AddOp(OperationSchema):
     op: Literal["add"] = "add"
-    path: JSONPointer
+    path: JSONPointer[JSONValue]
     value: JSONValue
 
     @override
@@ -19,7 +19,7 @@ class AddOp(OperationSchema):
 
 class RemoveOp(OperationSchema):
     op: Literal["remove"] = "remove"
-    path: JSONPointer = Field(min_length=1)
+    path: JSONPointer[JSONValue] = Field(min_length=1)
 
     @override
     def apply(self, doc: JSONValue) -> JSONValue:
@@ -28,7 +28,7 @@ class RemoveOp(OperationSchema):
 
 class ReplaceOp(OperationSchema):
     op: Literal["replace"] = "replace"
-    path: JSONPointer
+    path: JSONPointer[JSONValue]
     value: JSONValue
 
     @override
@@ -38,8 +38,8 @@ class ReplaceOp(OperationSchema):
 
 class MoveOp(OperationSchema):
     op: Literal["move"] = "move"
-    from_: JSONPointer = Field(alias="from")
-    path: JSONPointer
+    from_: JSONPointer[JSONValue] = Field(alias="from")
+    path: JSONPointer[JSONValue]
 
     @override
     def apply(self, doc: JSONValue) -> JSONValue:
@@ -48,8 +48,8 @@ class MoveOp(OperationSchema):
 
 class CopyOp(OperationSchema):
     op: Literal["copy"] = "copy"
-    from_: JSONPointer = Field(alias="from")
-    path: JSONPointer
+    from_: JSONPointer[JSONValue] = Field(alias="from")
+    path: JSONPointer[JSONValue]
 
     @override
     def apply(self, doc: JSONValue) -> JSONValue:
@@ -58,7 +58,7 @@ class CopyOp(OperationSchema):
 
 class TestOp(OperationSchema):
     op: Literal["test"] = "test"
-    path: JSONPointer
+    path: JSONPointer[JSONValue]
     value: JSONValue
 
     @override
@@ -83,11 +83,19 @@ STANDARD_OPS: Final[Set[type[OperationSchema]]] = frozenset(
 
 class IncrementOp(OperationSchema):
     op: Literal["increment"] = "increment"
-    path: JSONPointer
-    value: int = Field(gt=0)
+    path: JSONPointer[JSONNumber]
+    value: JSONNumber = Field(gt=0)
+
+    @override
+    def apply(self, doc: JSONValue) -> JSONValue:
+        raise NotImplementedError
 
 
 class DecrementOp(OperationSchema):
     op: Literal["decrement"] = "decrement"
-    path: JSONPointer
-    value: int = Field(lt=0)
+    path: JSONPointer[JSONNumber]
+    value: JSONNumber = Field(lt=0)
+
+    @override
+    def apply(self, doc: JSONValue) -> JSONValue:
+        raise NotImplementedError
