@@ -40,7 +40,7 @@ changes and is out of scope here.
 from collections.abc import Mapping, MutableMapping, MutableSequence, Sequence
 from copy import deepcopy
 from functools import lru_cache
-from typing import Callable, Literal, TypeVar, overload
+from typing import Any, Callable, Literal, TypeVar, overload
 
 from jsonpointer import (  # type: ignore[import-untyped]
     JsonPointer,
@@ -739,3 +739,68 @@ def decrement_number(
             f"decrement_number expects a numeric value at {path!r}, got {type(current)!r}"
         )
     return replace(doc, path, current - amount)
+
+
+def transform_n(
+    doc: JSONValue,
+    *,
+    inputs: Sequence[JSONPointer[Any]],
+    outputs: Sequence[JSONPointer[Any]],
+    func: Callable[..., Any],
+) -> JSONValue:
+    """
+    N-ary transform using typed pointers.
+
+    Reads values at `inputs`, validates each value using the pointer's type parameter,
+    calls `func(*values)`, then writes the result(s) to `outputs` (after validating
+    each result against the corresponding output pointer's type parameter).
+
+    Return shape rules:
+      - If len(outputs) == 1: func may return a single value (scalar).
+      - If len(outputs) > 1: func must return a tuple/list of that length.
+    """
+    if not (inputs or outputs):
+        raise ValueError("inputs and outputs must be nonempy")
+
+    # Read + validate inputs
+    in_values: list[Any] = []
+    for p in inputs:
+        raw = get(doc, p)
+        in_values.append(p.validate_pointed_value(raw))
+
+    # validate output paths
+    for p in outputs:
+        raw = get(doc, p)
+        p.validate_pointed_value(raw)
+
+    # Apply transform function
+    result = func(*in_values)
+
+    # Normalize output values
+    if len(outputs) == 1:
+        out_values = (result,)
+    else:
+        if not isinstance(result, (tuple, list)):
+            raise PatchApplicationError(
+                f"transform_n expected {len(outputs)} return values, got scalar {result!r}"
+            )
+        if len(result) != len(outputs):
+            raise PatchApplicationError(
+                f"transform_n expected {len(outputs)} return values, got {len(result)}"
+            )
+        out_values = tuple(result)
+
+    # Validate + write outputs
+    for p, v in zip(outputs, out_values):
+        # v = p.validate_pointed_value(v)  # validate output type too? would be confusing. I think only let the generic refer to existing target, not desired target.
+        doc = replace(doc, p, v)
+
+    return doc
+
+
+transform_n(
+    4,
+    inputs=[JSONPointer[JSONNumber]("/foo")],
+    outputs=[JSONPointer("/bar")],
+    func=lambda x: x + 1,
+)
