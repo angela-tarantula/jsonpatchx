@@ -8,17 +8,17 @@ logic so that custom operations can be implemented declaratively in terms of:
     - "get the value at this JSON Pointer"
     - "add/replace/remove at this JSON Pointer"
     - "move/copy between JSON Pointers"
-    - "transform/swap/append/extend at this JSON Pointer"
+    - "transform/swap/append/extend/toggle/increment/decrement"
 
 
 Type-checker note
 -----------------
 Mypy is not yet advanced enough to narrow the union of tuples returned by
-`resolve_last()`: https://github.com/python/mypy/issues/9791. For example, when
-`resolve_last()` returns a `(container, key)` pair where `container` is a
-`MutableMapping`, mypy cannot infer that `key` must be a `str`. Most of the
-`type: ignore` comments in this module are workarounds for that false positive.
-They avoid littering the implementation with `typing.cast` calls.
+`resolve_last()`: https://github.com/python/mypy/issues/9791. For example, if a
+function returns tuple[str, int] | tuple[int, str], and you narrow the return type's
+first element as a str, mypy still thinks the second element can be int | str. Most
+`type: ignore` comments in this module are workarounds for that false positive and help
+avoid littering the implementation with `typing.cast` calls.
 
 
 JsonPointer dependency
@@ -32,9 +32,8 @@ This is deliberate: it minimizes tight coupling to any particular `jsonpointer`
 implementation and makes it easy to support custom pointer classes that satisfy
 a simple two-method protocol.
 
-Also: one limitation of the upstream `jsonpointer` library is that it does not
-accept negative indices for JSON arrays. Supporting that would require upstream
-changes and is out of scope here.
+Upstream limitation: the `jsonpointer` library does not accept negative indices
+for JSON arrays. Supporting that would require upstream changes.
 """
 
 from collections.abc import Mapping, MutableMapping, MutableSequence, Sequence
@@ -60,57 +59,48 @@ from jsonpatch.types import (
 
 # NOTE: All of these primitives do rely on one thing: that `doc` is a valid JSON-serializable python object
 
-T = TypeVar("T", bound=JSONValue)
+U = TypeVar("U")
+E = TypeVar("E", bound=JSONValue)
 
 
 def are_equal(
     first: JSONValue, second: JSONValue
 ) -> bool:  # TODO: just use orjson and compare strings?
     """
-    Compare two JSON-like values for *semantic* equality.
+    Compare two JSON-like values for semantic equality.
 
-    This defines equality according to JSON-ish rules rather than Python's
-    default equality semantics:
+    This uses JSON-ish equality rules rather than Python's default equality:
 
-      - Booleans are **not** considered equal to numbers
-        (e.g. `True != 1` and `False != 0`).
-      - Integers and floats are compared numerically (e.g. `1 == 1.0`).
-      - Strings are compared by value.
-      - `null` is equal only to `null`.
-      - Mappings (dict-like objects) are compared by keys and values,
-        regardless of their concrete class.
-      - Sequences (list-like objects) are compared by length and elements,
-        in order, regardless of their concrete class.
-      - Comparison is recursive for nested structures.
-
-    This is useful for the `test` operation, where users typically expect
-    JSON semantics rather than Python's more permissive equality.
+    - Booleans are not equal to numbers (e.g., True != 1).
+    - Integers and floats compare numerically (e.g., 1 == 1.0).
+    - Objects compare by key-set and recursively by values.
+    - Arrays compare by length and order and recursively by elements.
     """
-    # Reject mismatched types for JSON primitives that would otherwise compare equal in Python.
+    # Booleans: require both to be bool to compare (avoid True == 1)
     if isinstance(first, bool) or isinstance(second, bool):
-        # Require both to be bool to compare them
-        if type(first) is bool and type(second) is bool:  # noqa: E721
-            return first == second
-        return False
+        return type(first) is bool and type(second) is bool and first == second  # noqa: E721
 
-    # Numbers: both must be int/float (but not bool)
+    # Numbers
     if isinstance(first, (int, float)) and isinstance(second, (int, float)):
         return first == second
 
-    # Strings and null
+    # Strings
     if isinstance(first, str) and isinstance(second, str):
         return first == second
+
+    # Null
     if first is None and second is None:
         return True
 
-    # Mapping types (e.g., dict, defaultdict, custom dict-like)
+    # Objects
     if isinstance(first, Mapping) and isinstance(second, Mapping):
         if set(first.keys()) != set(second.keys()):
             return False
-        # Recursive DFS comparison of values # TODO: consider iterative DFS to avoid stackoverflow
-        return all(are_equal(first[k], second[k]) for k in first)
+        return all(
+            are_equal(first[k], second[k]) for k in first
+        )  # if stackoverflow issue, use iterative BFS
 
-    # Sequence types (e.g., list, deque, custom list-like) but not str/bytes
+    # Arrays (exclude string/bytes)
     if (
         isinstance(first, Sequence)
         and isinstance(second, Sequence)
@@ -119,26 +109,25 @@ def are_equal(
     ):
         if len(first) != len(second):
             return False
-        # Recursive DFS comparison of values # TODO: consider iterative DFS to avoid stackoverflow
-        return all(are_equal(a, b) for a, b in zip(first, second))
+        return all(
+            are_equal(a, b) for a, b in zip(first, second)
+        )  # if stackoverflow issue, use iterative BFS
 
     return False
 
 
-def is_root(path: JSONPointer[JSONValue]) -> bool:
-    """Return ``True`` if `path` points to the root (``""``), otherwise ``False``."""
+def is_root(path: JSONPointer[Any]) -> bool:
+    """Return True if and only if `path` points to the root (empty pointer)."""
     return path == ""
 
 
-@lru_cache
-def cast_to_pointer(path: JSONPointer[JSONValue]) -> JsonPointer:
+@lru_cache(maxsize=1024)
+def cast_to_pointer(path: JSONPointer[Any]) -> JsonPointer:
     """
-    Convert a `JSONPointer` string into a `JsonPointer` instance.
+    Convert a (validated) `JSONPointer` value into an upstream `JsonPointer`.
 
-    In normal usage this will be called on values that have already passed
-    Pydantic validation. The error handling is defensive, so that even if a
-    user bypasses validation and passes an invalid pointer, we still raise a
-    well-typed :class:`PatchApplicationError`.
+    Defensive: if a caller bypasses Pydantic validation and passes invalid
+    syntax, raise PatchApplicationError.
     """
     try:
         return JsonPointer(path)
@@ -149,7 +138,7 @@ def cast_to_pointer(path: JSONPointer[JSONValue]) -> JsonPointer:
 @overload
 def resolve_last(
     doc: JSONValue,
-    path: JSONPointer[JSONValue],
+    path: JSONPointer[Any],
     *,
     exists: Literal[True],
     mutable: Literal[True],
@@ -162,7 +151,7 @@ def resolve_last(
 @overload
 def resolve_last(
     doc: JSONValue,
-    path: JSONPointer[JSONValue],
+    path: JSONPointer[Any],
     *,
     exists: Literal[False] | None = None,
     mutable: Literal[True],
@@ -176,7 +165,7 @@ def resolve_last(
 @overload
 def resolve_last(
     doc: JSONValue,
-    path: JSONPointer[JSONValue],
+    path: JSONPointer[Any],
     *,
     exists: Literal[True],
     mutable: bool | None = None,
@@ -187,7 +176,7 @@ def resolve_last(
 @overload
 def resolve_last(
     doc: JSONValue,
-    path: JSONPointer[JSONValue],
+    path: JSONPointer[Any],
     *,
     exists: bool | None = None,
     mutable: bool | None = None,
@@ -199,7 +188,7 @@ def resolve_last(
 
 def resolve_last(
     doc: JSONValue,
-    path: JSONPointer[JSONValue],
+    path: JSONPointer[Any],
     *,
     exists: bool | None = None,
     mutable: bool | None = None,
@@ -208,68 +197,21 @@ def resolve_last(
     tuple[JSONObject[JSONValue], str] | tuple[JSONArray[JSONValue], int | Literal["-"]]
 ):
     """
-    Resolve a JSON Pointer to its *parent container* and final token.
+    Resolve a JSON Pointer to its parent container and final token.
 
-    This resolves `path` against `doc` and returns ``(container, key)`` such that:
+    Returns `(container, key)` such that `container[key]` is the target of `path`.
 
-    - ``container[key]`` refers to the value designated by ``path``.
-    - ``container`` is either an object (mapping) or array (sequence).
-    - ``key`` is:
-        * a ``str`` when ``container`` is an object.
-        * a non-negative ``int`` or the special string ``"-"`` when ``container`` is an array.
+    Constraints (optional):
+      - exists: require target existence (True) or non-existence (False)
+      - mutable: require container mutability (True) or immutability (False)
+      - container: require parent container to be "object" or "array"
 
-    This function *optionally* enforces additional invariants through keyword
-    arguments, while still giving callers access to the raw container/key pair.
-
-    Parameters
-    ----------
-    doc:
-        JSON document to resolve against (assumed valid).
-    path:
-        JSON Pointer to resolve. Must not point to the root (there is no “parent”
-        container to return).
-
-    exists:
-        Whether the *target* (i.e. ``container[key]``) is required to exist:
-
-        - ``True``  -> the target must exist; a missing key / out-of-range index / illegal ``"-"`` access raises PatchApplicationError.
-        - ``False`` -> the target must *not* exist; if it does, a PatchApplicationError is raised.
-        - ``None``  -> no existence check is enforced (default).
-
-    mutable:
-        Whether the resolved container must be mutable:
-
-        - ``True``  -> container must be a MutableMapping or MutableSequence.
-        - ``False`` -> container must *not* be mutable.
-        - ``None``  -> no mutability check is enforced (default).
-
-    container:
-        Optional constraint on the container type:
-
-        - ``"object"`` -> container must be an object (mapping-like).
-        - ``"array"``  -> container must be an array (sequence-like, non-string).
-        - ``None``     -> no explicit container-type constraint (default).
-
-    Returns
-    -------
-    (container, key):
-        The resolved container and key/index for the target of ``path``. The
-        combination is always suitable for use in:
-
-        - ``value = container[key]``
-        - ``container[key] = value``
-        - ``del container[key]``
-
-        subject to the requested invariants.
-
-    Raises
-    ------
-    PatchApplicationError:
-        If any of the requested invariants are violated, or if the pointer
-        cannot be resolved.
+    The root has no container and raises PatchApplicationError.
     """
     if is_root(path):
-        raise PatchApplicationError("tried to resolve a path to last, but got root")
+        raise PatchApplicationError(
+            "tried to resolve a path to last, but got root, which has no container"
+        )
 
     ptr = cast_to_pointer(path)
 
@@ -281,7 +223,7 @@ def resolve_last(
     except JsonPointerException as e:
         raise PatchApplicationError(f"unable to resolve path {path!r}: {e}") from e
 
-    # Container-type constraint
+    # container constraint
     if container == "object":
         if not isinstance(path_container, Mapping):
             raise PatchApplicationError(
@@ -293,7 +235,7 @@ def resolve_last(
                 f"expected array container at {path!r}, got {type(path_container)!r}"
             )
 
-    # Mutability constraint
+    # mutability constraint
     if mutable is not None:
         is_mutable = isinstance(path_container, (MutableMapping, MutableSequence))
         if is_mutable is not mutable:
@@ -305,7 +247,7 @@ def resolve_last(
                 f"expected immutable container at {path!r}, got {type(path_container)!r}"
             )
 
-    # Existence constraint
+    # existence constraint
     try:
         path_container[path_key]
     except (KeyError, IndexError, TypeError) as e:
@@ -319,19 +261,11 @@ def resolve_last(
     return path_container, path_key
 
 
-def assert_valid(doc: JSONValue, *paths: JSONPointer[JSONValue]) -> None:
+def assert_valid(doc: JSONValue, *paths: JSONPointer[Any]) -> None:
     """
-    Assert that all provided pointers are syntactically valid and resolvable.
+    Assert that pointers are resolvable against the document structure.
 
-    This checks that each path:
-
-    - is a valid JSON Pointer, and
-    - can be resolved to a parent container and key via :func:`resolve_last`.
-
-    It does *not* require that the target exists; it only validates that the
-    pointer points somewhere sensible in the document structure.
-
-    Unlike :func:`resolve_last`, it is root-friendly. Roots are considered valid.
+    Root pointers are allowed and treated as valid.
     """
     for path in paths:
         if not is_root(path):
@@ -340,24 +274,14 @@ def assert_valid(doc: JSONValue, *paths: JSONPointer[JSONValue]) -> None:
 
 def assert_targets(
     doc: JSONValue,
-    *paths: JSONPointer[JSONValue],
+    *paths: JSONPointer[Any],
     exists: bool | None = None,
     mutable: bool | None = None,
 ) -> None:
     """
-    Assert invariants about a collection of target locations.
+    Assert invariants about multiple target locations.
 
-    This is a convenience wrapper over :func:`resolve_last` for multiple paths.
-    For each path, it enforces:
-
-    - `exists`: whether the target must or must not exist.
-    - `mutable`: whether the container must be mutable or immutable.
-
-    It is useful when a composite operation needs to ensure all of its inputs
-    are valid before making any modifications.
-
-    Unlike :func:`resolve_last`, it is root-friendly. Roots are considered to
-    exist and be mutable.
+    Root pointers are allowed; they are considered to exist and be writable.
     """
     for path in paths:
         if not is_root(path):
@@ -365,10 +289,14 @@ def assert_targets(
 
 
 def is_parent_path(
-    *, parent_path: JSONPointer[JSONValue], child_path: JSONPointer[JSONValue]
+    *, parent_path: JSONPointer[Any], child_path: JSONPointer[Any]
 ) -> bool:
-    """Return True if `parent_path` is a strict parent of `child_path`."""
-    # Fail fast
+    """
+    Return True if `parent_path` is a strict parent of `child_path`.
+
+    Root is treated as a parent of all paths.
+    """
+    # Fail fast if malformed pointer
     parent_ptr, child_ptr = cast_to_pointer(parent_path), cast_to_pointer(child_path)
 
     # Strict parentage only
@@ -376,72 +304,53 @@ def is_parent_path(
         return False
 
     # Due to a bug in the upstream `jsonpointer` library, where jp1.contains(root_pointer)`
-    # is always False for root, we special-case root:
+    # is always False, we special-case root:
     if is_root(parent_path):
         return True
 
-    # jsonpointer is untyped, but this is the intended API
     return child_ptr.contains(parent_ptr)  # type: ignore[no-any-return]
 
 
-def get(doc: JSONValue, path: JSONPointer[JSONValue]) -> JSONValue:
+def get(doc: JSONValue, path: JSONPointer[U]) -> U:
     """
-    Return the value at `path` within `doc`.
-
-    Raises:
-        PatchApplicationError:
-            If the target location does not exist or the pointer cannot
-            be resolved.
+    Return the value at `path`, validated against the pointer's type parameter `U`.
     """
     if is_root(path):
-        return doc
-    container, key = resolve_last(doc, path, exists=True)
-    return container[key]  # type: ignore[index] # mypy is not advanced enough to narrow tuples
+        value = doc
+    else:
+        container, key = resolve_last(doc, path, exists=True)
+        value = container[key]  # type: ignore[index]
+    return path.validate_pointed_value(value)
 
 
-def add(doc: JSONValue, path: JSONPointer[JSONValue], value: JSONValue) -> JSONValue:
+def add(doc: JSONValue, path: JSONPointer[Any], value: JSONValue) -> JSONValue:
     """
-    Add `value` at `path` within `doc` (RFC 6902 `add` semantics).
+    RFC 6902 `add` semantics.
 
-    - If `path` is root, the entire document is replaced with `value`.
-    - Otherwise:
-        * If the container is an object, ``container[key] = value``.
-        * If the container is an array:
-            - key ``"-"`` appends to the end.
-            - an integer key in ``[0, len(array)]`` inserts at that index.
-            - indices greater than ``len(array)`` raise PatchApplicationError.
-        * Immutable containers also raise PatchApplicationError.
-
-    The document is mutated in place and returned for convenience.
+    - Root replaces the entire document.
+    - Object key assigns.
+    - Array index inserts; "-" appends.
     """
     if is_root(path):
-        return value  # replace root
+        return value
 
     container, key = resolve_last(doc, path, mutable=True)
 
     if isinstance(container, MutableMapping):
-        container[key] = value  # type: ignore[index] # mypy is not advanced enough to narrow tuples
+        container[key] = value  # type: ignore[index]
     elif isinstance(container, MutableSequence):
         if key == "-":
             key = len(container)
-        # at this point, key should be an int, but mypy can't narrow it
         if key > len(container):  # type: ignore[operator]
             raise PatchApplicationError(f"target at {path!r} is out of range")
         assert key >= 0, "JsonPointer implementation changed"  # type: ignore[operator]
         container.insert(key, value)  # type: ignore[arg-type]
+
     return doc
 
 
-def remove(doc: JSONValue, path: JSONPointer[JSONValue]) -> JSONValue:
-    """
-    Remove the value at `path` within `doc` (RFC 6902 `remove` semantics).
-
-    - Removing the root is forbidden and raises PatchApplicationError.
-    - The target location must exist and be mutable;
-      otherwise PatchApplicationError is raised.
-
-    The document is mutated in place and returned for convenience.
-    """
+def remove(doc: JSONValue, path: JSONPointer[Any]) -> JSONValue:
+    """RFC 6902 `remove` semantics. Removing root is forbidden."""
     if is_root(path):
         raise PatchApplicationError("cannot remove the root")
     container, key = resolve_last(doc, path, exists=True, mutable=True)
@@ -449,96 +358,49 @@ def remove(doc: JSONValue, path: JSONPointer[JSONValue]) -> JSONValue:
     return doc
 
 
-def replace(
-    doc: JSONValue,
-    path: JSONPointer[JSONValue],
-    value: JSONValue,
-) -> JSONValue:
-    """
-    Replace the value at `path` with `value` (RFC 6902 `replace` semantics).
-
-    - If `path` is root, the entire document is replaced with `value`.
-    - The target location must exist and be mutable, otherwise
-      PatchApplicationError is raised.
-
-    The document is mutated in place and returned for convenience.
-    """
+def replace(doc: JSONValue, path: JSONPointer[Any], value: JSONValue) -> JSONValue:
+    """RFC 6902 `replace` semantics. Root replaces the entire document."""
     if is_root(path):
-        return value  # replace root
-    doc_intermediate = remove(doc, path)
-    return add(doc_intermediate, path, value)
+        return value
+    doc2 = remove(doc, path)
+    return add(doc2, path, value)
 
 
 def move(
-    doc: JSONValue,
-    from_path: JSONPointer[JSONValue],
-    to_path: JSONPointer[JSONValue],
+    doc: JSONValue, from_path: JSONPointer[Any], to_path: JSONPointer[Any]
 ) -> JSONValue:
-    """
-    Move a value from `from_path` to `to_path` (RFC 6902 `move` semantics).
-
-    Behavior:
-
-    - Both `from_path` and `to_path` must be valid, and the source target
-    must exist and be mutable.
-    - If `to_path` is root, the entire document is replaced with the
-    value at `from_path`
-    - If `from_path` is a strict parent of `to_path`, a PatchApplicationError
-    is raised to prevent moving a node into one of its own descendants.
-    - Otherwise, the value at `from_path` is removed and then added at
-    `to_path` with standard `add` semantics.
-
-    The document is mutated in place and returned for convenience.
-    """
+    """RFC 6902 `move` semantics with a guard against moving into a descendant."""
     assert_targets(doc, from_path, exists=True, mutable=True)
     if from_path == to_path:
-        return doc  # no-op
+        return doc
     if is_root(to_path):
-        return get(doc, from_path)  # replace root
+        return get(doc, from_path)
 
-    # Nested move: moving into a child of itself is illegal
     if is_parent_path(parent_path=from_path, child_path=to_path):
         raise PatchApplicationError(
             f"path {from_path!r} cannot be moved into its child path {to_path!r}"
         )
 
     value = get(doc, from_path)
-    doc_intermediate = remove(doc, from_path)
-    return add(doc_intermediate, to_path, value)
+    doc2 = remove(doc, from_path)
+    return add(doc2, to_path, value)
 
 
 def copy(
-    doc: JSONValue,
-    from_path: JSONPointer[JSONValue],
-    to_path: JSONPointer[JSONValue],
+    doc: JSONValue, from_path: JSONPointer[Any], to_path: JSONPointer[Any]
 ) -> JSONValue:
-    """
-    Copy a value from `from_path` to `to_path` (RFC 6902 `copy` semantics).
-
-    - The value at `from_path` is deep-copied and added at `to_path` using
-      standard `add` semantics.
-    - The source location is left unchanged.
-
-    The document is mutated in place and returned for convenience.
-    """
+    """RFC 6902 `copy` semantics."""
     value = get(doc, from_path)
     if from_path == to_path:
-        return doc  # no-op
-    value_copy = deepcopy(value)
-    return add(doc, to_path, value_copy)
+        return doc
+    return add(doc, to_path, deepcopy(value))
 
 
-def test(
-    doc: JSONValue, path: JSONPointer[JSONValue], expected: JSONValue
-) -> JSONValue:
+def test(doc: JSONValue, path: JSONPointer[Any], expected: JSONValue) -> JSONValue:
     """
-    Test that the value at `path` equals `expected` (RFC 6902 `test` semantics).
+    RFC 6902 `test` semantics using JSON-ish equality.
 
-    - If the values are not equal, :class:`TestOpFailed` is raised.
-    - On success, the original document is returned unchanged.
-
-    This function is suitable both for standalone `test` operations and for
-    building higher-level "assert-and-then-apply" operations.
+    Raises TestOpFailed on failure; returns `doc` unchanged on success.
     """
     value = get(doc, path)
     if not are_equal(value, expected):
