@@ -11,6 +11,7 @@ from jsonpointer import (  # type: ignore[import-untyped]
 )
 from pydantic import GetCoreSchemaHandler, GetJsonSchemaHandler, TypeAdapter
 from pydantic_core import core_schema
+from typing_extensions import TypeForm
 
 from jsonpatch.exceptions import (
     InvalidJSONPointer,
@@ -131,8 +132,7 @@ class JSONPointer(str, Generic[_T_co]):
     """
 
     # ClassVar doesn't usually accept generics, but it's ok here because JSONPointer[A] and JSONPointer[B] are different classes (ref: https://github.com/python/typing/discussions/1424#discussioncomment-7989934)
-    # also, technically, 'Annotated[...]' is not assignable to 'type', but readability > correctness, just remember runtime is broader (ref: https://github.com/python/typing/pull/1618)
-    __expected_type__: ClassVar[type[_T_co]]
+    __expected_type__: ClassVar[TypeForm[_T_co]]
     __adapter__: ClassVar[TypeAdapter[_T_co]]
     _ptr: JsonPointer
 
@@ -164,7 +164,7 @@ class JSONPointer(str, Generic[_T_co]):
 
     @classmethod
     @cache
-    def __class_getitem__(cls, generic: type[_T_co]) -> type["JSONPointer[_T_co]"]:
+    def __class_getitem__(cls, generic: TypeForm[_T_co]) -> type["JSONPointer[_T_co]"]:
         """Return a specialized *subclass* that carries the expected type."""
         if hasattr(cls, "__expected_type__"):
             raise InvalidJSONPointer(
