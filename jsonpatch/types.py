@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 from collections.abc import Mapping, MutableMapping, MutableSequence, Sequence
-from functools import lru_cache
+from functools import cache, lru_cache
 from typing import Annotated, Any, ClassVar, Generic, Self, TypeVar
 
 from jsonpointer import (  # type: ignore[import-untyped]
@@ -12,7 +12,7 @@ from jsonpointer import (  # type: ignore[import-untyped]
 from pydantic import GetCoreSchemaHandler, GetJsonSchemaHandler, TypeAdapter
 from pydantic_core import core_schema
 
-from jsonpatch.exceptions import InvalidOperationSchema
+from jsonpatch.exceptions import InvalidOperationSchema, PatchApplicationError
 
 
 class PydanticJsonValueValidator:
@@ -101,7 +101,7 @@ type JSONString = str
 type JSONNull = None
 type JSONPrimitive = JSONBoolean | JSONNumber | JSONString | JSONNull
 
-T = TypeVar("T")
+T = TypeVar("T", covariant=True)
 
 type JSONArray[T] = Sequence[T]
 type JSONObject[T] = Mapping[str, T]
@@ -117,58 +117,30 @@ type JSONValue = Annotated[
 ]
 
 
-# class PydanticJsonPointerValidator:
-#     """Pydantic-aware wrapper for JSON Pointers."""
-
-#     @classmethod
-#     def __get_pydantic_core_schema__(
-#         cls,
-#         source_type: type[Any],
-#         handler: GetCoreSchemaHandler,
-#     ) -> core_schema.CoreSchema:
-#         return core_schema.no_info_after_validator_function(
-#             cls._validate, core_schema.str_schema()
-#         )
-
-#     @classmethod
-#     def __get_pydantic_json_schema__(
-#         cls,
-#         core_schema: core_schema.CoreSchema,
-#         handler: GetJsonSchemaHandler,
-#     ) -> dict[str, object]:
-#         """Expose JSON Pointer as a string with a 'json-pointer' format hint."""
-#         json_schema = handler(core_schema)
-#         json_schema.update({"format": "json-pointer"})
-#         return json_schema
-
-#     @classmethod
-#     def _validate(cls, v: str) -> str:
-#         try:
-#             JsonPointer(v)
-#         except JsonPointerException as e:
-#             raise InvalidOperationSchema(f"Invalid JSON Pointer: {v!r}") from e
-#         return v
-
-
-@lru_cache(maxsize=256)
-def _adapter_for(tp: T) -> TypeAdapter[T]:
-    """Cache `TypeAdapter` instances for expected value types, which can be non-trivial nested generics."""
-    return TypeAdapter(tp)
-
-
 class JSONPointer(str, Generic[T]):
     """
     A subclass of `str` with JSON Pointer syntax validated at parse-time.
 
-    Optionally value-typed: `JSONPointer[T]` carries `T` so callers can
+    Optionally value-typed: `JSONPointer[T]` carries `U` so callers can
     validate the value at that pointer at apply-time.
     """
 
-    __expected_type__: ClassVar[object] = object  # not required to be set!
+    __expected_type__: ClassVar[type]
     _ptr: JsonPointer
-    _adapter: TypeAdapter[Any]
+    _adapter: TypeAdapter[T]
 
     def __new__(cls, v: str) -> Self:
+        try:
+            adapter: TypeAdapter[T] = cls._adapter_for(cls.__expected_type__)
+        except AttributeError as e:
+            raise InvalidOperationSchema(
+                "Invalid JSON Pointer: no expected type"
+            ) from e
+        except Exception as e:
+            raise InvalidOperationSchema(
+                "Invalid JSON Pointer: invalid expected type"
+            ) from e
+
         try:
             ptr = JsonPointer(v)
         except JsonPointerException as e:
@@ -176,11 +148,18 @@ class JSONPointer(str, Generic[T]):
 
         obj = str.__new__(cls, v)
         obj._ptr = ptr
-        obj._adapter = _adapter_for(getattr(cls, "__expected_type__", Any))
+        obj._adapter = adapter
         return obj
 
     @classmethod
-    def __class_getitem__(cls, generic: T) -> type["JSONPointer[T]"]:
+    @lru_cache(maxsize=128)
+    def _adapter_for(cls, tp: type[T]) -> TypeAdapter[T]:
+        """Cache `TypeAdapter` instances for expected value types, which can be non-trivial nested generics."""
+        return TypeAdapter(tp)
+
+    @classmethod
+    @cache
+    def __class_getitem__(cls, generic: type[T]) -> type["JSONPointer[T]"]:
         # Return a specialized *subclass* that carries the expected type.
         name = f"{cls.__name__}[{getattr(generic, '__name__', repr(generic))}]"
         return type(name, (cls,), {"__expected_type__": generic})
@@ -205,13 +184,15 @@ class JSONPointer(str, Generic[T]):
         return js
 
     def to_last(self, doc: JSONValue) -> tuple[JSONContainer[JSONValue], JSONValue]:
-        return self._ptr.to_last(doc)  # type: ignore[no-any-return]  # this is because JsonPointer is untyped
+        return self._ptr.to_last(doc)  # type: ignore[no-any-return]  # JsonPointer is untyped
 
     def contains(self, other: "JSONPointer[Any]") -> bool:
-        return self._ptr.contains(other._ptr)  # type: ignore[no-any-return]  # this is because JsonPointer is untyped
+        return self._ptr.contains(other._ptr)  # type: ignore[no-any-return]  # JsonPointer is untyped
 
     def validate_pointed_value(self, value: Any) -> T:
-        return self._adapter.validate_python(value, strict=True)  # type: ignore[no-any-return]  # we know the validated object is T, not Any
-
-
-# type JSONPointer = Annotated[str, PydanticJsonPointerValidator]
+        try:
+            return self._adapter.validate_python(value, strict=True)
+        except Exception as e:
+            raise PatchApplicationError(
+                f"value {value!r} is not assignable to {self.__class__.__expected_type__!r} at pointer {str(self)!r}"
+            ) from e

@@ -39,7 +39,7 @@ for JSON arrays. Supporting that would require upstream changes.
 from collections.abc import Mapping, MutableMapping, MutableSequence, Sequence
 from copy import deepcopy
 from functools import lru_cache
-from typing import Any, Callable, Literal, TypeVar, overload
+from typing import Any, Callable, Iterable, Literal, TypeVar, overload
 
 from jsonpointer import (  # type: ignore[import-untyped]
     JsonPointer,
@@ -49,6 +49,7 @@ from jsonpointer import (  # type: ignore[import-untyped]
 from jsonpatch.exceptions import PatchApplicationError, TestOpFailed
 from jsonpatch.types import (
     JSONArray,
+    JSONBoolean,
     JSONNumber,
     JSONObject,
     JSONPointer,
@@ -116,13 +117,13 @@ def are_equal(
     return False
 
 
-def is_root(path: JSONPointer[Any]) -> bool:
+def is_root(path: JSONPointer[E]) -> bool:
     """Return True if and only if `path` points to the root (empty pointer)."""
     return path == ""
 
 
 @lru_cache(maxsize=1024)
-def cast_to_pointer(path: JSONPointer[Any]) -> JsonPointer:
+def cast_to_pointer(path: JSONPointer[E]) -> JsonPointer:
     """
     Convert a (validated) `JSONPointer` value into an upstream `JsonPointer`.
 
@@ -135,67 +136,81 @@ def cast_to_pointer(path: JSONPointer[Any]) -> JsonPointer:
         raise PatchApplicationError(f"expected {path!r} to be a JSON Pointer") from e
 
 
+def is_parent_path(*, parent_path: JSONPointer[E], child_path: JSONPointer[E]) -> bool:
+    """
+    Return True if `parent_path` is a strict parent of `child_path`.
+
+    Root is treated as a parent of all paths.
+    """
+    # Fail fast if malformed pointer
+    parent_ptr, child_ptr = cast_to_pointer(parent_path), cast_to_pointer(child_path)
+
+    # Strict parentage only
+    if parent_path == child_path:
+        return False
+
+    # Due to a bug in the upstream `jsonpointer` library, where jp1.contains(root_pointer)`
+    # is always False, we special-case root:
+    if is_root(parent_path):
+        return True
+
+    return child_ptr.contains(parent_ptr)  # type: ignore[no-any-return]
+
+
 @overload
 def resolve_last(
     doc: JSONValue,
-    path: JSONPointer[Any],
+    path: JSONPointer[E],
     *,
     exists: Literal[True],
     mutable: Literal[True],
     container: Literal["object", "array"] | None = None,
-) -> (
-    tuple[MutableJSONObject[JSONValue], str] | tuple[MutableJSONArray[JSONValue], int]
-): ...
+) -> tuple[MutableJSONObject[E], str] | tuple[MutableJSONArray[E], int]: ...
 
 
 @overload
 def resolve_last(
     doc: JSONValue,
-    path: JSONPointer[Any],
+    path: JSONPointer[E],
     *,
     exists: Literal[False] | None = None,
     mutable: Literal[True],
     container: Literal["object", "array"] | None = None,
 ) -> (
-    tuple[MutableJSONObject[JSONValue], str]
-    | tuple[MutableJSONArray[JSONValue], int | Literal["-"]]
+    tuple[MutableJSONObject[E], str] | tuple[MutableJSONArray[E], int | Literal["-"]]
 ): ...
 
 
 @overload
 def resolve_last(
     doc: JSONValue,
-    path: JSONPointer[Any],
+    path: JSONPointer[E],
     *,
     exists: Literal[True],
     mutable: bool | None = None,
     container: Literal["object", "array"] | None = None,
-) -> tuple[JSONObject[JSONValue], str] | tuple[JSONArray[JSONValue], int]: ...
+) -> tuple[JSONObject[E], str] | tuple[JSONArray[E], int]: ...
 
 
 @overload
 def resolve_last(
     doc: JSONValue,
-    path: JSONPointer[Any],
+    path: JSONPointer[E],
     *,
     exists: bool | None = None,
     mutable: bool | None = None,
     container: Literal["object", "array"] | None = None,
-) -> (
-    tuple[JSONObject[JSONValue], str] | tuple[JSONArray[JSONValue], int | Literal["-"]]
-): ...
+) -> tuple[JSONObject[E], str] | tuple[JSONArray[E], int | Literal["-"]]: ...
 
 
 def resolve_last(
     doc: JSONValue,
-    path: JSONPointer[Any],
+    path: JSONPointer[E],
     *,
     exists: bool | None = None,
     mutable: bool | None = None,
     container: Literal["object", "array"] | None = None,
-) -> (
-    tuple[JSONObject[JSONValue], str] | tuple[JSONArray[JSONValue], int | Literal["-"]]
-):
+) -> tuple[JSONObject[E], str] | tuple[JSONArray[E], int | Literal["-"]]:
     """
     Resolve a JSON Pointer to its parent container and final token.
 
@@ -248,20 +263,23 @@ def resolve_last(
             )
 
     # existence constraint
-    try:
-        path_container[path_key]
-    except (KeyError, IndexError, TypeError) as e:
-        # Missing key, index out of bounds, or invalid "-" access.
-        if exists:
-            raise PatchApplicationError(f"target at {path!r} does not exist") from e
-    else:
-        if exists is False:
-            raise PatchApplicationError(f"target at {path!r} already exists")
+    if exists is not None:
+        try:
+            value = path_container[path_key]
+        except (KeyError, IndexError, TypeError) as e:
+            # Missing key, index out of bounds, or invalid "-" access.
+            if exists:
+                raise PatchApplicationError(f"target at {path!r} does not exist") from e
+        else:
+            if exists:
+                path.validate_pointed_value(value)
+            else:
+                raise PatchApplicationError(f"target at {path!r} already exists")
 
     return path_container, path_key
 
 
-def assert_valid(doc: JSONValue, *paths: JSONPointer[Any]) -> None:
+def assert_valid(doc: JSONValue, *paths: JSONPointer[E]) -> None:
     """
     Assert that pointers are resolvable against the document structure.
 
@@ -274,7 +292,7 @@ def assert_valid(doc: JSONValue, *paths: JSONPointer[Any]) -> None:
 
 def assert_targets(
     doc: JSONValue,
-    *paths: JSONPointer[Any],
+    *paths: JSONPointer[E],
     exists: bool | None = None,
     mutable: bool | None = None,
 ) -> None:
@@ -284,46 +302,33 @@ def assert_targets(
     Root pointers are allowed; they are considered to exist and be writable.
     """
     for path in paths:
-        if not is_root(path):
-            resolve_last(doc, path, exists=exists, mutable=mutable)
+        if is_root(path):
+            if mutable is False:
+                raise PatchApplicationError(f"target at {path!r} is mutable")
+            if exists is False:
+                raise PatchApplicationError(f"target at {path!r} already exists")
+            value = doc
+        else:
+            container, key = resolve_last(doc, path, exists=exists, mutable=mutable)
+            value = container[key]  # type: ignore[index]
+
+        if exists:
+            path.validate_pointed_value(value)
 
 
-def is_parent_path(
-    *, parent_path: JSONPointer[Any], child_path: JSONPointer[Any]
-) -> bool:
-    """
-    Return True if `parent_path` is a strict parent of `child_path`.
-
-    Root is treated as a parent of all paths.
-    """
-    # Fail fast if malformed pointer
-    parent_ptr, child_ptr = cast_to_pointer(parent_path), cast_to_pointer(child_path)
-
-    # Strict parentage only
-    if parent_path == child_path:
-        return False
-
-    # Due to a bug in the upstream `jsonpointer` library, where jp1.contains(root_pointer)`
-    # is always False, we special-case root:
-    if is_root(parent_path):
-        return True
-
-    return child_ptr.contains(parent_ptr)  # type: ignore[no-any-return]
-
-
-def get(doc: JSONValue, path: JSONPointer[U]) -> U:
+def get(doc: JSONValue, path: JSONPointer[E]) -> E:
     """
     Return the value at `path`, validated against the pointer's type parameter `U`.
     """
     if is_root(path):
         value = doc
+        return path.validate_pointed_value(value)
     else:
         container, key = resolve_last(doc, path, exists=True)
-        value = container[key]  # type: ignore[index]
-    return path.validate_pointed_value(value)
+        return container[key]  # type: ignore[index]
 
 
-def add(doc: JSONValue, path: JSONPointer[Any], value: JSONValue) -> JSONValue:
+def add(doc: JSONValue, path: JSONPointer[JSONValue], value: JSONValue) -> JSONValue:
     """
     RFC 6902 `add` semantics.
 
@@ -349,7 +354,7 @@ def add(doc: JSONValue, path: JSONPointer[Any], value: JSONValue) -> JSONValue:
     return doc
 
 
-def remove(doc: JSONValue, path: JSONPointer[Any]) -> JSONValue:
+def remove(doc: JSONValue, path: JSONPointer[JSONValue]) -> JSONValue:
     """RFC 6902 `remove` semantics. Removing root is forbidden."""
     if is_root(path):
         raise PatchApplicationError("cannot remove the root")
@@ -358,7 +363,9 @@ def remove(doc: JSONValue, path: JSONPointer[Any]) -> JSONValue:
     return doc
 
 
-def replace(doc: JSONValue, path: JSONPointer[Any], value: JSONValue) -> JSONValue:
+def replace(
+    doc: JSONValue, path: JSONPointer[JSONValue], value: JSONValue
+) -> JSONValue:
     """RFC 6902 `replace` semantics. Root replaces the entire document."""
     if is_root(path):
         return value
@@ -367,7 +374,7 @@ def replace(doc: JSONValue, path: JSONPointer[Any], value: JSONValue) -> JSONVal
 
 
 def move(
-    doc: JSONValue, from_path: JSONPointer[Any], to_path: JSONPointer[Any]
+    doc: JSONValue, from_path: JSONPointer[JSONValue], to_path: JSONPointer[JSONValue]
 ) -> JSONValue:
     """RFC 6902 `move` semantics with a guard against moving into a descendant."""
     assert_targets(doc, from_path, exists=True, mutable=True)
@@ -387,7 +394,7 @@ def move(
 
 
 def copy(
-    doc: JSONValue, from_path: JSONPointer[Any], to_path: JSONPointer[Any]
+    doc: JSONValue, from_path: JSONPointer[JSONValue], to_path: JSONPointer[JSONValue]
 ) -> JSONValue:
     """RFC 6902 `copy` semantics."""
     value = get(doc, from_path)
@@ -396,7 +403,9 @@ def copy(
     return add(doc, to_path, deepcopy(value))
 
 
-def test(doc: JSONValue, path: JSONPointer[Any], expected: JSONValue) -> JSONValue:
+def test(
+    doc: JSONValue, path: JSONPointer[JSONValue], expected: JSONValue
+) -> JSONValue:
     """
     RFC 6902 `test` semantics using JSON-ish equality.
 
@@ -410,138 +419,123 @@ def test(doc: JSONValue, path: JSONPointer[Any], expected: JSONValue) -> JSONVal
     return doc
 
 
-def swap(
+def transform_n(
     doc: JSONValue,
-    first_path: JSONPointer[JSONValue],
-    second_path: JSONPointer[JSONValue],
+    *,
+    inputs: Sequence[JSONPointer[JSONValue]] = (),
+    outputs: Sequence[JSONPointer[JSONValue]],
+    func: Callable[..., Any],
 ) -> JSONValue:
     """
-    Swap the values at `first_path` and `second_path`.
+    N-ary transform using typed pointers.
 
-    - Both paths must exist and be mutable.
-    - Swapping a path with one of its own descendants is forbidden and
-      raises PatchApplicationError.
+    - Reads values at `inputs` (must exist) and validates each using the input
+      pointer's type parameter.
+    - Calls `func(*values)`.
+    - Writes the result(s) into `outputs` (targets must exist and be writable),
+      validating each written value using the output pointer's type parameter.
 
-    This is a non-standard convenience primitive that can be used as a
-    building block for more complex custom operations.
-
-    The document is mutated in place and returned for convenience.
+    Return shape rules:
+      - If len(outputs) == 1: func may return a scalar.
+      - If len(outputs) > 1: func must return a tuple/list of that length.
     """
-    assert_targets(doc, first_path, second_path, exists=True, mutable=True)
-    if first_path == second_path:
-        return doc  # no-op
+    if not outputs:
+        raise ValueError("outputs must be non-empty")
 
-    # Disallow nested swaps (parent <-> child)
-    for parent, child in ((first_path, second_path), (second_path, first_path)):
+    # Validate inputs
+    in_values: list[Any] = [p.validate_pointed_value(get(doc, p)) for p in inputs]
+    assert_targets(doc, *outputs, exists=True, mutable=True)
+
+    # Transform inputs
+    try:
+        result = func(*in_values)
+    except Exception as e:
+        raise PatchApplicationError(f"transformation failed: {e}") from e
+
+    # Normalize outputs
+    if len(outputs) == 1:
+        out_values: Sequence[Any] = (result,)
+    else:
+        if not isinstance(result, Sequence):
+            raise PatchApplicationError(
+                f"transform_n expected {len(outputs)} return values, got scalar {result!r}"
+            )
+        if len(result) != len(outputs):
+            raise PatchApplicationError(
+                f"transform_n expected {len(outputs)} return values, got {len(result)}"
+            )
+        out_values = result
+
+    # Write outputs
+    for p, v in zip(outputs, out_values):
+        doc = replace(doc, p, v)
+
+    return doc
+
+
+def swap(
+    doc: JSONValue, a: JSONPointer[JSONValue], b: JSONPointer[JSONValue]
+) -> JSONValue:
+    """
+    Swap values at `a` and `b`.
+
+    Both targets must exist and be mutable. Swapping a parent with its child
+    is forbidden.
+    """
+    assert_targets(doc, a, b, exists=True, mutable=True)
+    if a == b:
+        return doc
+
+    for parent, child in ((a, b), (b, a)):
         if is_parent_path(parent_path=parent, child_path=child):
             raise PatchApplicationError(
-                f"path {parent!r} cannot be moved into its child path {child!r}"
+                f"path {parent!r} cannot be swapped with its child path {child!r}"
             )
 
-    first_path_value = get(doc, first_path)
-    doc_intermediate = move(doc, second_path, first_path)
-    return add(doc_intermediate, second_path, first_path_value)
-
-
-def transform(
-    doc: JSONValue,
-    path: JSONPointer[JSONValue],
-    func: Callable[[T], T],
-    *,
-    expect_type: type[T]
-    | tuple[type, ...]
-    | None = None,  # TODO: isinstance is incompatible with type aliases for now... https://discuss.python.org/t/type-aliases-dont-work-with-isinstance/104339
-) -> JSONValue:
-    """
-    Read, transform, and write back the value at `path`.
-
-    This is a general-purpose helper to make custom operations very small and
-    declarative:
-
-    1. Retrieve the current value at `path` with :func:`get`.
-    2. Optionally enforce that it is an instance of `expect_type`.
-    3. Call `func(current)` to obtain a new value.
-    4. Write the new value back at `path` via :func:`replace`.
-
-    Example - increment a numeric counter::
-
-        doc = transform(doc, "/counter", lambda v: v + 1, expect_type=int)
-
-    Example - toggle a boolean flag::
-
-        doc = transform(doc, "/enabled", lambda v: not v, expect_type=bool)
-
-    The document is mutated in place and returned for convenience.
-    """
-    current = get(doc, path)
-
-    if expect_type is not None and not isinstance(current, expect_type):
-        raise PatchApplicationError(
-            f"expected value of type {expect_type!r} at {path!r}, got {type(current)!r}"
-        )
-
-    new_value = func(current)  # type: ignore[arg-type]
-    return replace(doc, path, new_value)
+    return transform_n(
+        doc,
+        inputs=[a, b],
+        outputs=[a, b],
+        func=lambda va, vb: (vb, va),
+    )
 
 
 def append(
-    doc: JSONValue,
-    path: JSONPointer[JSONValue],
-    value: JSONValue,
+    doc: JSONValue, path: JSONPointer[JSONArray[JSONValue]], value: JSONValue
 ) -> JSONValue:
     """
-    Append `value` to the end of the array located at `path`.
+    Append `value` to the array located at `path`.
 
-    Unlike RFC 6902 `add` (which treats the pointer as an insertion *position*),
-    this helper treats `path` as the location of the array itself:
-
-      - `path` must resolve to a JSONArray.
-      - `value` then appended to that array.
-
-    This is intended as a convenience for custom operations, not as a strict
-    encoding of RFC 6902, and is useful for LLM-friendly "append" semantics.
-
-    The document is mutated in place and returned for convenience.
+    This treats `path` as pointing to the array itself (not an insertion position).
     """
-    target = get(doc, path)
-    if not isinstance(target, MutableSequence):
-        raise PatchApplicationError(
-            f"append expects an array at {path!r}, got {type(target)!r}"
-        )
-    target.insert(len(target), value)
-    return doc
+    return transform_n(
+        doc,
+        inputs=[path],
+        outputs=[path],
+        func=lambda arr: [*arr, value],
+    )
 
 
 def extend(
-    doc: JSONValue,
-    path: JSONPointer[JSONValue],
-    values: Sequence[JSONValue],
+    doc: JSONValue, path: JSONPointer[JSONArray[JSONValue]], values: Iterable[JSONValue]
 ) -> JSONValue:
     """
-    Extend the array located at `path` with each element of `values`.
+    Extend the array located at `path` with `values`.
 
-    - `path` must resolve to a JSONArray value.
-    - Each element from `values` is appended in order to that array.
-
-    As with :func:`append`, this helper treats `path` as pointing to the array
-    itself, not to an insertion index, and is intended for custom operations
-    that want "push many" semantics.
-
-    The document is mutated in place and returned for convenience.
+    This treats `path` as pointing to the array itself (not an insertion position).
     """
-    target = get(doc, path)
-    if not isinstance(target, MutableSequence):
-        raise PatchApplicationError(
-            f"extend expects an array at {path!r}, got {type(target)!r}"
-        )
-    target.extend(values)
-    return doc
+    return transform_n(
+        doc,
+        inputs=[path],
+        outputs=[path],
+        func=lambda arr: [*arr, *values],
+    )
 
 
 # TODO: update for JSONObject
 
 
-def toggle_bool(doc: JSONValue, path: JSONPointer[JSONValue]) -> JSONValue:
+def toggle_bool(doc: JSONValue, path: JSONPointer[JSONBoolean]) -> JSONValue:
     """
     Toggle a boolean value at `path`.
 
@@ -563,7 +557,7 @@ def toggle_bool(doc: JSONValue, path: JSONPointer[JSONValue]) -> JSONValue:
 
 def increment_number(
     doc: JSONValue,
-    path: JSONPointer[JSONValue],
+    path: JSONPointer[JSONNumber],
     amount: JSONNumber = 1,
 ) -> JSONValue:
     """
@@ -575,16 +569,12 @@ def increment_number(
     The document is mutated in place and returned for convenience.
     """
     current = get(doc, path)
-    if not isinstance(current, (int, float)) or isinstance(current, bool):
-        raise PatchApplicationError(
-            f"increment_number expects a numeric value at {path!r}, got {type(current)!r}"
-        )
     return replace(doc, path, current + amount)
 
 
 def decrement_number(
     doc: JSONValue,
-    path: JSONPointer[JSONValue],
+    path: JSONPointer[JSONNumber],
     amount: JSONNumber = 1,
 ) -> JSONValue:
     """
@@ -596,73 +586,12 @@ def decrement_number(
     The document is mutated in place and returned for convenience.
     """
     current = get(doc, path)
-    if not isinstance(current, (int, float)) or isinstance(current, bool):
-        raise PatchApplicationError(
-            f"decrement_number expects a numeric value at {path!r}, got {type(current)!r}"
-        )
     return replace(doc, path, current - amount)
 
 
-def transform_n(
-    doc: JSONValue,
-    *,
-    inputs: Sequence[JSONPointer[Any]],
-    outputs: Sequence[JSONPointer[Any]],
-    func: Callable[..., Any],
-) -> JSONValue:
-    """
-    N-ary transform using typed pointers.
-
-    Reads values at `inputs`, validates each value using the pointer's type parameter,
-    calls `func(*values)`, then writes the result(s) to `outputs` (after validating
-    each result against the corresponding output pointer's type parameter).
-
-    Return shape rules:
-      - If len(outputs) == 1: func may return a single value (scalar).
-      - If len(outputs) > 1: func must return a tuple/list of that length.
-    """
-    if not (inputs or outputs):
-        raise ValueError("inputs and outputs must be nonempy")
-
-    # Read + validate inputs
-    in_values: list[Any] = []
-    for p in inputs:
-        raw = get(doc, p)
-        in_values.append(p.validate_pointed_value(raw))
-
-    # validate output paths
-    for p in outputs:
-        raw = get(doc, p)
-        p.validate_pointed_value(raw)
-
-    # Apply transform function
-    result = func(*in_values)
-
-    # Normalize output values
-    if len(outputs) == 1:
-        out_values = (result,)
-    else:
-        if not isinstance(result, (tuple, list)):
-            raise PatchApplicationError(
-                f"transform_n expected {len(outputs)} return values, got scalar {result!r}"
-            )
-        if len(result) != len(outputs):
-            raise PatchApplicationError(
-                f"transform_n expected {len(outputs)} return values, got {len(result)}"
-            )
-        out_values = tuple(result)
-
-    # Validate + write outputs
-    for p, v in zip(outputs, out_values):
-        # v = p.validate_pointed_value(v)  # validate output type too? would be confusing. I think only let the generic refer to existing target, not desired target.
-        doc = replace(doc, p, v)
-
-    return doc
-
-
-transform_n(
-    4,
+x = transform_n(
+    {"foo": 1, "bar": True},
     inputs=[JSONPointer[JSONNumber]("/foo")],
-    outputs=[JSONPointer("/bar")],
+    outputs=[JSONPointer[Any]("/bar")],
     func=lambda x: x + 1,
 )
