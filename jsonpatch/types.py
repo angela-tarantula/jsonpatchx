@@ -105,15 +105,15 @@ type JSONString = str
 type JSONNull = None
 type JSONPrimitive = JSONBoolean | JSONNumber | JSONString | JSONNull
 
-T = TypeVar("T", covariant=True)
+_T_co = TypeVar("_T_co", covariant=True)
 
-type JSONArray[T] = Sequence[T]
-type JSONObject[T] = Mapping[str, T]
-type JSONContainer[T] = JSONArray[T] | JSONObject[T]
+type JSONArray[_T_co] = Sequence[_T_co]
+type JSONObject[_T_co] = Mapping[str, _T_co]
+type JSONContainer[_T_co] = JSONArray[_T_co] | JSONObject[_T_co]
 
-type MutableJSONArray[T] = MutableSequence[T]
-type MutableJSONObject[T] = MutableMapping[str, T]
-type MutableJSONContainer[T] = MutableJSONArray[T] | MutableJSONObject[T]
+type MutableJSONArray[_T_co] = MutableSequence[_T_co]
+type MutableJSONObject[_T_co] = MutableMapping[str, _T_co]
+type MutableJSONContainer[_T_co] = MutableJSONArray[_T_co] | MutableJSONObject[_T_co]
 
 type JSONValue = Annotated[
     JSONPrimitive | JSONContainer[JSONValue],
@@ -121,7 +121,7 @@ type JSONValue = Annotated[
 ]
 
 
-class JSONPointer(str, Generic[T]):
+class JSONPointer(str, Generic[_T_co]):
     """
     A subclass of `str` with JSON Pointer syntax validated at parse-time.
 
@@ -132,8 +132,8 @@ class JSONPointer(str, Generic[T]):
 
     # ClassVar doesn't usually accept generics, but it's ok here because JSONPointer[A] and JSONPointer[B] are different classes (ref: https://github.com/python/typing/discussions/1424#discussioncomment-7989934)
     # also, technically, 'Annotated[...]' is not assignable to 'type', but readability > correctness, just remember runtime is broader (ref: https://github.com/python/typing/pull/1618)
-    __expected_type__: ClassVar[type[T]]
-    __adapter__: ClassVar[TypeAdapter[T]]
+    __expected_type__: ClassVar[type[_T_co]]
+    __adapter__: ClassVar[TypeAdapter[_T_co]]
     _ptr: JsonPointer
 
     @classmethod
@@ -164,7 +164,7 @@ class JSONPointer(str, Generic[T]):
 
     @classmethod
     @cache
-    def __class_getitem__(cls, generic: type[T]) -> type["JSONPointer[T]"]:
+    def __class_getitem__(cls, generic: type[_T_co]) -> type["JSONPointer[_T_co]"]:
         """Return a specialized *subclass* that carries the expected type."""
         if hasattr(cls, "__expected_type__"):
             raise InvalidJSONPointer(
@@ -198,7 +198,7 @@ class JSONPointer(str, Generic[T]):
     def contains(self, other: "JSONPointer[Any]") -> bool:
         return self._ptr.contains(other._ptr)  # type: ignore[no-any-return]  # JsonPointer is untyped
 
-    def validate_pointed_value(self, value: Any) -> T:
+    def validate_pointed_value(self, value: Any) -> _T_co:
         try:
             return self.__adapter__.validate_python(value, strict=True)
         except Exception as e:

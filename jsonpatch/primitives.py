@@ -60,7 +60,6 @@ from jsonpatch.types import (
 
 # NOTE: All of these primitives do rely on one thing: that `doc` is a valid JSON-serializable python object
 
-U = TypeVar("U")
 E = TypeVar("E", bound=JSONValue)
 
 
