@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 from collections.abc import Mapping, MutableMapping, MutableSequence, Sequence
-from functools import cache, lru_cache
+from functools import cache
 from typing import Annotated, Any, ClassVar, Generic, Self, TypeVar
 
 from jsonpointer import (  # type: ignore[import-untyped]
@@ -125,37 +125,42 @@ class JSONPointer(str, Generic[T]):
     """
     A subclass of `str` with JSON Pointer syntax validated at parse-time.
 
-    Optionally value-typed: `JSONPointer[T]` carries `U` so callers can
-    validate the value at that pointer at apply-time.
+    The `__class_getitem__` method returns a subclass with an expected type for the pointed value.
+
+    The `validate_pointed_value` method validates the pointed value against the expected type.
     """
 
-    __expected_type__: ClassVar[type]
+    # ClassVar doesn't usually accept generics, but it's ok here because JSONPointer[A] and JSONPointer[B] are different classes (ref: https://github.com/python/typing/discussions/1424#discussioncomment-7989934)
+    # also, technically, 'Annotated[...]' is not assignable to 'type', but readability > correctness, just remember runtime is broader (ref: https://github.com/python/typing/pull/1618)
+    __expected_type__: ClassVar[type[T]]
+    __adapter__: ClassVar[TypeAdapter[T]]
     _ptr: JsonPointer
-    _adapter: TypeAdapter[T]
 
-    def __new__(cls, v: str) -> Self:
+    @classmethod
+    def _create_adapter(cls) -> None:
+        """Create a TypeAdapter for the expected type. Caches it for performance."""
         if not hasattr(cls, "__expected_type__"):
             raise InvalidJSONPointer("missing expected type")
-        adapter: TypeAdapter[T] = cls._adapter_for(cls.__expected_type__)
 
+        if not hasattr(cls, "__adapter__"):
+            try:
+                cls.__adapter__ = TypeAdapter(cls.__expected_type__)
+            except Exception as e:
+                raise InvalidJSONPointer(
+                    f"invalid expected type {cls.__expected_type__!r}"
+                ) from e
+
+    def _create_pointer(self, v: str) -> None:
         try:
-            ptr = JsonPointer(v)
+            self._ptr = JsonPointer(v)
         except JsonPointerException as e:
             raise InvalidJSONPointer(f"invalid syntax: {v!r}") from e
 
+    def __new__(cls, v: str) -> Self:
+        cls._create_adapter()
         obj = str.__new__(cls, v)
-        obj._ptr = ptr
-        obj._adapter = adapter
+        obj._create_pointer(v)
         return obj
-
-    @classmethod
-    @lru_cache(maxsize=128)
-    def _adapter_for(cls, tp: type[T]) -> TypeAdapter[T]:
-        """Cache `TypeAdapter` instances for expected value types, which can be non-trivial nested generics."""
-        try:
-            return TypeAdapter(tp)
-        except Exception as e:
-            raise InvalidJSONPointer(f"invalid expected type {tp!r}") from e
 
     @classmethod
     @cache
@@ -195,7 +200,7 @@ class JSONPointer(str, Generic[T]):
 
     def validate_pointed_value(self, value: Any) -> T:
         try:
-            return self._adapter.validate_python(value, strict=True)
+            return self.__adapter__.validate_python(value, strict=True)
         except Exception as e:
             raise PatchApplicationError(
                 f"value {value!r} is not assignable to {self.__class__.__expected_type__!r} at pointer {str(self)!r}"
