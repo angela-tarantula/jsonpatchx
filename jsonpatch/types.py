@@ -12,7 +12,11 @@ from jsonpointer import (  # type: ignore[import-untyped]
 from pydantic import GetCoreSchemaHandler, GetJsonSchemaHandler, TypeAdapter
 from pydantic_core import core_schema
 
-from jsonpatch.exceptions import InvalidOperationSchema, PatchApplicationError
+from jsonpatch.exceptions import (
+    InvalidJSONPointer,
+    InvalidOperationSchema,
+    PatchApplicationError,
+)
 
 
 class PydanticJsonValueValidator:
@@ -130,21 +134,14 @@ class JSONPointer(str, Generic[T]):
     _adapter: TypeAdapter[T]
 
     def __new__(cls, v: str) -> Self:
-        try:
-            adapter: TypeAdapter[T] = cls._adapter_for(cls.__expected_type__)
-        except AttributeError as e:
-            raise InvalidOperationSchema(
-                "Invalid JSON Pointer: no expected type"
-            ) from e
-        except Exception as e:
-            raise InvalidOperationSchema(
-                "Invalid JSON Pointer: invalid expected type"
-            ) from e
+        if not hasattr(cls, "__expected_type__"):
+            raise InvalidJSONPointer("missing expected type")
+        adapter: TypeAdapter[T] = cls._adapter_for(cls.__expected_type__)
 
         try:
             ptr = JsonPointer(v)
         except JsonPointerException as e:
-            raise InvalidOperationSchema(f"Invalid JSON Pointer: {v!r}") from e
+            raise InvalidJSONPointer(f"invalid syntax: {v!r}") from e
 
         obj = str.__new__(cls, v)
         obj._ptr = ptr
@@ -155,12 +152,19 @@ class JSONPointer(str, Generic[T]):
     @lru_cache(maxsize=128)
     def _adapter_for(cls, tp: type[T]) -> TypeAdapter[T]:
         """Cache `TypeAdapter` instances for expected value types, which can be non-trivial nested generics."""
-        return TypeAdapter(tp)
+        try:
+            return TypeAdapter(tp)
+        except Exception as e:
+            raise InvalidJSONPointer(f"invalid expected type {tp!r}") from e
 
     @classmethod
     @cache
     def __class_getitem__(cls, generic: type[T]) -> type["JSONPointer[T]"]:
-        # Return a specialized *subclass* that carries the expected type.
+        """Return a specialized *subclass* that carries the expected type."""
+        if hasattr(cls, "__expected_type__"):
+            raise InvalidJSONPointer(
+                f"{cls.__name__} already has an expected type {cls.__expected_type__!r}"
+            )
         name = f"{cls.__name__}[{getattr(generic, '__name__', repr(generic))}]"
         return type(name, (cls,), {"__expected_type__": generic})
 
