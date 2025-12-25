@@ -170,7 +170,7 @@ def _json_pointer_for(v: str) -> JsonPointer:
 
 
 @final
-class JSONPointer[T](str):
+class JSONPointer[T: JSONValue](str):
     """
     RFC 6901 JSON Pointer. Runtime value produced by Pydantic for a field annotated as JSONPointer[IN, OUT].
 
@@ -205,7 +205,7 @@ class JSONPointer[T](str):
             raise InvalidJSONPointer(
                 "JSONPointer must be parameterized, e.g. JSONPointer[JSONNumber, JSONNumber]"
             )
-        elif len(args) > 1:
+        elif 1 < len(args):
             raise InvalidJSONPointer(
                 f"JSONPointer may only have 1 parameter, got {len(args)}: {args}"
             )
@@ -387,7 +387,7 @@ class JSONPointer[T](str):
                     ) from e
             else:
                 if exists:
-                    self.validate_target(target)
+                    self.validate_target(target=target)
                 else:
                     raise PatchApplicationError(
                         f"target at {str(self)!r} already exists"
@@ -412,9 +412,38 @@ class JSONPointer[T](str):
                 raise PatchApplicationError(f"target at {str(self)!r} is mutable")
             if exists is False:
                 raise PatchApplicationError(f"target at {str(self)!r} already exists")
-            self.validate_target(target)
+            self.validate_target(target=target)
         else:
             self.resolve_last(doc, exists=exists, mutable=mutable)
+
+    def get(self, doc: JSONValue) -> T:
+        """
+        Resolve the JSONPointer against the `doc` and return the target.
+        """
+        if self.is_root():
+            return self.validate_target(target=doc)
+        else:
+            container, key = self.resolve_last(doc, exists=True)
+            return container[key]  # type: ignore[index]
+
+    def set(self, doc: JSONValue, value: T) -> JSONValue:
+        new_target = self.validate_target(value)
+        if self.is_root():
+            return new_target
+
+        container, key = self.resolve_last(doc, mutable=True)
+
+        if isinstance(container, MutableMapping):
+            container[key] = new_target  # type: ignore[index]
+        elif isinstance(container, MutableSequence):
+            if key == "-":
+                key = len(container)
+            if key > len(container):  # type: ignore[operator]
+                raise PatchApplicationError(f"target at {str(self)!r} is out of range")
+            assert key >= 0, "JsonPointer implementation changed"  # type: ignore[operator]
+            container.insert(key, new_target)  # type: ignore[arg-type]
+
+        return doc
 
     @override
     def __repr__(self) -> str:

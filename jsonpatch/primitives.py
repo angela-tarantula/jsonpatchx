@@ -38,11 +38,9 @@ for JSON arrays. Supporting that would require upstream changes.
 
 from collections.abc import Mapping, MutableMapping, MutableSequence, Sequence
 from copy import deepcopy
-from functools import lru_cache
 from typing import Any, Callable, Iterable, Literal, TypeVar, overload
 
 from jsonpointer import (  # type: ignore[import-untyped]
-    JsonPointer,
     JsonPointerException,
 )
 
@@ -121,29 +119,12 @@ def is_root(path: JSONPointer[E]) -> bool:
     return path == ""
 
 
-@lru_cache(maxsize=1024)
-def cast_to_pointer(path: JSONPointer[E]) -> JsonPointer:
-    """
-    Convert a (validated) `JSONPointer` value into an upstream `JsonPointer`.
-
-    Defensive: if a caller bypasses Pydantic validation and passes invalid
-    syntax, raise PatchApplicationError.
-    """
-    try:
-        return JsonPointer(path)
-    except JsonPointerException as e:
-        raise PatchApplicationError(f"expected {path!r} to be a JSON Pointer") from e
-
-
 def is_parent_path(*, parent_path: JSONPointer[E], child_path: JSONPointer[E]) -> bool:
     """
     Return True if `parent_path` is a strict parent of `child_path`.
 
     Root is treated as a parent of all paths.
     """
-    # Fail fast if malformed pointer
-    parent_ptr, child_ptr = cast_to_pointer(parent_path), cast_to_pointer(child_path)
-
     # Strict parentage only
     if parent_path == child_path:
         return False
@@ -153,7 +134,7 @@ def is_parent_path(*, parent_path: JSONPointer[E], child_path: JSONPointer[E]) -
     if is_root(parent_path):
         return True
 
-    return child_ptr.contains(parent_ptr)  # type: ignore[no-any-return]
+    return child_path._ptr.contains(parent_path._ptr)  # type: ignore[no-any-return]
 
 
 @overload
@@ -227,10 +208,8 @@ def resolve_last(
             "tried to resolve a path to last, but got root, which has no container"
         )
 
-    ptr = cast_to_pointer(path)
-
     try:
-        path_container, path_key = ptr.to_last(doc)
+        path_container, path_key = path._ptr.to_last(doc)
         assert isinstance(path_container, (Mapping, Sequence)) and not isinstance(
             path_container, (str, bytes, bytearray)
         ), "JsonPointer implementation changed"
@@ -327,7 +306,7 @@ def get(doc: JSONValue, path: JSONPointer[E]) -> E:
         return container[key]  # type: ignore[index]
 
 
-def add(doc: JSONValue, path: JSONPointer[JSONValue], value: JSONValue) -> JSONValue:
+def add[T: JSONValue](doc: JSONValue, pointer: JSONPointer[T], value: T) -> JSONValue:
     """
     RFC 6902 `add` semantics.
 
@@ -335,22 +314,7 @@ def add(doc: JSONValue, path: JSONPointer[JSONValue], value: JSONValue) -> JSONV
     - Object key assigns.
     - Array index inserts; "-" appends.
     """
-    if is_root(path):
-        return value
-
-    container, key = resolve_last(doc, path, mutable=True)
-
-    if isinstance(container, MutableMapping):
-        container[key] = value  # type: ignore[index]
-    elif isinstance(container, MutableSequence):
-        if key == "-":
-            key = len(container)
-        if key > len(container):  # type: ignore[operator]
-            raise PatchApplicationError(f"target at {path!r} is out of range")
-        assert key >= 0, "JsonPointer implementation changed"  # type: ignore[operator]
-        container.insert(key, value)  # type: ignore[arg-type]
-
-    return doc
+    return pointer.set(doc, value)
 
 
 def remove(doc: JSONValue, path: JSONPointer[JSONValue]) -> JSONValue:
