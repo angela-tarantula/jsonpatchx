@@ -3,9 +3,8 @@ from __future__ import annotations
 import json
 import math
 from collections.abc import Mapping, MutableMapping, MutableSequence, Sequence
-from dataclasses import dataclass
-from functools import lru_cache, partial
-from typing import TYPE_CHECKING, Annotated, Any, Generic, Self, TypeVar, final
+from functools import lru_cache
+from typing import Annotated, Any, TypeVar, cast, final, get_args
 
 from jsonpointer import (  # type: ignore[import-untyped]
     JsonPointer,
@@ -164,11 +163,11 @@ def _json_pointer_for(v: str) -> JsonPointer:
 
 
 @final
-class _TypedJSONPointer(str, Generic[T]):
+class JSONPointer[T_co](str):
     """
-    Runtime value produced by Pydantic for a field annotated as JSONPointer[T].
+    RFC 6901 JSON Pointer. Runtime value produced by Pydantic for a field annotated as JSONPointer[T].
 
-    - Subclasses `str` so user code can treat it like the pointer string.
+    - Subclasses str so user code can treat it like the pointer string.
     - Stores parsed JsonPointer for structural ops
     - Stores TypeAdapter[T] for apply-time validation
     """
@@ -176,94 +175,65 @@ class _TypedJSONPointer(str, Generic[T]):
     __slots__ = ("_ptr", "_adapter", "_type_repr")
 
     _ptr: JsonPointer
-    _adapter: TypeAdapter[T]
+    _adapter: TypeAdapter[T_co]
     _type_repr: str
 
-    def __new__(cls, v: str) -> "_TypedJSONPointer[T]":
-        # defensive, _TypedJSONPointer[T] should never be instantiated directly
-        raise InvalidJSONPointer(
-            "JSONPointer values are created by Pydantic validation only."
+    @classmethod
+    def __get_pydantic_core_schema__(
+        cls, source_type: Any, handler: GetCoreSchemaHandler
+    ) -> cs.CoreSchema:
+        # Pydantic passes the parameterized type (JSONPointer[int]) as source_type
+        args = get_args(source_type)
+        if not args:
+            raise InvalidJSONPointer(
+                "JSONPointer must be parameterized, e.g. JSONPointer[JSONNumber]"
+            )
+        elif len(args) > 1:
+            raise InvalidJSONPointer(
+                f"JSONPointer may only have 1 parameter, got {len(args)}: {args}"
+            )
+        else:
+            expected_type: TypeForm[T_co] = cast(TypeForm[T_co], args[0])
+
+        def build(v: str) -> JSONPointer[T_co]:
+            if not isinstance(
+                v, str
+            ):  # defensive, str_schema(strict=True) should prevent this path
+                raise InvalidJSONPointer(f"invalid JSON Pointer: {v!r} is not a string")
+            obj = str.__new__(cls, v)
+            obj._ptr = _json_pointer_for(v)
+            obj._adapter = _type_adapter_for(expected_type)
+            obj._type_repr = repr(expected_type)
+            return obj
+
+        return cs.no_info_after_validator_function(
+            function=build,
+            schema=cs.str_schema(strict=True),
         )
 
     @classmethod
-    def _from_str(cls, v: str, *, expected: TypeForm[T]) -> "_TypedJSONPointer[T]":
-        """Intended construction path for _TypedJSONPointer[T]."""
-        if type(v) is not str:
-            # defensive, Pydantic should already enforce str_schema(strict=True) before this runs
-            raise InvalidJSONPointer(f"invalid JSON Pointer: {v!r} is not a string")
+    def __get_pydantic_json_schema__(
+        cls, schema: cs.CoreSchema, handler: GetJsonSchemaHandler
+    ) -> dict[str, object]:
+        json_schema = handler(schema)
+        json_schema.update(
+            {
+                "type": "string",
+                "format": "json-pointer",
+                "description": "A JSON Pointer (RFC 6901) string such that the pointer resolves to a value with type: {self._type_repr}.",
+            }
+        )
+        return json_schema
 
-        obj = str.__new__(cls, v)
-        obj._ptr = _json_pointer_for(v)
-        obj._adapter = _type_adapter_for(expected)
-        obj._type_repr = repr(expected)
-        return obj
+    def validate_pointed_value(self, value: object) -> T_co:
+        """
+        Runtime check: does the value at the end of the pointer match T?
 
-    def validate_pointed_value(self, value: Any) -> T:
-        """Apply-time validation: ensure the runtime value is assignable to T"""
+        Returns the validated value on success. Raises PatchApplicationError on failure.
+        """
         try:
             return self._adapter.validate_python(value, strict=True)
         except Exception as e:
             raise PatchApplicationError(
-                f"value at {str(self)!r} is not assignable to {self._type_repr}"
+                f"expected the value at {str(self)!r} to be assignable to {self._type_repr}, got: {type(value).__name__}, value: {value!r}"
             ) from e
-
-
-@dataclass(frozen=True, slots=True, kw_only=True)
-class _TypedJSONPointerValidator(Generic[T]):
-    """Pydantic-aware wrapper for _TypedJSONPointer[T]."""
-
-    type: TypeForm[T]
-
-    def __get_pydantic_core_schema__(
-        self,
-        source_type: Any,
-        handler: GetCoreSchemaHandler,
-    ) -> cs.CoreSchema:
-        """Pydantic validation for JSONPointer[T]."""
-        return cs.no_info_after_validator_function(
-            function=partial(_TypedJSONPointer._from_str, expected=self.type),
-            schema=cs.str_schema(
-                strict=True
-            ),  # In OpenAPI/JSON schema, a pointer is a string
-        )
-
-    def __get_pydantic_json_schema__(
-        self,
-        schema: cs.CoreSchema,
-        handler: GetJsonSchemaHandler,
-    ) -> dict[str, object]:
-        json_schema = handler(schema)
-        json_schema.update({"description": "JSON Pointer (RFC 6901) string."})
-        return json_schema
-
-
-if TYPE_CHECKING:
-    # Public ergonomics: JSONPointer[T] is just str to type checkers
-    type JSONPointer[T] = str
-else:
-
-    class JSONPointer(Generic[T]):
-        """
-        JSON Pointer (RFC 6901) string, with Pydantic-aware validation.
-
-        Type-checkers treat JSONPointer[T] as str, but at runtime Pydantic returns _TypedJSONPointer[T].
-        """
-
-        __slots__ = ()
-
-        @classmethod
-        def __class_getitem__(cls, expected: TypeForm[T]) -> TypeForm[str]:
-            return Annotated[str, _TypedJSONPointerValidator[T](type=expected)]
-
-        def __new__(cls, *args: Any, **kwargs: Any) -> Self:
-            raise NotImplementedError("JSONPointer is not directly instantiable.")
-
-        @classmethod
-        def __get_pydantic_core_schema__(
-            cls,
-            source_type: Any,
-            handler: GetCoreSchemaHandler,
-        ) -> cs.CoreSchema:
-            raise InvalidOperationSchema(
-                "JSONPointer must be parameterized, e.g., JSONPointer[JSONBoolean]."
-            )

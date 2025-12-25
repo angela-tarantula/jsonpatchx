@@ -48,7 +48,7 @@ def test_invalid_operation_schema(subtests: Subtests) -> None:
                 return None
 
         with pytest.raises(ValidationError):
-            AppleOp(op="orange")  # type: ignore[arg-type]
+            AppleOp(op="orange")
 
     with subtests.test("pydantic enforces immutability of OperationSchemas"):
 
@@ -63,7 +63,7 @@ def test_invalid_operation_schema(subtests: Subtests) -> None:
         orange = Orange(value="peel")
 
         with pytest.raises(ValidationError):
-            orange.value = "ripe"
+            orange.value = "ripe"  # type: ignore[misc]
 
 
 def test_invalid_operation_registry(subtests: Subtests) -> None:
