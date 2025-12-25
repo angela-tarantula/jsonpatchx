@@ -4,7 +4,7 @@ import json
 import math
 from collections.abc import Mapping, MutableMapping, MutableSequence, Sequence
 from functools import lru_cache
-from typing import Annotated, Any, TypeVar, cast, final, get_args
+from typing import Annotated, Any, Self, TypeVar, cast, final, get_args
 
 from jsonpointer import (  # type: ignore[import-untyped]
     JsonPointer,
@@ -148,7 +148,7 @@ def _type_adapter_for(expected: TypeForm[T]) -> TypeAdapter[T]:
         except TypeError:
             return TypeAdapter(expected)
     except Exception as e:
-        raise InvalidOperationSchema(
+        raise InvalidJSONPointer(
             f"invalid type parameter for JSON Pointer: {expected!r}"
         ) from e
 
@@ -178,6 +178,9 @@ class JSONPointer[T_co](str):
     _adapter: TypeAdapter[T_co]
     _type_repr: str
 
+    def __new__(cls, *_: object, **__: object) -> Self:
+        raise TypeError("JSONPointer values are created by Pydantic validation only.")
+
     @classmethod
     def __get_pydantic_core_schema__(
         cls, source_type: Any, handler: GetCoreSchemaHandler
@@ -196,9 +199,7 @@ class JSONPointer[T_co](str):
             expected_type: TypeForm[T_co] = cast(TypeForm[T_co], args[0])
 
         def build(v: str) -> JSONPointer[T_co]:
-            if not isinstance(
-                v, str
-            ):  # defensive, str_schema(strict=True) should prevent this path
+            if type(v) is not str:  # defensive
                 raise InvalidJSONPointer(f"invalid JSON Pointer: {v!r} is not a string")
             obj = str.__new__(cls, v)
             obj._ptr = _json_pointer_for(v)
@@ -220,7 +221,7 @@ class JSONPointer[T_co](str):
             {
                 "type": "string",
                 "format": "json-pointer",
-                "description": "A JSON Pointer (RFC 6901) string such that the pointer resolves to a value with type: {self._type_repr}.",
+                "description": "JSON Pointer (RFC 6901) string",
             }
         )
         return json_schema
