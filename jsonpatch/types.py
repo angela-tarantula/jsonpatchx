@@ -8,12 +8,14 @@ from typing import (
     Annotated,
     Any,
     Literal,
+    Protocol,
     Self,
     cast,
     final,
     get_args,
     overload,
     override,
+    runtime_checkable,
 )
 
 from jsonpointer import (  # type: ignore[import-untyped]
@@ -135,6 +137,24 @@ type JSONValue = Annotated[
     JSONPrimitive | JSONContainer[JSONValue],
     JSONValueValidator,
 ]
+
+MISSING = object()
+
+
+@runtime_checkable
+class PointerBackend(Protocol):
+    @property
+    def parts(self) -> tuple[str, ...]:
+        """RFC6901-unescaped tokens. Root => ()."""
+        ...
+
+    def resolve(self, doc: Any, *, default: Any) -> Any:
+        """Resolve pointer against doc. Return default or raise."""
+
+    @override
+    def __str__(self) -> str:
+        """Get the string representation of the pointer (escaped)."""
+        ...
 
 
 @lru_cache(maxsize=128)
