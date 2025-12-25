@@ -19,6 +19,7 @@ dev = [
 ]
 
 [tool.mypy]
+plugins = ["pydantic.mypy"]
 python_version = "3.14"
 strict = true
 enable_incomplete_feature = ["TypeForm"]
