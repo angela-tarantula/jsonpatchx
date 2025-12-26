@@ -324,17 +324,23 @@ class JSONPointer[T: JSONValue](str):
     - Stores TypeAdapter[T] for apply-time validation
     """
 
-    __slots__ = ("_ptr", "_adapter", "_type_repr")
+    __slots__ = ("_ptr", "_adapter")
 
     _ptr: PointerBackend
     _adapter: TypeAdapter[T]
 
     @property
-    def _type(self) -> TypeForm[T]:
-        # Shamelessly relies on a private attribute, TypeAdapter._type, to get the JSONPointer type.
-        # In my opinion, TypeAdapter._type should be a public type, and I'll die on this hill.
-        # If I had JSONPointer._adapter and JSONPointer._type, there'd be two sources of truth.
-        # JSONPointer._type would be a derived field, and I'm too purist to implement it.
+    def ptr(self) -> Any:
+        """The JSON Pointer class for this JSONPointer[T], exposed for advanced users."""
+        # TODO: Change 'Any' to the actual JSON Pointer class they pass in
+        return self._ptr
+
+    @property
+    def type(self) -> TypeForm[T]:
+        # Shamelessly relies on a private attribute, TypeAdapter.type, to get the JSONPointer type.
+        # In my opinion, TypeAdapter.type should be a public type, and I'll die on this hill.
+        # If I had JSONPointer._adapter and JSONPointer.type, there'd be two sources of truth.
+        # JSONPointer.type would be a derived field, and I'm too purist to implement it.
         return cast(TypeForm[T], self._adapter._type)
 
     def __new__(cls, *_: object, **__: object) -> Self:
@@ -358,6 +364,7 @@ class JSONPointer[T: JSONValue](str):
             expected_type: TypeForm[T] = cast(TypeForm[T], args[0])
 
         def initializer(v: str) -> Self:
+            # TODO: if v is JSONPointer[T] already, return v (requires enabling the __new__ method for user instantiation)
             if type(v) is not str:  # defensive
                 raise InvalidJSONPointer(f"invalid JSON Pointer: {v!r} is not a string")
             obj = str.__new__(cls, v)
@@ -592,4 +599,4 @@ class JSONPointer[T: JSONValue](str):
 
     @override
     def __repr__(self) -> str:
-        return f"{self.__class__.__name__}[{self._type}]({str(self)!r})"
+        return f"{self.__class__.__name__}[{self.type}]({str(self)!r})"
