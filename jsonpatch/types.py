@@ -281,8 +281,15 @@ def _cached_type_adapter[T](expected: TypeForm[T]) -> TypeAdapter[T]:
 
 
 @lru_cache(maxsize=128)
-def _cached_json_pointer(ptr: str) -> JsonPointer:
-    return JsonPointer(ptr)
+def _cached_json_pointer(
+    ptr: str, *, pointer_cls: type[PointerBackend]
+) -> PointerBackend:
+    pointer = pointer_cls(ptr)
+    if not isinstance(pointer, PointerBackend):
+        raise InvalidJSONPointer(
+            f"pointer class {pointer_cls.__name__} does not conform to the standard"
+        )
+    return pointer
 
 
 def _type_adapter_for[T](expected: TypeForm[T]) -> TypeAdapter[T]:
@@ -298,10 +305,10 @@ def _type_adapter_for[T](expected: TypeForm[T]) -> TypeAdapter[T]:
         ) from e
 
 
-def _json_pointer_for(v: str) -> JsonPointer:
+def _json_pointer_for(v: str, *, cls: type[PointerBackend]) -> PointerBackend:
     """Get a cached JSON pointer."""
     try:
-        return _cached_json_pointer(v)
+        return _cached_json_pointer(v, cls=cls)
     except (JsonPointerException, TypeError) as e:
         # defensive to except TypeError, it's for cache errors (if v is not str at runtime)
         raise InvalidJSONPointer(f"invalid JSON Pointer: {v!r}") from e
@@ -319,7 +326,7 @@ class JSONPointer[T: JSONValue](str):
 
     __slots__ = ("_ptr", "_adapter", "_type_repr")
 
-    _ptr: JsonPointer
+    _ptr: PointerBackend
     _adapter: TypeAdapter[T]
 
     @property
@@ -354,7 +361,7 @@ class JSONPointer[T: JSONValue](str):
             if type(v) is not str:  # defensive
                 raise InvalidJSONPointer(f"invalid JSON Pointer: {v!r} is not a string")
             obj = str.__new__(cls, v)
-            obj._ptr = _json_pointer_for(v)
+            obj._ptr = _json_pointer_for(v, cls=JsonPointer)
             obj._adapter = _type_adapter_for(expected_type)
             return obj
 
