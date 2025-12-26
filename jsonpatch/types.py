@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import math
+import re
 from collections.abc import Mapping, MutableMapping, MutableSequence, Sequence
 from functools import lru_cache
 from typing import (
@@ -10,6 +11,7 @@ from typing import (
     Literal,
     Protocol,
     Self,
+    TypeGuard,
     cast,
     final,
     get_args,
@@ -60,7 +62,7 @@ class JSONValueValidator:
         handler: GetJsonSchemaHandler,
     ) -> dict[str, object]:
         json_schema = handler(core_schema)
-        json_schema.update({"description": "JSON Value."})
+        json_schema.update({"description": "JSON-serializable value."})
         return json_schema
 
     @classmethod
@@ -102,7 +104,7 @@ class JSONNumberValidator:
         handler: GetJsonSchemaHandler,
     ) -> dict[str, object]:
         json_schema = handler(schema)
-        json_schema.update({"description": "JSON Number"})
+        json_schema.update({"description": "JSON number"})
         return json_schema
 
     @classmethod
@@ -138,23 +140,139 @@ type JSONValue = Annotated[
     JSONValueValidator,
 ]
 
+type JSONArrayKey = int | Literal["-"]
+type JSONObjectKey = str
+type JSONKey = JSONArrayKey | JSONObjectKey
+
 MISSING = object()
+
+
+def _is_JSONContainer(value: JSONValue) -> TypeGuard[JSONContainer[JSONValue]]:
+    """Type guard to check if a value is a JSONContainer."""
+    return isinstance(value, (Sequence, Mapping)) and not isinstance(
+        value, (str, bytes, bytearray)
+    )
+
+
+@overload
+def _is_JSONObject[T: JSONValue](
+    value: JSONContainer[T],
+) -> TypeGuard[JSONObject[T]]: ...
+
+
+@overload
+def _is_JSONObject[T: JSONValue](
+    value: JSONValue,
+) -> TypeGuard[JSONObject[JSONValue]]: ...
+
+
+def _is_JSONObject[T: JSONValue](value: JSONValue) -> TypeGuard[JSONObject[JSONValue]]:
+    """Type guard to check if a value is a JSONObject."""
+    return isinstance(value, Mapping)
+
+
+@overload
+def _is_JSONArray[T: JSONValue](value: JSONContainer[T]) -> TypeGuard[JSONArray[T]]: ...
+
+
+@overload
+def _is_JSONArray[T: JSONValue](
+    value: JSONValue,
+) -> TypeGuard[JSONArray[JSONValue]]: ...
+
+
+def _is_JSONArray[T: JSONValue](value: JSONValue) -> TypeGuard[JSONArray[JSONValue]]:
+    """Type guard to check if a value is a JSONArray."""
+    return isinstance(value, Sequence) and not isinstance(
+        value, (str, bytes, bytearray)
+    )
 
 
 @runtime_checkable
 class PointerBackend(Protocol):
+    """A simple JSON Pointer protocol, serving as the backend for the mutative JSONPointer[T] wrapper."""
+
+    def __init__(self, pointer: str) -> None:
+        """RFC6901 JSON Pointer initializer."""
+        ...
+
     @property
-    def parts(self) -> tuple[str, ...]:
+    def parts(self) -> Sequence[str]:
         """RFC6901-unescaped tokens. Root => ()."""
         ...
 
-    def resolve(self, doc: Any, *, default: Any) -> Any:
+    def resolve(self, doc: Any) -> Any:
         """Resolve pointer against doc. Return default or raise."""
 
     @override
     def __str__(self) -> str:
-        """Get the string representation of the pointer (escaped)."""
+        """
+        Get the string representation of the pointer (i.e. escaped parts).
+
+        From a mathematical point of view, it must preserve the following invariant:
+        - PointerBackend(x) == PointerBackend(str(PointerBackend(x))).
+        """
         ...
+
+
+_JSONArrayKeyPattern: re.Pattern[str] = re.compile(r"^(0|[1-9][0-9]*)$")
+
+
+def _parse_JSONArray_key(array: JSONArray[JSONValue], key: str) -> JSONArrayKey:
+    if key == "-":
+        return "-"
+    if not _JSONArrayKeyPattern.fullmatch(key):
+        raise PatchApplicationError(f"invalid array index: {key!r}")
+    idx = int(key)
+    if idx >= len(array):
+        raise PatchApplicationError(f"index out of range: {key!r}")
+    return idx
+
+
+def _parse_JSONContainer_key(
+    container: JSONContainer[JSONValue], token: str
+) -> JSONKey:
+    if _is_JSONObject(container):
+        return token
+
+    if _is_JSONArray(container):
+        return _parse_JSONArray_key(container, token)
+
+    raise RuntimeError(
+        f"expected object/array container, got {type(container).__name__}"  # pragma: no cover
+    )
+
+
+def _resolve_last_parts(
+    parts: Sequence[str], doc: JSONValue
+) -> tuple[JSONContainer[JSONValue], JSONKey]:
+    if not parts:
+        raise RuntimeError(
+            "expected non-root parts, root has no container"
+        )  # pragma: no cover
+
+    parent = doc
+    for token in parts[:-1]:
+        if _is_JSONObject(parent):
+            if token not in parent:
+                raise PatchApplicationError(f"member {token!r} not found")
+            parent = parent[token]
+
+        elif _is_JSONArray(parent):
+            key = _parse_JSONArray_key(parent, token)
+            if key == "-":
+                raise PatchApplicationError(
+                    '"-" is not valid in the middle of a pointer'
+                )
+            parent = parent[key]
+
+        else:
+            raise PatchApplicationError(f"cannot traverse into {type(parent).__name__}")
+
+    if not _is_JSONContainer(parent):
+        raise PatchApplicationError(f"cannot traverse into {type(parent).__name__}")
+
+    return parent, _parse_JSONContainer_key(parent, parts[-1])
 
 
 @lru_cache(maxsize=128)
