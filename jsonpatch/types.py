@@ -88,7 +88,12 @@ class PointerBackend(Protocol):
 
     @classmethod
     def from_parts(cls, parts: Sequence[str], **kwargs: Any) -> Self:
-        """Construct an RFC6901 JSON Pointer from a sequence of unescaped tokens."""
+        """
+        Construct an RFC6901 JSON Pointer from a sequence of unescaped tokens.
+
+        From a mathematical point of view, it must preserve the following invariant:
+        - PointerBackend(x) == PointerBackend.from_parts(PointerBackend(x).parts)
+        """
         ...
 
     def resolve(self, doc: Any, **kwrargs: Any) -> JSONValue:
@@ -147,6 +152,9 @@ def _cached_json_pointer(
     # a cache here too doesn't hurt, to be implementation-agnostic
     pointer = pointer_cls(ptr)
     if not isinstance(pointer, PointerBackend):
+        # fail fast on invalid PointerBackend, but remember isinstance(x, Protocol) only verifies attribute existence
+        # NOTE: maybe also add an invariance checker for the __str__ and from_parts methods.
+        # NOTE: Also consider a global PointerBackend verification as opposed to per-JSONPointer[T]-instance
         raise InvalidJSONPointer(
             f"pointer class {pointer_cls.__name__} does not conform to the standard"
         )
@@ -194,6 +202,9 @@ class JSONPointer[T: JSONValue](str):
     # Considered: From a mutation point of view, consider reversing ownership to something like doc.get(path).
     #             Downside would be maintaining a JSONDocument wrapper around JSONValues, and taking power
     #             away from the PointerBackend implementation, which should really own the mutation logic.
+    # Also considered: Performance drawback (https://docs.pydantic.dev/latest/concepts/performance/?utm_source=chatgpt.com#avoid-extra-information-via-subclasses-of-primitives).
+    #                  I may replace str inheritance with a str property that derives from str(self._ptr).
+    #                  But I like the idea that users think of JSONPointer[T] as the path string with extra abilities.
 
     __slots__ = ("_ptr", "_type")
 
@@ -231,6 +242,8 @@ class JSONPointer[T: JSONValue](str):
         cls, v: str, expected_type: TypeForm[T], *args: object, **kwargs: object
     ) -> Self:
         if __name__ != "__main__":
+            # Choice: Prevent non-Pydantic instantiation. Enable direct instantion for debugging only.
+            # Why: JSONPointer[T] is only meant for Pydantic, why allow otherwise?
             raise TypeError(
                 "JSONPointer values are created by Pydantic validation only."
             )
