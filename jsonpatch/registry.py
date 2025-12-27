@@ -118,6 +118,11 @@ class OperationRegistry:
             python, strict=True, by_alias=True, by_name=False, extra="forbid"
         )
 
+    def _parse_json_op(self, text: str | bytes | bytearray) -> OperationSchema:
+        return self._op_adapter.validate_json(
+            text, strict=True, by_alias=True, by_name=False, extra="forbid"
+        )
+
     def parse_json_patch(self, text: str | bytes | bytearray) -> list[OperationSchema]:
         """
         Validate & coerce a JSON Patch.

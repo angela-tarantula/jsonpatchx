@@ -114,8 +114,8 @@ class JsonPatch(Sequence[OperationSchema], Hashable):
 
     @override
     def __hash__(self) -> int:
-        # Hashing is best-effort, like frozen dataclasses/BaseModels.
-        return hash(tuple(self._ops))
+        # Hashing is best-effort, user-defined ops may be unhashable.
+        return hash((self.__class__, tuple(self._ops)))
 
     @override
     def __eq__(self, other: object) -> bool:

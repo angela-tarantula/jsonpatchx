@@ -1,9 +1,7 @@
 from __future__ import annotations
 
-import json
-import math
 import re
-from collections.abc import MutableMapping, MutableSequence, Sequence
+from collections.abc import Sequence
 from functools import cached_property, lru_cache
 from typing import (
     Annotated,
@@ -19,8 +17,10 @@ from typing import (
     runtime_checkable,
 )
 
+from annotated_types import Ge
 from jsonpointer import JsonPointer  # type: ignore[import-untyped]
 from pydantic import (
+    Field,
     GetCoreSchemaHandler,
     GetJsonSchemaHandler,
     TypeAdapter,
@@ -30,115 +30,42 @@ from typing_extensions import TypeForm
 
 from jsonpatch.exceptions import (
     InvalidJSONPointer,
-    InvalidOperationSchema,
     PatchApplicationError,
 )
 
+# Core, Pydantic-aware JSON type aliases
 
-class JSONValueValidator:
-    """Pydantic-aware wrapper for any JSON-serializable value."""
-
-    __slots__ = ()
-
-    @classmethod
-    def __get_pydantic_core_schema__(
-        cls,
-        source_type: type[Any],
-        handler: GetCoreSchemaHandler,
-    ) -> cs.CoreSchema:
-        return cs.no_info_after_validator_function(
-            cls._validate,
-            cs.any_schema(),
-        )
-
-    @classmethod
-    def __get_pydantic_json_schema__(
-        cls,
-        core_schema: cs.CoreSchema,
-        handler: GetJsonSchemaHandler,
-    ) -> dict[str, object]:
-        json_schema = handler(core_schema)
-        json_schema.update({"description": "JSON-serializable value."})
-        return json_schema
-
-    @classmethod
-    def _validate(cls, v: object) -> JSONValue:
-        try:
-            json.dumps(v, allow_nan=False)  # TODO: use orjson when threadsafe
-        except (TypeError, ValueError) as e:
-            raise InvalidOperationSchema(
-                f"Value is not JSON-serializable: {v!r}"
-            ) from e
-        return cast(JSONValue, v)
-
-
-class JSONNumberValidator:
-    """Pydantic-aware wrapper for JSON numbers."""
-
-    __slots__ = ()
-
-    @classmethod
-    def __get_pydantic_core_schema__(
-        cls,
-        source_type: type[Any],
-        handler: GetCoreSchemaHandler,
-    ) -> cs.CoreSchema:
-        return cs.no_info_after_validator_function(
-            cls._validate,
-            cs.union_schema(
-                [
-                    cs.float_schema(strict=True),
-                    cs.int_schema(strict=True),
-                ]
-            ),
-        )
-
-    @classmethod
-    def __get_pydantic_json_schema__(
-        cls,
-        schema: cs.CoreSchema,
-        handler: GetJsonSchemaHandler,
-    ) -> dict[str, object]:
-        json_schema = handler(schema)
-        json_schema.update({"description": "JSON number"})
-        return json_schema
-
-    @classmethod
-    def _validate(cls, v: int | float) -> JSONNumber:
-        # bool is a subclass of int, so exclude it explicitly
-        if type(v) is bool or not isinstance(v, (int, float)):
-            raise InvalidOperationSchema(
-                f"expected JSON number (int|float, finite), not {v.__class__.__name__}: {v!r}"
-            )
-        if isinstance(v, float) and not math.isfinite(v):
-            raise InvalidOperationSchema(f"expected finite JSON number, got {v!r}")
-        return v
-
-
-# Core JSON type aliases
-
-type JSONBoolean = bool
-type JSONNumber = Annotated[int | float, JSONNumberValidator]
-type JSONString = str
+type JSONBoolean = Annotated[bool, Field(strict=True)]
+type JSONNumber = (
+    Annotated[int, Field(strict=True)]
+    | Annotated[float, Field(strict=True, allow_inf_nan=False)]
+)
+type JSONString = Annotated[str, Field(strict=True)]
 type JSONNull = None
 type JSONPrimitive = JSONBoolean | JSONNumber | JSONString | JSONNull
 
-type JSONArray[T_co] = MutableSequence[T_co]
-type JSONObject[T_co] = MutableMapping[str, T_co]
+type JSONArray[T_co] = Annotated[list[T_co], Field(strict=True)]
+type JSONObject[T_co] = Annotated[dict[str, T_co], Field(strict=True)]
 type JSONContainer[T_co] = JSONArray[T_co] | JSONObject[T_co]
 
 type JSONValue = Annotated[
     JSONPrimitive | JSONContainer[JSONValue],
-    JSONValueValidator,
+    Field(description="JSON value (RFC-style primitives, list, dict)"),
 ]
-
-type JSONArrayKey = int | Literal["-"]
-type JSONObjectKey = str
-type JSONKey = JSONArrayKey | JSONObjectKey
 
 
 def _is_container(value: JSONValue) -> TypeGuard[JSONContainer[JSONValue]]:
-    return isinstance(value, MutableMapping) or isinstance(value, MutableSequence)
+    return isinstance(value, (dict, list))
+
+
+# Internal type hints
+
+type _JSONArrayKey = Annotated[int, Ge(0)] | Literal["-"]
+type _JSONObjectKey = str
+type _JSONKey = _JSONArrayKey | _JSONObjectKey
+
+
+# Agnostic JSON Pointer implementation.
 
 
 @runtime_checkable
@@ -173,16 +100,20 @@ class PointerBackend(Protocol):
         ...
 
 
-_JSONArrayKeyPattern: re.Pattern[str] = re.compile(r"^(0|[1-9][0-9]*)$")
+# Internal logic to use any JSON Pointer implementation to mutate JSON.
+# Advanced users will be able to plug-and-play with their own JSON Pointer implementation
+# if they want, but this library will provide basic, naive logic.
+# An example of a specialized JSON Pointer implementation that I don't want to reinvent
+# would be: https://github.com/jg-rp/python-jsonpath/blob/main/jsonpath/pointer.py
+
+_ArrayIndexPattern: re.Pattern[str] = re.compile(r"^(0|[1-9][0-9]*)$")
 
 
-def _parse_JSONArray_key(array: JSONArray[JSONValue], key: str) -> JSONArrayKey:
-    assert isinstance(array, MutableSequence) and not isinstance(  # type: ignore[redundant-expr]
-        array, MutableMapping
-    ), "internal error: _parse_JSONArray_key"
+def _parse_JSONArray_key(array: JSONArray[JSONValue], key: str) -> _JSONArrayKey:
+    assert isinstance(array, list), "internal error: _parse_JSONArray_key"
     if key == "-":
         return "-"
-    if not _JSONArrayKeyPattern.fullmatch(key):
+    if not _ArrayIndexPattern.fullmatch(key):
         raise PatchApplicationError(f"invalid array index: {key!r}")
     idx = int(key)
     if idx >= len(array):
@@ -192,17 +123,21 @@ def _parse_JSONArray_key(array: JSONArray[JSONValue], key: str) -> JSONArrayKey:
 
 def _parse_JSONContainer_key(
     container: JSONContainer[JSONValue], token: str
-) -> JSONKey:
-    assert isinstance(container, (MutableMapping, MutableSequence)), (
+) -> _JSONKey:
+    assert isinstance(container, (dict, list)), (
         "internal error: _parse_JSONContainer_key"
     )
-    if isinstance(container, MutableMapping):
+    # NOTE: when type-checker type narrowing improves, refactor this method to return
+    # tuple[JSONArray[JSONValue], _JSONArrayKey] | tuple[JSONObject[JSONValue], _JSONObjectKey].
+    # Currently, type-checkers miss that specificity and coerce to tuple[JSONContainer[JSONValue], _JSONKey]
+    if isinstance(container, dict):
         return token
     return _parse_JSONArray_key(container, token)
 
 
 @lru_cache(maxsize=128)
 def _cached_type_adapter[T](expected: TypeForm[T]) -> TypeAdapter[T]:
+    # https://docs.pydantic.dev/latest/concepts/performance/#typeadapter-instantiated-once
     return TypeAdapter(expected)
 
 
@@ -210,6 +145,7 @@ def _cached_type_adapter[T](expected: TypeForm[T]) -> TypeAdapter[T]:
 def _cached_json_pointer(
     ptr: str, *, pointer_cls: type[PointerBackend]
 ) -> PointerBackend:
+    # a cache here too doesn't hurt, to be implementation-agnostic
     pointer = pointer_cls(ptr)
     if not isinstance(pointer, PointerBackend):
         raise InvalidJSONPointer(
@@ -222,7 +158,7 @@ def _type_adapter_for[T](expected: TypeForm[T]) -> TypeAdapter[T]:
     """Get a cached type adapter if possible, otherwise create a new one."""
     try:
         try:
-            return _cached_type_adapter(expected)  # type: ignore[arg-type]
+            return _cached_type_adapter(expected)  # type: ignore[arg-type] # catching TypeError
         except TypeError:
             return TypeAdapter(expected)
     except Exception as e:
@@ -380,7 +316,7 @@ class JSONPointer[T: JSONValue](str):
                 f"cannot set value at {str(self)!r} because {self._parent_ptr} resolves to a JSON primitive"
             )
         key = _parse_JSONContainer_key(container, self.parts[-1])
-        if key == "-" and not isinstance(container, MutableMapping):
+        if key == "-" and not isinstance(container, dict):
             container.append(key)
         else:
             container[key] = value  # type: ignore[index]
@@ -408,7 +344,7 @@ class JSONPointer[T: JSONValue](str):
             raise PatchApplicationError("cannot delete a missing target")
         container = cast(JSONContainer[JSONValue], self._parent_ptr.resolve(doc))
         key = _parse_JSONContainer_key(container, self.parts[-1])
-        if key == "-" and not isinstance(container, MutableMapping):
+        if key == "-" and not isinstance(container, dict):
             raise PatchApplicationError(
                 f"cannot delete value at {str(self)!r} with key '-'"
             )
