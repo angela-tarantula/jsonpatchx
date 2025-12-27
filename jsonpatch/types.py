@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import re
 from collections.abc import Sequence
-from functools import cached_property, lru_cache
+from functools import lru_cache
 from typing import (
     Annotated,
     Any,
@@ -162,7 +162,7 @@ def _type_adapter_for[T](expected: TypeForm[T]) -> TypeAdapter[T]:
             return TypeAdapter(expected)
     except Exception as e:
         raise InvalidJSONPointer(
-            f"invalid type parameter for JSON Pointer: {expected!r}"
+            f"invalid type parameter for JSON Pointer: {expected!r}; did you implement __get_pydantic_core_schema__?"
         ) from e
 
 
@@ -195,10 +195,10 @@ class JSONPointer[T: JSONValue](str):
     #             Downside would be maintaining a JSONDocument wrapper around JSONValues, and taking power
     #             away from the PointerBackend implementation, which should really own the mutation logic.
 
-    __slots__ = ("_ptr", "_adapter")
+    __slots__ = ("_ptr", "_type")
 
     _ptr: PointerBackend
-    _adapter: TypeAdapter[T]
+    _type: TypeForm[T]
 
     @property
     def ptr(self) -> Any:
@@ -209,25 +209,23 @@ class JSONPointer[T: JSONValue](str):
         #      PointerBackend, then expose that richer API to those users at type-checker time.
         return self._ptr
 
-    @cached_property  # lazily evaluate once
-    def _parent_ptr(self) -> PointerBackend:
-        # Choice: always defer to the PointerBackend implementation for pointer resolution.
-        # Why: Don't reinvent the wheel (and maintain it). Plus, give more power to custom PointerBackends.
-        return self._ptr.__class__.from_parts(self.parts[:-1])
-
-    @property
-    def type(self) -> TypeForm[T]:
-        # Choice: Shamelessly rely on a private property, TypeAdapter._type, to get the JSONPointer type.
-        # Why: In my opinion, TypeAdapter._type should be a public property, and I'll die on this hill.
-        #      If I had JSONPointer._adapter and JSONPointer._type, there'd be two sources of truth.
-        #      JSONPointer._type would be a derived property, and I'm too purist to implement it.
-        #      I know it's not hard to implement it, I just reject derived attributes in principle.
-        return cast(TypeForm[T], self._adapter._type)
-
     @property
     def parts(self) -> Sequence[str]:
         """A sequence of RFC6901-unescaped pointer components."""
         return self._ptr.parts
+
+    @property
+    def type(self) -> TypeForm[T]:
+        return self._type
+
+    @property
+    def _adapter(self) -> TypeAdapter[T]:
+        return _type_adapter_for(self._type)
+
+    @property
+    def _parent_ptr(self) -> PointerBackend:
+        # NOTE: Cache this outside too?
+        return self._ptr.__class__.from_parts(self.parts[:-1])
 
     def __new__(
         cls, v: str, expected_type: TypeForm[T], *args: object, **kwargs: object
@@ -236,11 +234,12 @@ class JSONPointer[T: JSONValue](str):
             raise TypeError(
                 "JSONPointer values are created by Pydantic validation only."
             )
-        if type(v) is not str:  # defensive
+        if type(v) is not str:  # prevent casting
             raise InvalidJSONPointer(f"invalid JSON Pointer: {v!r} is not a string")
         obj = str.__new__(cls, v)
         obj._ptr = _json_pointer_for(v, pointer_cls=JsonPointer)
-        obj._adapter = _type_adapter_for(expected_type)
+        obj._type = expected_type
+        _type_adapter_for(expected_type)  # try to cache the adapter
         return obj
 
     @classmethod
@@ -262,11 +261,14 @@ class JSONPointer[T: JSONValue](str):
 
         def initializer(v: str) -> Self:
             # TODO: if v is JSONPointer[T] already, return v (requires enabling the __new__ method for user instantiation)
-            if type(v) is not str:  # defensive
+            if (
+                type(v) is not str
+            ):  # defensive (prevent casting), but str_schema(strict=True) should prevent
                 raise InvalidJSONPointer(f"invalid JSON Pointer: {v!r} is not a string")
             obj = str.__new__(cls, v)
             obj._ptr = _json_pointer_for(v, pointer_cls=JsonPointer)
-            obj._adapter = _type_adapter_for(expected_type)
+            obj._type = expected_type
+            _type_adapter_for(expected_type)  # try to cache it
             return obj
 
         return cs.no_info_after_validator_function(
@@ -323,6 +325,8 @@ class JSONPointer[T: JSONValue](str):
 
     def get(self, doc: JSONValue) -> T:
         """Resolve the JSONPointer against the `doc` and return the target."""
+        # Choice: always defer to the PointerBackend implementation for pointer resolution.
+        # Why: Don't reinvent the wheel (and maintain it). Plus, give more power to custom PointerBackends.
         target = self._ptr.resolve(doc)
         return self.validate_target(target)
 
