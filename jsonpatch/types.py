@@ -187,6 +187,14 @@ class JSONPointer[T: JSONValue](str):
     - Stores TypeAdapter[T] for apply-time validation
     """
 
+    # Choice: JSONPointer is str subclass, as opposed to Annotated[str, StringConstraints(...)].
+    # Why: Cache adapters and pointers where possible, and provide simple primitives like get/set
+    #      out-of-the-box, owned by the field, so path.get(doc) just works. Most users don't need
+    #      more advanced functionality, so don't require them to reason about the PointerBackend API.
+    # Considered: From a mutation point of view, consider reversing ownership to something like doc.get(path).
+    #             Downside would be maintaining a JSONDocument wrapper around JSONValues, and taking power
+    #             away from the PointerBackend implementation, which should really own the mutation logic.
+
     __slots__ = ("_ptr", "_adapter")
 
     _ptr: PointerBackend
@@ -195,25 +203,25 @@ class JSONPointer[T: JSONValue](str):
     @property
     def ptr(self) -> Any:
         """The JSON Pointer class for this JSONPointer[T], exposed for advanced users."""
-        # TODO: Change 'Any' to the actual JSON Pointer class they pass in
+        # TODO: Change 'Any' to the actual JSON Pointer class they pass in.
         # Choice: expose ptr as the user's custom PointerBackend for stronger type inferencing.
-        # Why: This library only needs the PointerBackend Protocol, but the ptr property should
-        # expose a richer API to users at type-checker time.
+        # Why: This library only needs the PointerBackend Protocol, if some users want a custom
+        #      PointerBackend, then expose that richer API to those users at type-checker time.
         return self._ptr
 
     @cached_property  # lazily evaluate once
     def _parent_ptr(self) -> PointerBackend:
-        # Choice: always to the PointerBackend implementation for pointer resolution.
-        # Why: no need to reinvent the wheel (and have to maintain it). Plus, gives more power to custom Pointers.
+        # Choice: always defer to the PointerBackend implementation for pointer resolution.
+        # Why: Don't reinvent the wheel (and maintain it). Plus, give more power to custom PointerBackends.
         return self._ptr.__class__.from_parts(self.parts[:-1])
 
     @property
     def type(self) -> TypeForm[T]:
-        # Shamelessly rely on a private property, TypeAdapter._type, to get the JSONPointer type.
-        # In my opinion, TypeAdapter._type should be a public property, and I'll die on this hill.
-        # If I had JSONPointer._adapter and JSONPointer._type, there'd be two sources of truth.
-        # JSONPointer._type would be a derived property, and I'm too purist to implement it.
-        # If Pydantic disagrees, I can reluctantly make the initializer store a derived JSONPointer._type.
+        # Choice: Shamelessly rely on a private property, TypeAdapter._type, to get the JSONPointer type.
+        # Why: In my opinion, TypeAdapter._type should be a public property, and I'll die on this hill.
+        #      If I had JSONPointer._adapter and JSONPointer._type, there'd be two sources of truth.
+        #      JSONPointer._type would be a derived property, and I'm too purist to implement it.
+        #      I know it's not hard to implement it, I just reject derived attributes in principle.
         return cast(TypeForm[T], self._adapter._type)
 
     @property
