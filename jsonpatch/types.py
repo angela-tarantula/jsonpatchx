@@ -66,6 +66,11 @@ type _JSONKey = _JSONArrayKey | _JSONObjectKey
 
 
 # Agnostic JSON Pointer implementation.
+# This library assumes the Pointer is at least read-only, though advanced users may
+# plug-and-play with their own implementation that provides a rich mutative API.
+# Also, some users may prefer to have their own JSON Pointer string encoding.
+# An example of a specialized JSON Pointer implementation that I don't want to reinvent
+# would be: https://github.com/jg-rp/python-jsonpath/blob/main/jsonpath/pointer.py
 
 
 @runtime_checkable
@@ -99,12 +104,6 @@ class PointerBackend(Protocol):
         """
         ...
 
-
-# Internal logic to use any JSON Pointer implementation to mutate JSON.
-# Advanced users will be able to plug-and-play with their own JSON Pointer implementation
-# if they want, but this library will provide basic, naive logic.
-# An example of a specialized JSON Pointer implementation that I don't want to reinvent
-# would be: https://github.com/jg-rp/python-jsonpath/blob/main/jsonpath/pointer.py
 
 _ArrayIndexPattern: re.Pattern[str] = re.compile(r"^(0|[1-9][0-9]*)$")
 
@@ -167,10 +166,10 @@ def _type_adapter_for[T](expected: TypeForm[T]) -> TypeAdapter[T]:
         ) from e
 
 
-def _json_pointer_for(v: str, *, cls: type[PointerBackend]) -> PointerBackend:
+def _json_pointer_for(v: str, *, pointer_cls: type[PointerBackend]) -> PointerBackend:
     """Get a cached JSON pointer."""
     try:
-        return _cached_json_pointer(v, cls=cls)
+        return _cached_json_pointer(v, pointer_cls=pointer_cls)
     except Exception as e:
         raise InvalidJSONPointer(f"invalid JSON Pointer: {v!r}") from e
 
@@ -197,18 +196,24 @@ class JSONPointer[T: JSONValue](str):
     def ptr(self) -> Any:
         """The JSON Pointer class for this JSONPointer[T], exposed for advanced users."""
         # TODO: Change 'Any' to the actual JSON Pointer class they pass in
+        # Choice: expose ptr as the user's custom PointerBackend for stronger type inferencing.
+        # Why: This library only needs the PointerBackend Protocol, but the ptr property should
+        # expose a richer API to users at type-checker time.
         return self._ptr
 
-    @cached_property
+    @cached_property  # lazily evaluate once
     def _parent_ptr(self) -> PointerBackend:
+        # Choice: always to the PointerBackend implementation for pointer resolution.
+        # Why: no need to reinvent the wheel (and have to maintain it). Plus, gives more power to custom Pointers.
         return self._ptr.__class__.from_parts(self.parts[:-1])
 
     @property
     def type(self) -> TypeForm[T]:
-        # Shamelessly relies on a private property, TypeAdapter._type, to get the JSONPointer type.
+        # Shamelessly rely on a private property, TypeAdapter._type, to get the JSONPointer type.
         # In my opinion, TypeAdapter._type should be a public property, and I'll die on this hill.
         # If I had JSONPointer._adapter and JSONPointer._type, there'd be two sources of truth.
         # JSONPointer._type would be a derived property, and I'm too purist to implement it.
+        # If Pydantic disagrees, I can reluctantly make the initializer store a derived JSONPointer._type.
         return cast(TypeForm[T], self._adapter._type)
 
     @property
@@ -241,7 +246,7 @@ class JSONPointer[T: JSONValue](str):
             if type(v) is not str:  # defensive
                 raise InvalidJSONPointer(f"invalid JSON Pointer: {v!r} is not a string")
             obj = str.__new__(cls, v)
-            obj._ptr = _json_pointer_for(v, cls=JsonPointer)
+            obj._ptr = _json_pointer_for(v, pointer_cls=JsonPointer)
             obj._adapter = _type_adapter_for(expected_type)
             return obj
 
@@ -271,7 +276,11 @@ class JSONPointer[T: JSONValue](str):
         Raises PatchApplicationError on failure.
         """
         try:
-            return self._adapter.validate_python(target, strict=True)
+            # Choice: NOT setting strict=True in the validate_python.
+            # Why: users should be able to set this themselves in their OperationSchema.
+            # Example: `amount: JSONNumber` is already strict=True.
+            # Custom example: `amount: Annotated[int Field(ge=0, strict=False)]` to allow "3" if they want to.
+            return self._adapter.validate_python(target)
         except Exception as e:
             raise PatchApplicationError(
                 f"invalid target type {type(target).__name__} for pointer {str(self)!r}"
@@ -307,6 +316,7 @@ class JSONPointer[T: JSONValue](str):
             return True
 
     def set(self, doc: JSONValue, value: T) -> JSONValue:
+        # Type errors first
         target = self.validate_target(target=value)
         if self.is_root():
             return target
@@ -317,7 +327,7 @@ class JSONPointer[T: JSONValue](str):
             )
         key = _parse_JSONContainer_key(container, self.parts[-1])
         if key == "-" and not isinstance(container, dict):
-            container.append(key)
+            container.append(value)
         else:
             container[key] = value  # type: ignore[index]
         return doc
