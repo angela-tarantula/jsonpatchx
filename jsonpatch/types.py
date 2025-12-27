@@ -363,4 +363,8 @@ class JSONPointer[T: JSONValue](str):
 
     @override
     def __repr__(self) -> str:
-        return f"{self.__class__.__name__}[{self.type}]({str(self)!r})"
+        if isinstance(self.type, type):
+            type_repr = self.type.__name__
+        else:
+            type_repr = repr(self.type)
+        return f"{self.__class__.__name__}[{type_repr}]({str(self)!r})"
