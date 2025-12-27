@@ -221,8 +221,19 @@ class JSONPointer[T: JSONValue](str):
         """A sequence of RFC6901-unescaped pointer components."""
         return self._ptr.parts
 
-    def __new__(cls, *_: object, **__: object) -> Self:
-        raise TypeError("JSONPointer values are created by Pydantic validation only.")
+    def __new__(
+        cls, v: str, expected_type: TypeForm[T], *args: object, **kwargs: object
+    ) -> Self:
+        if __name__ != "__main__":
+            raise TypeError(
+                "JSONPointer values are created by Pydantic validation only."
+            )
+        if type(v) is not str:  # defensive
+            raise InvalidJSONPointer(f"invalid JSON Pointer: {v!r} is not a string")
+        obj = str.__new__(cls, v)
+        obj._ptr = _json_pointer_for(v, pointer_cls=JsonPointer)
+        obj._adapter = _type_adapter_for(expected_type)
+        return obj
 
     @classmethod
     def __get_pydantic_core_schema__(
