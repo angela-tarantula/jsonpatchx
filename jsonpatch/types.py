@@ -3,8 +3,8 @@ from __future__ import annotations
 import json
 import math
 import re
-from collections.abc import Mapping, MutableMapping, MutableSequence, Sequence
-from functools import lru_cache
+from collections.abc import MutableMapping, MutableSequence, Sequence
+from functools import cached_property, lru_cache
 from typing import (
     Annotated,
     Any,
@@ -15,15 +15,11 @@ from typing import (
     cast,
     final,
     get_args,
-    overload,
     override,
     runtime_checkable,
 )
 
-from jsonpointer import (  # type: ignore[import-untyped]
-    JsonPointer,
-    JsonPointerException,
-)
+from jsonpointer import JsonPointer  # type: ignore[import-untyped]
 from pydantic import (
     GetCoreSchemaHandler,
     GetJsonSchemaHandler,
@@ -127,13 +123,9 @@ type JSONString = str
 type JSONNull = None
 type JSONPrimitive = JSONBoolean | JSONNumber | JSONString | JSONNull
 
-type JSONArray[T_co] = Sequence[T_co]
-type JSONObject[T_co] = Mapping[str, T_co]
+type JSONArray[T_co] = MutableSequence[T_co]
+type JSONObject[T_co] = MutableMapping[str, T_co]
 type JSONContainer[T_co] = JSONArray[T_co] | JSONObject[T_co]
-
-type MutableJSONArray[T_co] = MutableSequence[T_co]
-type MutableJSONObject[T_co] = MutableMapping[str, T_co]
-type MutableJSONContainer[T_co] = MutableJSONArray[T_co] | MutableJSONObject[T_co]
 
 type JSONValue = Annotated[
     JSONPrimitive | JSONContainer[JSONValue],
@@ -144,70 +136,36 @@ type JSONArrayKey = int | Literal["-"]
 type JSONObjectKey = str
 type JSONKey = JSONArrayKey | JSONObjectKey
 
-MISSING = object()
 
-
-def _is_JSONContainer(value: JSONValue) -> TypeGuard[JSONContainer[JSONValue]]:
-    """Type guard to check if a value is a JSONContainer."""
-    return isinstance(value, (Sequence, Mapping)) and not isinstance(
-        value, (str, bytes, bytearray)
-    )
-
-
-@overload
-def _is_JSONObject[T: JSONValue](
-    value: JSONContainer[T],
-) -> TypeGuard[JSONObject[T]]: ...
-
-
-@overload
-def _is_JSONObject[T: JSONValue](
-    value: JSONValue,
-) -> TypeGuard[JSONObject[JSONValue]]: ...
-
-
-def _is_JSONObject[T: JSONValue](value: JSONValue) -> TypeGuard[JSONObject[JSONValue]]:
-    """Type guard to check if a value is a JSONObject."""
-    return isinstance(value, Mapping)
-
-
-@overload
-def _is_JSONArray[T: JSONValue](value: JSONContainer[T]) -> TypeGuard[JSONArray[T]]: ...
-
-
-@overload
-def _is_JSONArray[T: JSONValue](
-    value: JSONValue,
-) -> TypeGuard[JSONArray[JSONValue]]: ...
-
-
-def _is_JSONArray[T: JSONValue](value: JSONValue) -> TypeGuard[JSONArray[JSONValue]]:
-    """Type guard to check if a value is a JSONArray."""
-    return isinstance(value, Sequence) and not isinstance(
-        value, (str, bytes, bytearray)
-    )
+def _is_container(value: JSONValue) -> TypeGuard[JSONContainer[JSONValue]]:
+    return isinstance(value, MutableMapping) or isinstance(value, MutableSequence)
 
 
 @runtime_checkable
 class PointerBackend(Protocol):
     """A simple JSON Pointer protocol, serving as the backend for the mutative JSONPointer[T] wrapper."""
 
-    def __init__(self, pointer: str) -> None:
+    def __init__(self, pointer: str, **kwargs: Any) -> None:
         """RFC6901 JSON Pointer initializer."""
         ...
 
     @property
-    def parts(self) -> Sequence[str]:
-        """RFC6901-unescaped tokens. Root => ()."""
+    def parts(self, **kwargs: Any) -> Sequence[str]:
+        """A sequence of RFC6901-unescaped tokens. The root pointer has an empty sequence of parts."""
         ...
 
-    def resolve(self, doc: Any) -> Any:
-        """Resolve pointer against doc. Return default or raise."""
+    @classmethod
+    def from_parts(cls, parts: Sequence[str], **kwargs: Any) -> Self:
+        """Construct an RFC6901 JSON Pointer from a sequence of unescaped tokens."""
+        ...
+
+    def resolve(self, doc: Any, **kwrargs: Any) -> JSONValue:
+        """Resolve pointer against doc, following RFC6901 semantics."""
 
     @override
     def __str__(self) -> str:
         """
-        Get the string representation of the pointer (i.e. escaped parts).
+        Get the string representation of the pointer (i.e. RFC6901-escaped parts).
 
         From a mathematical point of view, it must preserve the following invariant:
         - PointerBackend(x) == PointerBackend(str(PointerBackend(x))).
@@ -219,6 +177,9 @@ _JSONArrayKeyPattern: re.Pattern[str] = re.compile(r"^(0|[1-9][0-9]*)$")
 
 
 def _parse_JSONArray_key(array: JSONArray[JSONValue], key: str) -> JSONArrayKey:
+    assert isinstance(array, MutableSequence) and not isinstance(  # type: ignore[redundant-expr]
+        array, MutableMapping
+    ), "internal error: _parse_JSONArray_key"
     if key == "-":
         return "-"
     if not _JSONArrayKeyPattern.fullmatch(key):
@@ -232,47 +193,12 @@ def _parse_JSONArray_key(array: JSONArray[JSONValue], key: str) -> JSONArrayKey:
 def _parse_JSONContainer_key(
     container: JSONContainer[JSONValue], token: str
 ) -> JSONKey:
-    if _is_JSONObject(container):
-        return token
-
-    if _is_JSONArray(container):
-        return _parse_JSONArray_key(container, token)
-
-    raise RuntimeError(
-        f"expected object/array container, got {type(container).__name__}"  # pragma: no cover
+    assert isinstance(container, (MutableMapping, MutableSequence)), (
+        "internal error: _parse_JSONContainer_key"
     )
-
-
-def _resolve_last_parts(
-    parts: Sequence[str], doc: JSONValue
-) -> tuple[JSONContainer[JSONValue], JSONKey]:
-    if not parts:
-        raise RuntimeError(
-            "expected non-root parts, root has no container"
-        )  # pragma: no cover
-
-    parent = doc
-    for token in parts[:-1]:
-        if _is_JSONObject(parent):
-            if token not in parent:
-                raise PatchApplicationError(f"member {token!r} not found")
-            parent = parent[token]
-
-        elif _is_JSONArray(parent):
-            key = _parse_JSONArray_key(parent, token)
-            if key == "-":
-                raise PatchApplicationError(
-                    '"-" is not valid in the middle of a pointer'
-                )
-            parent = parent[key]
-
-        else:
-            raise PatchApplicationError(f"cannot traverse into {type(parent).__name__}")
-
-    if not _is_JSONContainer(parent):
-        raise PatchApplicationError(f"cannot traverse into {type(parent).__name__}")
-
-    return parent, _parse_JSONContainer_key(parent, parts[-1])
+    if isinstance(container, MutableMapping):
+        return token
+    return _parse_JSONArray_key(container, token)
 
 
 @lru_cache(maxsize=128)
@@ -309,18 +235,20 @@ def _json_pointer_for(v: str, *, cls: type[PointerBackend]) -> PointerBackend:
     """Get a cached JSON pointer."""
     try:
         return _cached_json_pointer(v, cls=cls)
-    except (JsonPointerException, TypeError) as e:
-        # defensive to except TypeError, it's for cache errors (if v is not str at runtime)
+    except Exception as e:
         raise InvalidJSONPointer(f"invalid JSON Pointer: {v!r}") from e
+
+
+_Nothing = object()
 
 
 @final
 class JSONPointer[T: JSONValue](str):
     """
-    RFC 6901 JSON Pointer. Runtime value produced by Pydantic for a field annotated as JSONPointer[IN, OUT].
+    RFC6901 JSON Pointer. Runtime value produced by Pydantic for a field annotated as JSONPointer[IN, OUT].
 
     - Subclasses str so user code can treat it like the pointer string.
-    - Stores parsed JsonPointer for structural ops
+    - Stores parsed PointerBackend for structural ops
     - Stores TypeAdapter[T] for apply-time validation
     """
 
@@ -335,13 +263,22 @@ class JSONPointer[T: JSONValue](str):
         # TODO: Change 'Any' to the actual JSON Pointer class they pass in
         return self._ptr
 
+    @cached_property
+    def _parent_ptr(self) -> PointerBackend:
+        return self._ptr.__class__.from_parts(self.parts[:-1])
+
     @property
     def type(self) -> TypeForm[T]:
-        # Shamelessly relies on a private attribute, TypeAdapter.type, to get the JSONPointer type.
-        # In my opinion, TypeAdapter.type should be a public type, and I'll die on this hill.
-        # If I had JSONPointer._adapter and JSONPointer.type, there'd be two sources of truth.
-        # JSONPointer.type would be a derived field, and I'm too purist to implement it.
+        # Shamelessly relies on a private property, TypeAdapter._type, to get the JSONPointer type.
+        # In my opinion, TypeAdapter._type should be a public property, and I'll die on this hill.
+        # If I had JSONPointer._adapter and JSONPointer._type, there'd be two sources of truth.
+        # JSONPointer._type would be a derived property, and I'm too purist to implement it.
         return cast(TypeForm[T], self._adapter._type)
+
+    @property
+    def parts(self) -> Sequence[str]:
+        """A sequence of RFC6901-unescaped pointer components."""
+        return self._ptr.parts
 
     def __new__(cls, *_: object, **__: object) -> Self:
         raise TypeError("JSONPointer values are created by Pydantic validation only.")
@@ -418,183 +355,64 @@ class JSONPointer[T: JSONValue](str):
         if self == other:
             return False
 
-        # Due to a bug in the upstream `jsonpointer` library, where jp1.contains(root_pointer)`
-        # is always False, we special-case root:
-        if self.is_root():
-            return True
-
-        return cast(bool, self._ptr.contains(other._ptr))
-
-    @overload
-    def resolve_last(
-        self,
-        doc: JSONValue,
-        *,
-        exists: Literal[True],
-        mutable: Literal[True],
-        container: Literal["object", "array"] | None = None,
-    ) -> tuple[MutableJSONObject[T], str] | tuple[MutableJSONArray[T], int]: ...
-
-    @overload
-    def resolve_last(
-        self,
-        doc: JSONValue,
-        *,
-        exists: Literal[False] | None = None,
-        mutable: Literal[True],
-        container: Literal["object", "array"] | None = None,
-    ) -> (
-        tuple[MutableJSONObject[T], str]
-        | tuple[MutableJSONArray[T], int | Literal["-"]]
-    ): ...
-
-    @overload
-    def resolve_last(
-        self,
-        doc: JSONValue,
-        *,
-        exists: Literal[True],
-        mutable: bool | None = None,
-        container: Literal["object", "array"] | None = None,
-    ) -> tuple[JSONObject[T], str] | tuple[JSONArray[T], int]: ...
-
-    @overload
-    def resolve_last(
-        self,
-        doc: JSONValue,
-        *,
-        exists: bool | None = None,
-        mutable: bool | None = None,
-        container: Literal["object", "array"] | None = None,
-    ) -> tuple[JSONObject[T], str] | tuple[JSONArray[T], int | Literal["-"]]: ...
-
-    def resolve_last(
-        self,
-        doc: JSONValue,
-        *,
-        exists: bool | None = None,
-        mutable: bool | None = None,
-        container: Literal["object", "array"] | None = None,
-    ) -> tuple[JSONObject[T], str] | tuple[JSONArray[T], int | Literal["-"]]:
-        """
-        Resolve this JSON Pointer against a `doc` to its parent container and final token.
-
-        Returns `(container, key)` such that `container[key]` is this JSONPointer's target.
-
-        Constraints (optional):
-        - exists: require target existence (True) or non-existence (False)
-        - mutable: require container mutability (True) or immutability (False)
-        - container: require parent container to be "object" or "array"
-
-        The root of `doc` has no container and trying to `resolve_last` against it raises PatchApplicationError.
-        """
-        if self.is_root():
-            raise PatchApplicationError(
-                "tried to resolve a path to last, but got root, which has no container"
-            )
-
-        try:
-            path_container, path_key = self._ptr.to_last(doc)
-            assert isinstance(path_container, (Mapping, Sequence)) and not isinstance(
-                path_container, (str, bytes, bytearray)
-            ), "JsonPointer implementation changed"
-        except JsonPointerException as e:
-            raise PatchApplicationError(
-                f"unable to resolve path {str(self)!r}: {e}"
-            ) from e
-
-        # container constraint
-        if container == "object":
-            if not isinstance(path_container, Mapping):
-                raise PatchApplicationError(
-                    f"expected object container at {str(self)!r}, got {type(path_container)!r}"
-                )
-        elif container == "array":
-            if not isinstance(path_container, Sequence):
-                raise PatchApplicationError(
-                    f"expected array container at {str(self)!r}, got {type(path_container)!r}"
-                )
-
-        # mutability constraint
-        if mutable is not None:
-            is_mutable = isinstance(path_container, (MutableMapping, MutableSequence))
-            if is_mutable is not mutable:
-                if mutable:
-                    raise PatchApplicationError(
-                        f"expected mutable container at {str(self)!r}, got {type(path_container)!r}"
-                    )
-                raise PatchApplicationError(
-                    f"expected immutable container at {str(self)!r}, got {type(path_container)!r}"
-                )
-
-        # existence constraint
-        if exists is not None:
-            try:
-                target = path_container[path_key]
-            except (KeyError, IndexError, TypeError) as e:
-                # Missing key, index out of bounds, or invalid "-" access.
-                if exists:
-                    raise PatchApplicationError(
-                        f"target at {str(self)!r} does not exist"
-                    ) from e
-            else:
-                if exists:
-                    self.validate_target(target=target)
-                else:
-                    raise PatchApplicationError(
-                        f"target at {str(self)!r} already exists"
-                    )
-
-        return path_container, path_key
-
-    def assert_target(
-        self,
-        doc: JSONValue,
-        exists: bool | None = None,
-        mutable: bool | None = None,
-    ) -> None:
-        """
-        Assert invariants about this JSONPointer's target on a `doc`.
-
-        The root of `doc` is always considered to exist and be writable.
-        """
-        if self.is_root():
-            target = doc
-            if mutable is False:
-                raise PatchApplicationError(f"target at {str(self)!r} is mutable")
-            if exists is False:
-                raise PatchApplicationError(f"target at {str(self)!r} already exists")
-            self.validate_target(target=target)
-        else:
-            self.resolve_last(doc, exists=exists, mutable=mutable)
+        return other.parts[: len(self.parts)] == self.parts
 
     def get(self, doc: JSONValue) -> T:
-        """
-        Resolve the JSONPointer against the `doc` and return the target.
-        """
-        if self.is_root():
-            return self.validate_target(target=doc)
+        """Resolve the JSONPointer against the `doc` and return the target."""
+        target = self._ptr.resolve(doc)
+        return self.validate_target(target)
+
+    def is_gettable(self, doc: JSONValue) -> bool:
+        try:
+            self.get(doc)
+        except Exception:
+            return False
         else:
-            container, key = self.resolve_last(doc, exists=True)
-            return container[key]  # type: ignore[index]
+            return True
 
     def set(self, doc: JSONValue, value: T) -> JSONValue:
-        new_target = self.validate_target(value)
+        target = self.validate_target(target=value)
         if self.is_root():
-            return new_target
+            return target
+        container = self._parent_ptr.resolve(doc)
+        if not _is_container(container):
+            raise PatchApplicationError(
+                f"cannot set value at {str(self)!r} because {self._parent_ptr} resolves to a JSON primitive"
+            )
+        key = _parse_JSONContainer_key(container, self.parts[-1])
+        if key == "-" and not isinstance(container, MutableMapping):
+            container.append(key)
+        else:
+            container[key] = value  # type: ignore[index]
+        return doc
 
-        container, key = self.resolve_last(doc, mutable=True)
+    def is_settable(self, doc: JSONValue, value: object = _Nothing) -> bool:
+        try:
+            if value is not _Nothing:
+                self.validate_target(value)
+            if self.is_root():
+                return True
+            container = self._parent_ptr.resolve(doc)
+            if not _is_container(container):
+                return False
+            _parse_JSONContainer_key(container, self.parts[-1])
+        except Exception:
+            return False
+        else:
+            return True
 
-        if isinstance(container, MutableMapping):
-            container[key] = new_target  # type: ignore[index]
-        elif isinstance(container, MutableSequence):
-            if key == "-":
-                key = len(container)
-            if key > len(container):  # type: ignore[operator]
-                raise PatchApplicationError(f"target at {str(self)!r} is out of range")
-            assert key >= 0, "JsonPointer implementation changed"  # type: ignore[operator]
-            container.insert(key, new_target)  # type: ignore[arg-type]
-
+    def delete(self, doc: JSONValue) -> JSONValue:
+        if self.is_root():
+            raise PatchApplicationError("cannot delete the root")
+        if not self.is_gettable(doc):
+            raise PatchApplicationError("cannot delete a missing target")
+        container = cast(JSONContainer[JSONValue], self._parent_ptr.resolve(doc))
+        key = _parse_JSONContainer_key(container, self.parts[-1])
+        if key == "-" and not isinstance(container, MutableMapping):
+            raise PatchApplicationError(
+                f"cannot delete value at {str(self)!r} with key '-'"
+            )
+        del container[key]  # type: ignore[arg-type]
         return doc
 
     @override
