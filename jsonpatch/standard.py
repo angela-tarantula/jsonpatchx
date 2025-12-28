@@ -117,7 +117,7 @@ class JsonPatch(Sequence[OperationSchema], Hashable):
     @override
     def __hash__(self) -> int:
         # Hashing is best-effort, user-defined ops may be unhashable.
-        return hash((self.__class__, tuple(self._ops)))
+        return hash((self.__class__, self._registry, tuple(self._ops)))
 
     @override
     def __eq__(self, other: object) -> bool:

@@ -164,6 +164,12 @@ class OperationRegistry:
         """Built-in RFC 6902 ops, plus extras."""
         return cls(*STANDARD_OPS, *extra_ops, pointer_cls=pointer_cls)
 
+    @override
+    def __hash__(self) -> int:
+        # Hashing is best-effort, user-defined ops may be unhashable.
+        # NOTE: this fails unless _op_adapter is cached, cache it for hashability
+        return hash((self.__class__, self._op_adapter))
+
 
 if __name__ == "__main__":
     raw = {"op": "add", "path": "/4", "value": "bar"}
