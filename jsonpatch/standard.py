@@ -1,3 +1,4 @@
+import copy
 import json
 from collections.abc import Mapping, Sequence
 from typing import Hashable, Self, overload, override
@@ -9,8 +10,7 @@ from jsonpatch.types import _JSON_VALUE_ADAPTER, JSONValue
 
 
 def _apply_ops(
-    ops: Sequence[OperationSchema],
-    doc: JSONValue,
+    ops: Sequence[OperationSchema], doc: JSONValue, *, inplace: bool = False
 ) -> JSONValue:
     """
     Core operation application loop shared by JsonPatch and model-aware patches.
@@ -19,6 +19,8 @@ def _apply_ops(
     - PatchError subclasses from op.apply() are propagated.
     - Unexpected exceptions are wrapped in PatchApplicationError.
     """
+    if not inplace:
+        doc = copy.deepcopy(doc)
     for index, op in enumerate(ops):
         try:
             doc = op.apply(doc)
