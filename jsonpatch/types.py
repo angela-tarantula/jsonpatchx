@@ -420,9 +420,9 @@ class JSONPointer[T: JSONValue](str):
             )
         key = _parse_JSONContainer_key(container, self.parts[-1])
         if key == "-" and not isinstance(container, dict):
-            container.append(value)
+            container.append(target)
         else:
-            container[key] = value  # type: ignore[index]
+            container[key] = target  # type: ignore[index]
         return doc
 
     def is_settable(self, doc: JSONValue, value: object = _Nothing) -> bool:
