@@ -319,10 +319,6 @@ class JSONPointer[T: JSONValue](str):
         Raises PatchApplicationError on failure.
         """
         try:
-            # Choice: NOT setting strict=True in the validate_python.
-            # Why: users should be able to set this themselves in their OperationSchema.
-            # Example: `amount: JSONNumber` is already strict=True.
-            # Custom example: `amount: Annotated[int Field(ge=0, strict=False)]` to allow "3" if they want to.
             return self._adapter.validate_python(target, strict=True)
         except Exception as e:
             raise PatchApplicationError(

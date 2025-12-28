@@ -22,7 +22,7 @@ class _BasePatchModel(BaseModel):
     - __registry__: the OperationRegistry used for parsing ops
     """
 
-    model_config = ConfigDict(frozen=True)
+    model_config = ConfigDict(frozen=True, strict=True)
 
     __target_model__: ClassVar[type[BaseModel]]
     __registry__: ClassVar[OperationRegistry]
@@ -121,7 +121,7 @@ class _BasePatchBody(BaseModel):
     - __registry__: the OperationRegistry used for those operations
     """
 
-    model_config = ConfigDict(frozen=True)
+    model_config = ConfigDict(frozen=True, strict=True)
 
     __registry__: ClassVar[OperationRegistry]
 

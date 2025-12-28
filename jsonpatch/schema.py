@@ -25,7 +25,7 @@ class OperationSchema(BaseModel, ABC):
     Ensures the 'op' is annotated as a Literal of strings.
     """
 
-    model_config = ConfigDict(frozen=True)
+    model_config = ConfigDict(frozen=True, strict=True)
     _op_literals: ClassVar[tuple[str, ...]]
 
     @override
