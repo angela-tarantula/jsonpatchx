@@ -157,21 +157,7 @@ def _cached_json_pointer(
     path: str, *, pointer_cls: type[PointerBackend]
 ) -> PointerBackend:
     # a cache here too doesn't hurt, to be implementation-agnostic
-    try:
-        pointer = pointer_cls(path)
-    except TypeError as e:
-        raise InvalidJSONPointer(
-            f"expected a valid pointer_cls, got something non-callable: {pointer_cls!r}"
-        ) from e
-
-    if not isinstance(pointer, PointerBackend):
-        # fail fast on invalid PointerBackend, but remember isinstance(x, Protocol) only verifies attribute existence
-        # NOTE: maybe also add an invariance checker for the __str__ and from_parts methods.
-        # NOTE: Also consider a global PointerBackend verification as opposed to per-JSONPointer[T]-instance
-        raise InvalidJSONPointer(
-            f"pointer backend {pointer_cls.__name__} does not satisfy PointerBackend protocol"
-        )
-    return pointer
+    return pointer_cls(path)
 
 
 def _type_adapter_for[T](expected: TypeForm[T]) -> TypeAdapter[T]:
@@ -199,9 +185,23 @@ def _json_pointer_for(
 ) -> PointerBackend:
     """Get a cached JSON pointer."""
     try:
-        return _cached_json_pointer(path, pointer_cls=pointer_cls)
+        pointer = _cached_json_pointer(path, pointer_cls=pointer_cls)
     except Exception as e:
-        raise InvalidJSONPointer(f"invalid JSON Pointer: {path!r}") from e
+        if pointer_cls is _DEFAULT_POINTER_CLS:
+            raise InvalidJSONPointer(f"invalid JSON Pointer: {path!r}") from e
+        else:
+            raise InvalidJSONPointer(
+                f"invalid JSON Pointer for {pointer_cls!r}: {path!r}"
+            ) from e
+
+    if not isinstance(pointer, PointerBackend):
+        # fail fast on invalid PointerBackend, but remember isinstance(x, Protocol) only verifies attribute existence
+        # NOTE: maybe also add an invariance checker for the __str__ and from_parts methods.
+        # NOTE: Also consider a global PointerBackend verification as opposed to per-JSONPointer[T]-instance
+        raise InvalidJSONPointer(
+            f"pointer backend {pointer_cls.__name__} does not satisfy PointerBackend protocol"
+        )
+    return pointer
 
 
 _Nothing = object()

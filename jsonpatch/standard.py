@@ -1,7 +1,7 @@
 import copy
 import json
 from collections.abc import Mapping, Sequence
-from typing import Hashable, Self, overload, override
+from typing import Self, overload, override
 
 from jsonpatch.exceptions import PatchApplicationError, PatchError
 from jsonpatch.registry import OperationRegistry
