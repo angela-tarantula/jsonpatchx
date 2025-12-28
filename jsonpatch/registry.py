@@ -123,7 +123,12 @@ class OperationRegistry:
             python, strict=True, by_alias=True, by_name=False, extra="forbid"
         )
 
-    def _parse_json_op(self, text: str | bytes | bytearray) -> OperationSchema:
+    def parse_json_op(self, text: str | bytes | bytearray) -> OperationSchema:
+        """
+        Validate & coerce a single JSON-serialized OperationSchema.
+
+        Example text: '{"op": "remove", "path": "/foo/bar"}'
+        """
         return self._op_adapter.validate_json(
             text, strict=True, by_alias=True, by_name=False, extra="forbid"
         )
