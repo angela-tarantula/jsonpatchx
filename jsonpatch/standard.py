@@ -39,7 +39,7 @@ class JsonPatch(Sequence[OperationSchema], Hashable):
 
     def __init__(
         self,
-        patch: Sequence[Mapping[str, JSONValue]],
+        patch: Sequence[Mapping[str, JSONValue]] | Sequence[OperationSchema],
         *,
         registry: OperationRegistry | None = None,
     ):

@@ -6,7 +6,6 @@ from functools import lru_cache
 from typing import (
     Annotated,
     Any,
-    ClassVar,
     Final,
     Literal,
     Protocol,
@@ -309,8 +308,7 @@ class JSONPointer[T: JSONValue](str):
         else:
             expected_type: TypeForm[T] = cast(TypeForm[T], args[0])
 
-        def initializer(path: str, info: ValidationInfo) -> Self:
-            # TODO: if v is JSONPointer[T] already, return v (requires enabling the __new__ method for user instantiation)
+        def validator(path: str | Self, info: ValidationInfo) -> Self:
             if not isinstance(
                 path, str
             ):  # defensive (prevent casting), but str_schema(strict=True) should prevent
@@ -325,6 +323,11 @@ class JSONPointer[T: JSONValue](str):
                 ctx.get(_POINTER_BACKEND_CTX_KEY, _DEFAULT_POINTER_CLS),
             )
 
+            # If path is already a JSONPointer with the same PointerBackend, don't rebuild.
+            if isinstance(path, JSONPointer) and isinstance(path._ptr, pointer_cls):
+                return path
+
+            # Build
             obj = str.__new__(cls, path)
             obj._ptr = _json_pointer_for(path, pointer_cls=pointer_cls)
             obj._type = expected_type
@@ -332,7 +335,7 @@ class JSONPointer[T: JSONValue](str):
             return obj
 
         return cs.with_info_after_validator_function(
-            function=initializer,
+            function=validator,
             # Choice: Do NOT use pattern=re.compile(r"^(?:\/(?:[^~/]|~[01])*)*$") inside str_schema.
             # Why: Let the PointerBackend perform validation, which may be customized (e.g. handling of escapes).
             schema=cs.str_schema(strict=True),

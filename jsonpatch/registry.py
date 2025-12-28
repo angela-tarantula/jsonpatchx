@@ -3,13 +3,13 @@ from inspect import isabstract, isclass
 from types import MappingProxyType
 from typing import Annotated, ClassVar, Literal, Self, TypeAliasType, Union, override
 
-from jsonpointer import JsonPointer  # type: ignore[import-untyped]
 from pydantic import Field, TypeAdapter
 
 from jsonpatch.builtins import STANDARD_OPS
 from jsonpatch.exceptions import InvalidOperationRegistry
 from jsonpatch.schema import OperationSchema
 from jsonpatch.types import (
+    _DEFAULT_POINTER_CLS,
     _POINTER_BACKEND_CTX_KEY,
     JSONValue,
     PointerBackend,
@@ -37,7 +37,7 @@ class OperationRegistry:
     def __init__(
         self,
         *op_schemas: type[OperationSchema],
-        pointer_cls: type[PointerBackend] = JsonPointer,
+        pointer_cls: type[PointerBackend] = _DEFAULT_POINTER_CLS,
     ) -> None:
         self._validate_models(*op_schemas)
         self._model_map = self._build_model_map(*op_schemas)
@@ -120,14 +120,14 @@ class OperationRegistry:
     def _ctx(self) -> dict[Literal["jsonpatch:pointer_backend"], type[PointerBackend]]:
         return {_POINTER_BACKEND_CTX_KEY: self._pointer_cls}
 
-    def parse_python_op(self, obj: Mapping[str, JSONValue]) -> OperationSchema:
+    def parse_python_op(
+        self, obj: Mapping[str, JSONValue] | OperationSchema
+    ) -> OperationSchema:
         """
         Validate & coerce a single operation dict.
 
         Example python: {"op": "remove", "path": "/foo/bar"}
         """
-        if isinstance(obj, OperationSchema) and self._pointer_cls is not JsonPointer:
-            return self.parse_json_op(self._op_adapter.dump_json(obj))
         return self._op_adapter.validate_python(
             obj,
             strict=True,
@@ -138,19 +138,13 @@ class OperationRegistry:
         )
 
     def parse_python_patch(
-        self, python: Sequence[Mapping[str, JSONValue]]
+        self, python: Sequence[Mapping[str, JSONValue]] | Sequence[OperationSchema]
     ) -> list[OperationSchema]:
         """
         Validate & coerce a sequence of operation dicts.
 
         Example python: [{"op": "remove", "path": "/foo/bar"}, {"op": "add", "path": "/baz", "value": 42}]
         """
-        if (
-            python
-            and isinstance(python[0], OperationSchema)
-            and self._pointer_cls is not JsonPointer
-        ):
-            return self.parse_json_patch(self._patch_adapter.dump_json(python))
         return self._patch_adapter.validate_python(
             python,
             strict=True,
@@ -206,7 +200,7 @@ class OperationRegistry:
     def with_standard(
         cls,
         *extra_ops: type[OperationSchema],
-        pointer_cls: type[PointerBackend] = JsonPointer,
+        pointer_cls: type[PointerBackend] = _DEFAULT_POINTER_CLS,
     ) -> Self:
         """Built-in RFC 6902 ops, plus extras."""
         return cls(*STANDARD_OPS, *extra_ops, pointer_cls=pointer_cls)
