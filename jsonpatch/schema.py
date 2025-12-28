@@ -25,7 +25,12 @@ class OperationSchema(BaseModel, ABC):
     Ensures the 'op' is annotated as a Literal of strings.
     """
 
-    model_config = ConfigDict(frozen=True, strict=True, revalidate_instances="always")
+    model_config = ConfigDict(
+        frozen=True,
+        strict=True,
+        revalidate_instances="always"  # necessary for converting custom PointerBackends
+    )
+
     _op_literals: ClassVar[tuple[str, ...]]
 
     @override
