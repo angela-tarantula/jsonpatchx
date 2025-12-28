@@ -110,14 +110,14 @@ class PointerBackend(Protocol):
         ...
 
 
-_ArrayIndexPattern: re.Pattern[str] = re.compile(r"^(0|[1-9][0-9]*)$")
+_ARRAY_INDEX_PATTERN: re.Pattern[str] = re.compile(r"^(0|[1-9][0-9]*)$")
 
 
 def _parse_JSONArray_key(array: JSONArray[JSONValue], key: str) -> _JSONArrayKey:
     assert isinstance(array, list), "internal error: _parse_JSONArray_key"
     if key == "-":
         return "-"
-    if not _ArrayIndexPattern.fullmatch(key):
+    if not _ARRAY_INDEX_PATTERN.fullmatch(key):
         raise PatchApplicationError(f"invalid array index: {key!r}")
     idx = int(key)
     if idx >= len(array):
@@ -139,13 +139,13 @@ def _parse_JSONContainer_key(
     return _parse_JSONArray_key(container, token)
 
 
-@lru_cache(maxsize=128)
+@lru_cache(maxsize=512)
 def _cached_type_adapter[T](expected: TypeForm[T]) -> TypeAdapter[T]:
     # https://docs.pydantic.dev/latest/concepts/performance/#typeadapter-instantiated-once
     return TypeAdapter(expected)
 
 
-@lru_cache(maxsize=128)
+@lru_cache(maxsize=512)
 def _cached_json_pointer(
     ptr: str, *, pointer_cls: type[PointerBackend]
 ) -> PointerBackend:
@@ -165,13 +165,20 @@ def _type_adapter_for[T](expected: TypeForm[T]) -> TypeAdapter[T]:
     """Get a cached type adapter if possible, otherwise create a new one."""
     try:
         try:
-            return _cached_type_adapter(expected)  # type: ignore[arg-type] # catching TypeError
+            return _cached_type_adapter(expected)  # type: ignore[arg-type]
         except TypeError:
+            # Choice: Don't forbid unhashable typeforms, but don't break an arm supporting them either.
+            # Why: Most TypeForms are hashable, even Annotated[int, json_schema_extra={"dict here": "still hashable"})].
+            #      It's really just cases like Annotated[int, {"dict":"unhashable"}] that are too rare to support for now.
             return TypeAdapter(expected)
     except Exception as e:
         raise InvalidJSONPointer(
             f"invalid type parameter for JSON Pointer: {expected!r}; did you implement __get_pydantic_core_schema__?"
         ) from e
+
+
+_JSON_VALUE_ADAPTER = _type_adapter_for(JSONValue)
+# NOTE: not a huge fan of the pydantic error messages for simple cases like _JSON_VALUE_ADAPTER.python_validate({1:2})
 
 
 def _json_pointer_for(v: str, *, pointer_cls: type[PointerBackend]) -> PointerBackend:
@@ -286,6 +293,8 @@ class JSONPointer[T: JSONValue](str):
 
         return cs.no_info_after_validator_function(
             function=initializer,
+            # Choice: Do NOT use pattern=re.compile(r"^(?:\/(?:[^~/]|~[01])*)*$") inside str_schema.
+            # Why: Let the PointerBackend perform validation, which may be customized (e.g. handling of escapes).
             schema=cs.str_schema(strict=True),
         )
 
@@ -314,7 +323,7 @@ class JSONPointer[T: JSONValue](str):
             # Why: users should be able to set this themselves in their OperationSchema.
             # Example: `amount: JSONNumber` is already strict=True.
             # Custom example: `amount: Annotated[int Field(ge=0, strict=False)]` to allow "3" if they want to.
-            return self._adapter.validate_python(target)
+            return self._adapter.validate_python(target, strict=True)
         except Exception as e:
             raise PatchApplicationError(
                 f"invalid target type {type(target).__name__} for pointer {str(self)!r}"

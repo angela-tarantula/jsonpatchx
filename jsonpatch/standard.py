@@ -5,7 +5,7 @@ from typing import Hashable, Self, overload, override
 from jsonpatch.exceptions import PatchApplicationError, PatchError
 from jsonpatch.registry import OperationRegistry
 from jsonpatch.schema import OperationSchema
-from jsonpatch.types import JSONValue
+from jsonpatch.types import _JSON_VALUE_ADAPTER, JSONValue
 
 
 def _apply_ops(
@@ -93,8 +93,10 @@ class JsonPatch(Sequence[OperationSchema], Hashable):
         payload = [op.model_dump(mode="json", by_alias=True) for op in self._ops]
         return json.dumps(payload)
 
-    def apply(self, doc: JSONValue) -> JSONValue:
+    def apply(self, doc: JSONValue, *, validate_doc: bool = False) -> JSONValue:
         """Apply the JsonPatch to an object."""
+        if validate_doc:
+            _JSON_VALUE_ADAPTER.validate_python(doc, strict=True)
         return _apply_ops(self._ops, doc)
 
     @override

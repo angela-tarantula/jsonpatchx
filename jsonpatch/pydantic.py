@@ -6,7 +6,7 @@ from jsonpatch.exceptions import InvalidJsonPatch
 from jsonpatch.registry import OperationRegistry
 from jsonpatch.schema import OperationSchema
 from jsonpatch.standard import _apply_ops
-from jsonpatch.types import JSONValue
+from jsonpatch.types import _JSON_VALUE_ADAPTER, JSONValue
 
 ModelT = TypeVar("ModelT", bound=BaseModel)
 
@@ -125,7 +125,7 @@ class _BasePatchBody(BaseModel):
 
     __registry__: ClassVar[OperationRegistry]
 
-    def apply(self, doc: JSONValue) -> JSONValue:
+    def apply(self, doc: JSONValue, *, validate_doc: bool = False) -> JSONValue:
         """
         Apply this patch to an arbitrary JSON document.
 
@@ -134,6 +134,8 @@ class _BasePatchBody(BaseModel):
         - Applies them via the shared _apply_ops
         - Returns the patched JSON
         """
+        if validate_doc:
+            _JSON_VALUE_ADAPTER.validate_python(doc, strict=True)
         try:
             ops: list[OperationSchema] = self.__root__  # type: ignore[attr-defined]
             assert isinstance(ops, list)
