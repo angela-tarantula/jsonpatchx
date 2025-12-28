@@ -356,7 +356,7 @@ class JSONPointer[T: JSONValue](str):
         )
         return json_schema
 
-    def validate_target(self, target: object) -> T:
+    def _validate_target(self, target: object) -> T:
         """
         Validate a target against this pointer's type.
 
@@ -368,6 +368,14 @@ class JSONPointer[T: JSONValue](str):
             raise PatchApplicationError(
                 f"invalid target type {type(target).__name__} for pointer {str(self)!r}"
             ) from e
+
+    def is_valid_target(self, target: object) -> bool:
+        """Validate whether a target conforms to this pointer's type."""
+        try:
+            self._adapter.validate_python(target, strict=True)
+            return True
+        except Exception:
+            return False
 
     def is_root(self) -> bool:
         """Check whether this JSONPointer's target is the root."""
@@ -390,7 +398,7 @@ class JSONPointer[T: JSONValue](str):
         # Choice: always defer to the PointerBackend implementation for pointer resolution.
         # Why: Don't reinvent the wheel (and maintain it). Plus, give more power to custom PointerBackends.
         target = self._ptr.resolve(doc)
-        return self.validate_target(target)
+        return self._validate_target(target)
 
     def is_gettable(self, doc: JSONValue) -> bool:
         try:
@@ -402,7 +410,7 @@ class JSONPointer[T: JSONValue](str):
 
     def set(self, doc: JSONValue, value: T) -> JSONValue:
         # Type errors first
-        target = self.validate_target(target=value)
+        target = self._validate_target(target=value)
         if self.is_root():
             return target
         container = self._parent_ptr.resolve(doc)
@@ -420,7 +428,8 @@ class JSONPointer[T: JSONValue](str):
     def is_settable(self, doc: JSONValue, value: object = _Nothing) -> bool:
         try:
             if value is not _Nothing:
-                self.validate_target(value)
+                if not self.is_valid_target(value):
+                    return False
             if self.is_root():
                 return True
             container = self._parent_ptr.resolve(doc)
