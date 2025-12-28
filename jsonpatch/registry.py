@@ -3,12 +3,13 @@ from inspect import isabstract, isclass
 from types import MappingProxyType
 from typing import Annotated, ClassVar, Self, TypeAliasType, Union, override
 
+from jsonpointer import JsonPointer  # type: ignore[import-untyped]
 from pydantic import Field, TypeAdapter
 
 from jsonpatch.builtins import STANDARD_OPS
 from jsonpatch.exceptions import InvalidOperationRegistry
 from jsonpatch.schema import OperationSchema
-from jsonpatch.types import JSONValue
+from jsonpatch.types import JSONValue, PointerBackend
 
 
 class OperationRegistry:
@@ -22,7 +23,11 @@ class OperationRegistry:
     __slots__ = ("_model_map", "_op_adapter", "_patch_adapter", "_union_type")
     _standard: ClassVar[Self | None] = None
 
-    def __init__(self, *op_schemas: type[OperationSchema]) -> None:
+    def __init__(
+        self,
+        *op_schemas: type[OperationSchema],
+        pointer_cls: type[PointerBackend] = JsonPointer,
+    ) -> None:
         self._validate_models(*op_schemas)
         self._model_map = self._build_model_map(*op_schemas)
 
@@ -146,9 +151,13 @@ class OperationRegistry:
         return cls._standard
 
     @classmethod
-    def with_standard(cls, *extra_ops: type[OperationSchema]) -> Self:
+    def with_standard(
+        cls,
+        *extra_ops: type[OperationSchema],
+        pointer_cls: type[PointerBackend] = JsonPointer,
+    ) -> Self:
         """Built-in RFC 6902 ops, plus extras."""
-        return cls(*STANDARD_OPS, *extra_ops)
+        return cls(*STANDARD_OPS, *extra_ops, pointer_cls=pointer_cls)
 
 
 if __name__ == "__main__":
