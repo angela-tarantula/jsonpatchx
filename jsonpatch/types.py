@@ -397,7 +397,10 @@ class JSONPointer[T: JSONValue](str):
         """Resolve the JSONPointer against the `doc` and return the target."""
         # Choice: always defer to the PointerBackend implementation for pointer resolution.
         # Why: Don't reinvent the wheel (and maintain it). Plus, give more power to custom PointerBackends.
-        target = self._ptr.resolve(doc)
+        try:
+            target = self._ptr.resolve(doc)
+        except Exception as e:
+            raise PatchApplicationError(f"path {str(self)!r} not found: {e}") from e
         return self._validate_target(target)
 
     def is_gettable(self, doc: JSONValue) -> bool:
@@ -413,7 +416,10 @@ class JSONPointer[T: JSONValue](str):
         target = self._validate_target(target=value)
         if self.is_root():
             return target
-        container = self._parent_ptr.resolve(doc)
+        try:
+            container = self._parent_ptr.resolve(doc)
+        except Exception as e:
+            raise PatchApplicationError(f"path {str(self)!r} not found: {e}") from e
         if not _is_container(container):
             raise PatchApplicationError(
                 f"cannot set value at {str(self)!r} because {self._parent_ptr} resolves to a JSON primitive"
@@ -446,7 +452,10 @@ class JSONPointer[T: JSONValue](str):
             raise PatchApplicationError("cannot delete the root")
         if not self.is_gettable(doc):
             raise PatchApplicationError("cannot delete a missing target")
-        container = cast(JSONContainer[JSONValue], self._parent_ptr.resolve(doc))
+        try:
+            container = cast(JSONContainer[JSONValue], self._parent_ptr.resolve(doc))
+        except Exception as e:
+            raise PatchApplicationError(f"path {str(self)!r} not found: {e}") from e
         key = _parse_JSONContainer_key(container, self.parts[-1])
         if key == "-" and not isinstance(container, dict):
             raise PatchApplicationError(
