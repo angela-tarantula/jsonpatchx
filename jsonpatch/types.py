@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import re
-from collections.abc import Sequence
+from collections.abc import Iterable, Sequence
 from functools import lru_cache
 from typing import (
     Annotated,
@@ -79,7 +79,7 @@ type _JSONKey = _JSONArrayKey | _JSONObjectKey
 class PointerBackend(Protocol):
     """A simple JSON Pointer protocol, serving as the backend for the mutative JSONPointer[T] wrapper."""
 
-    def __init__(self, pointer: str, **kwargs: Any) -> None:
+    def __init__(self, pointer: str) -> None:
         """
         RFC6901 JSON Pointer initializer.
 
@@ -88,12 +88,12 @@ class PointerBackend(Protocol):
         ...
 
     @property
-    def parts(self, **kwargs: Any) -> Sequence[str]:
+    def parts(self) -> Sequence[str]:
         """A sequence of RFC6901-unescaped tokens. The root pointer has an empty sequence of parts."""
         ...
 
     @classmethod
-    def from_parts(cls, parts: Sequence[str], **kwargs: Any) -> Self:
+    def from_parts(cls, parts: Iterable[Any]) -> Self:
         """
         Construct an RFC6901 JSON Pointer from a sequence of unescaped tokens.
 
@@ -102,8 +102,9 @@ class PointerBackend(Protocol):
         """
         ...
 
-    def resolve(self, doc: Any, **kwrargs: Any) -> JSONValue:
+    def resolve(self, doc: Any) -> Any:
         """Resolve pointer against doc, following RFC6901 semantics."""
+        ...
 
     @override
     def __str__(self) -> str:
@@ -267,7 +268,7 @@ class JSONPointer[T: JSONValue](str):
     @property
     def _parent_ptr(self) -> PointerBackend:
         # NOTE: Cache this outside too?
-        return self._ptr.__class__.from_parts(self.parts[:-1])
+        return self._ptr.from_parts(self.parts[:-1])
 
     def __new__(
         cls,
