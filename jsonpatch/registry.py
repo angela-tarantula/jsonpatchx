@@ -126,6 +126,8 @@ class OperationRegistry:
 
         Example python: {"op": "remove", "path": "/foo/bar"}
         """
+        if isinstance(obj, OperationSchema) and self._pointer_cls is not JsonPointer:
+            return self.parse_json_op(self._op_adapter.dump_json(obj))
         return self._op_adapter.validate_python(
             obj,
             strict=True,
@@ -143,6 +145,12 @@ class OperationRegistry:
 
         Example python: [{"op": "remove", "path": "/foo/bar"}, {"op": "add", "path": "/baz", "value": 42}]
         """
+        if (
+            python
+            and isinstance(python[0], OperationSchema)
+            and self._pointer_cls is not JsonPointer
+        ):
+            return self.parse_json_patch(self._patch_adapter.dump_json(python))
         return self._patch_adapter.validate_python(
             python,
             strict=True,

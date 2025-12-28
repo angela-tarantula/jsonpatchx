@@ -6,6 +6,7 @@ from functools import lru_cache
 from typing import (
     Annotated,
     Any,
+    ClassVar,
     Final,
     Literal,
     Protocol,
@@ -189,7 +190,7 @@ def _type_adapter_for[T](expected: TypeForm[T]) -> TypeAdapter[T]:
         ) from e
 
 
-_JSON_VALUE_ADAPTER = _type_adapter_for(JSONValue)
+_JSON_VALUE_ADAPTER: TypeAdapter[JSONValue] = _type_adapter_for(JSONValue)
 # NOTE: not a huge fan of the pydantic error messages for simple cases like _JSON_VALUE_ADAPTER.python_validate({1:2})
 
 
@@ -209,16 +210,21 @@ _Nothing = object()
 _POINTER_BACKEND_CTX_KEY: Final[Literal["jsonpatch:pointer_backend"]] = (
     "jsonpatch:pointer_backend"
 )
+_DEFAULT_POINTER_CLS: Final[type[PointerBackend]] = JsonPointer  # pure-Python default
 
 
 @final
 class JSONPointer[T: JSONValue](str):
     """
-    RFC6901 JSON Pointer. Runtime value produced by Pydantic for a field annotated as JSONPointer[IN, OUT].
+    Generic RFC6901 JSON Pointer object produced by Pydantic.
 
     - Subclasses str so user code can treat it like the pointer string.
     - Stores parsed PointerBackend for structural ops
     - Stores TypeAdapter[T] for apply-time validation
+
+    PointerBackend selection:
+    - Default: jsonpointer.JsonPointer
+    - Override: subclasses can set __pointer_backend__.
     """
 
     # Choice: JSONPointer is str subclass, as opposed to Annotated[str, StringConstraints(...)].
@@ -269,7 +275,7 @@ class JSONPointer[T: JSONValue](str):
         path: str,
         expected_type: TypeForm[T],
         *args: object,
-        pointer_cls: type[PointerBackend] = JsonPointer,
+        pointer_cls: type[PointerBackend] = _DEFAULT_POINTER_CLS,
         **kwargs: object,
     ) -> Self:
         if __name__ != "__main__":
@@ -316,7 +322,7 @@ class JSONPointer[T: JSONValue](str):
             ctx = info.context or {}
             pointer_cls = cast(
                 type[PointerBackend],
-                ctx.get(_POINTER_BACKEND_CTX_KEY, JsonPointer),  # pure-Python default
+                ctx.get(_POINTER_BACKEND_CTX_KEY, _DEFAULT_POINTER_CLS),
             )
 
             obj = str.__new__(cls, path)
