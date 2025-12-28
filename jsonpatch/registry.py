@@ -1,7 +1,7 @@
 from collections.abc import Mapping, Sequence, Set
 from inspect import isabstract, isclass
 from types import MappingProxyType
-from typing import Annotated, ClassVar, Self, TypeAliasType, Union, override
+from typing import Annotated, ClassVar, Literal, Self, TypeAliasType, Union, override
 
 from jsonpointer import JsonPointer  # type: ignore[import-untyped]
 from pydantic import Field, TypeAdapter
@@ -9,7 +9,12 @@ from pydantic import Field, TypeAdapter
 from jsonpatch.builtins import STANDARD_OPS
 from jsonpatch.exceptions import InvalidOperationRegistry
 from jsonpatch.schema import OperationSchema
-from jsonpatch.types import JSONValue, PointerBackend
+from jsonpatch.types import (
+    _POINTER_BACKEND_CTX_KEY,
+    JSONValue,
+    PointerBackend,
+    _json_pointer_for,
+)
 
 
 class OperationRegistry:
@@ -20,7 +25,13 @@ class OperationRegistry:
     - Builds a discriminated union for validation / OpenAPI
     """
 
-    __slots__ = ("_model_map", "_op_adapter", "_patch_adapter", "_union_type")
+    __slots__ = (
+        "_model_map",
+        "_op_adapter",
+        "_patch_adapter",
+        "_union_type",
+        "_pointer_cls",
+    )
     _standard: ClassVar[Self | None] = None
 
     def __init__(
@@ -30,6 +41,10 @@ class OperationRegistry:
     ) -> None:
         self._validate_models(*op_schemas)
         self._model_map = self._build_model_map(*op_schemas)
+
+        # validate pointer_cls with path="" as a probe
+        _ = _json_pointer_for(path="", pointer_cls=pointer_cls)
+        self._pointer_cls = pointer_cls
 
         union_type, op_adapter, patch_adapter = self._build_adapters(*op_schemas)
         self._union_type = union_type
@@ -101,6 +116,10 @@ class OperationRegistry:
         """The discriminated union type of all operation schemas."""
         return self._union_type
 
+    @property
+    def _ctx(self) -> dict[Literal["jsonpatch:pointer_backend"], type[PointerBackend]]:
+        return {_POINTER_BACKEND_CTX_KEY: self._pointer_cls}
+
     def parse_python_op(self, obj: Mapping[str, JSONValue]) -> OperationSchema:
         """
         Validate & coerce a single operation dict.
@@ -108,7 +127,12 @@ class OperationRegistry:
         Example python: {"op": "remove", "path": "/foo/bar"}
         """
         return self._op_adapter.validate_python(
-            obj, strict=True, by_alias=True, by_name=False, extra="forbid"
+            obj,
+            strict=True,
+            by_alias=True,
+            by_name=False,
+            extra="forbid",
+            context=self._ctx,
         )
 
     def parse_python_patch(
@@ -120,7 +144,12 @@ class OperationRegistry:
         Example python: [{"op": "remove", "path": "/foo/bar"}, {"op": "add", "path": "/baz", "value": 42}]
         """
         return self._patch_adapter.validate_python(
-            python, strict=True, by_alias=True, by_name=False, extra="forbid"
+            python,
+            strict=True,
+            by_alias=True,
+            by_name=False,
+            extra="forbid",
+            context=self._ctx,
         )
 
     def parse_json_op(self, text: str | bytes | bytearray) -> OperationSchema:
@@ -130,7 +159,12 @@ class OperationRegistry:
         Example text: '{"op": "remove", "path": "/foo/bar"}'
         """
         return self._op_adapter.validate_json(
-            text, strict=True, by_alias=True, by_name=False, extra="forbid"
+            text,
+            strict=True,
+            by_alias=True,
+            by_name=False,
+            extra="forbid",
+            context=self._ctx,
         )
 
     def parse_json_patch(self, text: str | bytes | bytearray) -> list[OperationSchema]:
@@ -140,7 +174,12 @@ class OperationRegistry:
         Example text: '[{"op": "remove", "path": "/foo/bar"}, {"op": "add", "path": "/baz", "value": 42}]'
         """
         return self._patch_adapter.validate_json(
-            text, strict=True, by_alias=True, by_name=False, extra="forbid"
+            text,
+            strict=True,
+            by_alias=True,
+            by_name=False,
+            extra="forbid",
+            context=self._ctx,
         )
 
     @override
