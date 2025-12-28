@@ -34,7 +34,7 @@ def _apply_ops(
     return doc
 
 
-class JsonPatch(Sequence[OperationSchema], Hashable):
+class JsonPatch(Sequence[OperationSchema]):
     __slots__ = ("_ops", "_registry")
 
     def __init__(
@@ -119,7 +119,7 @@ class JsonPatch(Sequence[OperationSchema], Hashable):
     @override
     def __hash__(self) -> int:
         # Hashing is best-effort, user-defined ops may be unhashable.
-        return hash((self.__class__, self._registry, tuple(self._ops)))
+        return hash((self.__class__, self._registry, tuple(self)))
 
     @override
     def __eq__(self, other: object) -> bool:

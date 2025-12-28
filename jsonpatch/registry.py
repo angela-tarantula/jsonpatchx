@@ -208,8 +208,7 @@ class OperationRegistry:
     @override
     def __hash__(self) -> int:
         # Hashing is best-effort, user-defined ops may be unhashable.
-        # NOTE: this fails unless _op_adapter is cached, cache it for hashability
-        return hash((self.__class__, self._op_adapter))
+        return hash((self.__class__, self._pointer_cls, self.ops))
 
 
 if __name__ == "__main__":
