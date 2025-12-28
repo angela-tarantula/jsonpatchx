@@ -127,7 +127,7 @@ def _parse_JSONArray_key(array: JSONArray[JSONValue], key: str) -> _JSONArrayKey
     if not _ARRAY_INDEX_PATTERN.fullmatch(key):
         raise PatchApplicationError(f"invalid array index: {key!r}")
     idx = int(key)
-    if idx >= len(array):
+    if idx > len(array):
         raise PatchApplicationError(f"index out of range: {key!r}")
     return idx
 
@@ -419,7 +419,7 @@ class JSONPointer[T: JSONValue](str):
                 f"cannot set value at {str(self)!r} because {self._parent_ptr} resolves to a JSON primitive"
             )
         key = _parse_JSONContainer_key(container, self.parts[-1])
-        if key == "-" and not isinstance(container, dict):
+        if not isinstance(container, dict) and (key == "-" or key == len(container)):
             container.append(target)
         else:
             container[key] = target  # type: ignore[index]
