@@ -2,7 +2,6 @@ from typing import Any, ClassVar, Generic, Self, TypeAliasType, TypeVar, cast, o
 
 from pydantic import BaseModel, ConfigDict, RootModel, create_model
 
-from jsonpatch.exceptions import InvalidJsonPatch
 from jsonpatch.registry import OperationRegistry
 from jsonpatch.schema import OperationSchema
 from jsonpatch.standard import _apply_ops
@@ -126,38 +125,16 @@ class JsonPatchFor(Generic[ModelT]):
         return PatchModel
 
 
-class _BasePatchBody(BaseModel):
+class _BasePatchBody(_RegistryBoundPatchRoot):
     """
-    Base class for dynamically-created patch-body models used with plain JSON docs.
-
-    Each subclass is expected to have:
-
-    - __root__: list[registry.union]
-    - __registry__: the OperationRegistry used for those operations
+    RootModel patch type for patching plain JSON documents.
+    Subclasses must set __registry__.
     """
-
-    model_config = ConfigDict(frozen=True, strict=True)
-
-    __registry__: ClassVar[OperationRegistry]
 
     def apply(self, doc: JSONValue, *, validate_doc: bool = False) -> JSONValue:
-        """
-        Apply this patch to an arbitrary JSON document.
-
-        This does NOT know about any Pydantic model; it just:
-        - Uses the validated ops in __root__
-        - Applies them via the shared _apply_ops
-        - Returns the patched JSON
-        """
         if validate_doc:
             _JSON_VALUE_ADAPTER.validate_python(doc, strict=True)
-        try:
-            ops: list[OperationSchema] = self.__root__  # type: ignore[attr-defined]
-            assert isinstance(ops, list)
-        except (AttributeError, AssertionError) as e:  # defensive, not expected
-            raise InvalidJsonPatch("Patch Model is malformed") from e
-
-        return _apply_ops(ops, doc)
+        return _apply_ops(self.ops, doc)
 
 
 def make_json_patch_body(
