@@ -39,22 +39,29 @@ from jsonpatch.exceptions import (
 
 # Core, Pydantic-aware JSON type aliases
 
-type JSONBoolean = Annotated[bool, Field(strict=True)]
-type JSONNumber = (
-    Annotated[int, Field(strict=True)]
-    | Annotated[float, Field(strict=True, allow_inf_nan=False)]
-)
-type JSONString = Annotated[str, Field(strict=True)]
-type JSONNull = None
+type JSONBoolean = Annotated[bool, Field(strict=True, title="JSON boolean")]
+type _JSONInt = Annotated[int, Field(strict=True)]
+type _JSONFloat = Annotated[float, Field(strict=True, allow_inf_nan=False)]
+type JSONNumber = Annotated[
+    _JSONInt | _JSONFloat,
+    Field(
+        title="JSON number",
+        description="JSON number: integer or finite float (no NaN/Infinity).",
+    ),
+]
+type JSONString = Annotated[str, Field(strict=True, title="JSON string")]
+type JSONNull = Annotated[None, Field(title="JSON null")]
 type JSONPrimitive = JSONBoolean | JSONNumber | JSONString | JSONNull
 
-type JSONArray[T_co] = Annotated[list[T_co], Field(strict=True)]
-type JSONObject[T_co] = Annotated[dict[str, T_co], Field(strict=True)]
+type JSONArray[T_co] = Annotated[list[T_co], Field(strict=True, title="JSON array")]
+type JSONObject[T_co] = Annotated[
+    dict[str, T_co], Field(strict=True, title="JSON object")
+]
 type JSONContainer[T_co] = JSONArray[T_co] | JSONObject[T_co]
 
 type JSONValue = Annotated[
     JSONPrimitive | JSONContainer[JSONValue],
-    Field(description="JSON value (RFC-style primitives, list, dict)"),
+    Field(description="JSON value"),
 ]
 """
 Pydantic-friendly type representing a strict JSON value.
