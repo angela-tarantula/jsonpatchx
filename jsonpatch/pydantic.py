@@ -92,14 +92,16 @@ class JsonPatchFor[ModelT: BaseModel]:
     Example:
         Standard RFC 6902 operations:
 
-        UserPatch = JsonPatchFor[User]
-        patch = UserPatch.model_validate([{"op": "replace", "path": "/name", "value": "Angela"}])
-        updated_user = patch.apply(user)
+    >>> UserPatch = JsonPatchFor[User]
+    >>> patch = UserPatch.model_validate(
+    ...     [{"op": "replace", "path": "/name", "value": "Angela"}]
+    ... )
+    >>> updated_user = patch.apply(user)
 
         Custom operations or pointer backend (registry-scoped):
 
-        registry = OperationRegistry.with_standard(IncrementOp, pointer_cls=MyPointer)
-        UserPatch = JsonPatchFor[(User, registry)]
+    >>> registry = OperationRegistry.with_standard(IncrementOp, pointer_cls=MyPointer)
+    >>> UserPatch = JsonPatchFor[(User, registry)]
 
     Notes:
         ``JsonPatchFor[...]`` accepts either ``JsonPatchFor[MyModel]`` (standard registry) or
@@ -200,15 +202,15 @@ def make_json_patch_body(
     Example:
         Typed ops applied to an untyped document:
 
-        registry = OperationRegistry.with_standard(IncrementOp)
-        ConfigPatchBody = make_json_patch_body(registry, name="ConfigPatch")
+        >>> registry = OperationRegistry.with_standard(IncrementOp)
+        >>> ConfigPatchBody = make_json_patch_body(registry, name="ConfigPatch")
 
-        @app.patch("/configs/{config_id}")
-        def patch_config(config_id: str, patch: ConfigPatchBody):
-            doc = load_config(config_id)
-            updated = patch.apply(doc)
-            save_config(config_id, updated)
-            return updated
+        >>> @app.patch("/configs/{config_id}")
+        ... def patch_config(config_id: str, patch: ConfigPatchBody):
+        ...     doc = load_config(config_id)
+        ...     updated = patch.apply(doc)
+        ...     save_config(config_id, updated)
+        ...     return updated
 
     Args:
         registry: OperationRegistry used to validate and parse operations. Defaults to the standard
