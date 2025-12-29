@@ -75,30 +75,15 @@ class _BasePatchModel(_RegistryBoundPatchRoot):
 
 class JsonPatchFor(Generic[ModelT]):
     """
-    Factory for Pydantic-aware JsonPatch models.
-
-    JsonPatchFor[User]                      -> uses standard RFC 6902 registry
-    JsonPatchFor[(User, registry)]          -> uses a custom OperationRegistry
-
-    Returns a dynamically-generated Pydantic model subclass of _BasePatchModel:
-
-        class UserPatch(_BasePatchModel):
-            __root__: list[registry.union]
-            __target_model__ = User
-            __registry__ = registry
-
-    This is intended for model-aware patching:
-        - You patch Pydantic models.
-        - You get Pydantic validation of the result.
-        - You use it as a request body type in FastAPI.
+    Factory:
+      JsonPatchFor[User]
+      JsonPatchFor[(User, registry)]
+    Produces a RootModel whose JSON shape is a top-level array of ops.
     """
 
     def __class_getitem__(
         cls, param: type[BaseModel] | tuple[type[BaseModel], OperationRegistry]
     ) -> type[_BasePatchModel]:
-        # Provide user-friendly errors that guide proper usage:
-        #   JsonPatchFor[User]
-        #   JsonPatchFor[(User, registry)]
         if isinstance(param, tuple):
             if len(param) != 2:
                 raise TypeError(
@@ -108,14 +93,16 @@ class JsonPatchFor(Generic[ModelT]):
         else:
             model, registry = param, OperationRegistry.standard()
 
+        # Verify that model is a BaseModel subclass. Must verify that model is a type first or else issubclass complains.
         if not isinstance(model, type) or not issubclass(model, BaseModel):  # type: ignore[redundant-expr]
             raise TypeError(
                 f"JsonPatchFor[...] expects a Pydantic BaseModel, got {model!r}"
             )
+
         if not isinstance(registry, OperationRegistry):
             raise TypeError(
-                "JsonPatchFor[(Model, registry)] second argument must be an "
-                f"OperationRegistry, got {type(registry).__name__}"
+                "JsonPatchFor[(Model, registry)] second argument must be an OperationRegistry, "
+                f"got {type(registry).__name__}"
             )
 
         return cls._create_patch_model(model, registry)
@@ -126,12 +113,12 @@ class JsonPatchFor(Generic[ModelT]):
         registry: OperationRegistry,
     ) -> type[_BasePatchModel]:
         """Dynamically create the Pydantic model class."""
-        op_union: TypeAliasType = registry.union
+        registry_union: TypeAliasType = registry.union  # runtime discriminated union
 
         PatchModel = create_model(
             f"{model.__name__}Patch",
             __base__=_BasePatchModel,
-            __root__=(list[op_union], ...),  # type: ignore[valid-type]
+            root=(list[registry_union], ...),  # type: ignore[valid-type]
         )
 
         PatchModel.__target_model__ = model
