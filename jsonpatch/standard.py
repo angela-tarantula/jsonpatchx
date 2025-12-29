@@ -33,9 +33,11 @@ def _apply_ops(
         - ``inplace=False`` (default): the engine deep-copies ``doc`` first, then applies operations
           to that copy. Operation implementations may mutate the document object they receive. The
           original input object is not modified.
-        - ``inplace=True``: operations are applied directly to the provided ``doc`` object.
-        - No rollback: with ``inplace=True``, an exception mid-patch may leave the input document
-          partially mutated.
+        - ``inplace=True``: operations are applied directly to the provided ``doc`` object. This is faster
+          and avoids a deep copy, but it is **not transactional**. If an operation fails mid-patch, earlier
+          operations will already have mutated the document (no rollback).
+        -  In other words: operations are allowed to be “mutative”, and the engine decides whether those
+           mutations hit the original input or a deep-copied working document.
     """
     if not inplace:
         doc = copy.deepcopy(doc)
