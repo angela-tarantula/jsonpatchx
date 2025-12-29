@@ -533,7 +533,8 @@ class JSONPointer(str, Generic[T_co]):
 
         - If this pointer is the root (``""``), returns ``value`` as the new document.
         - Otherwise, resolves the parent container and writes the value into that container,
-        mutating the *provided* document object in-place.
+          mutating the *provided* document object in-place.
+        - For arrays, the value is inserted at the index (RFC 6902 add semantics). ``"-"`` appends.
 
         Important: whether this affects your *original* document depends on how you obtained ``doc``.
         In patch application, the patch engine may first deep-copy the input document before calling
@@ -571,10 +572,13 @@ class JSONPointer(str, Generic[T_co]):
                 f"cannot set value at {str(self)!r} because {self._parent_ptr} resolves to a JSON primitive"
             )
         key = _parse_JSONContainer_key(container, self.parts[-1])
-        if not isinstance(container, dict) and (key == "-" or key == len(container)):
+        if isinstance(container, dict):
+            container[key] = target
+        elif key == "-":
             container.append(target)
         else:
-            container[key] = target  # type: ignore[index]
+            assert isinstance(key, int), "internal error: set"
+            container.insert(key, target)
         return doc
 
     def is_settable(
@@ -635,6 +639,7 @@ class JSONPointer(str, Generic[T_co]):
             raise PatchApplicationError("cannot delete a missing target")
         try:
             container = cast(JSONContainer[JSONValue], self._parent_ptr.resolve(doc))
+            assert isinstance(container, (dict, list)), "internal error: delete"
         except Exception as e:
             raise PatchApplicationError(f"path {str(self)!r} not found: {e}") from e
         key = _parse_JSONContainer_key(container, self.parts[-1])

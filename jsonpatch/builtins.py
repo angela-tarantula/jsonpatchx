@@ -164,6 +164,7 @@ class _SwapOp(OperationSchema):
 
     @override
     def apply(self, doc: JSONValue) -> JSONValue:
+        self.a.ptr
         value_a = self.a.get(doc)
         value_b = self.b.get(doc)
         doc = AddOp(path=self.a, value=value_b).apply(doc)
