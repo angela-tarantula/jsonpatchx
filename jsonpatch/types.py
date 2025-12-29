@@ -86,7 +86,7 @@ type _JSONKey = _JSONArrayKey | _JSONObjectKey
 @runtime_checkable
 class PointerBackend(Protocol):
     """
-    Protocol for JSON Pointer backends used by :class:`JSONPointer`.
+    Advanced extension point: protocol for custom JSON Pointer backends.
 
     This library is *pointer-backend agnostic*. By default it uses
     :class:`jsonpointer.JsonPointer`, but advanced users may plug in a custom backend
@@ -112,9 +112,8 @@ class PointerBackend(Protocol):
 
     ### Errors
 
-    Backends may raise whatever exceptions are natural for them. The library does not require a
-    specific exception type. Higher-level APIs (e.g., :meth:`JSONPointer.get`) normalize backend
-    failures into library patch errors for consistent UX.
+    Backends may raise whatever exceptions are natural for them. Higher-level APIs normalize
+    backend failures into library patch errors for a consistent user experience.
     """
 
     def __init__(self, pointer: str) -> None:

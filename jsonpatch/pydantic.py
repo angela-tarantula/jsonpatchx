@@ -12,26 +12,16 @@ class _RegistryBoundPatchRoot(RootModel[Any]):
     """
     Internal RootModel base for registry-backed JSON Patch request bodies.
 
-    This base exists to support the two common “framework” use cases:
+    This base exists to support:
 
-    1) **FastAPI / OpenAPI request bodies** where the incoming JSON is a top-level JSON array::
-
-           [
-             {"op": "add", "path": "/foo", "value": "bar"},
-             {"op": "increment", "path": "/count", "value": 1}
-           ]
-
+    1) **FastAPI / OpenAPI request bodies** where the incoming JSON is a top-level JSON array.
     2) **Registry-scoped pointer semantics** for :class:`~jsonpatch.types.JSONPointer[...]`.
-
-       Operation registries may be configured with a custom RFC6901 pointer backend. During
-       validation, Pydantic must be given that backend via validation ``context`` so that
-       JSONPointer fields are instantiated correctly.
 
     ### How context is handled
 
     ``model_validate(...)`` and ``model_validate_json(...)`` inject the registry's validation context
-    if the caller did not supply one. This is important in web frameworks (including FastAPI)
-    where Pydantic models are often validated without an explicit context.
+    (``OperationRegistry._ctx``) if the caller did not supply one. This is critical in web frameworks
+    where Pydantic often validates without an explicit context.
 
     If a caller provides ``context=...``, it is respected as-is (expert override).
     """
