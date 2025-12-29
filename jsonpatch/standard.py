@@ -47,7 +47,7 @@ import json
 from collections.abc import Mapping, Sequence
 from typing import Self, overload, override
 
-from jsonpatch.exceptions import PatchApplicationError, PatchError
+from jsonpatch.exceptions import PatchApplyFailed, PatchError, PatchFailureDetail
 from jsonpatch.registry import OperationRegistry
 from jsonpatch.schema import OperationSchema
 from jsonpatch.types import _JSON_VALUE_ADAPTER, JSONValue
@@ -71,7 +71,7 @@ def _apply_ops(
 
     Raises:
         PatchError: Expected patch failures raised by operation implementations.
-        PatchApplicationError: Unexpected exceptions wrapped with the failing operation index.
+        PatchApplyFailed: Unexpected exceptions wrapped with structured context.
 
     Notes:
         - ``inplace=False`` (default): the engine deep-copies ``doc`` first, then applies operations
@@ -85,6 +85,7 @@ def _apply_ops(
     """
     if not inplace:
         doc = copy.deepcopy(doc)
+
     for index, op in enumerate(ops):
         try:
             doc = op.apply(doc)
@@ -92,9 +93,14 @@ def _apply_ops(
             # Domain-specific patch errors (e.g. TestOpFailed) should propagate unchanged.
             raise
         except Exception as e:
-            raise PatchApplicationError(
-                f"Error applying {op!r} at index {index}: {e}"
-            ) from e
+            detail = PatchFailureDetail(
+                index=index,
+                op=op,
+                message=str(e),
+                cause_type=type(e).__name__,
+            )
+            raise PatchApplyFailed(detail, cause=e) from e
+
     return doc
 
 
