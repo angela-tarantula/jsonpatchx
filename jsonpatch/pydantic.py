@@ -226,11 +226,24 @@ def make_json_patch_body(
     registry = registry or OperationRegistry.standard()
     registry_union: TypeAliasType = registry.union  # runtime discriminated union
 
+    model_name = name or "JsonPatchBody"
     PatchBody = create_model(
-        name or "JsonPatchBody",
+        model_name,
         __base__=_BasePatchBody,
+        __config__=ConfigDict(
+            frozen=True,
+            strict=True,
+            json_schema_extra={
+                "description": "RFC 6902 JSON Patch document (list of operations).",
+                "examples": [
+                    [{"op": "replace", "path": "/name", "value": "Angela"}],
+                    [{"op": "add", "path": "/tags/-", "value": "staff"}],
+                ],
+            },
+        ),
         root=(list[registry_union], ...),  # type: ignore[valid-type]
     )
 
     PatchBody.__registry__ = registry
+    PatchBody.__doc__ = "RFC 6902 JSON Patch document (list of operations)."
     return PatchBody

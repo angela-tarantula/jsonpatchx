@@ -1,7 +1,7 @@
 from collections.abc import MutableMapping
 from typing import Any
 
-from fastapi import FastAPI, HTTPException
+from fastapi import Body, FastAPI, HTTPException
 from pydantic import BaseModel, Field
 
 from jsonpatch import JsonPatchFor, OperationRegistry, make_json_patch_body
@@ -43,8 +43,44 @@ def get_user(user_id: int) -> User:
         raise HTTPException(status_code=404, detail="user not found") from exc
 
 
-@app.patch("/users/{user_id}")
-def patch_user(user_id: int, patch: UserPatch) -> User:
+@app.patch(
+    "/users/{user_id}",
+    openapi_extra={
+        "requestBody": {
+            "content": {
+                "application/json-patch+json": {
+                    "schema": {"$ref": "#/components/schemas/UserPatch"},
+                    "examples": {
+                        "rename-user": {
+                            "summary": "Rename a user",
+                            "value": [
+                                {"op": "replace", "path": "/name", "value": "Angela"}
+                            ],
+                        },
+                        "append-tag": {
+                            "summary": "Append a tag",
+                            "value": [
+                                {"op": "add", "path": "/tags/-", "value": "staff"}
+                            ],
+                        },
+                    },
+                }
+            },
+            "required": True,
+        }
+    },
+)
+def patch_user(
+    user_id: int,
+    patch: UserPatch = Body(
+        ...,
+        description="RFC 6902 JSON Patch document. Prefer Content-Type: application/json-patch+json.",
+        examples=[
+            [{"op": "replace", "path": "/name", "value": "Angela"}],
+            [{"op": "add", "path": "/tags/-", "value": "staff"}],
+        ],
+    ),
+) -> User:
     user = _USERS.get(user_id)
     if user is None:
         raise HTTPException(status_code=404, detail="user not found")
@@ -61,8 +97,51 @@ def get_config(config_id: str) -> JSONValue:
         raise HTTPException(status_code=404, detail="config not found") from exc
 
 
-@app.patch("/configs/{config_id}")
-def patch_config(config_id: str, patch: ConfigPatchBody) -> JSONValue:
+@app.patch(
+    "/configs/{config_id}",
+    openapi_extra={
+        "requestBody": {
+            "content": {
+                "application/json-patch+json": {
+                    "schema": {"$ref": "#/components/schemas/JsonPatchBody"},
+                    "examples": {
+                        "enable-feature": {
+                            "summary": "Enable a feature flag",
+                            "value": [
+                                {
+                                    "op": "replace",
+                                    "path": "/site/features/chat",
+                                    "value": True,
+                                }
+                            ],
+                        },
+                        "bump-limit": {
+                            "summary": "Increment max_users (custom op example if registered)",
+                            "value": [
+                                {
+                                    "op": "replace",
+                                    "path": "/limits/max_users",
+                                    "value": 10,
+                                }
+                            ],
+                        },
+                    },
+                }
+            },
+            "required": True,
+        }
+    },
+)
+def patch_config(
+    config_id: str,
+    patch: ConfigPatchBody = Body(
+        ...,
+        description="RFC 6902 JSON Patch document applied to an untyped JSON config.",
+        examples=[
+            [{"op": "replace", "path": "/site/features/chat", "value": True}],
+        ],
+    ),
+) -> JSONValue:
     doc = _CONFIGS.get(config_id)
     if doc is None:
         raise HTTPException(status_code=404, detail="config not found")

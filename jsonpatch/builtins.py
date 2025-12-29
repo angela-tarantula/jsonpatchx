@@ -10,6 +10,8 @@ from jsonpatch.types import JSONPointer, JSONValue
 
 
 class AddOp(OperationSchema):
+    """RFC 6902 Add"""
+
     op: Literal["add"] = "add"
     path: JSONPointer[JSONValue]
     value: JSONValue
@@ -20,6 +22,8 @@ class AddOp(OperationSchema):
 
 
 class RemoveOp(OperationSchema):
+    """RFC 6902 Remove"""
+
     op: Literal["remove"] = "remove"
     path: JSONPointer[JSONValue] = Field(min_length=1)
 
@@ -29,6 +33,8 @@ class RemoveOp(OperationSchema):
 
 
 class ReplaceOp(OperationSchema):
+    """RFC 6902 Replace"""
+
     op: Literal["replace"] = "replace"
     path: JSONPointer[JSONValue]
     value: JSONValue
@@ -40,6 +46,8 @@ class ReplaceOp(OperationSchema):
 
 
 class MoveOp(OperationSchema):
+    """RFC 6902 Move"""
+
     op: Literal["move"] = "move"
     from_: JSONPointer[JSONValue] = Field(alias="from")
     path: JSONPointer[JSONValue]
@@ -64,6 +72,8 @@ class MoveOp(OperationSchema):
 
 
 class CopyOp(OperationSchema):
+    """RFC 6902 Copy"""
+
     op: Literal["copy"] = "copy"
     from_: JSONPointer[JSONValue] = Field(alias="from")
     path: JSONPointer[JSONValue]
@@ -76,6 +86,8 @@ class CopyOp(OperationSchema):
 
 
 class TestOp(OperationSchema):
+    """RFC 6902 Test"""
+
     op: Literal["test"] = "test"
     path: JSONPointer[JSONValue]
     value: JSONValue
