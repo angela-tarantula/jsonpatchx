@@ -4,7 +4,7 @@ from typing import Final, Literal, Self, override
 
 from pydantic import Field, model_validator
 
-from jsonpatch.exceptions import PatchApplicationError, TestOpFailed
+from jsonpatch.exceptions import InvalidOperationSchema, TestOpFailed
 from jsonpatch.schema import OperationSchema
 from jsonpatch.types import JSONArray, JSONBoolean, JSONNumber, JSONPointer, JSONValue
 
@@ -47,11 +47,11 @@ class MoveOp(OperationSchema):
     @model_validator(mode="after")
     def _regect_proper_prefixes(self) -> Self:
         if self.from_.is_parent_of(self.path):
-            raise PatchApplicationError(
+            raise InvalidOperationSchema(
                 "pointer 'path' cannot be a child of pointer 'from'"
             )
         elif self.path.is_parent_of(self.from_):
-            raise PatchApplicationError(
+            raise InvalidOperationSchema(
                 "pointer 'from' cannot be a child of pointer 'path'"
             )
         return self
@@ -105,7 +105,7 @@ STANDARD_OPS: Final[Set[type[OperationSchema]]] = frozenset(
 # Example domain-specific ops:
 
 
-class IncrementOp(OperationSchema):
+class _IncrementOp(OperationSchema):
     op: Literal["increment"] = "increment"
     path: JSONPointer[JSONNumber]
     value: JSONNumber = Field(gt=0, decimal_places=0)
@@ -117,7 +117,7 @@ class IncrementOp(OperationSchema):
         return AddOp(path=self.path, value=total).apply(doc)
 
 
-class AppendOp(OperationSchema):
+class _AppendOp(OperationSchema):
     op: Literal["append"] = "append"
     path: JSONPointer[JSONArray[JSONValue]]
     value: JSONValue
@@ -128,7 +128,7 @@ class AppendOp(OperationSchema):
         return AddOp(path=self.path, value=[*current, self.value]).apply(doc)
 
 
-class ExtendOp(OperationSchema):
+class _ExtendOp(OperationSchema):
     op: Literal["extend"] = "extend"
     path: JSONPointer[JSONArray[JSONValue]]
     values: list[JSONValue]
@@ -139,7 +139,7 @@ class ExtendOp(OperationSchema):
         return AddOp(path=self.path, value=[*current, *self.values]).apply(doc)
 
 
-class ToggleBoolOp(OperationSchema):
+class _ToggleBoolOp(OperationSchema):
     op: Literal["toggle"] = "toggle"
     path: JSONPointer[JSONBoolean]
 
@@ -149,7 +149,7 @@ class ToggleBoolOp(OperationSchema):
         return AddOp(path=self.path, value=not current).apply(doc)
 
 
-class SwapOp(OperationSchema):
+class _SwapOp(OperationSchema):
     op: Literal["swap"] = "swap"
     a: JSONPointer[JSONValue]
     b: JSONPointer[JSONValue]
@@ -157,9 +157,9 @@ class SwapOp(OperationSchema):
     @model_validator(mode="after")
     def _regect_proper_prefixes(self) -> Self:
         if self.a.is_parent_of(self.b):
-            raise PatchApplicationError("pointer 'b' cannot be a child of pointer 'a'")
+            raise InvalidOperationSchema("pointer 'b' cannot be a child of pointer 'a'")
         elif self.b.is_parent_of(self.a):
-            raise PatchApplicationError("pointer 'a' cannot be a child of pointer 'b'")
+            raise InvalidOperationSchema("pointer 'a' cannot be a child of pointer 'b'")
         return self
 
     @override
