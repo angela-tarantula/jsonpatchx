@@ -10,9 +10,9 @@ from jsonpatch.types import _JSON_VALUE_ADAPTER, JSONValue
 
 class _RegistryBoundPatchRoot(RootModel[Any]):
     """
-    RootModel base for JSON Patch request bodies backed by an :class:`~jsonpatch.registry.OperationRegistry`.
+    Internal RootModel base for registry-backed JSON Patch request bodies.
 
-    This class exists to support the two most common “framework” use cases:
+    This base exists to support the two common “framework” use cases:
 
     1) **FastAPI / OpenAPI request bodies** where the incoming JSON is a top-level JSON array::
 
@@ -206,12 +206,15 @@ class _BasePatchBody(_RegistryBoundPatchRoot):
     ### Contract of :meth:`apply`
 
     - Applies operations using the shared patch engine (``_apply_ops``).
-    - If ``validate_doc=True``, validates that the input document is a JSON value
-      (strict JSON primitives/containers) before applying the patch.
-    - If ``inplace=True``, mutates ``doc`` in-place. This is **unsafe** because it does not revert ops.
-      If ``inplace=False``, (default) the patch engine will deep-copy the input document before applying operations;
-      operation implementations are allowed to mutate the document they receive and must return the updated document.
-    - Returns the patched JSON document.
+    - If ``validate_doc=True``, validates that the input document is a strict JSON value before applying the patch.
+    - Copying vs in-place behavior is controlled by ``inplace``:
+        - ``inplace=False`` (default): the engine deep-copies the input document first, then applies operations
+          (which may perform in-place edits) to that copy; the original input object is not modified.
+        - ``inplace=True``: operations are applied to the provided object. If an operation fails mid-patch,
+          earlier operations will have already mutated the document (no rollback).
+
+    Operation implementations are allowed to mutate the document object they receive and must return the updated
+    document (which may be the same object).
     """
 
     def apply(

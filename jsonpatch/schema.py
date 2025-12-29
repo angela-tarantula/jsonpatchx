@@ -21,21 +21,20 @@ class OperationSchema(BaseModel, ABC):
     """
     Base class for **typed JSON Patch operations**.
 
-    An ``OperationSchema`` is a Pydantic model that represents one JSON Patch operation
-    (standard RFC 6902 operations like ``add``/``remove``/``replace`` as well as custom,
-    domain-specific operations).
+    An ``OperationSchema`` is a Pydantic model representing one JSON Patch operation:
+    standard RFC 6902 operations (``add``/``remove``/``replace``/...) and custom domain operations.
 
-    This class is designed to support the library's primary workflow:
+    The library's workflow is:
 
-    - You define operations as strongly typed Pydantic models.
-    - An :class:`~jsonpatch.registry.OperationRegistry` collects those operation types and builds a
-      discriminated union keyed by the ``op`` field.
-    - Pydantic then parses incoming patch documents into concrete operation objects.
-    - The patch engine applies operations by calling :meth:`apply`.
+    - Define operations as Pydantic models.
+    - Register them in an :class:`~jsonpatch.registry.OperationRegistry`.
+    - Parse incoming patch documents into concrete operation instances via a discriminated union
+      keyed by ``op``.
+    - Apply operations sequentially by calling :meth:`apply`.
 
     ### Required fields
 
-    Subclasses must define an ``op`` field annotated as ``Literal[...]`` of one or more strings:
+    Subclasses must define an ``op`` *model field* annotated as ``Literal[...]`` of one or more strings:
 
     .. code-block:: python
 
@@ -51,23 +50,19 @@ class OperationSchema(BaseModel, ABC):
         class CreateOp(OperationSchema):
             op: Literal["create", "add"] = "create"
 
+    Note: ``op`` must be a normal annotated attribute, **not** a ``ClassVar``. ``ClassVar`` values
+    are not Pydantic fields and cannot participate in discriminated-union dispatch.
+
     ### Immutability and strictness
 
-    ``OperationSchema`` instances are:
-
-    - **frozen**: operations are immutable once constructed
-    - **strict**: Pydantic will not coerce types
-    - **revalidated**: instances are revalidated when parsed, which is important when operations
-      include custom JSONPointer backends that depend on validation context.
+    ``OperationSchema`` instances are frozen and strict by default.
+    Instances are revalidated when parsed (important when fields depend on validation context,
+    such as registry-scoped pointer backends).
 
     ### Subclass validation
 
-    At class-definition time, this base class validates that ``op`` is declared correctly.
-    If not, it raises :class:`~jsonpatch.exceptions.InvalidOperationSchema` early, so mistakes are
-    caught during import rather than at runtime.
-
-    The ``op`` attribute must be a *Pydantic field* (i.e., a normal annotated attribute), not a ``ClassVar``;
-    ``ClassVar`` values are not model fields and cannot participate in discriminated-union dispatch.
+    Subclasses are validated at class-definition time. If ``op`` is not declared correctly, the
+    class raises :class:`~jsonpatch.exceptions.InvalidOperationSchema` early (during import).
     """
 
     model_config = ConfigDict(
@@ -141,21 +136,19 @@ class OperationSchema(BaseModel, ABC):
     @abstractmethod
     def apply(self, doc: JSONValue) -> JSONValue:
         """
-        Apply this operation to a JSON document.
+        Apply this operation to a JSON document and return the updated document.
 
-        Subclasses implement the semantic behavior of the operation. The patch engine calls this
-        method sequentially for each operation in a patch document.
+        ### Mutation contract
 
-        ### Contract
+        Implementations **may mutate** the provided ``doc`` in-place and must return the updated
+        document (which may be the same object). Whether this results in mutation of the *original*
+        caller-owned document is controlled by the patch engine (e.g., engines often deep-copy the
+        input first when ``inplace=False``).
 
-        - ``doc`` is a JSON value (dict/list/primitives) as defined by :data:`~jsonpatch.types.JSONValue`.
-        - Implementations **may mutate** the provided ``doc`` in-place and must return the updated document
-          (which may be the same object). Whether callers observe in-place mutation is controlled by the
-          patch engine (e.g., higher-level helpers may deep-copy the document before applying operations).
-        - On failure, implementations should raise the library's patch exceptions
-          (e.g., :class:`~jsonpatch.exceptions.PatchApplicationError` or more specific subclasses)
-          so callers can distinguish “invalid patch” from unexpected errors.
+        ### Errors
 
-        Returns the patched JSON document.
+        On failure, raise library patch exceptions (for example
+        :class:`~jsonpatch.exceptions.PatchApplicationError` or a more specific subclass) so callers can
+        treat patch failures as request/data errors rather than unexpected crashes.
         """
         ...
