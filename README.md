@@ -31,12 +31,12 @@ git clone https://github.com/angela-tarantula/json-patch
 uv sync
 ```
 
-## FastAPI OpenAPI demo (local)
+## FastAPI OpenAPI demos (local)
 
-This repo includes a small FastAPI app at `examples/fastapi_openapi.py`. It exposes OpenAPI
-documentation automatically.
+These examples are designed for first-time FastAPI users. They let you compare the OpenAPI output
+from this library against a more typical, looser PATCH schema.
 
-### Run it
+### Run the OpenAPI comparison (standard RFC 6902 ops)
 
 1. Install the FastAPI extras for this repo:
 
@@ -44,28 +44,63 @@ documentation automatically.
 uv sync --group fastapi
 ```
 
-2. Start the server:
+2. Start the library-powered demo (port 8000):
 
 ```sh
-uv run uvicorn examples.fastapi_openapi:app --reload
+uv run uvicorn examples.openapi_demo:app --reload --port 8000
 ```
 
-3. Open it in your browser:
+3. Start the baseline demo (port 8001):
 
-- Swagger UI: http://127.0.0.1:8000/docs
-- OpenAPI JSON: http://127.0.0.1:8000/openapi.json
-- ReDoc: http://127.0.0.1:8000/redoc
+```sh
+uv run uvicorn examples.openapi_baseline:app --reload --port 8001
+```
 
-### Stop it
+4. Open the docs side-by-side:
 
-Press `Ctrl+C` in the terminal window where the server is running. That cleanly shuts it down.
-If you accidentally ran the command twice and got two terminals running, stop both.
+- Library demo Swagger: http://127.0.0.1:8000/docs
+- Library demo OpenAPI JSON: http://127.0.0.1:8000/openapi.json
+- Library demo ReDoc: http://127.0.0.1:8000/redoc
+- Baseline demo Swagger: http://127.0.0.1:8001/docs
+- Baseline demo OpenAPI JSON: http://127.0.0.1:8001/openapi.json
+- Baseline demo ReDoc: http://127.0.0.1:8001/redoc
+
+### Run the custom-ops comparison
+
+This shows how custom operations appear in OpenAPI when registered with this library vs a
+hand-rolled baseline.
+
+Start the library demo (port 8002):
+
+```sh
+uv run uvicorn examples.custom_ops_demo:app --reload --port 8002
+```
+
+Start the baseline demo (port 8003):
+
+```sh
+uv run uvicorn examples.custom_ops_baseline:app --reload --port 8003
+```
+
+Open the docs:
+
+- Custom ops demo Swagger: http://127.0.0.1:8002/docs
+- Custom ops demo OpenAPI JSON: http://127.0.0.1:8002/openapi.json
+- Custom ops demo ReDoc: http://127.0.0.1:8002/redoc
+- Custom ops baseline Swagger: http://127.0.0.1:8003/docs
+- Custom ops baseline OpenAPI JSON: http://127.0.0.1:8003/openapi.json
+- Custom ops demo ReDoc: http://127.0.0.1:8003/redoc
+
+### Stop the servers
+
+Press `Ctrl+C` in each terminal window where a server is running. That cleanly shuts it down.
 
 ### Handy extras to try
 
-- Health check: http://127.0.0.1:8000/health
-- Fetch a user: http://127.0.0.1:8000/users/1
-- Try a patch in Swagger UI (`/users/{user_id}` or `/configs/{config_id}`), then reload the GET endpoint.
+- Health check (demo): http://127.0.0.1:8000/health
+- Health check (baseline): http://127.0.0.1:8001/health
+- Fetch a user (demo): http://127.0.0.1:8000/users/1
+- Try patch examples in Swagger UI, then re-run the GET endpoints to see changes
 
 
 ## Design notes: typed, explicit patch semantics
