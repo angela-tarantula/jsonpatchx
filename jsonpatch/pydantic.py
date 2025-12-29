@@ -90,10 +90,8 @@ class _BasePatchModel(_RegistryBoundPatchRoot):
     - Accepts a Pydantic ``BaseModel`` instance.
     - Applies operations to the model's ``model_dump()`` representation using the shared patch engine.
     - Validates the patched output back into the target model via ``model_validate``.
+    - The original model instance is not mutated in-place.
     - If the patch contains no operations, returns the original target unchanged.
-
-    Note: copying/inplace behavior is controlled by the shared patch engine (``_apply_ops``),
-    not by this wrapper.
     """
 
     __target_model__: ClassVar[type[BaseModel]]
@@ -210,16 +208,18 @@ class _BasePatchBody(_RegistryBoundPatchRoot):
     - Applies operations using the shared patch engine (``_apply_ops``).
     - If ``validate_doc=True``, validates that the input document is a JSON value
       (strict JSON primitives/containers) before applying the patch.
+    - If ``inplace=True``, mutates ``doc`` in-place. This is **unsafe** because it does not revert ops.
+      If ``inplace=False``, (default) the patch engine will deep-copy the input document before applying operations;
+      operation implementations are allowed to mutate the document they receive and must return the updated document.
     - Returns the patched JSON document.
-
-    Note: copying/inplace behavior is controlled by the shared patch engine (``_apply_ops``),
-    not by this wrapper.
     """
 
-    def apply(self, doc: JSONValue, *, validate_doc: bool = False) -> JSONValue:
+    def apply(
+        self, doc: JSONValue, *, validate_doc: bool = False, inplace: bool = False
+    ) -> JSONValue:
         if validate_doc:
             _JSON_VALUE_ADAPTER.validate_python(doc, strict=True)
-        return _apply_ops(self.ops, doc)
+        return _apply_ops(self.ops, doc, inplace=inplace)
 
 
 def make_json_patch_body(

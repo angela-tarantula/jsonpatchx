@@ -312,7 +312,7 @@ class JSONPointer[T: JSONValue](str):
     - default backend: :class:`jsonpointer.JsonPointer`
     - custom backend: supplied by an :class:`~jsonpatch.registry.OperationRegistry`
 
-    If you are using the library’s registries / patch-body factories, this context injection is
+    If you are using the library's registries / patch-body factories, this context injection is
     handled automatically. If you validate JSONPointer values manually, you may need to pass context.
 
     ### Error semantics
@@ -503,7 +503,7 @@ class JSONPointer[T: JSONValue](str):
         """
         Resolve this pointer against ``doc`` and return the target value.
 
-        The returned value is validated against the pointer’s type parameter ``T``.
+        The returned value is validated against the pointer's type parameter ``T``.
         If the pointer cannot be resolved or the target fails validation, raises
         :class:`PatchApplicationError`.
         """
@@ -531,7 +531,7 @@ class JSONPointer[T: JSONValue](str):
         - If this pointer is the root (``""``), returns ``value`` as the new document.
         - Otherwise, resolves the parent container and assigns/inserts the value.
 
-        ``value`` is validated against the pointer’s type parameter ``T``.
+        ``value`` is validated against the pointer's type parameter ``T``.
         Raises :class:`PatchApplicationError` if the path cannot be resolved, the parent
         is not a container, or the final token is not a valid container key.
         """
@@ -558,7 +558,7 @@ class JSONPointer[T: JSONValue](str):
         """
         Return True if :meth:`set` would succeed for this document (and optional value), else False.
 
-        If ``value`` is provided, it must conform to the pointer’s type parameter ``T``.
+        If ``value`` is provided, it must conform to the pointer's type parameter ``T``.
         """
         try:
             if value is not _Nothing:
