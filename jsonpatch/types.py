@@ -7,10 +7,12 @@ from typing import (
     Annotated,
     Any,
     Final,
+    Generic,
     Literal,
     Protocol,
     Self,
     TypeGuard,
+    TypeVar,
     cast,
     final,
     get_args,
@@ -279,8 +281,11 @@ _POINTER_BACKEND_CTX_KEY: Final[Literal["jsonpatch:pointer_backend"]] = (
 _DEFAULT_POINTER_CLS: Final[type[PointerBackend]] = JsonPointer  # pure-Python default
 
 
+T_co = TypeVar("T_co", bound=JSONValue, covariant=True)
+
+
 @final
-class JSONPointer[T: JSONValue](str):
+class JSONPointer(str, Generic[T_co]):
     """
     A typed RFC 6901 JSON Pointer with Pydantic integration.
 
@@ -321,7 +326,7 @@ class JSONPointer[T: JSONValue](str):
     __slots__ = ("_ptr", "_type")
 
     _ptr: PointerBackend
-    _type: TypeForm[T]
+    _type: TypeForm[T_co]
 
     @property
     def ptr(self) -> Any:
@@ -343,12 +348,12 @@ class JSONPointer[T: JSONValue](str):
         return self._ptr.parts
 
     @property
-    def type_param(self) -> TypeForm[T]:
+    def type_param(self) -> TypeForm[T_co]:
         """The expected type parameter ``T`` used to validate resolved targets."""
         return self._type
 
     @property
-    def _adapter(self) -> TypeAdapter[T]:
+    def _adapter(self) -> TypeAdapter[T_co]:
         return _type_adapter_for(self._type)
 
     @property
@@ -359,7 +364,7 @@ class JSONPointer[T: JSONValue](str):
     def __new__(
         cls,
         path: str,
-        expected_type: TypeForm[T],
+        expected_type: TypeForm[T_co],
         *args: object,
         pointer_cls: type[PointerBackend] = _DEFAULT_POINTER_CLS,
         **kwargs: object,
@@ -393,7 +398,7 @@ class JSONPointer[T: JSONValue](str):
                 f"JSONPointer may only have 1 parameter, got {len(args)}: {args}"
             )
         else:
-            expected_type: TypeForm[T] = cast(TypeForm[T], args[0])
+            expected_type: TypeForm[T_co] = cast(TypeForm[T_co], args[0])
 
         def validator(path: str | Self, info: ValidationInfo) -> Self:
             if not isinstance(
@@ -442,7 +447,7 @@ class JSONPointer[T: JSONValue](str):
         )
         return json_schema
 
-    def _validate_target(self, target: object) -> T:
+    def _validate_target(self, target: object) -> T_co:
         """
         Validate a target against this pointer's type.
 
@@ -486,7 +491,7 @@ class JSONPointer[T: JSONValue](str):
 
         return other.parts[: len(self.parts)] == self.parts
 
-    def get(self, doc: JSONValue) -> T:
+    def get(self, doc: JSONValue) -> T_co:
         """
         Resolve this pointer against ``doc`` and return the target value.
 
@@ -520,7 +525,9 @@ class JSONPointer[T: JSONValue](str):
         else:
             return True
 
-    def set(self, doc: JSONValue, value: T) -> JSONValue:
+    def set(
+        self, doc: JSONValue, value: JSONValue, *, validate_value: bool = True
+    ) -> JSONValue:
         """
         Set the value at this pointer path in ``doc`` and return the updated document.
 
@@ -532,11 +539,12 @@ class JSONPointer[T: JSONValue](str):
         In patch application, the patch engine may first deep-copy the input document before calling
         operations/JSONPointer methods.
 
-        ``value`` is validated against the pointer's type parameter ``T``.
+        By default, ``value`` is validated against the pointer's type parameter ``T``.
 
         Args:
             doc: Target JSON document.
-            value: Value to set at this path. Must conform to ``T``.
+            value: Value to set at this path.
+            validate_value: If True, validate ``value`` against ``T`` before setting.
 
         Returns:
             The updated document (or the new root value for ``""``).
@@ -546,7 +554,12 @@ class JSONPointer[T: JSONValue](str):
                 or the final token is not a valid container key.
         """
         # Type errors first
-        target = self._validate_target(target=value)
+        target: JSONValue
+        if validate_value:
+            target = self._validate_target(target=value)
+        else:
+            target = value
+
         if self.is_root():
             return target
         try:
@@ -564,14 +577,21 @@ class JSONPointer[T: JSONValue](str):
             container[key] = target  # type: ignore[index]
         return doc
 
-    def is_settable(self, doc: JSONValue, value: object = _Nothing) -> bool:
+    def is_settable(
+        self,
+        doc: JSONValue,
+        value: object = _Nothing,
+        *,
+        validate_value: bool = True,
+    ) -> bool:
         """
         Return True if ``set`` would succeed for this document (and optional value), else False.
 
-        If ``value`` is provided, it must conform to the pointer's type parameter ``T``.
+        If ``value`` is provided and ``validate_value`` is True, it must conform to the
+        pointer's type parameter ``T``.
         """
         try:
-            if value is not _Nothing:
+            if value is not _Nothing and validate_value:
                 if not self.is_valid_target(value):
                     return False
             if self.is_root():
