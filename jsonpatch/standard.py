@@ -1,3 +1,47 @@
+"""
+jsonpatch.standard
+
+Core patch application engine + public convenience wrappers.
+
+This module is the “behavioral center” of the library: it defines *copy semantics*,
+*error semantics*, and the *operational contract* for applying a sequence of typed
+operations to a JSON document.
+
+### Copy & mutation semantics (single source of truth)
+
+Operations are allowed to be *mutative* (i.e., they may modify the document object
+they receive). The engine controls whether those mutations affect the caller's
+original document:
+
+- inplace=False (default): deep-copy the input document first, then apply ops to the copy.
+  The caller's original object is not modified.
+
+- inplace=True: apply ops directly to the input object (faster, avoids copy) but is NOT
+  transactional. If an operation fails mid-patch, earlier operations may already have
+  mutated the document (no rollback).
+
+### Typed pointer semantics (why some failures are “intentional”)
+
+Operation schemas frequently carry typed pointers: JSONPointer[T].
+
+Typing is not only static; it is a runtime contract:
+- Pointer reads validate the resolved value against T.
+- This implies “type-gated” behavior for composite semantics like remove/replace:
+  remove can fail if the current value exists but does not conform to T, because
+  the operation is explicitly scoped to “what is removable”.
+
+This library prefers explicitness:
+- widen T (e.g., JSONValue) to be permissive
+- or define a more specific op if you want stricter behavior
+
+### Error semantics
+
+Expected patch failures (subclasses of PatchError) propagate unchanged.
+
+Unexpected exceptions are wrapped with structured metadata (operation index + the full
+operation payload) so API layers can report actionable failures.
+"""
+
 import copy
 import json
 from collections.abc import Mapping, Sequence
