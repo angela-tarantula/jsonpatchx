@@ -1,8 +1,10 @@
+import copy
 from collections.abc import Set
 from typing import Final, Literal, override
 
 from pydantic import Field
 
+from jsonpatch.exceptions import PatchApplicationError, TestOpFailed
 from jsonpatch.schema import OperationSchema
 from jsonpatch.types import JSONNumber, JSONPointer, JSONValue
 
@@ -14,7 +16,7 @@ class AddOp(OperationSchema):
 
     @override
     def apply(self, doc: JSONValue) -> JSONValue:
-        raise NotImplementedError
+        return self.path.set(doc, self.value)
 
 
 class RemoveOp(OperationSchema):
@@ -23,7 +25,7 @@ class RemoveOp(OperationSchema):
 
     @override
     def apply(self, doc: JSONValue) -> JSONValue:
-        raise NotImplementedError
+        return self.path.delete(doc)
 
 
 class ReplaceOp(OperationSchema):
@@ -33,7 +35,8 @@ class ReplaceOp(OperationSchema):
 
     @override
     def apply(self, doc: JSONValue) -> JSONValue:
-        raise NotImplementedError
+        doc = RemoveOp(path=self.path).apply(doc)
+        return AddOp(path=self.path, value=self.value).apply(doc)
 
 
 class MoveOp(OperationSchema):
@@ -43,7 +46,15 @@ class MoveOp(OperationSchema):
 
     @override
     def apply(self, doc: JSONValue) -> JSONValue:
-        raise NotImplementedError
+        if self.from_ == self.path:
+            return doc
+        if self.from_.is_parent_of(self.path):
+            raise PatchApplicationError(
+                f"path {self.from_!r} cannot be moved into its child path {self.path!r}"
+            )
+        value = self.from_.get(doc)
+        doc = RemoveOp(path=self.from_).apply(doc)
+        return AddOp(path=self.path, value=value).apply(doc)
 
 
 class CopyOp(OperationSchema):
@@ -53,7 +64,8 @@ class CopyOp(OperationSchema):
 
     @override
     def apply(self, doc: JSONValue) -> JSONValue:
-        raise NotImplementedError
+        value = self.from_.get(doc)
+        return AddOp(path=self.path, value=copy.deepcopy(value)).apply(doc)
 
 
 class TestOp(OperationSchema):
@@ -63,7 +75,12 @@ class TestOp(OperationSchema):
 
     @override
     def apply(self, doc: JSONValue) -> JSONValue:
-        raise NotImplementedError
+        actual = self.path.get(doc)
+        if actual != self.value:
+            raise TestOpFailed(
+                f"test at path {self.path!r} failed, got {actual!r} but expected {self.value!r}"
+            )
+        return doc
 
 
 STANDARD_OPS: Final[Set[type[OperationSchema]]] = frozenset(
