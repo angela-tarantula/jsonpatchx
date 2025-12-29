@@ -28,7 +28,7 @@ class OperationSchema(BaseModel, ABC):
     model_config = ConfigDict(
         frozen=True,
         strict=True,
-        revalidate_instances="always"  # necessary for converting custom PointerBackends
+        revalidate_instances="always",  # necessary for converting custom PointerBackends
     )
 
     _op_literals: ClassVar[tuple[str, ...]]

@@ -1,6 +1,6 @@
-from typing import ClassVar, Generic, TypeAliasType, TypeVar
+from typing import Any, ClassVar, Generic, Self, TypeAliasType, TypeVar, cast, override
 
-from pydantic import BaseModel, ConfigDict, create_model
+from pydantic import BaseModel, ConfigDict, RootModel, create_model
 
 from jsonpatch.exceptions import InvalidJsonPatch
 from jsonpatch.registry import OperationRegistry
@@ -11,37 +11,65 @@ from jsonpatch.types import _JSON_VALUE_ADAPTER, JSONValue
 ModelT = TypeVar("ModelT", bound=BaseModel)
 
 
-class _BasePatchModel(BaseModel):
+class _RegistryBoundPatchRoot(RootModel[Any]):
     """
-    Base class for all dynamically-created JsonPatchFor[...] models.
-
-    Each subclass is expected to have:
-
-    - __root__: list[registry.union]
-    - __target_model__: the Pydantic model type being patched
-    - __registry__: the OperationRegistry used for parsing ops
+    RootModel base that automatically injects the registry context needed for custom PointerBackends.
     """
+
+    # Choice: This base intentionally uses RootModel[Any].
+    # Why: The concrete root type (list[registry.union]) is supplied dynamically
+    #      by factories via create_model(). Making this generic would either lie
+    #      to the type checker or require pervasive casting with no real benefit.
 
     model_config = ConfigDict(frozen=True, strict=True)
 
-    __target_model__: ClassVar[type[BaseModel]]
     __registry__: ClassVar[OperationRegistry]
 
+    @property
+    def ops(self) -> list[OperationSchema]:
+        # Assumption: subclasses will set root to list[registry.union]
+        return cast(list[OperationSchema], self.root)
+
+    @classmethod
+    @override
+    def model_validate(cls, obj: Any, **kwargs: Any) -> Self:
+        # Assumption: callers who do provide context know what they're doing
+        #             (or else the PointerBackend context injection silently doesn't happen)
+        kwargs.setdefault("context", cls.__registry__._ctx)
+        return super().model_validate(obj, **kwargs)
+
+    @classmethod
+    @override
+    def model_validate_json(
+        cls, json_data: str | bytes | bytearray, **kwargs: Any
+    ) -> Self:
+        # Assumption: callers who do provide context know what they're doing
+        #             (or else the PointerBackend context injection silently doesn't happen)
+        kwargs.setdefault("context", cls.__registry__._ctx)
+        return super().model_validate_json(json_data, **kwargs)
+
+
+class _BasePatchModel(_RegistryBoundPatchRoot):
+    """
+    RootModel patch type for patching Pydantic models.
+
+    Subclasses must set:
+      - __target_model__: the Pydantic model being patched
+      - __registry__: the registry used to validate ops
+    """
+
+    __target_model__: ClassVar[type[BaseModel]]
+
     def apply(self, target: BaseModel) -> BaseModel:
-        """Apply this patch to a Pydantic model instance."""
         if not isinstance(target, BaseModel):
             raise TypeError(
-                f"{self.__class__.__name__}.apply() expects a Pydantic BaseModel "
-                f"instance, got {type(target).__name__}"
+                f"{self.__class__.__name__}.apply() expects a Pydantic BaseModel instance, "
+                f"got {type(target).__name__}"
             )
-        try:
-            ops: list[OperationSchema] = self.__root__  # type: ignore[attr-defined]
-            assert isinstance(ops, list)
-        except (AttributeError, AssertionError) as e:  # defensive, not expected
-            raise InvalidJsonPatch("Patch Model is malformed") from e
-
+        if not self.ops:
+            return target
         data = target.model_dump()
-        patched = _apply_ops(ops, data)
+        patched = _apply_ops(self.ops, data)
         return self.__target_model__.model_validate(patched)
 
 
