@@ -636,7 +636,9 @@ class JSONPointer(str, Generic[T_co]):
             #      It affects few users, who themselves can circumvent with custom ops.
             return None
         if not self.is_gettable(doc):
-            raise PatchApplicationError("cannot delete a missing target")
+            raise PatchApplicationError(
+                f"cannot delete a missing value at {str(self)!r}"
+            )
         try:
             container = cast(JSONContainer[JSONValue], self._parent_ptr.resolve(doc))
             assert isinstance(container, (dict, list)), "internal error: delete"
