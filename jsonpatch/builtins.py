@@ -1,12 +1,12 @@
 import copy
 from collections.abc import Set
-from typing import Final, Literal, override
+from typing import Final, Literal, Self, override
 
-from pydantic import Field
+from pydantic import Field, model_validator
 
 from jsonpatch.exceptions import PatchApplicationError, TestOpFailed
 from jsonpatch.schema import OperationSchema
-from jsonpatch.types import JSONNumber, JSONPointer, JSONValue
+from jsonpatch.types import JSONArray, JSONBoolean, JSONNumber, JSONPointer, JSONValue
 
 
 class AddOp(OperationSchema):
@@ -44,14 +44,20 @@ class MoveOp(OperationSchema):
     from_: JSONPointer[JSONValue] = Field(alias="from")
     path: JSONPointer[JSONValue]
 
-    @override
-    def apply(self, doc: JSONValue) -> JSONValue:
-        if self.from_ == self.path:
-            return doc
+    @model_validator(mode="after")
+    def _regect_proper_prefixes(self) -> Self:
         if self.from_.is_parent_of(self.path):
             raise PatchApplicationError(
-                f"path {self.from_!r} cannot be moved into its child path {self.path!r}"
+                "pointer 'path' cannot be a child of pointer 'from'"
             )
+        elif self.path.is_parent_of(self.from_):
+            raise PatchApplicationError(
+                "pointer 'from' cannot be a child of pointer 'path'"
+            )
+        return self
+
+    @override
+    def apply(self, doc: JSONValue) -> JSONValue:
         value = self.from_.get(doc)
         doc = RemoveOp(path=self.from_).apply(doc)
         return AddOp(path=self.path, value=value).apply(doc)
@@ -65,7 +71,8 @@ class CopyOp(OperationSchema):
     @override
     def apply(self, doc: JSONValue) -> JSONValue:
         value = self.from_.get(doc)
-        return AddOp(path=self.path, value=copy.deepcopy(value)).apply(doc)
+        duplicate = copy.deepcopy(value)
+        return AddOp(path=self.path, value=duplicate).apply(doc)
 
 
 class TestOp(OperationSchema):
@@ -108,3 +115,56 @@ class IncrementOp(OperationSchema):
         amount = self.path.get(doc)  # amount is a JSONNumber (inferred & enforced!)
         total = amount + self.value
         return AddOp(path=self.path, value=total).apply(doc)
+
+
+class AppendOp(OperationSchema):
+    op: Literal["append"] = "append"
+    path: JSONPointer[JSONArray[JSONValue]]
+    value: JSONValue
+
+    @override
+    def apply(self, doc: JSONValue) -> JSONValue:
+        current = self.path.get(doc)
+        return AddOp(path=self.path, value=[*current, self.value]).apply(doc)
+
+
+class ExtendOp(OperationSchema):
+    op: Literal["extend"] = "extend"
+    path: JSONPointer[JSONArray[JSONValue]]
+    values: list[JSONValue]
+
+    @override
+    def apply(self, doc: JSONValue) -> JSONValue:
+        current = self.path.get(doc)
+        return AddOp(path=self.path, value=[*current, *self.values]).apply(doc)
+
+
+class ToggleBoolOp(OperationSchema):
+    op: Literal["toggle"] = "toggle"
+    path: JSONPointer[JSONBoolean]
+
+    @override
+    def apply(self, doc: JSONValue) -> JSONValue:
+        current = self.path.get(doc)
+        return AddOp(path=self.path, value=not current).apply(doc)
+
+
+class SwapOp(OperationSchema):
+    op: Literal["swap"] = "swap"
+    a: JSONPointer[JSONValue]
+    b: JSONPointer[JSONValue]
+
+    @model_validator(mode="after")
+    def _regect_proper_prefixes(self) -> Self:
+        if self.a.is_parent_of(self.b):
+            raise PatchApplicationError("pointer 'b' cannot be a child of pointer 'a'")
+        elif self.b.is_parent_of(self.a):
+            raise PatchApplicationError("pointer 'a' cannot be a child of pointer 'b'")
+        return self
+
+    @override
+    def apply(self, doc: JSONValue) -> JSONValue:
+        value_a = self.a.get(doc)
+        value_b = self.b.get(doc)
+        doc = AddOp(path=self.a, value=value_b).apply(doc)
+        return AddOp(path=self.b, value=value_a).apply(doc)
