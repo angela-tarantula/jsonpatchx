@@ -15,39 +15,27 @@ def _apply_ops(
     """
     Apply a sequence of operations to a JSON document (core patch engine).
 
-    This function is the *single source of truth* for the library’s copy/mutation semantics.
+    This function is the single source of truth for the library's copy and mutation semantics.
 
-    Copying and mutation
-    --------------------
-    - ``inplace=False`` (default): the engine deep-copies ``doc`` first, then applies operations
-      to that copy. Operation implementations are allowed to mutate the document object they
-      receive. The original input object is not modified.
-    - ``inplace=True``: operations are applied directly to the provided ``doc`` object.
+    Args:
+        ops: Operations to apply, in order.
+        doc: Target JSON document.
+        inplace: Controls whether ``doc`` is deep-copied before application.
 
-    Important: no rollback
-    ----------------------
-    This engine does not provide transactional rollback. With ``inplace=True``, an exception
-    mid-patch may leave the input document partially mutated.
-
-    Error semantics
-    ---------------
-    - :class:`~jsonpatch.exceptions.PatchError` subclasses raised by ``op.apply`` propagate unchanged.
-    - Unexpected exceptions are wrapped in :class:`~jsonpatch.exceptions.PatchApplicationError` and
-      include the failing operation index for debugging.
-
-    Parameters
-    ----------
-    ops:
-        Operations to apply, in order.
-    doc:
-        Target JSON document.
-    inplace:
-        Controls whether ``doc`` is deep-copied before application.
-
-    Returns
-    -------
-    JSONValue
+    Returns:
         The patched document (either a deep-copied object or the original object, depending on ``inplace``).
+
+    Raises:
+        PatchError: Expected patch failures raised by operation implementations.
+        PatchApplicationError: Unexpected exceptions wrapped with the failing operation index.
+
+    Notes:
+        - ``inplace=False`` (default): the engine deep-copies ``doc`` first, then applies operations
+          to that copy. Operation implementations may mutate the document object they receive. The
+          original input object is not modified.
+        - ``inplace=True``: operations are applied directly to the provided ``doc`` object.
+        - No rollback: with ``inplace=True``, an exception mid-patch may leave the input document
+          partially mutated.
     """
     if not inplace:
         doc = copy.deepcopy(doc)
@@ -70,22 +58,17 @@ class JsonPatch(Sequence[OperationSchema]):
 
     ``JsonPatch`` is a convenience wrapper that:
 
-    - parses and validates an input patch document using an :class:`~jsonpatch.registry.OperationRegistry`,
-    - stores the resulting typed :class:`~jsonpatch.schema.OperationSchema` instances,
+    - parses and validates an input patch document using an ``OperationRegistry``,
+    - stores the resulting typed ``OperationSchema`` instances,
     - applies them to JSON documents via the shared patch engine.
 
-    Copying vs in-place behavior
-    ----------------------------
-    :meth:`apply` delegates to the core engine ``_apply_ops`` and therefore follows the same
-    copy/mutation semantics:
-
-    - ``inplace=False`` (default): the engine deep-copies ``doc`` first; operations may mutate the copy.
-    - ``inplace=True``: operations mutate the provided ``doc`` object directly (no rollback on failure).
-
-    Notes
-    -----
-    ``JsonPatch`` is immutable with respect to its operation list after construction, but the documents
-    you apply it to may be mutated depending on ``inplace``.
+    Notes:
+        - ``apply`` delegates to the core engine ``_apply_ops`` and follows the same copy and mutation
+          semantics.
+        - ``inplace=False`` (default): the engine deep-copies ``doc`` first; operations may mutate the copy.
+        - ``inplace=True``: operations mutate the provided ``doc`` object directly (no rollback on failure).
+        - ``JsonPatch`` is immutable with respect to its operation list after construction, but the
+          documents you apply it to may be mutated depending on ``inplace``.
     """
 
     __slots__ = ("_ops", "_registry")
@@ -154,21 +137,15 @@ class JsonPatch(Sequence[OperationSchema]):
         """
         Apply this patch to ``doc`` and return the patched document.
 
-        Parameters
-        ----------
-        doc:
-            Target JSON document.
-        validate_doc:
-            If True, validate that ``doc`` is a strict :data:`~jsonpatch.types.JSONValue` before applying.
-        inplace:
-            Controls copy/mutation behavior. See ``_apply_ops(..., inplace=...)`` for full semantics.
+        Args:
+            doc: Target JSON document.
+            validate_doc: If True, validate that ``doc`` is a strict ``JSONValue`` before applying.
+            inplace: Controls copy and mutation behavior. See ``_apply_ops(..., inplace=...)`` for
+                full semantics.
 
-        Raises
-        ------
-        PatchError
-            For expected patch failures raised by operation implementations.
-        PatchApplicationError
-            For unexpected errors wrapped by the engine.
+        Raises:
+            PatchError: Expected patch failures raised by operation implementations.
+            PatchApplicationError: Unexpected errors wrapped by the engine.
         """
         if validate_doc:
             _JSON_VALUE_ADAPTER.validate_python(doc, strict=True)
@@ -226,22 +203,16 @@ def apply_patch(
     """
     Apply a standard RFC 6902 JSON Patch document to ``doc``.
 
-    This is a small convenience wrapper around :class:`JsonPatch` using the standard registry.
+    This is a small convenience wrapper around ``JsonPatch`` using the standard registry.
 
-    Parameters
-    ----------
-    doc:
-        Target JSON document.
-    patch:
-        Patch document as a sequence of operation mappings.
-    inplace:
-        Controls copy/mutation behavior. See ``_apply_ops(..., inplace=...)`` for full semantics.
-    validate_doc:
-        If True, validate that ``doc`` is a strict :data:`~jsonpatch.types.JSONValue` before applying.
+    Args:
+        doc: Target JSON document.
+        patch: Patch document as a sequence of operation mappings.
+        validate_doc: If True, validate that ``doc`` is a strict ``JSONValue`` before applying.
+        inplace: Controls copy and mutation behavior. See ``_apply_ops(..., inplace=...)`` for
+            full semantics.
 
-    Returns
-    -------
-    JSONValue
+    Returns:
         The patched document.
     """
     return JsonPatch(patch).apply(doc, validate_doc=validate_doc, inplace=inplace)

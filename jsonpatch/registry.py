@@ -21,48 +21,37 @@ class OperationRegistry:
     """
     Registry for JSON Patch operation types.
 
-    An :class:`OperationRegistry` defines the *operation vocabulary* for your application:
+    An ``OperationRegistry`` defines the operation vocabulary for your application:
 
     - which operation schemas are allowed (standard RFC 6902 ops and/or custom ops),
-    - how to parse/validate incoming patch documents into concrete :class:`~jsonpatch.schema.OperationSchema` instances,
-    - which RFC 6901 pointer backend to use when validating :class:`~jsonpatch.types.JSONPointer[...]` fields.
+    - how to parse and validate incoming patch documents into concrete ``OperationSchema`` instances,
+    - which RFC 6901 pointer backend to use when validating ``JSONPointer[...]`` fields.
 
     This type is a key building block for two common workflows:
 
-    1) **Programmatic patch parsing**
-       (validate Python dicts / JSON strings into typed operations)
+    1) Programmatic patch parsing (validate Python dicts / JSON strings into typed operations)
+    2) Framework integration (FastAPI/OpenAPI request bodies via dynamically generated RootModels)
 
-    2) **Framework integration**
-       (FastAPI/OpenAPI request bodies via dynamically generated RootModels)
-
-    ### What the registry provides
-
-    - **Dispatch:** maps each allowed ``op`` identifier to the corresponding OperationSchema subclass.
-    - **Validation:** builds a Pydantic discriminated union on the ``op`` field.
-    - **Pointer semantics:** injects registry-scoped validation ``context`` so JSONPointer fields
-      are instantiated with the registry’s configured pointer backend.
-
-    ### Immutability / safety
-
-    Registries are effectively immutable after construction: they cache the union and adapters
-    used for parsing. Treat them as long-lived singletons (module-level constants) rather than
-    per-request objects.
-
-    ### Usage
-
-    Standard RFC 6902 registry::
+    Example:
+        Standard RFC 6902 registry:
 
         registry = OperationRegistry.standard()
         op = registry.parse_python_op({"op": "remove", "path": "/foo"})
 
-    Standard + custom ops, optionally with a custom pointer backend::
+        Standard + custom ops, optionally with a custom pointer backend:
 
         registry = OperationRegistry.with_standard(IncrementOp, pointer_cls=MyPointer)
         ops = registry.parse_json_patch(b'[{"op": "increment", "path": "/count", "value": 1}]')
 
     Notes:
-    - The registry does **not** apply patches; it only parses/validates operations.
-      Patch application is handled by the patch engine (e.g., ``_apply_ops`` / ``JsonPatch.apply``).
+        - Dispatch: maps each allowed ``op`` identifier to the corresponding ``OperationSchema`` subclass.
+        - Validation: builds a Pydantic discriminated union on the ``op`` field.
+        - Pointer semantics: injects registry-scoped validation context so ``JSONPointer`` fields are
+          instantiated with the registry's configured pointer backend.
+        - Registries are effectively immutable after construction: they cache the union and adapters
+          used for parsing. Treat them as long-lived singletons (module-level constants) rather than
+          per-request objects.
+        - The registry does not apply patches; it only parses and validates operations.
     """
 
     __slots__ = (
@@ -84,13 +73,13 @@ class OperationRegistry:
 
         Args:
             op_schemas:
-                One or more :class:`~jsonpatch.schema.OperationSchema` subclasses.
+                One or more ``OperationSchema`` subclasses.
                 Each schema must declare ``op: Literal[...]``. The set of op identifiers across
                 all schemas must be disjoint.
 
             pointer_cls:
                 The RFC 6901 pointer backend class to use when validating
-                :class:`~jsonpatch.types.JSONPointer[...]` fields within these operations.
+                ``JSONPointer[...]`` fields within these operations.
 
                 This does *not* change the runtime patch semantics directly; it changes how pointer
                 strings are parsed/validated and how pointer tokens are interpreted during pointer
@@ -102,7 +91,7 @@ class OperationRegistry:
 
             InvalidJSONPointer:
                 If ``pointer_cls("")`` cannot construct a valid root pointer or does not satisfy the
-                :class:`~jsonpatch.types.PointerBackend` protocol.
+                ``PointerBackend`` protocol.
 
         Notes:
             Registries cache Pydantic TypeAdapters internally. Construct registries once (module scope)
@@ -222,8 +211,8 @@ class OperationRegistry:
         """
         Internal: Pydantic validation context injected during parsing.
 
-        This context allows :class:`~jsonpatch.types.JSONPointer[...]` fields to instantiate with the
-        registry’s configured pointer backend.
+        This context allows ``JSONPointer[...]`` fields to instantiate with the registry's configured
+        pointer backend.
         """
         return {_POINTER_BACKEND_CTX_KEY: self._pointer_cls}
 
@@ -238,12 +227,12 @@ class OperationRegistry:
         - an existing OperationSchema instance (which will be revalidated).
 
         Returns:
-            A concrete OperationSchema instance (e.g., ``RemoveOp(...)``).
+            A concrete ``OperationSchema`` instance (for example, ``RemoveOp(...)``).
 
         Notes:
             - Validation is strict (no implicit coercions).
             - Extra fields are forbidden.
-            - Validation context is injected so JSONPointer fields use this registry’s pointer backend.
+            - Validation context is injected so ``JSONPointer`` fields use this registry's pointer backend.
         """
         return self._op_adapter.validate_python(
             obj,
@@ -263,8 +252,7 @@ class OperationRegistry:
         A JSON Patch document is a list of operation objects. This method validates the entire list
         and returns a list of concrete OperationSchema instances.
 
-        Example::
-
+        Example:
             ops = registry.parse_python_patch([
                 {"op": "remove", "path": "/foo/bar"},
                 {"op": "add", "path": "/baz", "value": 42},
@@ -273,7 +261,7 @@ class OperationRegistry:
         Notes:
             - Validation is strict (no implicit coercions).
             - Extra fields are forbidden.
-            - Validation context is injected so JSONPointer fields use this registry’s pointer backend.
+            - Validation context is injected so ``JSONPointer`` fields use this registry's pointer backend.
         """
         return self._patch_adapter.validate_python(
             python,
@@ -288,14 +276,13 @@ class OperationRegistry:
         """
         Parse and validate a single operation from a JSON string/bytes payload.
 
-        Example::
-
+        Example:
             op = registry.parse_json_op(b'{"op":"remove","path":"/foo/bar"}')
 
         Notes:
             - Uses strict validation (no implicit coercions).
             - Extra fields are forbidden.
-            - Validation context is injected so JSONPointer fields use this registry’s pointer backend.
+            - Validation context is injected so ``JSONPointer`` fields use this registry's pointer backend.
         """
         return self._op_adapter.validate_json(
             text,
@@ -310,8 +297,7 @@ class OperationRegistry:
         """
         Parse and validate a JSON Patch document from a JSON string/bytes payload.
 
-        Example::
-
+        Example:
             ops = registry.parse_json_patch(b'''
             [
                 {"op":"move","from":"/a","path":"/b"},
@@ -322,7 +308,7 @@ class OperationRegistry:
         Notes:
             - Uses strict validation (no implicit coercions).
             - Extra fields are forbidden.
-            - Validation context is injected so JSONPointer fields use this registry’s pointer backend.
+            - Validation context is injected so ``JSONPointer`` fields use this registry's pointer backend.
         """
         return self._patch_adapter.validate_json(
             text,
@@ -344,7 +330,7 @@ class OperationRegistry:
         Return the shared standard RFC 6902 registry.
 
         This is a cached singleton registry containing only the built-in RFC 6902 operations.
-        It uses the library’s default pointer backend.
+        It uses the library's default pointer backend.
         """
         if cls._standard is None:
             cls._standard = cls(*STANDARD_OPS)

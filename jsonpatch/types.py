@@ -55,19 +55,15 @@ type JSONValue = Annotated[
     Field(description="JSON value (RFC-style primitives, list, dict)"),
 ]
 """
-A Pydantic-friendly type representing a strict JSON value.
+Pydantic-friendly type representing a strict JSON value.
 
-This is the foundational type used throughout the library:
-
-- JSON Patch operation schemas use it for ``value`` fields.
-- JSONPointer uses it as the document type for ``get/set/delete``.
-- Patch application helpers can optionally validate that inputs are legitimate JSON.
-
-### Semantics
-
-- Containers are restricted to ``list`` and ``dict[str, ...]``.
-- Numeric values are restricted to ``int`` or finite ``float`` (no NaN/Infinity).
-- Pydantic validation is strict (no implicit coercions).
+Notes:
+    - JSON Patch operation schemas use it for ``value`` fields.
+    - ``JSONPointer`` uses it as the document type for ``get``/``set``/``delete``.
+    - Patch application helpers can optionally validate that inputs are legitimate JSON.
+    - Containers are restricted to ``list`` and ``dict[str, ...]``.
+    - Numeric values are restricted to ``int`` or finite ``float`` (no NaN/Infinity).
+    - Pydantic validation is strict (no implicit coercions).
 """
 
 
@@ -86,34 +82,28 @@ type _JSONKey = _JSONArrayKey | _JSONObjectKey
 @runtime_checkable
 class PointerBackend(Protocol):
     """
-    Advanced extension point: protocol for custom JSON Pointer backends.
+    Protocol for custom JSON Pointer backends.
 
-    This library is *pointer-backend agnostic*. By default it uses
-    :class:`jsonpointer.JsonPointer`, but advanced users may plug in a custom backend
-    (different parsing/escaping rules, richer pointer objects, alternative traversal semantics, etc.).
+    This library is pointer-backend agnostic. By default it uses ``jsonpointer.JsonPointer``,
+    but advanced users may plug in a custom backend (different parsing or escaping rules, richer
+    pointer objects, alternative traversal semantics, and so on).
 
-    A backend only needs to provide a small RFC 6901–shaped surface area:
+    A backend only needs to provide a small RFC 6901-shaped surface area:
 
     - Constructible from a pointer string.
-    - Exposes unescaped path tokens via :attr:`parts`.
-    - Can be reconstructed from tokens via :meth:`from_parts`.
-    - Can resolve a pointer against a document via :meth:`resolve`.
-    - Has a round-trippable string form via :meth:`__str__`.
+    - Exposes unescaped path tokens via ``parts``.
+    - Can be reconstructed from tokens via ``from_parts``.
+    - Can resolve a pointer against a document via ``resolve``.
+    - Has a round-trippable string form via ``__str__``.
 
-    ### Required invariants
-
-    Backends should preserve these round-trip properties:
-
-    - ``PointerBackend(x)`` is equivalent to ``PointerBackend(str(PointerBackend(x)))``.
-    - ``PointerBackend(x)`` is equivalent to ``PointerBackend.from_parts(PointerBackend(x).parts)``.
-
-    The library may cache backend instances; implementations should be immutable or otherwise safe
-    to reuse across calls.
-
-    ### Errors
-
-    Backends may raise whatever exceptions are natural for them. Higher-level APIs normalize
-    backend failures into library patch errors for a consistent user experience.
+    Notes:
+        - Round-trip invariants should hold:
+          ``PointerBackend(x)`` equals ``PointerBackend(str(PointerBackend(x)))`` and
+          ``PointerBackend(x)`` equals ``PointerBackend.from_parts(PointerBackend(x).parts)``.
+        - The library may cache backend instances; implementations should be immutable or otherwise
+          safe to reuse across calls.
+        - Backends may raise whatever exceptions are natural for them. Higher-level APIs normalize
+          backend failures into library patch errors for a consistent user experience.
     """
 
     def __init__(self, pointer: str) -> None:
@@ -249,8 +239,16 @@ def _json_pointer_for(
     """
     Internal: construct (and cache) a PointerBackend instance for a path string.
 
-    Raises InvalidJSONPointer with a backend-aware message if construction fails or
-    if the backend does not satisfy the PointerBackend protocol.
+    Args:
+        path: Pointer string to parse.
+        pointer_cls: Backend class used to parse the pointer.
+
+    Returns:
+        A backend instance for ``path``.
+
+    Raises:
+        InvalidJSONPointer: If construction fails or the backend does not satisfy the
+            ``PointerBackend`` protocol.
     """
     try:
         pointer = _cached_json_pointer(path, pointer_cls=pointer_cls)
@@ -286,40 +284,27 @@ class JSONPointer[T: JSONValue](str):
     """
     A typed RFC 6901 JSON Pointer with Pydantic integration.
 
-    ``JSONPointer[T]`` is a string-like value (subclasses :class:`str`) that additionally:
+    ``JSONPointer[T]`` is a string-like value (subclasses ``str``) that additionally:
 
-    - stores a parsed pointer backend (see :class:`PointerBackend`)
-    - tracks a type parameter ``T`` used to validate resolved targets
-    - provides convenience methods for patch-like operations: :meth:`get`, :meth:`set`, :meth:`delete`
+    - stores a parsed pointer backend (see ``PointerBackend``),
+    - tracks a type parameter ``T`` used to validate resolved targets,
+    - provides convenience methods for patch-like operations: ``get``, ``set``, ``delete``.
 
-    Pointer backend selection
-    -------------------------
-    A backend is selected at validation time via Pydantic ``context`` under the key
-    ``"jsonpatch:pointer_backend"``:
-
-    - default: :class:`jsonpointer.JsonPointer`
-    - custom: provided by :class:`~jsonpatch.registry.OperationRegistry`
-
-    Error semantics
-    ---------------
-    - Invalid pointer strings raise :class:`~jsonpatch.exceptions.InvalidJSONPointer`.
-    - Backend traversal failures in :meth:`get` / :meth:`set` / :meth:`delete` are normalized into
-      :class:`~jsonpatch.exceptions.PatchApplicationError`.
-    - Type mismatches between the resolved target and ``T`` raise :class:`PatchApplicationError`.
-
-    Mutation semantics (pointer-local)
-    ----------------------------------
-    :meth:`set` and :meth:`delete` mutate the *document object they are given* (or containers reachable
-    from it). The only special case is the root pointer ``""``: setting the root returns a new document
-    value rather than mutating an existing container.
-
-    Whether these mutations affect the *original caller-owned document* is determined by the patch engine
-    (see ``_apply_ops(..., inplace=...)``), which may deep-copy the input document before operations run.
-
-    Notes
-    -----
-    ``JSONPointer`` values are intended to be created by Pydantic validation. Direct instantiation is
-    not permitted (except when running as ``__main__`` for debugging).
+    Notes:
+        - A backend is selected at validation time via Pydantic context under the key
+          ``"jsonpatch:pointer_backend"``.
+        - Default backend: ``jsonpointer.JsonPointer``; custom backend: provided by ``OperationRegistry``.
+        - Invalid pointer strings raise ``InvalidJSONPointer``.
+        - Backend traversal failures in ``get``/``set``/``delete`` are normalized into
+          ``PatchApplicationError``.
+        - Type mismatches between the resolved target and ``T`` raise ``PatchApplicationError``.
+        - ``set`` and ``delete`` mutate the document object they are given (or containers reachable
+          from it). The root pointer ``""`` is the exception: setting the root returns a new document
+          value rather than mutating an existing container.
+        - Whether these mutations affect the original caller-owned document is determined by the patch
+          engine (see ``_apply_ops(..., inplace=...)``), which may deep-copy the input document.
+        - ``JSONPointer`` values are intended to be created by Pydantic validation. Direct instantiation
+          is not permitted (except when running as ``__main__`` for debugging).
     """
 
     # Choice: JSONPointer is str subclass, as opposed to Annotated[str, StringConstraints(...)].
@@ -344,7 +329,7 @@ class JSONPointer[T: JSONValue](str):
         The underlying parsed pointer backend instance.
 
         This is exposed for advanced users who provide a custom PointerBackend with additional APIs.
-        The patch engine relies only on the :class:`PointerBackend` protocol.
+        The patch engine relies only on the ``PointerBackend`` protocol.
         """
         # TODO: Somehow 'Any' to the actual JSON Pointer class they pass in.
         # Choice: expose ptr as the user's custom PointerBackend for stronger type inferencing.
@@ -461,7 +446,14 @@ class JSONPointer[T: JSONValue](str):
         """
         Validate a target against this pointer's type.
 
-        Raises PatchApplicationError on failure.
+        Args:
+            target: Value to validate against ``T``.
+
+        Returns:
+            The validated value.
+
+        Raises:
+            PatchApplicationError: If validation fails.
         """
         try:
             return self._adapter.validate_python(target, strict=True)
@@ -500,9 +492,16 @@ class JSONPointer[T: JSONValue](str):
 
         The returned value is validated against the pointer's type parameter ``T``.
 
-        Raises :class:`~jsonpatch.exceptions.PatchApplicationError` if the pointer cannot be resolved
-        (missing object member, out-of-range array index, or any backend traversal failure) or if the
-        resolved value does not conform to ``T``.
+        Args:
+            doc: Target JSON document.
+
+        Returns:
+            The resolved value, validated against ``T``.
+
+        Raises:
+            PatchApplicationError: If the pointer cannot be resolved (missing object member,
+                out-of-range array index, or backend traversal failure) or if the resolved value
+                does not conform to ``T``.
         """
         # Choice: always defer to the PointerBackend implementation for pointer resolution.
         # Why: Don't reinvent the wheel (and maintain it). Plus, give more power to custom PointerBackends.
@@ -513,7 +512,7 @@ class JSONPointer[T: JSONValue](str):
         return self._validate_target(target)
 
     def is_gettable(self, doc: JSONValue) -> bool:
-        """Return True if :meth:`get` would succeed for this document, else False."""
+        """Return True if ``get`` would succeed for this document, else False."""
         try:
             self.get(doc)
         except Exception:
@@ -535,8 +534,16 @@ class JSONPointer[T: JSONValue](str):
 
         ``value`` is validated against the pointer's type parameter ``T``.
 
-        Raises :class:`~jsonpatch.exceptions.PatchApplicationError` if the path cannot be resolved,
-        the parent is not a container, or the final token is not a valid container key.
+        Args:
+            doc: Target JSON document.
+            value: Value to set at this path. Must conform to ``T``.
+
+        Returns:
+            The updated document (or the new root value for ``""``).
+
+        Raises:
+            PatchApplicationError: If the path cannot be resolved, the parent is not a container,
+                or the final token is not a valid container key.
         """
         # Type errors first
         target = self._validate_target(target=value)
@@ -559,7 +566,7 @@ class JSONPointer[T: JSONValue](str):
 
     def is_settable(self, doc: JSONValue, value: object = _Nothing) -> bool:
         """
-        Return True if :meth:`set` would succeed for this document (and optional value), else False.
+        Return True if ``set`` would succeed for this document (and optional value), else False.
 
         If ``value`` is provided, it must conform to the pointer's type parameter ``T``.
         """
@@ -586,10 +593,18 @@ class JSONPointer[T: JSONValue](str):
         document depends on the patch engine: in typical patch application, the engine may deep-copy
         the input document first (``inplace=False``) before applying operations.
 
-        - Deleting the root (``""``) is not allowed.
-        - Deleting a missing target raises :class:`~jsonpatch.exceptions.PatchApplicationError`.
+        Args:
+            doc: Target JSON document.
 
-        Returns the mutated document.
+        Returns:
+            The mutated document.
+
+        Raises:
+            PatchApplicationError: If the pointer is the root or the target does not exist.
+
+        Notes:
+            - Deleting the root (``""``) is not allowed.
+            - Deleting a missing target raises ``PatchApplicationError``.
         """
         if self.is_root():
             raise PatchApplicationError("cannot delete the root")

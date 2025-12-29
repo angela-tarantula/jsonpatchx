@@ -12,16 +12,13 @@ class _RegistryBoundPatchRoot(RootModel[Any]):
     """
     Internal base for registry-backed JSON Patch RootModels.
 
-    Invariants
-    ----------
-    - ``root`` is a JSON Patch document: ``list[registry.union]`` (built dynamically via ``create_model``).
-    - ``__registry__`` is set on subclasses.
-
-    Key behavior
-    ------------
-    ``model_validate`` / ``model_validate_json`` inject ``context=__registry__._ctx`` unless the caller
-    already provided ``context``. This ensures :class:`~jsonpatch.types.JSONPointer[...]` fields are
-    instantiated with the registry’s configured pointer backend.
+    Notes:
+        - ``root`` is a JSON Patch document: ``list[registry.union]`` built dynamically via
+          ``create_model``.
+        - ``__registry__`` is set on subclasses.
+        - ``model_validate`` and ``model_validate_json`` inject ``context=__registry__._ctx`` unless the
+          caller already provided ``context``. This ensures ``JSONPointer[...]`` fields are created with
+          the registry's configured pointer backend.
     """
 
     # Choice: This base intentionally uses RootModel[Any].
@@ -61,11 +58,10 @@ class _BasePatchModel(_RegistryBoundPatchRoot):
     """
     Internal patch RootModel for model-aware patching (Pydantic BaseModel targets).
 
-    Contract
-    --------
-    - ``apply(target)`` patches ``target.model_dump()`` using the shared engine.
-    - The patched output is validated back into ``__target_model__`` via ``model_validate``.
-    - The input model instance is not mutated.
+    Notes:
+        - ``apply(target)`` patches ``target.model_dump()`` using the shared engine.
+        - The patched output is validated back into ``__target_model__`` via ``model_validate``.
+        - The input model instance is not mutated.
     """
 
     __target_model__: ClassVar[type[BaseModel]]
@@ -85,7 +81,7 @@ class _BasePatchModel(_RegistryBoundPatchRoot):
 
 class JsonPatchFor[ModelT: BaseModel]:
     """
-    Factory for creating **typed JSON Patch models** for a specific Pydantic model.
+    Factory for creating typed JSON Patch models for a specific Pydantic model.
 
     This is intended for endpoints and internal APIs where:
 
@@ -93,37 +89,29 @@ class JsonPatchFor[ModelT: BaseModel]:
     - you want OpenAPI to show each operation as a first-class discriminated type,
     - and you want an ergonomic ``.apply(model_instance)`` method.
 
-    ### Usage
-
-    Standard RFC 6902 operations::
+    Example:
+        Standard RFC 6902 operations:
 
         UserPatch = JsonPatchFor[User]
-        patch = UserPatch.model_validate([
-            {"op": "replace", "path": "/name", "value": "Angela"}
-        ])
+        patch = UserPatch.model_validate([{"op": "replace", "path": "/name", "value": "Angela"}])
         updated_user = patch.apply(user)
 
-    Custom operations / custom pointer backend (registry-scoped)::
+        Custom operations or pointer backend (registry-scoped):
 
         registry = OperationRegistry.with_standard(IncrementOp, pointer_cls=MyPointer)
         UserPatch = JsonPatchFor[(User, registry)]
 
-    ### Parameters
-
-    ``JsonPatchFor[...]`` accepts either:
-
-    - ``JsonPatchFor[MyModel]`` — uses the standard RFC 6902 registry
-    - ``JsonPatchFor[(MyModel, registry)]`` — uses an explicit :class:`OperationRegistry`
-
-    The returned type is a dynamically generated :class:`pydantic.RootModel` subclass whose
-    JSON shape is a top-level list.
+    Notes:
+        ``JsonPatchFor[...]`` accepts either ``JsonPatchFor[MyModel]`` (standard registry) or
+        ``JsonPatchFor[(MyModel, registry)]`` (explicit ``OperationRegistry``). The returned type is a
+        dynamically generated ``pydantic.RootModel`` subclass whose JSON shape is a top-level list.
     """
 
     def __class_getitem__(
         cls, param: type[BaseModel] | tuple[type[BaseModel], OperationRegistry]
     ) -> type[_BasePatchModel]:
         """
-        Create (or return) a registry-bound patch RootModel type for the given target model.
+        Create a registry-bound patch RootModel type for the given target model.
 
         This is the implementation behind ``JsonPatchFor[Model]`` and
         ``JsonPatchFor[(Model, registry)]``.
@@ -179,10 +167,9 @@ class _BasePatchBody(_RegistryBoundPatchRoot):
     """
     Internal patch RootModel for typed operations applied to an untyped JSON document.
 
-    Contract
-    --------
-    - ``apply(doc, inplace=...)`` delegates to ``_apply_ops`` (engine defines copy/mutation semantics).
-    - Optional ``validate_doc=True`` validates that ``doc`` is a strict JSON value before patching.
+    Notes:
+        - ``apply(doc, inplace=...)`` delegates to ``_apply_ops`` (engine defines copy and mutation semantics).
+        - Optional ``validate_doc=True`` validates that ``doc`` is a strict JSON value before patching.
     """
 
     def apply(
@@ -199,47 +186,39 @@ def make_json_patch_body(
     name: str | None = None,
 ) -> type[_BasePatchBody]:
     """
-    Create a Pydantic model type suitable for a **FastAPI request body** representing a JSON Patch.
+    Create a Pydantic model type suitable for a FastAPI request body representing a JSON Patch.
 
-    The returned model is a dynamically generated :class:`pydantic.RootModel` subclass whose JSON
-    representation is a top-level array of operations (i.e., a standard JSON Patch document).
+    The returned model is a dynamically generated ``pydantic.RootModel`` subclass whose JSON
+    representation is a top-level array of operations (a standard JSON Patch document).
 
     This is the recommended API when you want:
 
-    - **typed operations** (including custom ops) with OpenAPI support
-    - a **plain JSON document** as the patch target (dict/list/primitives)
+    - typed operations (including custom ops) with OpenAPI support
+    - a plain JSON document as the patch target (dict/list/primitives)
     - an ergonomic ``patch.apply(doc)`` method in your endpoint
 
-    ### Usage (typed ops, untyped doc)
-
-    ::
+    Example:
+        Typed ops applied to an untyped document:
 
         registry = OperationRegistry.with_standard(IncrementOp)
         ConfigPatchBody = make_json_patch_body(registry, name="ConfigPatch")
 
         @app.patch("/configs/{config_id}")
         def patch_config(config_id: str, patch: ConfigPatchBody):
-            doc = load_config(config_id)       # plain dict / JSON
-            updated = patch.apply(doc)         # typed ops, untyped document
+            doc = load_config(config_id)
+            updated = patch.apply(doc)
             save_config(config_id, updated)
             return updated
 
-    ### Parameters
+    Args:
+        registry: OperationRegistry used to validate and parse operations. Defaults to the standard
+            RFC 6902 registry.
+        name: Optional name of the generated model class. Naming the class can improve OpenAPI output.
 
-    registry:
-        The :class:`~jsonpatch.registry.OperationRegistry` used to validate and parse operations.
-        If omitted, the standard RFC 6902 registry is used.
-
-    name:
-        Optional name of the generated model class. Naming the class can improve OpenAPI output
-        (schemas become easier to read and reuse).
-
-    ### Notes
-
-    - The registry's validation context is automatically injected during parsing so JSONPointer fields
-      can use the registry's configured pointer backend.
-    - You should typically create these model types at import time (module scope) so FastAPI/OpenAPI
-      sees a stable schema.
+    Notes:
+        - The registry's validation context is automatically injected during parsing so ``JSONPointer``
+          fields can use the registry's configured pointer backend.
+        - Create these model types at import time (module scope) so FastAPI/OpenAPI sees a stable schema.
     """
 
     registry = registry or OperationRegistry.standard()

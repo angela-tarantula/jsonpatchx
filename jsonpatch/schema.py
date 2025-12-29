@@ -19,7 +19,7 @@ from jsonpatch.types import JSONValue
 
 class OperationSchema(BaseModel, ABC):
     """
-    Base class for **typed JSON Patch operations**.
+    Base class for typed JSON Patch operations.
 
     An ``OperationSchema`` is a Pydantic model representing one JSON Patch operation:
     standard RFC 6902 operations (``add``/``remove``/``replace``/...) and custom domain operations.
@@ -27,42 +27,32 @@ class OperationSchema(BaseModel, ABC):
     The library's workflow is:
 
     - Define operations as Pydantic models.
-    - Register them in an :class:`~jsonpatch.registry.OperationRegistry`.
+    - Register them in an ``OperationRegistry``.
     - Parse incoming patch documents into concrete operation instances via a discriminated union
       keyed by ``op``.
-    - Apply operations sequentially by calling :meth:`apply`.
+    - Apply operations sequentially by calling ``apply``.
 
-    ### Required fields
+    Example:
+        Required ``op`` field:
 
-    Subclasses must define an ``op`` *model field* annotated as ``Literal[...]`` of one or more strings:
+        ``class ReplaceOp(OperationSchema):``
+        ``    op: Literal["replace"] = "replace"``
+        ``    path: JSONPointer[JSONValue]``
+        ``    value: JSONValue``
 
-    .. code-block:: python
+        Multiple identifiers (aliases):
 
-        class ReplaceOp(OperationSchema):
-            op: Literal["replace"] = "replace"
-            path: JSONPointer[JSONValue]
-            value: JSONValue
+        ``class CreateOp(OperationSchema):``
+        ``    op: Literal["create", "add"] = "create"``
 
-    Multiple identifiers are allowed (aliases):
-
-    .. code-block:: python
-
-        class CreateOp(OperationSchema):
-            op: Literal["create", "add"] = "create"
-
-    Note: ``op`` must be a normal annotated attribute, **not** a ``ClassVar``. ``ClassVar`` values
-    are not Pydantic fields and cannot participate in discriminated-union dispatch.
-
-    ### Immutability and strictness
-
-    ``OperationSchema`` instances are frozen and strict by default.
-    Instances are revalidated when parsed (important when fields depend on validation context,
-    such as registry-scoped pointer backends).
-
-    ### Subclass validation
-
-    Subclasses are validated at class-definition time. If ``op`` is not declared correctly, the
-    class raises :class:`~jsonpatch.exceptions.InvalidOperationSchema` early (during import).
+    Notes:
+        - ``op`` must be a normal annotated attribute, not a ``ClassVar``. ``ClassVar`` values are not
+          Pydantic fields and cannot participate in discriminated-union dispatch.
+        - Instances are frozen and strict by default.
+        - Instances are revalidated when parsed, which matters for fields that depend on validation
+          context (for example, registry-scoped pointer backends).
+        - Subclasses are validated at class-definition time. If ``op`` is not declared correctly, the
+          class raises ``InvalidOperationSchema`` during import.
     """
 
     model_config = ConfigDict(
@@ -138,16 +128,12 @@ class OperationSchema(BaseModel, ABC):
         """
         Apply this operation to ``doc`` and return the updated document.
 
-        Implementation contract (operation authors)
-        -------------------------------------------
-        - Implementations may mutate the provided ``doc`` object in-place and should return the
-          updated document (often the same object).
-        - Raise :class:`~jsonpatch.exceptions.PatchError` subclasses for expected patch failures.
-          Unexpected exceptions will be wrapped by the patch engine.
-
-        Notes
-        -----
-        Whether the *caller-owned* document is mutated is controlled by the patch engine
-        (see ``_apply_ops(..., inplace=...)``), not by this method.
+        Notes:
+            - Implementations may mutate the provided ``doc`` object in-place and should return the
+              updated document (often the same object).
+            - Raise ``PatchError`` subclasses for expected patch failures. Unexpected exceptions will
+              be wrapped by the patch engine.
+            - Whether the caller-owned document is mutated is controlled by the patch engine
+              (see ``_apply_ops(..., inplace=...)``), not by this method.
         """
         ...

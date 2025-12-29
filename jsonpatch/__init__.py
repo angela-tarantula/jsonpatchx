@@ -1,6 +1,5 @@
 """
 jsonpatch
----------
 
 A modern, strongly-typed JSON Patch implementation powered by Pydantic.
 
