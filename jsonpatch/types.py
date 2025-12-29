@@ -627,7 +627,10 @@ class JSONPointer(str, Generic[T_co]):
             - Deleting a missing target raises ``PatchApplicationError``.
         """
         if self.is_root():
-            raise PatchApplicationError("cannot delete the root")
+            # Choice: Deletion returns None at the root.
+            # Why: Keeps the system composable, predictable, and closed over JSONValue.
+            #      It affects few users, who themselves can circumvent with custom ops.
+            return None
         if not self.is_gettable(doc):
             raise PatchApplicationError("cannot delete a missing target")
         try:
