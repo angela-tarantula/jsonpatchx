@@ -292,24 +292,52 @@ class JSONPointer(str, Generic[T_co]):
     ``JSONPointer[T]`` is a string-like value (subclasses ``str``) that additionally:
 
     - stores a parsed pointer backend (see ``PointerBackend``),
-    - tracks a type parameter ``T`` used to validate resolved targets,
-    - provides convenience methods for patch-like operations: ``get``, ``add``, ``remove``.
+    - tracks a covariant type parameter ``T`` used to validate resolved targets,
+    - provides convenience methods used by patch operations: ``get``, ``add``, ``remove``.
 
-    Notes:
-        - A backend is selected at validation time via Pydantic context under the key
-          ``"jsonpatch:pointer_backend"``.
-        - Default backend: ``jsonpointer.JsonPointer``; custom backend: provided by ``OperationRegistry``.
-        - Invalid pointer strings raise ``InvalidJSONPointer``.
-        - Backend traversal failures in ``get``/``add``/``remove`` are normalized into
-          ``PatchApplicationError``.
-        - Type mismatches between the resolved target and ``T`` raise ``PatchApplicationError``.
-        - ``add`` and ``remove`` mutate the document object they are given (or containers reachable
-          from it). The root pointer ``""`` is the exception: setting the root returns a new document
-          value rather than mutating an existing container.
-        - Whether these mutations affect the original caller-owned document is determined by the patch
-          engine (see ``_apply_ops(..., inplace=...)``), which may deep-copy the input document.
-        - ``JSONPointer`` values are intended to be created by Pydantic validation. Direct instantiation
-          is not permitted (except when running as ``__main__`` for debugging).
+    ## Important design semantics (intentional)
+
+    **Typed pointers are enforced at runtime.**
+    The type parameter ``T`` is not “just typing”; it is enforced whenever a value is read
+    through the pointer.
+
+    - ``get(doc)`` always validates the resolved value against ``T``.
+    - ``add(doc, value)`` optionally validates the written value against ``T`` (default: True).
+    - ``remove(doc)`` is intentionally *type-gated*: it first “reads” the target through the pointer,
+      so removal can fail if the current value is not of type ``T``.
+
+    This makes patch semantics explicit:
+    - ``JSONPointer[JSONValue]`` is permissive (“remove anything JSON”).
+    - ``JSONPointer[JSONBoolean]`` is restrictive (“remove only if it is currently a boolean”).
+    - If you want to remove regardless of the current type, use a wider pointer type (e.g. ``JSONValue``)
+      or define a dedicated permissive remove operation.
+
+    **Pointer covariance is intentional.**
+    ``JSONPointer`` is covariant in ``T``. In practice this means you can often reuse a pointer instance
+    (including across composed operations) and preserve stricter guarantees.
+    Example: if a custom op carries a ``JSONPointer[JSONBoolean]``, composing that op internally
+    using ``AddOp`` should keep the boolean-specific enforcement at runtime.
+
+    ## Backend semantics (advanced)
+
+    - A backend is selected at validation time via Pydantic context under the key
+      ``"jsonpatch:pointer_backend"``.
+    - Default backend: ``jsonpointer.JsonPointer``; custom backend: provided by ``OperationRegistry``.
+    - Invalid pointer strings raise ``InvalidJSONPointer``.
+    - Backend traversal failures in ``get``/``add``/``remove`` are normalized into
+      ``PatchApplicationError``.
+
+    Mutation semantics:
+    - ``add`` and ``remove`` may mutate the document object they are given (or containers reachable
+      from it). The root pointer ``""`` is the exception: setting the root returns a new document
+      value rather than mutating an existing container. Removing the root sets it to JSONNull (None)
+      so that all standard operations are closed over JSONValue. If you wan't for forbid root removal,
+      it's easy to make a custom op!
+    - Whether these mutations affect the original caller-owned document is determined by the patch
+      engine (see ``_apply_ops(..., inplace=...)``), which may deep-copy the input document.
+
+    ``JSONPointer`` values are intended to be created by Pydantic validation. Direct instantiation
+    is not permitted (except when running as ``__main__`` for debugging).
     """
 
     # Choice: JSONPointer is str subclass, as opposed to Annotated[str, StringConstraints(...)].
@@ -495,7 +523,7 @@ class JSONPointer(str, Generic[T_co]):
         """
         Resolve this pointer against ``doc`` and return the target value.
 
-        The returned value is validated against the pointer's type parameter ``T``.
+        The returned value is type-gated against the pointer's type parameter ``T``.
 
         Args:
             doc: Target JSON document.
@@ -529,18 +557,11 @@ class JSONPointer(str, Generic[T_co]):
         self, doc: JSONValue, value: JSONValue, *, validate_value: bool = True
     ) -> JSONValue:
         """
-        Add the value at this pointer path in ``doc`` and return the updated document.
-
-        - If this pointer is the root (``""``), returns ``value`` as the new document.
-        - Otherwise, resolves the parent container and writes the value into that container,
-          mutating the *provided* document object in-place.
-        - For arrays, the value is inserted at the index (RFC 6902 add semantics). ``"-"`` appends.
+        RFC 6902 add.
 
         Important: whether this affects your *original* document depends on how you obtained ``doc``.
         In patch application, the patch engine may first deep-copy the input document before calling
         operations/JSONPointer methods.
-
-        By default, ``value`` is validated against the pointer's type parameter ``T``.
 
         Args:
             doc: Target JSON document.
@@ -553,6 +574,10 @@ class JSONPointer(str, Generic[T_co]):
         Raises:
             PatchApplicationError: If the path cannot be resolved, the parent is not a container,
                 or the final token is not a valid container key.
+
+        Notes:
+            - Addition is type-gated by ``T``.
+            - Adding to the root (``""``) returns ``value`` as the new document.
         """
         # Type errors first
         target: JSONValue
@@ -611,7 +636,7 @@ class JSONPointer(str, Generic[T_co]):
 
     def remove(self, doc: JSONValue) -> JSONValue:
         """
-        Remove the target value at this pointer path and return the updated document.
+        RFC 6902 remove.
 
         This mutates the *provided* document object in-place. Whether this affects your *original*
         document depends on the patch engine: in typical patch application, the engine may deep-copy
@@ -627,6 +652,7 @@ class JSONPointer(str, Generic[T_co]):
             PatchApplicationError: If the pointer is the root or the target does not exist.
 
         Notes:
+            - Removeal is type-gated by ``T``.
             - Removing the root (``""``) returns ``None``.
             - Removing a missing target raises ``PatchApplicationError``.
         """
