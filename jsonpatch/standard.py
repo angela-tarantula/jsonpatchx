@@ -13,22 +13,41 @@ def _apply_ops(
     ops: Sequence[OperationSchema], doc: JSONValue, *, inplace: bool = False
 ) -> JSONValue:
     """
-    Internal patch engine: apply a sequence of operations to a JSON document.
+    Apply a sequence of operations to a JSON document (core patch engine).
 
-    This function defines the library’s copy/mutation semantics:
+    This function is the *single source of truth* for the library’s copy/mutation semantics.
 
-    - ``inplace=False`` (default): deep-copies ``doc`` first, then operations may mutate that copy.
-      The original input object is not modified.
-    - ``inplace=True``: operations are applied directly to the provided object.
+    Copying and mutation
+    --------------------
+    - ``inplace=False`` (default): the engine deep-copies ``doc`` first, then applies operations
+      to that copy. Operation implementations are allowed to mutate the document object they
+      receive. The original input object is not modified.
+    - ``inplace=True``: operations are applied directly to the provided ``doc`` object.
 
-    Error semantics:
-    - PatchError subclasses raised by ``op.apply`` propagate unchanged.
-    - Unexpected exceptions are wrapped in :class:`~jsonpatch.exceptions.PatchApplicationError`
-      with the operation index for debuggability.
+    Important: no rollback
+    ----------------------
+    This engine does not provide transactional rollback. With ``inplace=True``, an exception
+    mid-patch may leave the input document partially mutated.
 
-    Note:
-        This engine does not provide rollback. With ``inplace=True``, a failure mid-patch leaves
-        the document partially mutated.
+    Error semantics
+    ---------------
+    - :class:`~jsonpatch.exceptions.PatchError` subclasses raised by ``op.apply`` propagate unchanged.
+    - Unexpected exceptions are wrapped in :class:`~jsonpatch.exceptions.PatchApplicationError` and
+      include the failing operation index for debugging.
+
+    Parameters
+    ----------
+    ops:
+        Operations to apply, in order.
+    doc:
+        Target JSON document.
+    inplace:
+        Controls whether ``doc`` is deep-copied before application.
+
+    Returns
+    -------
+    JSONValue
+        The patched document (either a deep-copied object or the original object, depending on ``inplace``).
     """
     if not inplace:
         doc = copy.deepcopy(doc)
@@ -47,30 +66,26 @@ def _apply_ops(
 
 class JsonPatch(Sequence[OperationSchema]):
     """
-    A parsed JSON Patch document (RFC 6902-style) with a fixed OperationRegistry.
+    A parsed JSON Patch document (RFC 6902-style) bound to an OperationRegistry.
 
     ``JsonPatch`` is a convenience wrapper that:
 
-    - parses/validates a JSON Patch document (a list of operations) using an
-      :class:`~jsonpatch.registry.OperationRegistry`,
+    - parses and validates an input patch document using an :class:`~jsonpatch.registry.OperationRegistry`,
     - stores the resulting typed :class:`~jsonpatch.schema.OperationSchema` instances,
     - applies them to JSON documents via the shared patch engine.
 
-    ### Copying vs mutation
+    Copying vs in-place behavior
+    ----------------------------
+    :meth:`apply` delegates to the core engine ``_apply_ops`` and therefore follows the same
+    copy/mutation semantics:
 
-    :meth:`apply` controls whether the caller's input document is mutated:
+    - ``inplace=False`` (default): the engine deep-copies ``doc`` first; operations may mutate the copy.
+    - ``inplace=True``: operations mutate the provided ``doc`` object directly (no rollback on failure).
 
-    - ``inplace=False`` (default): deep-copies ``doc`` first, then applies operations to the copy.
-      Operations (and :class:`~jsonpatch.types.JSONPointer`) may perform in-place edits on that copy,
-      but the original input object is unchanged.
-    - ``inplace=True``: applies operations directly to ``doc``. If an operation fails mid-patch,
-      earlier operations will have already mutated the document (no rollback).
-
-    ### Registry and pointer semantics
-
-    The registry controls which operations are allowed and injects validation context so any
-    :class:`~jsonpatch.types.JSONPointer[...]` fields are parsed using the registry’s configured
-    pointer backend.
+    Notes
+    -----
+    ``JsonPatch`` is immutable with respect to its operation list after construction, but the documents
+    you apply it to may be mutated depending on ``inplace``.
     """
 
     __slots__ = ("_ops", "_registry")
@@ -136,7 +151,25 @@ class JsonPatch(Sequence[OperationSchema]):
     def apply(
         self, doc: JSONValue, *, validate_doc: bool = False, inplace: bool = False
     ) -> JSONValue:
-        """Apply the JsonPatch to an object."""
+        """
+        Apply this patch to ``doc`` and return the patched document.
+
+        Parameters
+        ----------
+        doc:
+            Target JSON document.
+        validate_doc:
+            If True, validate that ``doc`` is a strict :data:`~jsonpatch.types.JSONValue` before applying.
+        inplace:
+            Controls copy/mutation behavior. See ``_apply_ops(..., inplace=...)`` for full semantics.
+
+        Raises
+        ------
+        PatchError
+            For expected patch failures raised by operation implementations.
+        PatchApplicationError
+            For unexpected errors wrapped by the engine.
+        """
         if validate_doc:
             _JSON_VALUE_ADAPTER.validate_python(doc, strict=True)
         return _apply_ops(self._ops, doc, inplace=inplace)
@@ -184,38 +217,34 @@ class JsonPatch(Sequence[OperationSchema]):
 
 
 def apply_patch(
-    doc: JSONValue, patch: Sequence[Mapping[str, JSONValue]], *, inplace: bool = False
+    doc: JSONValue,
+    patch: Sequence[Mapping[str, JSONValue]],
+    *,
+    validate_doc: bool = False,
+    inplace: bool = False,
 ) -> JSONValue:
     """
-    Apply a standard JSON Patch (RFC 6902) to a JSON document.
+    Apply a standard RFC 6902 JSON Patch document to ``doc``.
 
-    This is a small convenience wrapper equivalent to::
+    This is a small convenience wrapper around :class:`JsonPatch` using the standard registry.
 
-        JsonPatch(patch).apply(doc, inplace=inplace, validate_doc=validate_doc)
+    Parameters
+    ----------
+    doc:
+        Target JSON document.
+    patch:
+        Patch document as a sequence of operation mappings.
+    inplace:
+        Controls copy/mutation behavior. See ``_apply_ops(..., inplace=...)`` for full semantics.
+    validate_doc:
+        If True, validate that ``doc`` is a strict :data:`~jsonpatch.types.JSONValue` before applying.
 
-    Parameters:
-        doc:
-            The JSON document to patch (dict/list/primitives).
-
-        patch:
-            A sequence of JSON Patch operation mappings (e.g. ``{"op": "add", "path": "/x", "value": 1}``).
-            Operations are validated using the standard RFC 6902 registry.
-
-        inplace:
-            Controls whether the input ``doc`` is mutated.
-
-            - ``False`` (default): deep-copies ``doc`` first, applies operations to the copy, and returns it.
-            - ``True``: applies operations directly to ``doc`` and returns it. On failure mid-patch, the
-              document may be left partially mutated.
-
-        validate_doc:
-            If True, validates that ``doc`` is a strict :data:`~jsonpatch.types.JSONValue` before applying
-            the patch.
-
-    Returns:
-        The patched JSON document.
+    Returns
+    -------
+    JSONValue
+        The patched document.
     """
-    return JsonPatch(patch).apply(doc, inplace=inplace)
+    return JsonPatch(patch).apply(doc, validate_doc=validate_doc, inplace=inplace)
 
 
 if __name__ == "__main__":

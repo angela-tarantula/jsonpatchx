@@ -136,19 +136,18 @@ class OperationSchema(BaseModel, ABC):
     @abstractmethod
     def apply(self, doc: JSONValue) -> JSONValue:
         """
-        Apply this operation to a JSON document and return the updated document.
+        Apply this operation to ``doc`` and return the updated document.
 
-        ### Mutation contract
+        Implementation contract (operation authors)
+        -------------------------------------------
+        - Implementations may mutate the provided ``doc`` object in-place and should return the
+          updated document (often the same object).
+        - Raise :class:`~jsonpatch.exceptions.PatchError` subclasses for expected patch failures.
+          Unexpected exceptions will be wrapped by the patch engine.
 
-        Implementations **may mutate** the provided ``doc`` in-place and must return the updated
-        document (which may be the same object). Whether this results in mutation of the *original*
-        caller-owned document is controlled by the patch engine (e.g., engines often deep-copy the
-        input first when ``inplace=False``).
-
-        ### Errors
-
-        On failure, raise library patch exceptions (for example
-        :class:`~jsonpatch.exceptions.PatchApplicationError` or a more specific subclass) so callers can
-        treat patch failures as request/data errors rather than unexpected crashes.
+        Notes
+        -----
+        Whether the *caller-owned* document is mutated is controlled by the patch engine
+        (see ``_apply_ops(..., inplace=...)``), not by this method.
         """
         ...

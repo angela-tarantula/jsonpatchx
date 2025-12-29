@@ -286,66 +286,40 @@ class JSONPointer[T: JSONValue](str):
     """
     A typed RFC 6901 JSON Pointer with Pydantic integration.
 
-    ``JSONPointer[T]`` is a *string-like* value (it subclasses :class:`str`) that additionally:
+    ``JSONPointer[T]`` is a string-like value (subclasses :class:`str`) that additionally:
 
-    - parses to a backend pointer object (see :class:`PointerBackend`)
-    - tracks a type parameter ``T`` used to validate the resolved target
-    - provides convenience methods for common patch-like operations: :meth:`get`, :meth:`set`, :meth:`delete`
+    - stores a parsed pointer backend (see :class:`PointerBackend`)
+    - tracks a type parameter ``T`` used to validate resolved targets
+    - provides convenience methods for patch-like operations: :meth:`get`, :meth:`set`, :meth:`delete`
 
-    The primary design goal is to make JSON Patch operation schemas feel natural:
+    Pointer backend selection
+    -------------------------
+    A backend is selected at validation time via Pydantic ``context`` under the key
+    ``"jsonpatch:pointer_backend"``:
 
-    .. code-block:: python
+    - default: :class:`jsonpointer.JsonPointer`
+    - custom: provided by :class:`~jsonpatch.registry.OperationRegistry`
 
-        class ReplaceOp(OperationSchema):
-            op: Literal["replace"] = "replace"
-            path: JSONPointer[JSONValue]
-            value: JSONValue
-
-    When Pydantic validates ``path``, it produces an instance of ``JSONPointer[JSONValue]``
-    that can later be used to resolve and mutate documents.
-
-    ### Pointer backend selection
-
-    JSONPointer is backend-agnostic. A backend is selected at validation time via Pydantic
-    ``context`` using the key ``"jsonpatch:pointer_backend"``:
-
-    - default backend: :class:`jsonpointer.JsonPointer`
-    - custom backend: supplied by an :class:`~jsonpatch.registry.OperationRegistry`
-
-    If you are using the library's registries / patch-body factories, this context injection is
-    handled automatically. If you validate JSONPointer values manually, you may need to pass context.
-
-    ### Error semantics
-
+    Error semantics
+    ---------------
     - Invalid pointer strings raise :class:`~jsonpatch.exceptions.InvalidJSONPointer`.
-    - :meth:`get`, :meth:`set`, and :meth:`delete` treat backend resolution failures as patch failures
-      and raise :class:`~jsonpatch.exceptions.PatchApplicationError` with a user-facing message.
+    - Backend traversal failures in :meth:`get` / :meth:`set` / :meth:`delete` are normalized into
+      :class:`~jsonpatch.exceptions.PatchApplicationError`.
     - Type mismatches between the resolved target and ``T`` raise :class:`PatchApplicationError`.
 
-    ### Mutation semantics (and how this relates to the patch engine)
+    Mutation semantics (pointer-local)
+    ----------------------------------
+    :meth:`set` and :meth:`delete` mutate the *document object they are given* (or containers reachable
+    from it). The only special case is the root pointer ``""``: setting the root returns a new document
+    value rather than mutating an existing container.
 
-    ``JSONPointer`` provides *mutative primitives* (not a transactional patch engine):
+    Whether these mutations affect the *original caller-owned document* is determined by the patch engine
+    (see ``_apply_ops(..., inplace=...)``), which may deep-copy the input document before operations run.
 
-    - :meth:`get` is read-only.
-    - :meth:`set` and :meth:`delete` perform in-place edits on the *document object they are given*
-      (or on containers reachable from it).
-    - The only exception is the root pointer (``""``): setting the root returns the new document value
-      rather than mutating the original object.
-
-    In typical usage, callers do **not** invoke ``JSONPointer`` directly; they apply operations via a
-    patch engine (e.g. ``_apply_ops``). The patch engine controls whether edits affect the *original*
-    document by choosing whether to deep-copy the input before applying operations.
-
-    Example:
-
-    - ``inplace=False``: the engine deep-copies ``doc`` first, then operations and JSONPointers mutate
-      that copy in-place; the original input is unchanged.
-    - ``inplace=True``: operations and JSONPointers mutate the original input object.
-
-    ### Notes
-
-    ``JSONPointer`` values are intended to be created by Pydantic validation. Direct instantiation
-    is not permitted, except when running as ``__main__`` (useful for debugging).
+    Notes
+    -----
+    ``JSONPointer`` values are intended to be created by Pydantic validation. Direct instantiation is
+    not permitted (except when running as ``__main__`` for debugging).
     """
 
     # Choice: JSONPointer is str subclass, as opposed to Annotated[str, StringConstraints(...)].
@@ -385,6 +359,7 @@ class JSONPointer[T: JSONValue](str):
 
     @property
     def type_param(self) -> TypeForm[T]:
+        """The expected type parameter ``T`` used to validate resolved targets."""
         return self._type
 
     @property
