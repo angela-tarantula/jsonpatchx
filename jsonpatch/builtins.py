@@ -101,18 +101,10 @@ STANDARD_OPS: Final[Set[type[OperationSchema]]] = frozenset(
 class IncrementOp(OperationSchema):
     op: Literal["increment"] = "increment"
     path: JSONPointer[JSONNumber]
-    value: JSONNumber = Field(gt=0)
+    value: JSONNumber = Field(gt=0, decimal_places=0)
 
     @override
     def apply(self, doc: JSONValue) -> JSONValue:
-        raise NotImplementedError
-
-
-class DecrementOp(OperationSchema):
-    op: Literal["decrement"] = "decrement"
-    path: JSONPointer[JSONNumber]
-    value: JSONNumber = Field(lt=0)
-
-    @override
-    def apply(self, doc: JSONValue) -> JSONValue:
-        raise NotImplementedError
+        amount = self.path.get(doc)  # amount is a JSONNumber (inferred & enforced!)
+        total = amount + self.value
+        return AddOp(path=self.path, value=total).apply(doc)
