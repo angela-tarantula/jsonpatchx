@@ -16,7 +16,7 @@ class AddOp(OperationSchema):
 
     @override
     def apply(self, doc: JSONValue) -> JSONValue:
-        return self.path.set(doc, self.value)
+        return self.path.add(doc, self.value)
 
 
 class RemoveOp(OperationSchema):
@@ -25,7 +25,7 @@ class RemoveOp(OperationSchema):
 
     @override
     def apply(self, doc: JSONValue) -> JSONValue:
-        return self.path.delete(doc)
+        return self.path.remove(doc)
 
 
 class ReplaceOp(OperationSchema):

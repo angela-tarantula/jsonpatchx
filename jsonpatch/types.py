@@ -60,8 +60,8 @@ type JSONValue = Annotated[
 Pydantic-friendly type representing a strict JSON value.
 
 Notes:
-    - JSON Patch operation schemas use it for ``value`` fields.
-    - ``JSONPointer`` uses it as the document type for ``get``/``set``/``delete``.
+    - The standard JSON Patch operation schemas use it for ``value`` fields.
+    - ``JSONPointer`` uses it as the document type for ``get``/``add``/``remove``.
     - Patch application helpers can optionally validate that inputs are legitimate JSON.
     - Containers are restricted to ``list`` and ``dict[str, ...]``.
     - Numeric values are restricted to ``int`` or finite ``float`` (no NaN/Infinity).
@@ -293,17 +293,17 @@ class JSONPointer(str, Generic[T_co]):
 
     - stores a parsed pointer backend (see ``PointerBackend``),
     - tracks a type parameter ``T`` used to validate resolved targets,
-    - provides convenience methods for patch-like operations: ``get``, ``set``, ``delete``.
+    - provides convenience methods for patch-like operations: ``get``, ``add``, ``remove``.
 
     Notes:
         - A backend is selected at validation time via Pydantic context under the key
           ``"jsonpatch:pointer_backend"``.
         - Default backend: ``jsonpointer.JsonPointer``; custom backend: provided by ``OperationRegistry``.
         - Invalid pointer strings raise ``InvalidJSONPointer``.
-        - Backend traversal failures in ``get``/``set``/``delete`` are normalized into
+        - Backend traversal failures in ``get``/``add``/``remove`` are normalized into
           ``PatchApplicationError``.
         - Type mismatches between the resolved target and ``T`` raise ``PatchApplicationError``.
-        - ``set`` and ``delete`` mutate the document object they are given (or containers reachable
+        - ``add`` and ``remove`` mutate the document object they are given (or containers reachable
           from it). The root pointer ``""`` is the exception: setting the root returns a new document
           value rather than mutating an existing container.
         - Whether these mutations affect the original caller-owned document is determined by the patch
@@ -313,7 +313,7 @@ class JSONPointer(str, Generic[T_co]):
     """
 
     # Choice: JSONPointer is str subclass, as opposed to Annotated[str, StringConstraints(...)].
-    # Why: Cache adapters and pointers where possible, and provide simple primitives like get/set
+    # Why: Cache adapters and pointers where possible, and provide simple primitives like get/add
     #      out-of-the-box, owned by the field, so path.get(doc) just works. Most users don't need
     #      more advanced functionality, so don't require them to reason about the PointerBackend API.
     # Considered: From a mutation point of view, consider reversing ownership to something like doc.get(path).
@@ -525,11 +525,11 @@ class JSONPointer(str, Generic[T_co]):
         else:
             return True
 
-    def set(
+    def add(
         self, doc: JSONValue, value: JSONValue, *, validate_value: bool = True
     ) -> JSONValue:
         """
-        Set the value at this pointer path in ``doc`` and return the updated document.
+        Add the value at this pointer path in ``doc`` and return the updated document.
 
         - If this pointer is the root (``""``), returns ``value`` as the new document.
         - Otherwise, resolves the parent container and writes the value into that container,
@@ -544,7 +544,7 @@ class JSONPointer(str, Generic[T_co]):
 
         Args:
             doc: Target JSON document.
-            value: Value to set at this path.
+            value: Value to add at this path.
             validate_value: If True, validate ``value`` against ``T`` before setting.
 
         Returns:
@@ -569,7 +569,7 @@ class JSONPointer(str, Generic[T_co]):
             raise PatchApplicationError(f"path {str(self)!r} not found: {e}") from e
         if not _is_container(container):
             raise PatchApplicationError(
-                f"cannot set value at {str(self)!r} because {self._parent_ptr} resolves to a JSON primitive"
+                f"cannot add value at {str(self)!r} because {self._parent_ptr} resolves to a JSON primitive"
             )
         key = _parse_JSONContainer_key(container, self.parts[-1])
         if isinstance(container, dict):
@@ -577,11 +577,11 @@ class JSONPointer(str, Generic[T_co]):
         elif key == "-":
             container.append(target)
         else:
-            assert isinstance(key, int), "internal error: set"
+            assert isinstance(key, int), "internal error: add"
             container.insert(key, target)
         return doc
 
-    def is_settable(
+    def is_addable(
         self,
         doc: JSONValue,
         value: object = _Nothing,
@@ -589,7 +589,7 @@ class JSONPointer(str, Generic[T_co]):
         validate_value: bool = True,
     ) -> bool:
         """
-        Return True if ``set`` would succeed for this document (and optional value), else False.
+        Return True if ``add`` would succeed for this document (and optional value), else False.
 
         If ``value`` is provided and ``validate_value`` is True, it must conform to the
         pointer's type parameter ``T``.
@@ -609,9 +609,9 @@ class JSONPointer(str, Generic[T_co]):
         else:
             return True
 
-    def delete(self, doc: JSONValue) -> JSONValue:
+    def remove(self, doc: JSONValue) -> JSONValue:
         """
-        Delete the target value at this pointer path and return the updated document.
+        Remove the target value at this pointer path and return the updated document.
 
         This mutates the *provided* document object in-place. Whether this affects your *original*
         document depends on the patch engine: in typical patch application, the engine may deep-copy
@@ -627,27 +627,27 @@ class JSONPointer(str, Generic[T_co]):
             PatchApplicationError: If the pointer is the root or the target does not exist.
 
         Notes:
-            - Deleting the root (``""``) is not allowed.
-            - Deleting a missing target raises ``PatchApplicationError``.
+            - Removing the root (``""``) returns ``None``.
+            - Removing a missing target raises ``PatchApplicationError``.
         """
         if self.is_root():
-            # Choice: Deletion returns None at the root.
+            # Choice: Removal returns None at the root.
             # Why: Keeps the system composable, predictable, and closed over JSONValue.
             #      It affects few users, who themselves can circumvent with custom ops.
             return None
         if not self.is_gettable(doc):
             raise PatchApplicationError(
-                f"cannot delete a missing value at {str(self)!r}"
+                f"cannot remove a missing value at {str(self)!r}"
             )
         try:
             container = cast(JSONContainer[JSONValue], self._parent_ptr.resolve(doc))
-            assert isinstance(container, (dict, list)), "internal error: delete"
+            assert isinstance(container, (dict, list)), "internal error: remove"
         except Exception as e:
             raise PatchApplicationError(f"path {str(self)!r} not found: {e}") from e
         key = _parse_JSONContainer_key(container, self.parts[-1])
         if key == "-" and not isinstance(container, dict):
             raise PatchApplicationError(
-                f"cannot delete value at {str(self)!r} with key '-'"
+                f"cannot remove value at {str(self)!r} with key '-'"
             )
         del container[key]  # type: ignore[arg-type]
         return doc
