@@ -33,6 +33,10 @@ Public API surface:
     - MoveOp
     - CopyOp
     - TestOp
+
+- Pydantic helpers:
+    - JsonPatchFor
+    - make_json_patch_body
 """
 
 from jsonpatch.builtins import (
@@ -52,6 +56,7 @@ from jsonpatch.exceptions import (
     PatchError,
     TestOpFailed,
 )
+from jsonpatch.pydantic import JsonPatchFor, make_json_patch_body
 from jsonpatch.registry import OperationRegistry
 from jsonpatch.schema import OperationSchema
 from jsonpatch.standard import JsonPatch, apply_patch
@@ -71,6 +76,9 @@ __all__ = [
     # operation specs
     "OperationSchema",
     "OperationRegistry",
+    # pydantic helpers
+    "JsonPatchFor",
+    "make_json_patch_body",
     # built-ins
     "STANDARD_OPS",
     "AddOp",
