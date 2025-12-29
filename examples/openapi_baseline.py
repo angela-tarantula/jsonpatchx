@@ -8,10 +8,11 @@ Run
 
 from __future__ import annotations
 
+from collections.abc import MutableMapping
 from typing import Any, Literal
 
-from fastapi import Body, FastAPI, HTTPException, Response
-from pydantic import BaseModel, Field
+from fastapi import Body, FastAPI, HTTPException, Path, Response
+from pydantic import BaseModel, Field, RootModel
 
 from jsonpatch import JsonPatch  # any JsonPatch library works
 from jsonpatch.types import JSONValue
@@ -73,7 +74,14 @@ class TestOp(BaseModel):
 
 
 PatchOp = AddOp | RemoveOp | ReplaceOp | MoveOp | CopyOp | TestOp
-UserPatch = list[PatchOp]
+
+
+class UserPatch(RootModel[list[PatchOp]]):
+    pass
+
+
+class JsonPatchBody(RootModel[list[PatchOp]]):
+    pass
 
 
 _USERS: dict[int, User] = {
@@ -81,9 +89,26 @@ _USERS: dict[int, User] = {
     2: User(id=2, name="Pat", tags=["editor", "qa"]),
 }
 
+_CONFIGS: MutableMapping[str, JSONValue] = {
+    "site": {"title": "Example", "features": {"chat": True}},
+    "limits": {"max_users": 5, "trial": False},
+}
 
-@app.get("/users/{user_id}", response_model=User, tags=["users"])
-def get_user(user_id: int) -> User:
+
+@app.get(
+    "/users/{user_id}",
+    response_model=User,
+    tags=["users"],
+    summary="Get a user",
+    description="Fetch a user by id.",
+)
+def get_user(
+    user_id: int = Path(
+        ...,
+        description="Available users: 1, 2.",
+        example=1,
+    ),
+) -> User:
     user = _USERS.get(user_id)
     if user is None:
         raise HTTPException(status_code=404, detail="user not found")
@@ -94,17 +119,14 @@ def get_user(user_id: int) -> User:
     "/users/{user_id}",
     response_model=User,
     tags=["users"],
-    summary="Patch a user (baseline)",
-    description=(
-        "Baseline request shape: a list of ops with `path: str` and `value: Any`.\n\n"
-        "For a fair comparison, this endpoint still applies patches using this project's engine, "
-        "but it lacks the library's richer OpenAPI schema."
-    ),
+    summary="Patch a user",
+    description="Apply a JSON Patch document to a `User`.",
     openapi_extra={
         "requestBody": {
             "required": True,
             "content": {
                 JSON_PATCH_MEDIA_TYPE: {
+                    "schema": {"$ref": "#/components/schemas/UserPatch"},
                     "examples": {
                         "rename-user": {
                             "summary": "Rename a user",
@@ -118,9 +140,11 @@ def get_user(user_id: int) -> User:
                                 {"op": "add", "path": "/tags/-", "value": "staff"}
                             ],
                         },
-                    }
+                    },
                 },
-                "application/json": {},
+                "application/json": {
+                    "schema": {"$ref": "#/components/schemas/UserPatch"}
+                },
             },
         }
     },
@@ -130,9 +154,7 @@ def patch_user(
     patch: UserPatch = Body(
         ...,
         media_type=JSON_PATCH_MEDIA_TYPE,
-        description=(
-            "Baseline patch body. Prefer Content-Type: application/json-patch+json."
-        ),
+        description="JSON Patch document. Prefer Content-Type: application/json-patch+json.",
     ),
 ) -> User:
     user = _USERS.get(user_id)
@@ -140,12 +162,94 @@ def patch_user(
         raise HTTPException(status_code=404, detail="user not found")
 
     raw_ops: list[dict[str, JSONValue]] = [
-        op.model_dump(by_alias=True)
-        for op in patch  # type: ignore[assignment]
+        op.model_dump(by_alias=True) for op in patch.root
     ]
 
     updated = JsonPatch(raw_ops).apply(user)
     _USERS[user_id] = updated
+    return updated
+
+
+@app.get(
+    "/configs/{config_id}",
+    response_model=Any,
+    tags=["configs"],
+    summary="Get a config",
+    description="Fetch a config by id.",
+)
+def get_config(
+    config_id: str = Path(
+        ...,
+        description="Available configs: site, limits.",
+        example="site",
+    ),
+) -> JSONValue:
+    doc = _CONFIGS.get(config_id)
+    if doc is None:
+        raise HTTPException(status_code=404, detail="config not found")
+    return doc
+
+
+@app.patch(
+    "/configs/{config_id}",
+    response_model=Any,
+    tags=["configs"],
+    summary="Patch a config",
+    description="Apply a JSON Patch document to a config (`JSONValue`).",
+    openapi_extra={
+        "requestBody": {
+            "required": True,
+            "content": {
+                JSON_PATCH_MEDIA_TYPE: {
+                    "schema": {"$ref": "#/components/schemas/JsonPatchBody"},
+                    "examples": {
+                        "enable-feature": {
+                            "summary": "site: enable chat",
+                            "value": [
+                                {
+                                    "op": "replace",
+                                    "path": "/features/chat",
+                                    "value": True,
+                                }
+                            ],
+                        },
+                        "bump-limit": {
+                            "summary": "limits: bump max_users",
+                            "value": [
+                                {
+                                    "op": "replace",
+                                    "path": "/max_users",
+                                    "value": 10,
+                                }
+                            ],
+                        },
+                    },
+                },
+                "application/json": {
+                    "schema": {"$ref": "#/components/schemas/JsonPatchBody"}
+                },
+            },
+        }
+    },
+)
+def patch_config(
+    config_id: str,
+    patch: JsonPatchBody = Body(
+        ...,
+        description="JSON Patch document. Prefer Content-Type: application/json-patch+json.",
+        media_type=JSON_PATCH_MEDIA_TYPE,
+    ),
+) -> JSONValue:
+    doc = _CONFIGS.get(config_id)
+    if doc is None:
+        raise HTTPException(status_code=404, detail="config not found")
+
+    raw_ops: list[dict[str, JSONValue]] = [
+        op.model_dump(by_alias=True) for op in patch.root
+    ]
+
+    updated = JsonPatch(raw_ops).apply(doc)
+    _CONFIGS[config_id] = updated
     return updated
 
 

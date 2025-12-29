@@ -14,7 +14,7 @@ from __future__ import annotations
 from collections.abc import MutableMapping
 from typing import Any
 
-from fastapi import Body, FastAPI, HTTPException, Response
+from fastapi import Body, FastAPI, HTTPException, Path, Response
 
 from examples.custom_ops import AppendOp, ExtendOp, IncrementOp, SwapOp, ToggleBoolOp
 from jsonpatch import OperationRegistry, make_json_patch_body
@@ -43,7 +43,13 @@ _CONFIGS: MutableMapping[str, JSONValue] = {
 
 
 @app.get("/configs/{config_id}", response_model=Any, tags=["configs"])
-def get_config(config_id: str) -> JSONValue:
+def get_config(
+    config_id: str = Path(
+        ...,
+        description="Available configs: site, limits.",
+        example="site",
+    ),
+) -> JSONValue:
     doc = _CONFIGS.get(config_id)
     if doc is None:
         raise HTTPException(status_code=404, detail="config not found")
@@ -54,11 +60,8 @@ def get_config(config_id: str) -> JSONValue:
     "/configs/{config_id}",
     response_model=Any,
     tags=["configs"],
-    summary="Patch a config (standard + custom ops)",
-    description=(
-        "Custom ops are registered in the OperationRegistry, so they appear in the same "
-        "discriminated union as RFC 6902 operations."
-    ),
+    summary="Patch a config",
+    description="Apply standard RFC 6902 ops plus custom ops to a config.",
     openapi_extra={
         "requestBody": {
             "required": True,
@@ -67,29 +70,29 @@ def get_config(config_id: str) -> JSONValue:
                     "schema": {"$ref": "#/components/schemas/JsonPatchBody"},
                     "examples": {
                         "increment-limit": {
-                            "summary": "Custom: increment a number",
+                            "summary": "limits: increment max_users",
                             "value": [
                                 {
                                     "op": "increment",
-                                    "path": "/limits/max_users",
+                                    "path": "/max_users",
                                     "value": 2,
                                 }
                             ],
                         },
                         "toggle-flag": {
-                            "summary": "Custom: toggle a boolean",
-                            "value": [{"op": "toggle", "path": "/site/features/chat"}],
+                            "summary": "limits: toggle trial",
+                            "value": [{"op": "toggle", "path": "/trial"}],
                         },
                         "append-tag": {
-                            "summary": "Custom: append to a list",
+                            "summary": "site: append to tags",
                             "value": [
-                                {"op": "append", "path": "/site/tags", "value": "staff"}
+                                {"op": "append", "path": "/tags", "value": "staff"}
                             ],
                         },
                         "swap": {
-                            "summary": "Custom: swap two locations",
+                            "summary": "site: swap title and chat flag",
                             "value": [
-                                {"op": "swap", "a": "/site/title", "b": "/limits/trial"}
+                                {"op": "swap", "a": "/title", "b": "/features/chat"}
                             ],
                         },
                     },
@@ -106,10 +109,7 @@ def patch_config(
     patch: ConfigPatchWithCustomOps = Body(
         ...,
         media_type=JSON_PATCH_MEDIA_TYPE,
-        description=(
-            "RFC 6902 JSON Patch document with registry-registered custom operations. "
-            "Prefer Content-Type: application/json-patch+json."
-        ),
+        description="JSON Patch document. Prefer Content-Type: application/json-patch+json.",
     ),
 ) -> JSONValue:
     doc = _CONFIGS.get(config_id)

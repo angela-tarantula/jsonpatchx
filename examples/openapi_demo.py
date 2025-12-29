@@ -16,7 +16,7 @@ from __future__ import annotations
 from collections.abc import MutableMapping
 from typing import Any
 
-from fastapi import Body, FastAPI, HTTPException, Response
+from fastapi import Body, FastAPI, HTTPException, Path, Response
 from pydantic import BaseModel, Field
 
 from jsonpatch import JsonPatchFor, OperationRegistry, make_json_patch_body
@@ -54,8 +54,20 @@ _CONFIGS: MutableMapping[str, JSONValue] = {
 }
 
 
-@app.get("/users/{user_id}", response_model=User, tags=["users"])
-def get_user(user_id: int) -> User:
+@app.get(
+    "/users/{user_id}",
+    response_model=User,
+    tags=["users"],
+    summary="Get a user",
+    description="Fetch a user by id.",
+)
+def get_user(
+    user_id: int = Path(
+        ...,
+        description="Available users: 1, 2.",
+        example=1,
+    ),
+) -> User:
     user = _USERS.get(user_id)
     if user is None:
         raise HTTPException(status_code=404, detail="user not found")
@@ -66,11 +78,8 @@ def get_user(user_id: int) -> User:
     "/users/{user_id}",
     response_model=User,
     tags=["users"],
-    summary="Patch a user (model-aware)",
-    description=(
-        "Applies a JSON Patch document to a strongly-typed Pydantic model (`User`). "
-        "Operations are validated as RFC 6902 op schemas, then applied with model-aware semantics."
-    ),
+    summary="Patch a user",
+    description="Apply a JSON Patch document to a `User`.",
     openapi_extra={
         "requestBody": {
             "required": True,
@@ -104,9 +113,7 @@ def patch_user(
     user_id: int,
     patch: UserPatch = Body(
         ...,
-        description=(
-            "RFC 6902 JSON Patch document. Prefer Content-Type: application/json-patch+json."
-        ),
+        description="JSON Patch document. Prefer Content-Type: application/json-patch+json.",
         media_type=JSON_PATCH_MEDIA_TYPE,
     ),
 ) -> User:
@@ -118,8 +125,20 @@ def patch_user(
     return updated
 
 
-@app.get("/configs/{config_id}", response_model=Any, tags=["configs"])
-def get_config(config_id: str) -> JSONValue:
+@app.get(
+    "/configs/{config_id}",
+    response_model=Any,
+    tags=["configs"],
+    summary="Get a config",
+    description="Fetch a config by id.",
+)
+def get_config(
+    config_id: str = Path(
+        ...,
+        description="Available configs: site, limits.",
+        example="site",
+    ),
+) -> JSONValue:
     doc = _CONFIGS.get(config_id)
     if doc is None:
         raise HTTPException(status_code=404, detail="config not found")
@@ -130,11 +149,8 @@ def get_config(config_id: str) -> JSONValue:
     "/configs/{config_id}",
     response_model=Any,
     tags=["configs"],
-    summary="Patch a config (typed ops, untyped document)",
-    description=(
-        "Applies a JSON Patch document to an untyped JSON config (`JSONValue`). "
-        "Operations are validated as RFC 6902 op schemas."
-    ),
+    summary="Patch a config",
+    description="Apply a JSON Patch document to a config (`JSONValue`).",
     openapi_extra={
         "requestBody": {
             "required": True,
@@ -143,21 +159,21 @@ def get_config(config_id: str) -> JSONValue:
                     "schema": {"$ref": "#/components/schemas/JsonPatchBody"},
                     "examples": {
                         "enable-feature": {
-                            "summary": "Enable a feature flag",
+                            "summary": "site: enable chat",
                             "value": [
                                 {
                                     "op": "replace",
-                                    "path": "/site/features/chat",
+                                    "path": "/features/chat",
                                     "value": True,
                                 }
                             ],
                         },
                         "bump-limit": {
-                            "summary": "Bump a numeric limit",
+                            "summary": "limits: bump max_users",
                             "value": [
                                 {
                                     "op": "replace",
-                                    "path": "/limits/max_users",
+                                    "path": "/max_users",
                                     "value": 10,
                                 }
                             ],
@@ -175,10 +191,7 @@ def patch_config(
     config_id: str,
     patch: ConfigPatchBody = Body(
         ...,
-        description=(
-            "RFC 6902 JSON Patch document applied to an untyped JSON config. "
-            "Prefer Content-Type: application/json-patch+json."
-        ),
+        description="JSON Patch document. Prefer Content-Type: application/json-patch+json.",
         media_type=JSON_PATCH_MEDIA_TYPE,
     ),
 ) -> JSONValue:

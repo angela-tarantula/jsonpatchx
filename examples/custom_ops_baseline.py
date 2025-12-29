@@ -15,10 +15,12 @@ import copy
 from collections.abc import MutableMapping
 from typing import Any, Literal
 
-from fastapi import Body, FastAPI, HTTPException, Response
-from pydantic import BaseModel, Field
+from fastapi import Body, FastAPI, HTTPException, Path, Response
+from pydantic import BaseModel, Field, RootModel
 
-from jsonpatch import apply_patch  # standard ops engine from THIS project
+from jsonpatch import (
+    apply_patch,  # any JsonPatch library works, but only for standard ops
+)
 from jsonpatch.types import JSONValue
 
 JSON_PATCH_MEDIA_TYPE = "application/json-patch+json"
@@ -120,7 +122,10 @@ PatchOp = (
     | ToggleOp
     | SwapOp
 )
-PatchBody = list[PatchOp]
+
+
+class JsonPatchBody(RootModel[list[PatchOp]]):
+    pass
 
 
 _CONFIGS: MutableMapping[str, JSONValue] = {
@@ -218,7 +223,13 @@ def _set(doc: Any, ptr: str, value: Any) -> Any:
 
 
 @app.get("/configs/{config_id}", response_model=Any, tags=["configs"])
-def get_config(config_id: str) -> JSONValue:
+def get_config(
+    config_id: str = Path(
+        ...,
+        description="Available configs: site, limits.",
+        example="site",
+    ),
+) -> JSONValue:
     doc = _CONFIGS.get(config_id)
     if doc is None:
         raise HTTPException(status_code=404, detail="config not found")
@@ -229,46 +240,56 @@ def get_config(config_id: str) -> JSONValue:
     "/configs/{config_id}",
     response_model=Any,
     tags=["configs"],
-    summary="Patch a config (baseline + ad-hoc custom ops)",
-    description=(
-        "Standard RFC 6902 ops are delegated to a patch engine. "
-        "Custom ops require a bespoke dispatcher and manual pointer semantics."
-    ),
+    summary="Patch a config",
+    description="Apply standard RFC 6902 ops plus custom ops to a config.",
     openapi_extra={
         "requestBody": {
             "required": True,
             "content": {
                 JSON_PATCH_MEDIA_TYPE: {
+                    "schema": {"$ref": "#/components/schemas/JsonPatchBody"},
                     "examples": {
                         "increment-limit": {
-                            "summary": "Custom: increment a number (manual)",
+                            "summary": "limits: increment max_users",
                             "value": [
                                 {
                                     "op": "increment",
-                                    "path": "/limits/max_users",
+                                    "path": "/max_users",
                                     "value": 2,
                                 }
                             ],
                         },
                         "toggle-flag": {
-                            "summary": "Custom: toggle a boolean (manual)",
-                            "value": [{"op": "toggle", "path": "/site/features/chat"}],
+                            "summary": "limits: toggle trial",
+                            "value": [{"op": "toggle", "path": "/trial"}],
                         },
-                    }
+                        "append-tag": {
+                            "summary": "site: append to tags",
+                            "value": [
+                                {"op": "append", "path": "/tags", "value": "staff"}
+                            ],
+                        },
+                        "swap": {
+                            "summary": "site: swap title and chat flag",
+                            "value": [
+                                {"op": "swap", "a": "/title", "b": "/features/chat"}
+                            ],
+                        },
+                    },
                 },
-                "application/json": {},
+                "application/json": {
+                    "schema": {"$ref": "#/components/schemas/JsonPatchBody"}
+                },
             },
         }
     },
 )
 def patch_config(
     config_id: str,
-    patch: PatchBody = Body(
+    patch: JsonPatchBody = Body(
         ...,
         media_type=JSON_PATCH_MEDIA_TYPE,
-        description=(
-            "Baseline patch body. Prefer Content-Type: application/json-patch+json."
-        ),
+        description="JSON Patch document. Prefer Content-Type: application/json-patch+json.",
     ),
 ) -> JSONValue:
     doc = _CONFIGS.get(config_id)
@@ -280,7 +301,7 @@ def patch_config(
 
     standard_ops: list[dict[str, Any]] = []
 
-    for op in patch:
+    for op in patch.root:
         if isinstance(op, IncrementOp):
             cur = _get(working, op.path)
             if not isinstance(cur, int):
