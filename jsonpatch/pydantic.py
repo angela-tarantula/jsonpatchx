@@ -143,34 +143,17 @@ def make_json_patch_body(
     name: str | None = None,
 ) -> type[_BasePatchBody]:
     """
-    Factory for "plain JSON patch body" Pydantic models, intended for FastAPI/OpenAPI.
-
-    Usage:
-
-        registry = OperationRegistry.with_standard(IncrementOp)
-        ConfigPatchBody = make_json_patch_body(registry, name="ConfigPatch")
-
-        @app.patch("/configs/{config_id}")
-        def patch_config(config_id: str, patch: ConfigPatchBody):
-            doc = load_config(config_id)       # plain dict / JSON
-            updated = patch.apply(doc)         # typed ops, untyped document
-            save_config(config_id, updated)
-            return updated
-
-    If `registry` is omitted, the standard RFC 6902 is used.
+    Factory for FastAPI request-body models whose JSON shape is: [ {op...}, {op...}, ... ].
     """
 
     registry = registry or OperationRegistry.standard()
-    op_union = registry.union
+    registry_union: TypeAliasType = registry.union  # runtime discriminated union
 
-    model_name = name or "JsonPatchBody"
-
-    PatchBodyModel = create_model(
-        model_name,
+    PatchBody = create_model(
+        name or "JsonPatchBody",
         __base__=_BasePatchBody,
-        __root__=(list[op_union], ...),  # type: ignore[valid-type]
+        root=(list[registry_union], ...),  # type: ignore[valid-type]
     )
 
-    PatchBodyModel.__registry__ = registry
-
-    return PatchBodyModel
+    PatchBody.__registry__ = registry
+    return PatchBody
