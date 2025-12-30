@@ -16,10 +16,11 @@ from __future__ import annotations
 from collections.abc import MutableMapping
 from typing import Any
 
-from fastapi import Body, FastAPI, HTTPException, Path, Response
-from pydantic import BaseModel, Field
-
+from fastapi import Body, FastAPI, HTTPException, Path, Request, Response
+from fastapi.responses import JSONResponse
+from pydantic import BaseModel, Field, ValidationError
 from jsonpatch import JsonPatchFor, OperationRegistry, make_json_patch_body
+from jsonpatch.exceptions import PatchError
 from jsonpatch.types import JSONValue
 
 JSON_PATCH_MEDIA_TYPE = "application/json-patch+json"
@@ -32,6 +33,16 @@ app = FastAPI(
         "and OpenAPI generation."
     ),
 )
+
+
+@app.exception_handler(PatchError)
+def patch_error_handler(request: Request, exc: PatchError) -> JSONResponse:
+    return JSONResponse(status_code=400, content={"detail": str(exc)})
+
+
+@app.exception_handler(ValidationError)
+def validation_error_handler(request: Request, exc: ValidationError) -> JSONResponse:
+    return JSONResponse(status_code=422, content={"detail": exc.errors()})
 
 
 class User(BaseModel):
@@ -80,6 +91,20 @@ def get_user(
     tags=["users"],
     summary="Patch a user",
     description="Apply a JSON Patch document to a `User`.",
+    responses={
+        400: {
+            "description": "Patch application error",
+            "content": {
+                "application/json": {
+                    "schema": {
+                        "type": "object",
+                        "properties": {"detail": {"type": "string"}},
+                        "required": ["detail"],
+                    }
+                }
+            },
+        }
+    },
     openapi_extra={
         "requestBody": {
             "required": True,
@@ -151,6 +176,20 @@ def get_config(
     tags=["configs"],
     summary="Patch a config",
     description="Apply a JSON Patch document to a config (`JSONValue`).",
+    responses={
+        400: {
+            "description": "Patch application error",
+            "content": {
+                "application/json": {
+                    "schema": {
+                        "type": "object",
+                        "properties": {"detail": {"type": "string"}},
+                        "required": ["detail"],
+                    }
+                }
+            },
+        }
+    },
     openapi_extra={
         "requestBody": {
             "required": True,

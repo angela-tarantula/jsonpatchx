@@ -15,12 +15,13 @@ import copy
 from collections.abc import MutableMapping
 from typing import Any, Literal
 
-from fastapi import Body, FastAPI, HTTPException, Path, Response
-from pydantic import BaseModel, Field, RootModel
-
+from fastapi import Body, FastAPI, HTTPException, Path, Request, Response
+from fastapi.responses import JSONResponse
+from pydantic import BaseModel, Field, RootModel, ValidationError
 from jsonpatch import (
     apply_patch,  # any JsonPatch library works, but only for standard ops
 )
+from jsonpatch.exceptions import PatchError
 from jsonpatch.types import JSONValue
 
 JSON_PATCH_MEDIA_TYPE = "application/json-patch+json"
@@ -33,6 +34,16 @@ app = FastAPI(
         "but custom ops require a bespoke dispatcher and hand-rolled semantics."
     ),
 )
+
+
+@app.exception_handler(PatchError)
+def patch_error_handler(request: Request, exc: PatchError) -> JSONResponse:
+    return JSONResponse(status_code=400, content={"detail": str(exc)})
+
+
+@app.exception_handler(ValidationError)
+def validation_error_handler(request: Request, exc: ValidationError) -> JSONResponse:
+    return JSONResponse(status_code=422, content={"detail": exc.errors()})
 
 
 # -------------------------
@@ -242,6 +253,20 @@ def get_config(
     tags=["configs"],
     summary="Patch a config",
     description="Apply standard RFC 6902 ops plus custom ops to a config.",
+    responses={
+        400: {
+            "description": "Patch application error",
+            "content": {
+                "application/json": {
+                    "schema": {
+                        "type": "object",
+                        "properties": {"detail": {"type": "string"}},
+                        "required": ["detail"],
+                    }
+                }
+            },
+        }
+    },
     openapi_extra={
         "requestBody": {
             "required": True,

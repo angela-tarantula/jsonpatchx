@@ -25,7 +25,7 @@ class RemoveOp(OperationSchema):
     """RFC 6902 Remove"""
 
     op: Literal["remove"] = "remove"
-    path: JSONPointer[JSONValue] = Field(min_length=1)
+    path: JSONPointer[JSONValue]
 
     @override
     def apply(self, doc: JSONValue) -> JSONValue:

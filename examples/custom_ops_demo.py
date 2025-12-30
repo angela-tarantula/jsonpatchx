@@ -14,10 +14,13 @@ from __future__ import annotations
 from collections.abc import MutableMapping
 from typing import Any
 
-from fastapi import Body, FastAPI, HTTPException, Path, Response
+from fastapi import Body, FastAPI, HTTPException, Path, Request, Response
+from fastapi.responses import JSONResponse
+from pydantic import ValidationError
 
 from examples.custom_ops import AppendOp, ExtendOp, IncrementOp, SwapOp, ToggleBoolOp
 from jsonpatch import OperationRegistry, make_json_patch_body
+from jsonpatch.exceptions import PatchError
 from jsonpatch.types import JSONValue
 
 JSON_PATCH_MEDIA_TYPE = "application/json-patch+json"
@@ -35,6 +38,16 @@ app = FastAPI(
         "validation and OpenAPI generation."
     ),
 )
+
+
+@app.exception_handler(PatchError)
+def patch_error_handler(request: Request, exc: PatchError) -> JSONResponse:
+    return JSONResponse(status_code=400, content={"detail": str(exc)})
+
+
+@app.exception_handler(ValidationError)
+def validation_error_handler(request: Request, exc: ValidationError) -> JSONResponse:
+    return JSONResponse(status_code=422, content={"detail": exc.errors()})
 
 _CONFIGS: MutableMapping[str, JSONValue] = {
     "site": {"title": "Example", "features": {"chat": True}, "tags": ["admin"]},
@@ -62,6 +75,20 @@ def get_config(
     tags=["configs"],
     summary="Patch a config",
     description="Apply standard RFC 6902 ops plus custom ops to a config.",
+    responses={
+        400: {
+            "description": "Patch application error",
+            "content": {
+                "application/json": {
+                    "schema": {
+                        "type": "object",
+                        "properties": {"detail": {"type": "string"}},
+                        "required": ["detail"],
+                    }
+                }
+            },
+        }
+    },
     openapi_extra={
         "requestBody": {
             "required": True,
