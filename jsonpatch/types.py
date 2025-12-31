@@ -226,26 +226,8 @@ def _cached_json_pointer[P](path: str, *, pointer_cls: Callable[..., P]) -> P:
             ) from e
 
 
-def _implements_PointerBackend_protocol(
-    pointer_cls: type,
-) -> TypeGuard[type[PointerBackend]]:
-    try:
-        probe = _cached_json_pointer(path="", pointer_cls=pointer_cls)
-    except TypeError as e:
-        raise InvalidJSONPointer(
-            f"the pointer class {pointer_cls!r} must be hashable"
-        ) from e
-    except Exception as e:
-        raise InvalidJSONPointer(
-            f"invalid pointer class: {pointer_cls!r}, fails to convert  to pointer"
-        ) from e
-
-    return isinstance(probe, PointerBackend)
-
-
 _POINTER_BACKEND_CTX_KEY: Final = "jsonpatch:pointer_backend"
 _DEFAULT_POINTER_CLS: Final = JsonPointer  # pure-Python default
-assert _implements_PointerBackend_protocol(_DEFAULT_POINTER_CLS), "upstream regression"
 
 
 _Nothing = object()
@@ -381,14 +363,7 @@ class JSONPointer(str, Generic[T_co, P_co]):
             )
         if not isinstance(path, str):
             raise InvalidJSONPointer(f"invalid JSON Pointer: {path!r} is not a string")
-        if not cls._is_valid_typeform(expected_type):
-            raise InvalidJSONPointer(
-                f"JSONPointer type parameter {expected_type!r} must be a valid TypeForm"
-            )
-        if not _implements_PointerBackend_protocol(pointer_cls):
-            raise InvalidJSONPointer(
-                f"{pointer_cls!r} instances don't implement the PointerBackend Protocol"
-            )
+        _, __ = cls._parse_pointer_type_args(expected_type, pointer_cls)
 
         obj = str.__new__(cls, path)
         obj._ptr = _cached_json_pointer(path, pointer_cls=pointer_cls)
@@ -400,29 +375,9 @@ class JSONPointer(str, Generic[T_co, P_co]):
         cls, source_type: Any, handler: GetCoreSchemaHandler
     ) -> cs.CoreSchema:
         # Pydantic passes the parameterized type (JSONPointer[JSONValue], JSONPointer[JSONValue, DotPointer]) as source_type
-        args = get_args(source_type)
-        if not args:
-            raise InvalidJSONPointer(
-                "JSONPointer must be parameterized, e.g. JSONPointer[JSONValue]"
-            )
-        elif 2 < len(args):
-            raise InvalidJSONPointer(
-                f"JSONPointer may only have 1 or 2 parameters, got {len(args)}: {args}"
-            )
-        expected_type = cast(object, args[0])
-        if not cls._is_valid_typeform(expected_type):
-            raise InvalidJSONPointer(
-                f"JSONPointer type parameter {expected_type!r} must be a valid TypeForm"
-            )
-        bound_backend: type[PointerBackend] | None = None
-        if len(args) == 2:
-            # Enforce bound_backend ⊂ PointerBackend
-            candidate = cast(type, args[1])
-            if not _implements_PointerBackend_protocol(candidate):
-                raise InvalidJSONPointer(
-                    f"JSONPointer backend parameter {candidate!r} instances must implement the PointerBackend Protocol"
-                )
-            bound_backend = candidate
+        expected_type, bound_backend = cls._parse_pointer_type_args(
+            *get_args(source_type)
+        )
 
         def validator(path: str | Self, info: ValidationInfo) -> Self:
             if not isinstance(
@@ -485,6 +440,34 @@ class JSONPointer(str, Generic[T_co, P_co]):
         return json_schema
 
     @classmethod
+    def _parse_pointer_type_args(
+        cls, *args: Any
+    ) -> tuple[TypeForm[T_co], type[P_co] | None]:
+        if not args:
+            raise InvalidJSONPointer(
+                "JSONPointer must be parameterized, e.g. JSONPointer[JSONValue]"
+            )
+        if 2 < len(args):
+            raise InvalidJSONPointer(
+                f"JSONPointer may only have 1 or 2 parameters, got {len(args)}: {args}"
+            )
+        expected_type = cast(object, args[0])
+        if not cls._is_valid_typeform(expected_type):
+            raise InvalidJSONPointer(
+                f"JSONPointer type parameter {expected_type!r} must be a valid TypeForm"
+            )
+        bound_backend: type[P_co] | None = None
+        if len(args) == 2:
+            # Enforce bound_backend ⊂ PointerBackend
+            candidate = cast(type, args[1])
+            if not cls._implements_PointerBackend_protocol(candidate):
+                raise InvalidJSONPointer(
+                    f"JSONPointer backend parameter {candidate!r} instances must implement the PointerBackend Protocol"
+                )
+            bound_backend = candidate
+        return expected_type, bound_backend
+
+    @classmethod
     def _is_valid_typeform(cls, expected: object) -> TypeGuard[TypeForm[T_co]]:
         """Validate the TypeForm parameter."""
         try:
@@ -492,6 +475,24 @@ class JSONPointer(str, Generic[T_co, P_co]):
         except Exception:
             return False
         return True
+
+    @classmethod
+    def _implements_PointerBackend_protocol(
+        cls,
+        pointer_cls: type,
+    ) -> TypeGuard[type[P_co]]:
+        try:
+            probe = _cached_json_pointer(path="", pointer_cls=pointer_cls)
+        except TypeError as e:
+            raise InvalidJSONPointer(
+                f"the pointer class {pointer_cls!r} must be hashable"
+            ) from e
+        except Exception as e:
+            raise InvalidJSONPointer(
+                f"invalid pointer class: {pointer_cls!r}, fails to convert  to pointer"
+            ) from e
+
+        return isinstance(probe, PointerBackend)
 
     @classmethod
     def _resolve_strictest_backend(
@@ -769,3 +770,8 @@ class JSONPointer(str, Generic[T_co, P_co]):
         if idx > len(array):
             raise PatchApplicationError(f"index out of range: {key!r}")
         return idx
+
+
+assert JSONPointer._implements_PointerBackend_protocol(_DEFAULT_POINTER_CLS), (
+    "upstream regression: jsonpointer.JsonPointer no longer implements PointerBackend protocol"
+)

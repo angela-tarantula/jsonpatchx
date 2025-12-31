@@ -11,9 +11,9 @@ from jsonpatch.schema import OperationSchema
 from jsonpatch.types import (
     _DEFAULT_POINTER_CLS,
     _POINTER_BACKEND_CTX_KEY,
+    JSONPointer,
     JSONValue,
     PointerBackend,
-    _implements_PointerBackend_protocol,
 )
 
 
@@ -100,7 +100,7 @@ class OperationRegistry:
         self._validate_models(*op_schemas)
         self._model_map = self._build_model_map(*op_schemas)
 
-        if not _implements_PointerBackend_protocol(pointer_cls):
+        if not JSONPointer._implements_PointerBackend_protocol(pointer_cls):
             raise InvalidJSONPointer(
                 f"pointer_cls {pointer_cls!r} instances must implement the PointerBackend Protocol"
             )
