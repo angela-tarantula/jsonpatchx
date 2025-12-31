@@ -237,16 +237,19 @@ def _cached_json_pointer[P](path: str, *, pointer_cls: Callable[..., P]) -> P:
             ) from e
 
 
-def _validate_pointer_cls(pointer_cls: Callable[..., Any]) -> None:
+def is_pointer_backend_class(pointer_cls: object) -> TypeGuard[type[PointerBackend]]:
     try:
         probe = _cached_json_pointer(path="", pointer_cls=pointer_cls)
-    except Exception:
-        raise InvalidJSONPointer(f"invalid pointer class: {pointer_cls!r}")
-
-    if not isinstance(probe, PointerBackend):
+    except TypeError as e:
         raise InvalidJSONPointer(
-            f"JSONPointer backend parameter {pointer_cls!r} instances must implement the PointerBackend Protocol"
-        )
+            f"the pointer class {pointer_cls!r} must be hashable"
+        ) from e
+    except Exception as e:
+        raise InvalidJSONPointer(
+            f"invalid pointer class: {pointer_cls!r}, fails to convert  to pointer"
+        ) from e
+
+    return isinstance(probe, PointerBackend)
 
 
 def _type_adapter_for[T](expected: TypeForm[T]) -> TypeAdapter[T]:
@@ -436,12 +439,11 @@ class JSONPointer(str, Generic[T_co, P_co]):
         bound_backend: type[PointerBackend] | None = None
         if len(args) == 2:
             # Enforce bound_backend ⊂ PointerBackend
-            candidate = args[1]
-            if not isclass(candidate):
+            candidate = cast(object, args[1])  # Any -> object so type checkers care
+            if not is_pointer_backend_class(candidate):
                 raise InvalidJSONPointer(
-                    f"JSONPointer backend parameter must be a class, got {candidate!r}"
+                    f"JSONPointer backend parameter {candidate!r} instances must implement the PointerBackend Protocol"
                 )
-            _validate_pointer_cls(candidate)
             bound_backend = candidate
 
         def validator(path: str | Self, info: ValidationInfo) -> Self:
@@ -472,7 +474,6 @@ class JSONPointer(str, Generic[T_co, P_co]):
                         f"registry requires {registry_backend.__name__} but field uses "
                         f"{bound_backend.__name__}"
                     )
-                # _validate_pointer_cls(registry_backend)  # registry_backend is validated in Registry class
                 minimum_subclass = registry_backend
             elif bound_backend is not None:
                 minimum_subclass = bound_backend

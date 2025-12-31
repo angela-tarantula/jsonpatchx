@@ -6,14 +6,14 @@ from typing import Annotated, ClassVar, Literal, Self, TypeAliasType, Union, ove
 from pydantic import Field, TypeAdapter
 
 from jsonpatch.builtins import STANDARD_OPS
-from jsonpatch.exceptions import InvalidOperationRegistry
+from jsonpatch.exceptions import InvalidJSONPointer, InvalidOperationRegistry
 from jsonpatch.schema import OperationSchema
 from jsonpatch.types import (
     _DEFAULT_POINTER_CLS,
     _POINTER_BACKEND_CTX_KEY,
     JSONValue,
     PointerBackend,
-    _validate_pointer_cls,
+    is_pointer_backend_class,
 )
 
 
@@ -100,8 +100,10 @@ class OperationRegistry:
         self._validate_models(*op_schemas)
         self._model_map = self._build_model_map(*op_schemas)
 
-        # validate pointer_cls with path="" as a probe
-        _validate_pointer_cls(pointer_cls)
+        if not is_pointer_backend_class(pointer_cls):
+            raise InvalidJSONPointer(
+                f"pointer_cls {pointer_cls!r} instances must implement the PointerBackend Protocol"
+            )
         self._pointer_cls = pointer_cls
 
         union_type, op_adapter, patch_adapter = self._build_adapters(*op_schemas)
