@@ -13,7 +13,7 @@ from jsonpatch.types import (
     _POINTER_BACKEND_CTX_KEY,
     JSONValue,
     PointerBackend,
-    _json_pointer_for,
+    _validate_pointer_cls,
 )
 
 
@@ -101,7 +101,7 @@ class OperationRegistry:
         self._model_map = self._build_model_map(*op_schemas)
 
         # validate pointer_cls with path="" as a probe
-        _ = _json_pointer_for(path="", pointer_cls=pointer_cls)
+        _validate_pointer_cls(pointer_cls)
         self._pointer_cls = pointer_cls
 
         union_type, op_adapter, patch_adapter = self._build_adapters(*op_schemas)
