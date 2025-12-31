@@ -413,12 +413,17 @@ class JSONPointer(str, Generic[T_co, P_co]):
             raise TypeError(
                 "JSONPointer values are created by Pydantic validation only."
             )
-        if not isinstance(path, str):  # prevent casting
+        if not isinstance(path, str):
             raise InvalidJSONPointer(f"invalid JSON Pointer: {path!r} is not a string")
+        if not is_pointer_backend_class(pointer_cls):
+            raise InvalidJSONPointer(
+                f"{pointer_cls!r} instances don't implement the PointerBackend Protocol"
+            )
+
         obj = str.__new__(cls, path)
         obj._ptr = _cached_json_pointer(path, pointer_cls=pointer_cls)
         obj._type = expected_type
-        _type_adapter_for(expected_type)  # try to cache the adapter
+        _type_adapter_for(expected_type)  # eagerly cache the adapter to fail fast
         return obj
 
     @classmethod
@@ -500,7 +505,7 @@ class JSONPointer(str, Generic[T_co, P_co]):
                 )
                 obj._ptr = _cached_json_pointer(path, pointer_cls=pointer_cls)  # type: ignore[arg-type]
             obj._type = expected_type
-            _type_adapter_for(expected_type)  # try to cache it
+            _type_adapter_for(expected_type)  # eagerly cache the adapter to fail fast
             return obj
 
         return cs.with_info_after_validator_function(
