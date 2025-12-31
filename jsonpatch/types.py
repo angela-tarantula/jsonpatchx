@@ -3,7 +3,6 @@ from __future__ import annotations
 import re
 from collections.abc import Iterable, Sequence
 from functools import lru_cache
-from inspect import isclass
 from typing import (
     Annotated,
     Any,
@@ -461,33 +460,16 @@ class JSONPointer(str, Generic[T_co, P_co]):
 
             # Fetch PointerBackend from the registry's validation context, if present
             ctx = info.context or {}
-            registry_backend = ctx.get(_POINTER_BACKEND_CTX_KEY)
+            registry_backend = cast(
+                type[PointerBackend] | None, ctx.get(_POINTER_BACKEND_CTX_KEY)
+            )
 
-            # Determine the PointerBackend class
-            minimum_subclass: type
-            if registry_backend is not None:
-                # Enforce registry_backend ⊆ bound_backend
-                if not isclass(registry_backend):
-                    raise InvalidJSONPointer(
-                        f"pointer backend context must be a class, got {registry_backend!r}"
-                    )
-                if bound_backend is not None and not issubclass(
-                    registry_backend, bound_backend
-                ):
-                    raise InvalidJSONPointer(
-                        "JSONPointer backend mismatch: "
-                        f"registry requires {registry_backend.__name__} but field uses "
-                        f"{bound_backend.__name__}"
-                    )
-                minimum_subclass = registry_backend
-            elif bound_backend is not None:
-                minimum_subclass = bound_backend
-            else:
-                minimum_subclass = PointerBackend
-
+            strictest_protocol = cls._resolve_strictest_backend(
+                registry_backend, bound_backend
+            )
             # If path is already a JSONPointer with a compatible PointerBackend, don't rebuild.
             if isinstance(path, JSONPointer) and isinstance(
-                path._ptr, minimum_subclass
+                path._ptr, strictest_protocol
             ):
                 return path
 
@@ -495,15 +477,15 @@ class JSONPointer(str, Generic[T_co, P_co]):
             obj = str.__new__(cls, path)
 
             # If path is already a compatible PointerBackend, reuse it
-            if isinstance(path, minimum_subclass):
+            if isinstance(path, strictest_protocol):
                 obj._ptr = cast(P_co, path)
             else:
                 pointer_cls = (
-                    minimum_subclass
-                    if minimum_subclass is not PointerBackend
+                    strictest_protocol
+                    if strictest_protocol is not PointerBackend
                     else _DEFAULT_POINTER_CLS
                 )
-                obj._ptr = _cached_json_pointer(path, pointer_cls=pointer_cls)  # type: ignore[arg-type]
+                obj._ptr = _cached_json_pointer(path, pointer_cls=pointer_cls)
             obj._type = expected_type
             _type_adapter_for(expected_type)  # eagerly cache the adapter to fail fast
             return obj
@@ -528,6 +510,30 @@ class JSONPointer(str, Generic[T_co, P_co]):
             }
         )
         return json_schema
+
+    @classmethod
+    def _resolve_strictest_backend(
+        cls,
+        registry_backend: type[PointerBackend] | None,
+        bound_backend: type[PointerBackend] | None,
+    ) -> type[PointerBackend]:
+        """
+        Determine the strictest PointerBackend class, given optional ``registry_backend`` and ``bound_backend``.
+        """
+        if registry_backend is not None:
+            # Enforce registry_backend ⊆ bound_backend
+            if bound_backend is not None and not issubclass(
+                registry_backend, bound_backend
+            ):
+                raise InvalidJSONPointer(
+                    "JSONPointer backend mismatch: "
+                    f"registry requires {registry_backend.__name__} but field uses "
+                    f"{bound_backend.__name__}"
+                )
+            return registry_backend
+        if bound_backend is not None:
+            return bound_backend
+        return PointerBackend
 
     def _validate_target(self, target: object) -> T_co:
         """
