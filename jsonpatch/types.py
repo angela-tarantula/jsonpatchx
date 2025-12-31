@@ -414,6 +414,10 @@ class JSONPointer(str, Generic[T_co, P_co]):
             )
         if not isinstance(path, str):
             raise InvalidJSONPointer(f"invalid JSON Pointer: {path!r} is not a string")
+        if not cls._is_valid_typeform(expected_type):
+            raise InvalidJSONPointer(
+                f"JSONPointer type parameter {expected_type!r} must be a valid TypeForm"
+            )
         if not is_pointer_backend_class(pointer_cls):
             raise InvalidJSONPointer(
                 f"{pointer_cls!r} instances don't implement the PointerBackend Protocol"
@@ -422,7 +426,6 @@ class JSONPointer(str, Generic[T_co, P_co]):
         obj = str.__new__(cls, path)
         obj._ptr = _cached_json_pointer(path, pointer_cls=pointer_cls)
         obj._type = expected_type
-        _type_adapter_for(expected_type)  # eagerly cache the adapter to fail fast
         return obj
 
     @classmethod
@@ -439,11 +442,15 @@ class JSONPointer(str, Generic[T_co, P_co]):
             raise InvalidJSONPointer(
                 f"JSONPointer may only have 1 or 2 parameters, got {len(args)}: {args}"
             )
-        expected_type: TypeForm[T_co] = cast(TypeForm[T_co], args[0])
+        expected_type = cast(object, args[0])
+        if not cls._is_valid_typeform(expected_type):
+            raise InvalidJSONPointer(
+                f"JSONPointer type parameter {expected_type!r} must be a valid TypeForm"
+            )
         bound_backend: type[PointerBackend] | None = None
         if len(args) == 2:
             # Enforce bound_backend ⊂ PointerBackend
-            candidate = cast(object, args[1])  # Any -> object so type checkers care
+            candidate = cast(object, args[1])
             if not is_pointer_backend_class(candidate):
                 raise InvalidJSONPointer(
                     f"JSONPointer backend parameter {candidate!r} instances must implement the PointerBackend Protocol"
@@ -487,7 +494,6 @@ class JSONPointer(str, Generic[T_co, P_co]):
                 )
                 obj._ptr = _cached_json_pointer(path, pointer_cls=pointer_cls)
             obj._type = expected_type
-            _type_adapter_for(expected_type)  # eagerly cache the adapter to fail fast
             return obj
 
         return cs.with_info_after_validator_function(
@@ -510,6 +516,14 @@ class JSONPointer(str, Generic[T_co, P_co]):
             }
         )
         return json_schema
+
+    @classmethod
+    def _is_valid_typeform(cls, expected: object) -> TypeGuard[TypeForm[T_co]]:
+        try:
+            _type_adapter_for(expected)  # type: ignore[arg-type]
+        except Exception:
+            return False
+        return True
 
     @classmethod
     def _resolve_strictest_backend(
