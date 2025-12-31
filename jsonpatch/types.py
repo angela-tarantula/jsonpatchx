@@ -453,33 +453,48 @@ class JSONPointer(str, Generic[T_co, P_co]):
 
             # Fetch PointerBackend from the registry's validation context, if present
             ctx = info.context or {}
-            ctx_backend = ctx.get(_POINTER_BACKEND_CTX_KEY)
-            if ctx_backend is not None and not isinstance(ctx_backend, type):
-                raise InvalidJSONPointer(
-                    f"pointer backend context must be a class, got {ctx_backend!r}"
-                )
+            registry_backend = cast(
+                type[PointerBackend] | None, ctx.get(_POINTER_BACKEND_CTX_KEY)
+            )
 
-            if bound_backend is not None:
-                if ctx_backend is not None and ctx_backend is not bound_backend:
+            # Determine the PointerBackend class. Enforce registry_backend ⊆ bound_backend ⊂ PointerBackend.
+            minimum_subclass: type[PointerBackend]
+            if registry_backend is not None:
+                if not isinstance(registry_backend, type):
+                    raise InvalidJSONPointer(
+                        f"pointer backend context must be a class, got {registry_backend!r}"
+                    )
+                if bound_backend is not None and not issubclass(
+                    registry_backend, bound_backend
+                ):
                     raise InvalidJSONPointer(
                         "JSONPointer backend mismatch: "
                         f"field requires {bound_backend.__name__} but registry uses "
-                        f"{cast(type[PointerBackend], ctx_backend).__name__}"
+                        f"{registry_backend.__name__}"
                     )
-                pointer_cls = bound_backend
+                minimum_subclass = registry_backend
+            elif bound_backend is not None:
+                minimum_subclass = bound_backend
             else:
-                pointer_cls = cast(
-                    type[PointerBackend],
-                    ctx_backend or _DEFAULT_POINTER_CLS,
-                )
+                minimum_subclass = PointerBackend
 
             # If path is already a JSONPointer with the same PointerBackend, don't rebuild.
-            if isinstance(path, JSONPointer) and isinstance(path._ptr, pointer_cls):
+            if isinstance(path, JSONPointer) and isinstance(
+                path._ptr, minimum_subclass
+            ):
                 return path
 
             # Build
             obj = str.__new__(cls, path)
-            obj._ptr = cast(P_co, _json_pointer_for(path, pointer_cls=pointer_cls))
+            if isinstance(path, minimum_subclass):
+                obj._ptr = path
+            else:
+                pointer_cls = (
+                    minimum_subclass
+                    if minimum_subclass is not PointerBackend
+                    else _DEFAULT_POINTER_CLS
+                )
+                obj._ptr = _json_pointer_for(path, pointer_cls=pointer_cls)
             obj._type = expected_type
             _type_adapter_for(expected_type)  # try to cache it
             return obj
