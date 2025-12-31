@@ -514,9 +514,8 @@ class JSONPointer(str, Generic[T_co, P_co]):
             return False
         return True
 
-    @classmethod
+    @staticmethod
     def _implements_PointerBackend_protocol(
-        cls,
         pointer_cls: type,
     ) -> TypeGuard[type[P_co]]:
         try:
@@ -532,9 +531,8 @@ class JSONPointer(str, Generic[T_co, P_co]):
 
         return isinstance(probe, PointerBackend)
 
-    @classmethod
+    @staticmethod
     def _resolve_strictest_backend(
-        cls,
         registry_backend: type[PointerBackend] | None,
         bound_backend: type[PointerBackend] | None,
     ) -> type[PointerBackend]:
