@@ -7,6 +7,7 @@ from typing import (
     Annotated,
     Any,
     Callable,
+    ClassVar,
     Final,
     Generic,
     Literal,
@@ -38,7 +39,7 @@ from jsonpatch.exceptions import (
     PatchApplicationError,
 )
 
-# Core, Pydantic-aware JSON type aliases
+# Pydantic-aware JSON type aliases
 
 type JSONBoolean = Annotated[bool, Field(strict=True, title="JSON boolean")]
 type _JSONInt = Annotated[int, Field(strict=True)]
@@ -60,6 +61,12 @@ type JSONObject[T_co] = Annotated[
 ]
 type JSONContainer[T_co] = JSONArray[T_co] | JSONObject[T_co]
 
+
+def _is_container(value: JSONValue) -> TypeGuard[JSONContainer[JSONValue]]:
+    """Internal: runtime check for JSON containers (dict/list)."""
+    return isinstance(value, (dict, list))
+
+
 type JSONValue = Annotated[
     JSONPrimitive | JSONContainer[JSONValue],
     Field(description="JSON value"),
@@ -76,17 +83,49 @@ Notes:
     - Pydantic validation is strict (no implicit coercions).
 """
 
-
-def _is_container(value: JSONValue) -> TypeGuard[JSONContainer[JSONValue]]:
-    """Internal: runtime check for JSON containers (dict/list)."""
-    return isinstance(value, (dict, list))
-
-
-# Internal type hints
-
 type _JSONArrayKey = Annotated[int, Ge(0)] | Literal["-"]
 type _JSONObjectKey = str
 type _JSONKey = _JSONArrayKey | _JSONObjectKey
+
+
+# TypeAdapter helpers
+
+
+@lru_cache(maxsize=512)
+def _cached_type_adapter[T](expected: TypeForm[T]) -> TypeAdapter[T]:
+    # https://docs.pydantic.dev/latest/concepts/performance/#typeadapter-instantiated-once
+    return TypeAdapter(expected)
+
+
+def _type_adapter_for[T](expected: TypeForm[T]) -> TypeAdapter[T]:
+    """
+    Internal: return a (usually cached) Pydantic TypeAdapter for a TypeForm.
+
+    JSONPointer uses adapters at apply-time to validate that the resolved target
+    conforms to the pointer's type parameter.
+
+    Adapters are cached for performance when possible. Unhashable TypeForms are supported
+    but cannot be cached.
+    """
+    try:
+        try:
+            return _cached_type_adapter(expected)  # type: ignore[arg-type]
+        except TypeError:
+            # Choice: Don't forbid unhashable typeforms, but don't break an arm supporting them either.
+            # Why: Most TypeForms are hashable, even Annotated[int, json_schema_extra={"dict here": "still hashable"})].
+            #      It's really just cases like Annotated[int, {"dict":"unhashable"}] that are too rare to support for now.
+            return TypeAdapter(expected)
+    except Exception as e:
+        raise InvalidJSONPointer(
+            f"invalid type parameter for JSON Pointer: {expected!r}; did you implement __get_pydantic_core_schema__?"
+        ) from e
+
+
+_JSON_VALUE_ADAPTER: TypeAdapter[JSONValue] = _type_adapter_for(JSONValue)
+# NOTE: not a huge fan of the pydantic error messages for simple cases like _JSON_VALUE_ADAPTER.python_validate({1:2})
+
+
+# PointerBackend helpers
 
 
 @runtime_checkable
@@ -159,55 +198,6 @@ class PointerBackend(Protocol):
         ...
 
 
-_ARRAY_INDEX_PATTERN: re.Pattern[str] = re.compile(r"^(0|[1-9][0-9]*)$")
-
-
-def _parse_JSONArray_key(array: JSONArray[JSONValue], key: str) -> _JSONArrayKey:
-    """
-    Internal: parse a JSON Pointer token as a list index or '-' append marker.
-
-    This helper implements the JSON Patch array-index semantics used by the patch engine:
-    - '-' indicates append
-    - otherwise the token must be a base-10 non-negative integer
-    - index may equal len(array) for append-like behavior (RFC 6902 add semantics)
-    """
-    assert isinstance(array, list), "internal error: _parse_JSONArray_key"
-    if key == "-":
-        return "-"
-    if not _ARRAY_INDEX_PATTERN.fullmatch(key):
-        raise PatchApplicationError(f"invalid array index: {key!r}")
-    idx = int(key)
-    if idx > len(array):
-        raise PatchApplicationError(f"index out of range: {key!r}")
-    return idx
-
-
-def _parse_JSONContainer_key(
-    container: JSONContainer[JSONValue], token: str
-) -> _JSONKey:
-    """
-    Internal: interpret a JSON Pointer token as either a dict key or list index.
-
-    - dict -> token is used as-is
-    - list -> token is parsed as an array key (int or '-')
-    """
-    assert isinstance(container, (dict, list)), (
-        "internal error: _parse_JSONContainer_key"
-    )
-    # NOTE: when type-checker type narrowing improves, refactor this method to return
-    # tuple[JSONArray[JSONValue], _JSONArrayKey] | tuple[JSONObject[JSONValue], _JSONObjectKey].
-    # Currently, type-checkers miss that specificity and coerce to tuple[JSONContainer[JSONValue], _JSONKey]
-    if isinstance(container, dict):
-        return token
-    return _parse_JSONArray_key(container, token)
-
-
-@lru_cache(maxsize=512)
-def _cached_type_adapter[T](expected: TypeForm[T]) -> TypeAdapter[T]:
-    # https://docs.pydantic.dev/latest/concepts/performance/#typeadapter-instantiated-once
-    return TypeAdapter(expected)
-
-
 @lru_cache(maxsize=512)
 def _cached_json_pointer[P](path: str, *, pointer_cls: Callable[..., P]) -> P:
     """
@@ -236,7 +226,9 @@ def _cached_json_pointer[P](path: str, *, pointer_cls: Callable[..., P]) -> P:
             ) from e
 
 
-def is_pointer_backend_class(pointer_cls: object) -> TypeGuard[type[PointerBackend]]:
+def _implements_PointerBackend_protocol(
+    pointer_cls: type,
+) -> TypeGuard[type[PointerBackend]]:
     try:
         probe = _cached_json_pointer(path="", pointer_cls=pointer_cls)
     except TypeError as e:
@@ -251,39 +243,13 @@ def is_pointer_backend_class(pointer_cls: object) -> TypeGuard[type[PointerBacke
     return isinstance(probe, PointerBackend)
 
 
-def _type_adapter_for[T](expected: TypeForm[T]) -> TypeAdapter[T]:
-    """
-    Internal: return a (usually cached) Pydantic TypeAdapter for a TypeForm.
-
-    JSONPointer uses adapters at apply-time to validate that the resolved target
-    conforms to the pointer's type parameter.
-
-    Adapters are cached for performance when possible. Unhashable TypeForms are supported
-    but cannot be cached.
-    """
-    try:
-        try:
-            return _cached_type_adapter(expected)  # type: ignore[arg-type]
-        except TypeError:
-            # Choice: Don't forbid unhashable typeforms, but don't break an arm supporting them either.
-            # Why: Most TypeForms are hashable, even Annotated[int, json_schema_extra={"dict here": "still hashable"})].
-            #      It's really just cases like Annotated[int, {"dict":"unhashable"}] that are too rare to support for now.
-            return TypeAdapter(expected)
-    except Exception as e:
-        raise InvalidJSONPointer(
-            f"invalid type parameter for JSON Pointer: {expected!r}; did you implement __get_pydantic_core_schema__?"
-        ) from e
-
-
-_JSON_VALUE_ADAPTER: TypeAdapter[JSONValue] = _type_adapter_for(JSONValue)
-# NOTE: not a huge fan of the pydantic error messages for simple cases like _JSON_VALUE_ADAPTER.python_validate({1:2})
+_POINTER_BACKEND_CTX_KEY: Final = "jsonpatch:pointer_backend"
+_DEFAULT_POINTER_CLS: Final = JsonPointer  # pure-Python default
+assert _implements_PointerBackend_protocol(_DEFAULT_POINTER_CLS), "upstream regression"
 
 
 _Nothing = object()
 # NOTE: maybe add pydantic_core.MISSING to JSONPointer.get() on failure
-
-_POINTER_BACKEND_CTX_KEY: Final = "jsonpatch:pointer_backend"
-_DEFAULT_POINTER_CLS: Final = JsonPointer  # pure-Python default
 
 
 T_co = TypeVar("T_co", bound=JSONValue, covariant=True)
@@ -361,6 +327,7 @@ class JSONPointer(str, Generic[T_co, P_co]):
 
     __slots__ = ("_ptr", "_type")
 
+    _ARRAY_INDEX_PATTERN: ClassVar[re.Pattern[str]] = re.compile(r"^(0|[1-9][0-9]*)$")
     _ptr: P_co
     _type: TypeForm[T_co]
 
@@ -418,7 +385,7 @@ class JSONPointer(str, Generic[T_co, P_co]):
             raise InvalidJSONPointer(
                 f"JSONPointer type parameter {expected_type!r} must be a valid TypeForm"
             )
-        if not is_pointer_backend_class(pointer_cls):
+        if not _implements_PointerBackend_protocol(pointer_cls):
             raise InvalidJSONPointer(
                 f"{pointer_cls!r} instances don't implement the PointerBackend Protocol"
             )
@@ -450,8 +417,8 @@ class JSONPointer(str, Generic[T_co, P_co]):
         bound_backend: type[PointerBackend] | None = None
         if len(args) == 2:
             # Enforce bound_backend ⊂ PointerBackend
-            candidate = cast(object, args[1])
-            if not is_pointer_backend_class(candidate):
+            candidate = cast(type, args[1])
+            if not _implements_PointerBackend_protocol(candidate):
                 raise InvalidJSONPointer(
                     f"JSONPointer backend parameter {candidate!r} instances must implement the PointerBackend Protocol"
                 )
@@ -519,6 +486,7 @@ class JSONPointer(str, Generic[T_co, P_co]):
 
     @classmethod
     def _is_valid_typeform(cls, expected: object) -> TypeGuard[TypeForm[T_co]]:
+        """Validate the TypeForm parameter."""
         try:
             _type_adapter_for(expected)  # type: ignore[arg-type]
         except Exception:
@@ -670,7 +638,7 @@ class JSONPointer(str, Generic[T_co, P_co]):
             raise PatchApplicationError(
                 f"cannot add value at {str(self)!r} because {self._parent_ptr} resolves to a JSON primitive"
             )
-        key = _parse_JSONContainer_key(container, self.parts[-1])
+        key = self._parse_JSONContainer_key(container, self.parts[-1])
         if isinstance(container, dict):
             container[key] = target
         elif key == "-":
@@ -702,7 +670,7 @@ class JSONPointer(str, Generic[T_co, P_co]):
             container = self._parent_ptr.resolve(doc)
             if not _is_container(container):
                 return False
-            _parse_JSONContainer_key(container, self.parts[-1])
+            self._parse_JSONContainer_key(container, self.parts[-1])
         except Exception:
             return False
         else:
@@ -744,7 +712,7 @@ class JSONPointer(str, Generic[T_co, P_co]):
             assert isinstance(container, (dict, list)), "internal error: remove"
         except Exception as e:
             raise PatchApplicationError(f"path {str(self)!r} not found: {e}") from e
-        key = _parse_JSONContainer_key(container, self.parts[-1])
+        key = self._parse_JSONContainer_key(container, self.parts[-1])
         if key == "-" and not isinstance(container, dict):
             raise PatchApplicationError(
                 f"cannot remove value at {str(self)!r} with key '-'"
@@ -759,3 +727,45 @@ class JSONPointer(str, Generic[T_co, P_co]):
         else:
             type_repr = repr(self._type)
         return f"{self.__class__.__name__}[{type_repr}]({str(self)!r})"
+
+    @classmethod
+    def _parse_JSONContainer_key(
+        cls, container: JSONContainer[JSONValue], token: str
+    ) -> _JSONKey:
+        """
+        Internal: interpret a JSON Pointer token as either a dict key or list index.
+
+        - dict -> token is used as-is
+        - list -> token is parsed as an array key (int or '-')
+        """
+        assert isinstance(container, (dict, list)), (
+            "internal error: _parse_JSONContainer_key"
+        )
+        # NOTE: when type-checker type narrowing improves, refactor this method to return
+        # tuple[JSONArray[JSONValue], _JSONArrayKey] | tuple[JSONObject[JSONValue], _JSONObjectKey].
+        # Currently, type-checkers miss that specificity and coerce to tuple[JSONContainer[JSONValue], _JSONKey]
+        if isinstance(container, dict):
+            return token
+        return cls._parse_JSONArray_key(container, token)
+
+    @classmethod
+    def _parse_JSONArray_key(
+        cls, array: JSONArray[JSONValue], key: str
+    ) -> _JSONArrayKey:
+        """
+        Internal: parse a JSON Pointer token as a list index or '-' append marker.
+
+        This helper implements the JSON Patch array-index semantics used by the patch engine:
+        - '-' indicates append
+        - otherwise the token must be a base-10 non-negative integer
+        - index may equal len(array) for append-like behavior (RFC 6902 add semantics)
+        """
+        assert isinstance(array, list), "internal error: _parse_JSONArray_key"
+        if key == "-":
+            return "-"
+        if not cls._ARRAY_INDEX_PATTERN.fullmatch(key):
+            raise PatchApplicationError(f"invalid array index: {key!r}")
+        idx = int(key)
+        if idx > len(array):
+            raise PatchApplicationError(f"index out of range: {key!r}")
+        return idx
