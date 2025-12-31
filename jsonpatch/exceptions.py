@@ -63,6 +63,8 @@ class PatchApplyFailed(PatchApplicationError):
     This is meant for API layers and debuggability:
     - It points at the exact op index
     - It includes the full op payload (best-effort JSON shape)
+
+    Example: Providing context for a ZeroDivisionError during patch application.
     """
 
     def __init__(
@@ -75,5 +77,5 @@ class PatchApplyFailed(PatchApplicationError):
 
     @staticmethod
     def _format(d: PatchFailureDetail) -> str:
-        op_name = getattr(d.op.model_dump(mode="json", by_alias=True), "op")
+        op_name = getattr(d.op, "op")
         return f"Error applying op[{d.index}] ({op_name}): {d.message}"

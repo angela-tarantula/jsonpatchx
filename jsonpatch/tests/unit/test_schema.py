@@ -1,13 +1,18 @@
-from typing import Literal, override
+from collections.abc import Iterable
+from typing import Any, Literal, cast, override
 
 import pytest
 from pydantic import ValidationError
 from pytest import Subtests
 
-from jsonpatch.exceptions import InvalidOperationRegistry, InvalidOperationSchema
+from jsonpatch.exceptions import (
+    InvalidJSONPointer,
+    InvalidOperationRegistry,
+    InvalidOperationSchema,
+)
 from jsonpatch.registry import OperationRegistry
 from jsonpatch.schema import OperationSchema
-from jsonpatch.types import JSONValue
+from jsonpatch.types import JSONPointer, JSONValue, PointerBackend
 
 
 def test_invalid_operation_schema(subtests: Subtests) -> None:
@@ -180,3 +185,56 @@ def test_patch_schema_parse_happy_path(subtests: Subtests) -> None:
         assert isinstance(op2, ToggleOp)
         assert op1.path == op2.path == "/foo"
         assert op1.value == 1
+
+
+def test_pointer_backend_binding(subtests: Subtests) -> None:
+    class DotPointer(PointerBackend):
+        def __init__(self, pointer: str) -> None:
+            self._parts = [] if pointer == "" else pointer.split(".")
+
+        @property
+        @override
+        def parts(self) -> list[str]:
+            return self._parts
+
+        @classmethod
+        @override
+        def from_parts(cls, parts: Iterable[Any]) -> "DotPointer":
+            return cls(".".join(parts))
+
+        @override
+        def resolve(self, doc: JSONValue) -> Any:
+            cur: Any = doc
+            for token in self._parts:
+                cur = cur[token]
+            return cur
+
+        @override
+        def __str__(self) -> str:
+            return ".".join(self._parts)
+
+    class DotRemoveOp(OperationSchema):
+        op: Literal["dot-remove"] = "dot-remove"
+        path: JSONPointer[JSONValue, DotPointer]
+
+        @override
+        def apply(self, doc: JSONValue) -> JSONValue:
+            return doc
+
+    with subtests.test("direct instantiation uses backend"):
+        op = DotRemoveOp.model_validate({"path": "a.b"})
+        assert isinstance(op.path.ptr, DotPointer)
+
+    with subtests.test("registry backend mismatch fails"):
+        registry = OperationRegistry(DotRemoveOp)
+        with pytest.raises(InvalidJSONPointer):
+            registry.parse_python_op({"op": "dot-remove", "path": "a.b"})
+
+    with subtests.test("registry backend match succeeds"):
+        registry = OperationRegistry(
+            DotRemoveOp, pointer_cls=cast(type[PointerBackend], DotPointer)
+        )
+        op = cast(
+            DotRemoveOp, registry.parse_python_op({"op": "dot-remove", "path": "a.b"})
+        )
+        assert isinstance(op.path.ptr, DotPointer)
