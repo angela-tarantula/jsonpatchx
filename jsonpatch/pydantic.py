@@ -75,7 +75,7 @@ class _BasePatchModel(_RegistryBoundPatchRoot):
         if not self.ops:
             return target
         data = target.model_dump()
-        patched = _apply_ops(self.ops, data)
+        patched = _apply_ops(self.ops, data, inplace=True)
         return self.__target_model__.model_validate(patched)
 
 

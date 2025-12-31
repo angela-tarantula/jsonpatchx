@@ -404,6 +404,7 @@ class JSONPointer(str, Generic[T_co, P_co]):
         pointer_cls: type[PointerBackend] = _DEFAULT_POINTER_CLS,
         **kwargs: object,
     ) -> Self:
+        # NOTE: UPDATE THIS BEFORE RELEASE
         if __name__ != "__main__":
             # Choice: Prevent non-Pydantic instantiation. Enable direct instantion for debugging only.
             # Why: JSONPointer[T] is only meant for Pydantic, why allow otherwise?
