@@ -150,7 +150,7 @@ patch = JsonPatch(patch_ops, registry=my_registry)
 updated = patch.apply(doc)
 ```
 
-Operations may be provided as raw dicts or as instantiated operation models:
+Operations may also be provided as instantiated operation models:
 
 ```py
 patch_ops = [ReplaceOp(path="/foo", value="bar"), RemoveOp(path="/baz")]
