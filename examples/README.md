@@ -23,7 +23,7 @@ uv run python -m examples.standard.cli_apply
 
 ## Setup (once)
 
-- Install FastAPI + Uvicorn: `pip install fastapi uvicorn`
+- Install demo deps: `uv sync --group fastapi`
 - Run commands from the repo root.
 
 ## How to read the demos
@@ -37,7 +37,7 @@ uv run python -m examples.standard.cli_apply
 Use the launcher to start a demo without juggling ports:
 
 ```bash
-python examples/demo.py
+uv run python -m examples.demo
 ```
 
 ## Demo 1: The standard model patch
