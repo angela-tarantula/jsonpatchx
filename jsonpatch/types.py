@@ -41,10 +41,9 @@ from jsonpatch.exceptions import (
 # Pydantic-aware JSON type aliases
 
 type JSONBoolean = Annotated[bool, Field(strict=True, title="JSON boolean")]
-type _JSONInt = Annotated[int, Field(strict=True)]
-type _JSONFloat = Annotated[float, Field(strict=True, allow_inf_nan=False)]
 type JSONNumber = Annotated[
-    _JSONInt | _JSONFloat,
+    Annotated[int, Field(strict=True)]
+    | Annotated[float, Field(strict=True, allow_inf_nan=False)],
     Field(
         title="JSON number",
         description="JSON number: integer or finite float (no NaN/Infinity).",
@@ -52,7 +51,6 @@ type JSONNumber = Annotated[
 ]
 type JSONString = Annotated[str, Field(strict=True, title="JSON string")]
 type JSONNull = Annotated[None, Field(title="JSON null")]
-type JSONPrimitive = JSONBoolean | JSONNumber | JSONString | JSONNull
 
 type JSONArray[T_co] = Annotated[list[T_co], Field(strict=True, title="JSON array")]
 type JSONObject[T_co] = Annotated[
@@ -67,7 +65,12 @@ def _is_container(value: JSONValue) -> TypeGuard[JSONContainer[JSONValue]]:
 
 
 type JSONValue = Annotated[
-    JSONPrimitive | JSONContainer[JSONValue],
+    JSONBoolean
+    | JSONNumber
+    | JSONString
+    | JSONNull
+    | JSONArray[JSONValue]
+    | JSONObject[JSONValue],
     Field(description="JSON value"),
 ]
 """
