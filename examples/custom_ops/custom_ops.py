@@ -27,7 +27,7 @@ _DEMO_UNEXPECTED_ERRORS = os.getenv("JSONPATCH_DEMO_UNEXPECTED_ERRORS", "1") != 
 class IncrementOp(OperationSchema):
     op: Literal["increment"] = "increment"
     path: JSONPointer[JSONNumber]
-    value: JSONNumber = Field(gt=0, multiple_of=1.5)
+    value: JSONNumber = Field(gt=0, multiple_of=5)
 
     @override
     def apply(self, doc: JSONValue) -> JSONValue:

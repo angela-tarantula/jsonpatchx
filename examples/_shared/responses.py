@@ -38,15 +38,30 @@ def patch_error_response(exc: PatchError) -> JSONResponse:
 
 
 def patch_error_responses() -> dict[int, dict[str, Any]]:
+    schema = {
+        "type": "object",
+        "properties": {
+            "detail": {
+                "oneOf": [
+                    {"type": "string"},
+                    {
+                        "type": "object",
+                        "properties": {
+                            "index": {"type": "integer"},
+                            "op": {"type": "object"},
+                            "message": {"type": "string"},
+                            "cause_type": {"type": ["string", "null"]},
+                        },
+                        "required": ["index", "op", "message"],
+                    },
+                ]
+            }
+        },
+        "required": ["detail"],
+    }
     return {
         400: {
             "description": "Patch application error",
-            "content": {
-                "application/json": {
-                    "schema": PatchErrorResponse.model_json_schema(
-                        ref_template="#/components/schemas/{model}"
-                    )
-                }
-            },
+            "content": {"application/json": {"schema": schema}},
         }
     }
