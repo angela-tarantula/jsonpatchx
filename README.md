@@ -117,7 +117,7 @@ An `OperationRegistry` defines:
 
 - which operations are allowed
 - how operations are parsed and validated
-- which JSON Pointer backend is used ([advanced](./README.md#advanced-custom-pointer-backends))
+- which JSON Pointer backend is used ([advanced](#advanced-pointer-backends))
 
 Registries are explicit, immutable, and composable.
 
