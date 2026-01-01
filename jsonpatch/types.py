@@ -486,7 +486,7 @@ class JSONPointer(str, Generic[T_co, P_co]):
         cls, *args: Any
     ) -> tuple[TypeForm[T_co], type[P_co] | None]:
         """Validate the JSONPointer's parameter tuple, e.g. ``(JSONValue, DotPointer)`` for ``JSONPointer[JSONValue, DotPointer]``."""
-        if not (0 <= len(args) <= 2):
+        if not (1 <= len(args) <= 2):
             raise InvalidJSONPointer(
                 f"JSONPointer requires 1 or 2 parameters, e.g. JSONPointer[JSONValue], got {len(args)!r}: {args}"
             )
