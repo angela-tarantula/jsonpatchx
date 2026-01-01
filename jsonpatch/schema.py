@@ -141,6 +141,7 @@ class OperationSchema(BaseModel, ABC):
         ...
 
     @classmethod
+    @override
     def __get_pydantic_json_schema__(
         cls, schema: cs.CoreSchema, handler: GetJsonSchemaHandler
     ) -> dict[str, object]:

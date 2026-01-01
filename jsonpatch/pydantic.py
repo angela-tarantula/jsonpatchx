@@ -8,6 +8,11 @@ from jsonpatch.standard import _apply_ops
 from jsonpatch.types import _JSON_VALUE_ADAPTER, JSONValue
 
 
+def _named_union(name: str, union: TypeAliasType) -> TypeAliasType:
+    """Dynamically name each patch model's union type for clearer OpenAPI output."""
+    return TypeAliasType(name, union.__value__)
+
+
 class _RegistryBoundPatchRoot(RootModel[Any]):
     """
     Internal base for registry-backed JSON Patch RootModels.
@@ -152,7 +157,9 @@ class JsonPatchFor[ModelT: BaseModel]:
         The generated model's root type is ``list[registry.union]`` so Pydantic can parse a
         JSON Patch document into typed operations using discriminated-union dispatch.
         """
-        registry_union: TypeAliasType = registry.union  # runtime discriminated union
+        registry_union: TypeAliasType = _named_union(
+            f"{model.__name__}Operation", registry.union
+        )
 
         PatchModel = create_model(
             f"{model.__name__}Patch",
@@ -185,7 +192,7 @@ class _BasePatchBody(_RegistryBoundPatchRoot):
 def make_json_patch_body(
     registry: OperationRegistry | None = None,
     *,
-    name: str | None = None,
+    name: str = "JsonPatchBody",
 ) -> type[_BasePatchBody]:
     """
     Create a Pydantic model type suitable for a FastAPI request body representing a JSON Patch.
@@ -224,11 +231,10 @@ def make_json_patch_body(
     """
 
     registry = registry or OperationRegistry.standard()
-    registry_union: TypeAliasType = registry.union  # runtime discriminated union
+    registry_union: TypeAliasType = _named_union(f"{name}Operation", registry.union)
 
-    model_name = name or "JsonPatchBody"
     PatchBody = create_model(
-        model_name,
+        name,
         __base__=_BasePatchBody,
         __config__=ConfigDict(
             frozen=True,

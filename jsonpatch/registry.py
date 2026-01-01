@@ -164,19 +164,19 @@ class OperationRegistry:
         """
         Internal: construct the discriminated union type and the cached Pydantic TypeAdapters.
 
-        - ``union_type`` is a runtime-generated ``Annotated[Union[...], Field(discriminator="op")]``.
+        - ``PatchOperation`` is a runtime-generated ``Annotated[Union[...], Field(discriminator="op")]``.
         - ``op_adapter`` validates a single operation.
         - ``patch_adapter`` validates a list of operations (a JSON Patch document).
         """
-        union_type = TypeAliasType(  # dynamic runtime type for Pydantic
-            "PatchOperation",
-            Annotated[Union[tuple(op_schemas)], Field(discriminator="op")],
-        )
-        op_adapter: TypeAdapter[OperationSchema] = TypeAdapter(union_type)
+        type PatchOperation = Annotated[  # type: ignore[valid-type] # dynamic runtime type for Pydantic
+            Union[tuple(op_schemas)],
+            Field(discriminator="op"),
+        ]
+        op_adapter: TypeAdapter[OperationSchema] = TypeAdapter(PatchOperation)
         patch_adapter: TypeAdapter[list[OperationSchema]] = TypeAdapter(
-            list[union_type]
+            list[PatchOperation]
         )
-        return union_type, op_adapter, patch_adapter
+        return PatchOperation, op_adapter, patch_adapter
 
     @property
     def ops_by_name(self) -> Mapping[str, type[OperationSchema]]:
