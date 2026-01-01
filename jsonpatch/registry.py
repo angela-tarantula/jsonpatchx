@@ -168,9 +168,10 @@ class OperationRegistry:
         - ``op_adapter`` validates a single operation.
         - ``patch_adapter`` validates a list of operations (a JSON Patch document).
         """
-        type union_type = Annotated[  # type: ignore[valid-type] # dynamic runtime type for Pydantic
-            Union[tuple(op_schemas)], Field(discriminator="op")
-        ]
+        union_type = TypeAliasType(  # dynamic runtime type for Pydantic
+            "PatchOperation",
+            Annotated[Union[tuple(op_schemas)], Field(discriminator="op")],
+        )
         op_adapter: TypeAdapter[OperationSchema] = TypeAdapter(union_type)
         patch_adapter: TypeAdapter[list[OperationSchema]] = TypeAdapter(
             list[union_type]
@@ -241,7 +242,6 @@ class OperationRegistry:
             strict=True,
             by_alias=True,
             by_name=False,
-            extra="forbid",
             context=self._ctx,
         )
 
@@ -270,7 +270,6 @@ class OperationRegistry:
             strict=True,
             by_alias=True,
             by_name=False,
-            extra="forbid",
             context=self._ctx,
         )
 
@@ -291,7 +290,6 @@ class OperationRegistry:
             strict=True,
             by_alias=True,
             by_name=False,
-            extra="forbid",
             context=self._ctx,
         )
 
@@ -317,7 +315,6 @@ class OperationRegistry:
             strict=True,
             by_alias=True,
             by_name=False,
-            extra="forbid",
             context=self._ctx,
         )
 

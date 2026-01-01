@@ -11,7 +11,8 @@ from typing import (
     override,
 )
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, GetJsonSchemaHandler
+from pydantic_core import core_schema as cs
 
 from jsonpatch.exceptions import InvalidOperationSchema
 from jsonpatch.types import JSONValue
@@ -58,6 +59,7 @@ class OperationSchema(BaseModel, ABC):
     model_config = ConfigDict(
         frozen=True,
         strict=True,
+        extra="forbid",
         revalidate_instances="always",  # necessary for converting custom PointerBackends
     )
 
@@ -137,3 +139,17 @@ class OperationSchema(BaseModel, ABC):
               (see ``_apply_ops(..., inplace=...)``), not by this method.
         """
         ...
+
+    @classmethod
+    def __get_pydantic_json_schema__(
+        cls, schema: cs.CoreSchema, handler: GetJsonSchemaHandler
+    ) -> dict[str, object]:
+        json_schema = handler(schema)
+        # 1. allow users to set "op" defaults, but tell OpenAPI it's required
+        # 2. tell OpenAPI that additionalProperties are forbidden
+        if json_schema.get("type") == "object":
+            required = set(json_schema.get("required", []))
+            required.add("op")
+            json_schema["required"] = sorted(required)
+            json_schema["additionalProperties"] = False
+        return json_schema

@@ -9,17 +9,20 @@ from fastapi import Body, HTTPException, Path
 from examples._shared.app import create_app, patch_request_body
 from examples._shared.media import JSON_PATCH_MEDIA_TYPE
 from examples._shared.responses import patch_error_responses
-from examples._shared.schemas import User
-from examples._shared.store import get_user, save_user
+from examples._shared.schemas import Team, User
+from examples._shared.store import get_team, get_user, save_team, save_user
 from examples.custom_ops import AppendOp, IncrementOp, ToggleBoolOp
 from jsonpatch import JsonPatchFor, OperationRegistry
 
-registry = OperationRegistry.with_standard(IncrementOp, AppendOp, ToggleBoolOp)
-UserPatch = JsonPatchFor[(User, registry)]
+user_registry = OperationRegistry.with_standard(IncrementOp, ToggleBoolOp)
+team_registry = OperationRegistry.with_standard(AppendOp, IncrementOp)
+
+UserPatch = JsonPatchFor[(User, user_registry)]
+TeamPatch = JsonPatchFor[(Team, team_registry)]
 
 app = create_app(
     title="jsonpatch custom ops demo (typed model)",
-    description="Patch a Pydantic model with custom ops registered in a registry.",
+    description="Patch Pydantic models with different custom registries.",
 )
 
 
@@ -55,15 +58,11 @@ def get_user_endpoint(
         examples={
             "increment-quota": {
                 "summary": "Increment user quota",
-                "value": [{"op": "increment", "path": "/quota", "value": 1}],
+                "value": [{"op": "increment", "path": "/quota", "value": 1.5}],
             },
             "toggle-trial": {
                 "summary": "Toggle trial",
                 "value": [{"op": "toggle", "path": "/trial"}],
-            },
-            "append-tag": {
-                "summary": "Append a tag",
-                "value": [{"op": "append", "path": "/tags", "value": "staff"}],
             },
         },
     ),
@@ -81,4 +80,61 @@ def patch_user(
         raise HTTPException(status_code=404, detail="user not found")
     updated = patch.apply(user)
     save_user(user_id, updated)
+    return updated
+
+
+@app.get(
+    "/teams/{team_id}",
+    response_model=Team,
+    tags=["teams"],
+    summary="Get a team",
+    description="Fetch a team by id.",
+)
+def get_team_endpoint(
+    team_id: int = Path(
+        ...,
+        description="Available teams: 1, 2.",
+        examples={"example": {"value": 1}},
+    ),
+) -> Team:
+    team = get_team(team_id)
+    if team is None:
+        raise HTTPException(status_code=404, detail="team not found")
+    return team
+
+
+@app.patch(
+    "/teams/{team_id}",
+    response_model=Team,
+    tags=["teams"],
+    summary="Patch a team",
+    description="Apply a JSON Patch document to a Team model.",
+    responses=patch_error_responses(),
+    openapi_extra=patch_request_body(
+        "#/components/schemas/TeamPatch",
+        examples={
+            "append-tag": {
+                "summary": "Append a tag",
+                "value": [{"op": "append", "path": "/tags", "value": "infra"}],
+            },
+            "increment-max": {
+                "summary": "Increment max_members",
+                "value": [{"op": "increment", "path": "/max_members", "value": 1.5}],
+            },
+        },
+    ),
+)
+def patch_team(
+    team_id: int,
+    patch: TeamPatch = Body(
+        ...,
+        description="JSON Patch document. Prefer Content-Type: application/json-patch+json.",
+        media_type=JSON_PATCH_MEDIA_TYPE,
+    ),
+) -> Team:
+    team = get_team(team_id)
+    if team is None:
+        raise HTTPException(status_code=404, detail="team not found")
+    updated = patch.apply(team)
+    save_team(team_id, updated)
     return updated

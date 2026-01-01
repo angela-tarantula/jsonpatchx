@@ -4,7 +4,7 @@ from collections.abc import Callable
 from typing import Any
 
 from fastapi import Depends, FastAPI, HTTPException, Request
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, RedirectResponse
 from pydantic import ValidationError
 
 from jsonpatch.exceptions import PatchError
@@ -16,6 +16,11 @@ from .responses import patch_error_response
 def create_app(*, title: str, description: str, version: str = "0.1.0") -> FastAPI:
     app = FastAPI(title=title, description=description, version=version)
     install_error_handlers(app)
+
+    @app.get("/", include_in_schema=False)
+    def _root_redirect() -> RedirectResponse:
+        return RedirectResponse(url="/docs")
+
     return app
 
 

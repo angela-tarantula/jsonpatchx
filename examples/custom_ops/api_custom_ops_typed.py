@@ -4,7 +4,7 @@ Custom ops demo: registry-driven parsing and typed pointer semantics.
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, Literal, override
 
 from fastapi import Body, HTTPException, Path
 
@@ -20,11 +20,28 @@ from examples.custom_ops import (
     SwapOp,
     ToggleBoolOp,
 )
-from jsonpatch import OperationRegistry, make_json_patch_body
-from jsonpatch.types import JSONValue
+from jsonpatch import OperationRegistry, RemoveOp, make_json_patch_body
+from jsonpatch.schema import OperationSchema
+from jsonpatch.types import JSONNumber, JSONPointer, JSONValue
+
+
+class RemoveNumberOp(OperationSchema):
+    op: Literal["remove_number"] = "remove_number"
+    path: JSONPointer[JSONNumber]
+
+    @override
+    def apply(self, doc: JSONValue) -> JSONValue:
+        return RemoveOp(path=self.path).apply(doc)
+
 
 registry = OperationRegistry.with_standard(
-    IncrementOp, AppendOp, ExtendOp, ToggleBoolOp, SwapOp, EnsureObjectOp
+    IncrementOp,
+    AppendOp,
+    ExtendOp,
+    ToggleBoolOp,
+    SwapOp,
+    EnsureObjectOp,
+    RemoveNumberOp,
 )
 ConfigPatch = make_json_patch_body(registry, name="ConfigPatchWithCustomOps")
 
@@ -85,6 +102,10 @@ def get_config_endpoint(
             "swap": {
                 "summary": "site: swap title and chat flag",
                 "value": [{"op": "swap", "a": "/title", "b": "/features/chat"}],
+            },
+            "type-gated-remove": {
+                "summary": "demo: type-gated remove (expected failure)",
+                "value": [{"op": "remove_number", "path": "/title"}],
             },
             "swap-same": {
                 "summary": "demo: unexpected exception wrapping",

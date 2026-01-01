@@ -9,8 +9,6 @@ Highlights
 
 from __future__ import annotations
 
-from typing import Literal, override
-
 from fastapi import Body, HTTPException, Path
 
 from examples._shared.app import (
@@ -22,31 +20,15 @@ from examples._shared.media import JSON_PATCH_MEDIA_TYPE
 from examples._shared.responses import patch_error_responses
 from examples._shared.schemas import User
 from examples._shared.store import get_user, save_user
-from jsonpatch import JsonPatchFor, OperationRegistry
-from jsonpatch.schema import OperationSchema
-from jsonpatch.types import JSONNumber, JSONPointer, JSONValue
+from jsonpatch import JsonPatchFor
 
 STRICT_JSON_PATCH = False
 
-
-class RemoveNumberOp(OperationSchema):
-    op: Literal["remove_number"] = "remove_number"
-    path: JSONPointer[JSONNumber]
-
-    @override
-    def apply(self, doc: JSONValue) -> JSONValue:
-        return self.path.remove(doc)
-
-
-registry = OperationRegistry.with_standard(RemoveNumberOp)
-UserPatch = JsonPatchFor[(User, registry)]
+UserPatch = JsonPatchFor[User]
 
 app = create_app(
     title="jsonpatch standard demo (typed model)",
-    description=(
-        "Patch a Pydantic model with JsonPatchFor[User]. Includes a demo op to show "
-        "type-gated pointer semantics."
-    ),
+    description=("Patch a Pydantic model with JsonPatchFor[User]."),
 )
 
 
@@ -87,10 +69,6 @@ def get_user_endpoint(
             "append-tag": {
                 "summary": "Append a tag",
                 "value": [{"op": "add", "path": "/tags/-", "value": "staff"}],
-            },
-            "type-gated-remove": {
-                "summary": "Type-gated remove (expected failure)",
-                "value": [{"op": "remove_number", "path": "/tags"}],
             },
         },
     ),
