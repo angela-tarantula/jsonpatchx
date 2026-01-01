@@ -16,7 +16,7 @@ Typical use cases:
 - FastAPI services that want high-quality OpenAPI schemas for PATCH bodies
 - Applications that rely on LLM-generated or LLM-reviewed patch operations
 
-**Non-goal**: This is not a minimal or high-performance patch applicator.
+Non-goal: This is not a minimal or high-performance patch applicator.
 
 ## Getting Started
 
@@ -35,7 +35,8 @@ python -m pip install --upgrade pip uv
 1. Clone the repository
 
 ```sh
-git clone https://github.com/angela-tarantula/json-patch
+git clone https://github.com/angela-tarantula/jsonpatch
+cd jsonpatch
 ```
 
 2. Install the dependencies
@@ -68,7 +69,7 @@ class ToggleOp(OperationSchema):
         return ReplaceOp(path=self.path, value=not current).apply(doc)
 ```
 
-Operations fail **loudly and eagerly** when contracts are violated.
+Operations fail loudly and eagerly when contracts are violated.
 
 ### Typed JSON Pointers
 

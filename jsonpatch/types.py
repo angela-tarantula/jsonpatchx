@@ -493,6 +493,10 @@ class JSONPointer(str, Generic[T_co, P_co]):
         type_param = cast(object, args[0])
         bound_backend: type | None = cast(type, args[1]) if len(args) == 2 else None
 
+        # Protocol itself doesn't count
+        if bound_backend is PointerBackend:
+            bound_backend = None
+
         if not cls._is_valid_typeform(type_param):
             raise InvalidJSONPointer(
                 f"JSONPointer type parameter {type_param!r} must be a valid TypeForm"
