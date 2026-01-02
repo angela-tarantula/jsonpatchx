@@ -210,10 +210,10 @@ def make_json_patch_body(
         Typed ops applied to an untyped document:
 
         >>> registry = OperationRegistry.with_standard(IncrementOp)
-        >>> CustomPatchBody = make_json_patch_body(registry, name="Custom")
+        >>> CustomPatch = make_json_patch_body(registry, name="Custom")
 
         >>> @app.patch("/configs/{config_id}")
-        ... def patch_config(config_id: str, patch: CustomPatchBody):
+        ... def patch_config(config_id: str, patch: CustomPatch):
         ...     doc = load_config(config_id)
         ...     updated = patch.apply(doc)
         ...     save_config(config_id, updated)

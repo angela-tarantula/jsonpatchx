@@ -17,7 +17,7 @@ from jsonpatch import OperationRegistry, make_json_patch_body
 from jsonpatch.types import JSONValue
 
 registry = OperationRegistry.with_standard(pointer_cls=DotPointer)
-DotPointerPatch = make_json_patch_body(registry, name="DotPointerPatch")
+DotPointerPatch = make_json_patch_body(registry, name="DotPointer")
 
 app = create_app(
     title="jsonpatch pointer backend demo",
@@ -55,7 +55,7 @@ def get_config_endpoint(
     description="Use dot-separated pointers like 'features.chat'.",
     responses=patch_error_responses(),
     openapi_extra=patch_request_body(
-        "#/components/schemas/DotPointerPatch",
+        "#/components/schemas/DotPointer",
         examples={
             "dot-pointer": {
                 "summary": "site: replace chat flag",
