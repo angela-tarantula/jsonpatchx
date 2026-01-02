@@ -1,5 +1,5 @@
 """
-Custom ops demo: model-aware patching with JsonPatchFor[(User, registry)].
+Custom ops demo: model-aware patching with JsonPatchFor[User, registry].
 """
 
 from __future__ import annotations
@@ -17,8 +17,8 @@ from jsonpatch import JsonPatchFor, OperationRegistry
 user_registry = OperationRegistry.with_standard(IncrementOp, ToggleBoolOp)
 team_registry = OperationRegistry.with_standard(AppendOp, IncrementOp)
 
-UserPatch = JsonPatchFor[(User, user_registry)]
-TeamPatch = JsonPatchFor[(Team, team_registry)]
+UserPatch = JsonPatchFor[User, user_registry]
+TeamPatch = JsonPatchFor[Team, team_registry]
 
 app = create_app(
     title="jsonpatch custom ops demo (typed model)",

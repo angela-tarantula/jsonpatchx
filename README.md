@@ -170,7 +170,7 @@ from jsonpatch import JsonPatchFor, OperationRegistry
 app = FastAPI()
 
 registry = OperationRegistry.with_standard(ToggleOp)
-UserPatch = JsonPatchFor[(User, registry)]
+UserPatch = JsonPatchFor[User, registry]
 
 
 @app.patch("/users/{user_id}")

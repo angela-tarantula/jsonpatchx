@@ -1,4 +1,4 @@
-from typing import Any, ClassVar, Self, TypeAliasType, cast, override
+from typing import Any, ClassVar, Generic, Self, TypeAliasType, TypeVar, cast, override
 
 from pydantic import BaseModel, ConfigDict, RootModel, create_model
 
@@ -84,7 +84,11 @@ class _BasePatchModel(_RegistryBoundPatchRoot):
         return self.__target_model__.model_validate(patched)
 
 
-class JsonPatchFor[ModelT: BaseModel]:
+ModelT = TypeVar("ModelT", bound=BaseModel)
+RegistryU = TypeVar("RegistryU", bound=OperationRegistry, default=OperationRegistry)
+
+
+class JsonPatchFor(Generic[ModelT, RegistryU]):
     """
     Factory for creating typed JSON Patch models for a specific Pydantic model.
 
@@ -106,11 +110,11 @@ class JsonPatchFor[ModelT: BaseModel]:
         Custom operations or pointer backend (registry-scoped):
 
     >>> registry = OperationRegistry.with_standard(IncrementOp, pointer_cls=MyPointer)
-    >>> UserPatch = JsonPatchFor[(User, registry)]
+    >>> UserPatch = JsonPatchFor[User, registry]
 
     Notes:
         ``JsonPatchFor[...]`` accepts either ``JsonPatchFor[MyModel]`` (standard registry) or
-        ``JsonPatchFor[(MyModel, registry)]`` (explicit ``OperationRegistry``). The returned type is a
+        ``JsonPatchFor[MyModel, registry]`` (explicit ``OperationRegistry``). The returned type is a
         dynamically generated ``pydantic.RootModel`` subclass whose JSON shape is a top-level list.
     """
 
@@ -121,12 +125,12 @@ class JsonPatchFor[ModelT: BaseModel]:
         Create a registry-bound patch RootModel type for the given target model.
 
         This is the implementation behind ``JsonPatchFor[Model]`` and
-        ``JsonPatchFor[(Model, registry)]``.
+        ``JsonPatchFor[Model, registry]``.
         """
         if isinstance(param, tuple):
             if len(param) != 2:
                 raise TypeError(
-                    "JsonPatchFor[(Model, registry)] expects exactly two items"
+                    "JsonPatchFor[Model, registry] expects exactly two items"
                 )
             model, registry = param
         else:
@@ -140,7 +144,7 @@ class JsonPatchFor[ModelT: BaseModel]:
 
         if not isinstance(registry, OperationRegistry):
             raise TypeError(
-                "JsonPatchFor[(Model, registry)] second argument must be an OperationRegistry, "
+                "JsonPatchFor[Model, registry] second argument must be an OperationRegistry, "
                 f"got {type(registry).__name__}"
             )
 

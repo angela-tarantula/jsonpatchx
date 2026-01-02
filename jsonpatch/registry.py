@@ -1,7 +1,16 @@
 from collections.abc import Mapping, Sequence, Set
 from inspect import isabstract, isclass
 from types import MappingProxyType
-from typing import Annotated, ClassVar, Literal, Self, TypeAliasType, Union, override
+from typing import (
+    Annotated,
+    ClassVar,
+    Final,
+    Literal,
+    Self,
+    TypeAliasType,
+    Union,
+    override,
+)
 
 from pydantic import Field, TypeAdapter
 
