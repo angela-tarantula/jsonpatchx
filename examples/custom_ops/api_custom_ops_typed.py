@@ -43,7 +43,7 @@ registry = OperationRegistry.with_standard(
     EnsureObjectOp,
     RemoveNumberOp,
 )
-ConfigPatch = make_json_patch_body(registry, name="ConfigPatchWithCustomOps")
+CustomPatch = make_json_patch_body(registry, name="Custom")
 
 app = create_app(
     title="jsonpatch custom ops demo",
@@ -81,7 +81,7 @@ def get_config_endpoint(
     description="Apply standard RFC 6902 ops plus custom ops to a config.",
     responses=patch_error_responses(),
     openapi_extra=patch_request_body(
-        "#/components/schemas/ConfigPatchWithCustomOps",
+        "#/components/schemas/Custom",
         examples={
             "increment-limit": {
                 "summary": "limits: increment max_users",
@@ -116,7 +116,7 @@ def get_config_endpoint(
 )
 def patch_config(
     config_id: str,
-    patch: ConfigPatch = Body(
+    patch: CustomPatch = Body(
         ...,
         description="JSON Patch document. Prefer Content-Type: application/json-patch+json.",
         media_type=JSON_PATCH_MEDIA_TYPE,

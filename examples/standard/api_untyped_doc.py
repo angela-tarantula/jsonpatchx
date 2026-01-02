@@ -15,7 +15,7 @@ from examples._shared.store import get_config, save_config
 from jsonpatch import OperationRegistry, make_json_patch_body
 from jsonpatch.types import JSONValue
 
-ConfigPatch = make_json_patch_body(OperationRegistry.standard(), name="ConfigPatch")
+StandardPatch = make_json_patch_body(OperationRegistry.standard(), name="Standard")
 
 app = create_app(
     title="jsonpatch standard demo (untyped doc)",
@@ -54,7 +54,7 @@ def get_config_endpoint(
     description="Apply a JSON Patch document to a JSONValue config.",
     responses=patch_error_responses(),
     openapi_extra=patch_request_body(
-        "#/components/schemas/ConfigPatch",
+        "#/components/schemas/Standard",
         examples={
             "insert-first": {
                 "summary": "Insert the first feature",
@@ -65,7 +65,7 @@ def get_config_endpoint(
 )
 def patch_config(
     config_id: str,
-    patch: ConfigPatch = Body(
+    patch: StandardPatch = Body(
         ...,
         description="JSON Patch document. Prefer Content-Type: application/json-patch+json.",
         media_type=JSON_PATCH_MEDIA_TYPE,

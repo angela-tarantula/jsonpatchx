@@ -158,7 +158,7 @@ class JsonPatchFor[ModelT: BaseModel]:
         JSON Patch document into typed operations using discriminated-union dispatch.
         """
         registry_union: TypeAliasType = _named_union(
-            f"{model.__name__}Operation", registry.union
+            f"{model.__name__}PatchOperation", registry.union
         )
 
         PatchModel = create_model(
@@ -210,10 +210,10 @@ def make_json_patch_body(
         Typed ops applied to an untyped document:
 
         >>> registry = OperationRegistry.with_standard(IncrementOp)
-        >>> ConfigPatchBody = make_json_patch_body(registry, name="ConfigPatch")
+        >>> CustomPatchBody = make_json_patch_body(registry, name="Custom")
 
         >>> @app.patch("/configs/{config_id}")
-        ... def patch_config(config_id: str, patch: ConfigPatchBody):
+        ... def patch_config(config_id: str, patch: CustomPatchBody):
         ...     doc = load_config(config_id)
         ...     updated = patch.apply(doc)
         ...     save_config(config_id, updated)
@@ -231,10 +231,12 @@ def make_json_patch_body(
     """
 
     registry = registry or OperationRegistry.standard()
-    registry_union: TypeAliasType = _named_union(f"{name}Operation", registry.union)
+    registry_union: TypeAliasType = _named_union(
+        f"{name}PatchOperation", registry.union
+    )
 
     PatchBody = create_model(
-        name,
+        f"{name}Patch",
         __base__=_BasePatchBody,
         __config__=ConfigDict(
             frozen=True,

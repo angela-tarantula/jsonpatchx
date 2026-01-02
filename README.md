@@ -195,11 +195,11 @@ from jsonpatch.types import JSONValue
 app = FastAPI()
 
 registry = OperationRegistry.with_standard(ToggleOp)
-ConfigPatch = make_json_patch_body(registry, name="ConfigPatch")
+CustomPatch = make_json_patch_body(registry, name="Custom")
 
 
 @app.patch("/configs/{config_id}")
-def patch_config(config_id: str, patch: ConfigPatch = Body(...)) -> JSONValue:
+def patch_config(config_id: str, patch: CustomPatch = Body(...)) -> JSONValue:
     doc = load_config(config_id)
     return patch.apply(doc)
 ```
