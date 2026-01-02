@@ -25,7 +25,7 @@ uv run python -m examples.demo
 
 **Run**
 
-- `uvicorn examples.demo1:app --reload --port 8000`
+- `uv run uvicorn examples.demo1:app --reload --port 8000`
 
 **Try these requests**
 
@@ -47,7 +47,7 @@ uv run python -m examples.demo
 
 **Run**
 
-- `uvicorn examples.demo2:app --reload --port 8001`
+- `uv run uvicorn examples.demo2:app --reload --port 8001`
 
 **Try these requests**
 
@@ -71,7 +71,7 @@ uv run python -m examples.demo
 
 **Run**
 
-- `uvicorn examples.demo3:app --reload --port 8002`
+- `uv run uvicorn examples.demo3:app --reload --port 8002`
 
 **Try these requests**
 
@@ -90,7 +90,7 @@ uv run python -m examples.demo
 
 **Run**
 
-- `uvicorn examples.demo4:app --reload --port 8003`
+- `uv run uvicorn examples.demo4:app --reload --port 8003`
 
 **Try these requests**
 

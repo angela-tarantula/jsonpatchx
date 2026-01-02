@@ -1,7 +1,7 @@
 # json-patch
 [![CI](https://github.com/angela-tarantula/jsonpatch/actions/workflows/python-app.yml/badge.svg?branch=main)](https://github.com/marketplace/actions/super-linter)
 
-A typed JSON Patch (RFC 6902) engine for Python, built for explicit runtime semantics, custom operations,
+A typed JSON Patch ([RFC 6902](https://datatracker.ietf.org/doc/html/rfc6902)) engine for Python, built for explicit runtime semantics, custom operations,
 and clean FastAPI/OpenAPI integration.
 
 ## About
@@ -102,10 +102,12 @@ These types allow you to reason about JSON structure rather than Python primitiv
 - `JSONObject[T]`
 - `JSONValue` (any JSON value)
 
-`JSONPointer[T]` is **covariant**, meaning stricter types survive composition. If a custom op uses a
-`JSONPointer[JSONBoolean]`, it maintains that numeric constraint even when passed to a generic `ReplaceOp`.
+#### Covariance
 
-Additional JSONPointer helpers:
+`JSONPointer[T]` is covariant, meaning stricter types survive composition. If a custom op uses a
+`JSONPointer[JSONNumber]`, it maintains that numeric constraint even when passed to a generic `ReplaceOp`.
+
+#### Additional JSONPointer Helpers
 
 - `parts`: Access unescaped pointer path tokens
 - `type_param`: Inspect the pointer's expected type
