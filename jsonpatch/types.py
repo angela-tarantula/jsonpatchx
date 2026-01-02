@@ -467,7 +467,9 @@ class JSONPointer(str, Generic[T_co, P_co]):
         )
         return cs.with_info_after_validator_function(
             function=validator_function,
-            schema=cs.union_schema([cs.is_instance_schema(JSONPointer), cs.str_schema(strict=True)]),
+            schema=cs.union_schema(
+                [cs.is_instance_schema(JSONPointer), cs.str_schema(strict=True)]
+            ),
         )
 
     @classmethod
@@ -743,14 +745,20 @@ class JSONPointer(str, Generic[T_co, P_co]):
                 f"path {self._parent_ptr} resolves to a JSON primitive"
             )
         key = _parse_JSONContainer_key(container, self.parts[-1])
-        if key == "-" and not isinstance(container, dict):
-            raise PatchApplicationError(
-                f"cannot remove value at {str(self)!r} with key '-'"
-            )
-        elif isinstance(container, list) and key == len(container):
-            raise PatchApplicationError(f"index out of range: {key!r}")
-        self._validate_target(container[key])  # type: ignore[index]
-        del container[key]  # type: ignore[arg-type]
+        if isinstance(container, list):
+            if key == "-":
+                raise PatchApplicationError(
+                    f"cannot remove value at {str(self)!r} with key '-'"
+                )
+            elif key == len(container):
+                raise PatchApplicationError(f"index out of range: {key!r}")
+        elif isinstance(container, dict):
+            if key not in container:
+                raise PatchApplicationError(
+                    f"target {key!r} does not exist in object at path {self._parent_ptr}"
+                )
+        self._validate_target(container[key])
+        del container[key]
         return doc
 
     @override
