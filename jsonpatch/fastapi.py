@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Callable
-from typing import Any
+from typing import Any, cast
 
 from fastapi import Body, Depends, FastAPI, HTTPException, Request
 from fastapi.exceptions import RequestValidationError
@@ -229,6 +229,6 @@ def _register_patch_schema(app: FastAPI, patch_model: type[_BasePatchBody]) -> N
             _register(schema)
             return schema
 
-        app.openapi = wrapped_openapi  # type: ignore[method-assign]
+        cast(Any, app).openapi = wrapped_openapi
     else:
-        app.openapi = custom_openapi  # type: ignore[method-assign]
+        cast(Any, app).openapi = custom_openapi
