@@ -196,7 +196,7 @@ class _BasePatchBody(_RegistryBoundPatchRoot):
 def make_json_patch_body(
     registry: OperationRegistry | None = None,
     *,
-    name: str = "JsonPatchBody",
+    name: str,
 ) -> type[_BasePatchBody]:
     """
     Create a Pydantic model type suitable for a FastAPI request body representing a JSON Patch.
