@@ -54,7 +54,7 @@ def get_config_endpoint(
     description="Apply a JSON Patch document to a JSONValue config.",
     responses=patch_error_responses(),
     openapi_extra=patch_request_body(
-        "#/components/schemas/Standard",
+        "#/components/schemas/StandardPatch",
         examples={
             "insert-first": {
                 "summary": "Insert the first feature",

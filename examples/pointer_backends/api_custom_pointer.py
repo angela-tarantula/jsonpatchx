@@ -55,7 +55,7 @@ def get_config_endpoint(
     description="Use dot-separated pointers like 'features.chat'.",
     responses=patch_error_responses(),
     openapi_extra=patch_request_body(
-        "#/components/schemas/DotPointer",
+        "#/components/schemas/DotPointerPatch",
         examples={
             "dot-pointer": {
                 "summary": "site: replace chat flag",
