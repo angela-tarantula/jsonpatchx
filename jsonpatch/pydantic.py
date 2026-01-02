@@ -9,7 +9,7 @@ from jsonpatch.types import _JSON_VALUE_ADAPTER, JSONValue
 
 
 def _named_union(name: str, union: TypeAliasType) -> TypeAliasType:
-    """Dynamically name each patch model's union type for clearer OpenAPI output."""
+    """Dynamically name each patch model's union type for clearer OpenAPI output, not for static analysis."""
     return TypeAliasType(name, union.__value__)
 
 

@@ -215,6 +215,8 @@ class OperationRegistry:
         Pydantic RootModel request body). Treat it as an implementation detail unless you are
         building custom Pydantic models around the registry.
         """
+        # In a perfect world, OperationRegistry would be generic in a covariant union type,
+        # but that union is created dynamically at runtime and only Pydantic can consume it.
         return self._union_type
 
     @property

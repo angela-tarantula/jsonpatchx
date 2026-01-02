@@ -45,64 +45,56 @@ cd jsonpatch
 uv sync
 ```
 
-## Core concepts (with examples)
+## Core Concepts
 
-### Operations as schemas
+### Operations as Schemas
 
-Each patch operation is a Pydantic model with explicit fields, validation, and `apply()` semantics.
+Each operation is a Pydantic model. This means you get explicit fields, validation, and clear `apply()` semantics out of the box.
+
+```py
+class ReplaceOp(OperationSchema):
+    op: Literal["replace"] = "replace"
+    path: JSONPointer[JSONValue]
+    value: JSONValue
+
+    @override
+    def apply(self, doc: JSONValue) -> JSONValue:
+        doc = RemoveOp(path=self.path).apply(doc)
+        return AddOp(path=self.path, value=self.value).apply(doc)
+```
+
+### Typed JSON Pointers
+
+`JSONPointer[T]` enforces **what** a path may point to, not just **where** it points.
+Operations fail loudly if the runtime type contract is violated.
 
 ```py
 from typing import Literal, override
-
 from jsonpatch import ReplaceOp
 from jsonpatch.schema import OperationSchema
 from jsonpatch.types import JSONBoolean, JSONPointer, JSONValue
 
-
 class ToggleOp(OperationSchema):
     op: Literal["toggle"] = "toggle"
-    path: JSONPointer[JSONBoolean]
+    path: JSONPointer[JSONBoolean]  # Path MUST point to a boolean
 
     @override
     def apply(self, doc: JSONValue) -> JSONValue:
-        current = self.path.get(doc)
+        current = self.path.get(doc) # Returns a JSONBoolean
         return ReplaceOp(path=self.path, value=not current).apply(doc)
-```
-
-Operations fail loudly and eagerly when contracts are violated.
-
-### Typed JSON Pointers
-
-`JSONPointer[T]` enforces *what* a path may point to, not just *where* it points.
-Operations fail loudly when the runtime type contract is violated.
-
-```py
-from typing import Literal
-
-from jsonpatch.schema import OperationSchema
-from jsonpatch.types import JSONNumber, JSONPointer
-
-
-class ReplaceNumber(OperationSchema):
-    op: Literal["replace_number"] = "replace_number"
-    path: JSONPointer[JSONNumber]
-    value: JSONNumber
-
-    @override
-    def apply(self, doc: JSONValue) -> JSONValue:
-        current = self.path.get(doc)
-        return ReplaceOp(path=self.path, value=self.value).apply(doc)
 ```
 
 At runtime:
 
-- `get(doc)` validates the resolved value is a `T`
+- `get(doc)` validates the resolved value matches type `T`
 - `add(doc, value)` validates the value before writing
-- `remove(doc)` validates the target before removal
+- `remove(doc)` validates the value before removal
 
-Helper types are provided to let you reason about JSON, not Python:
+#### Supported Helper Types
 
-- `JSONBoolean`
+These types allow you to reason about JSON structure rather than Python primitives:
+
+- `JSONBoolean` 
 - `JSONNumber` (excludes bool)
 - `JSONString`
 - `JSONNull`
@@ -110,17 +102,25 @@ Helper types are provided to let you reason about JSON, not Python:
 - `JSONObject[T]`
 - `JSONValue` (any JSON value)
 
-`JSONPointer[T]` is covariant in `T`, so composed operations can preserve strict pointer guarantees.
+`JSONPointer[T]` is **covariant**, meaning stricter types survive composition. If a custom op uses a
+`JSONPointer[JSONBoolean]`, it maintains that numeric constraint even when passed to a generic `ReplaceOp`.
 
-### Operation registries
+Additional JSONPointer helpers:
+
+- `parts`: Access unescaped pointer path tokens
+- `type_param`: Inspect the pointer's expected type
+- `is_root()`: Check if the pointer is the document root
+- `is_parent_of(other)`: Check for pointer ancestry
+- `is_gettable(doc)`: Safety check before resolution
+- `is_addable(doc, value=..., validate_value=True)`: Safety check before modification
+
+### Operation Registries
 
 An `OperationRegistry` defines:
 
 - which operations are allowed
 - how operations are parsed and validated
 - which JSON Pointer backend is used ([advanced](#advanced-pointer-backends))
-
-Registries are explicit, immutable, and composable.
 
 ```py
 from jsonpatch import AddOp, MoveOp, OperationRegistry
@@ -132,83 +132,99 @@ custom_registry = OperationRegistry.with_standard(ToggleOp)
 
 The registry is the vocabulary of your PATCH API.
 
-### Applying a patch
+### Applying a Patch
 
-`JsonPatch` parses and applies a patch document to a JSON value.
+The `JsonPatch` class handles the parsing and execution.
 
 ```py
 from jsonpatch import JsonPatch
 from jsonpatch.types import JSONValue
 
-doc = {"title": "Example", "trial": False}
+doc = {"title": "Example", "active": False}
 
-patch_ops = [
-    {"op": "replace", "path": "/foo", "value": "bar"},
-    {"op": "remove", "path": "/baz"}
-]
+# 1. Using dictionaries
+patch_ops = [{"op": "replace", "path": "/title", "value": "Updated"}]
 
-patch = JsonPatch(patch_ops, registry=my_registry)
+# 2. Using instantiated models
+# patch_ops = [ReplaceOp(path="/title", value="Updated")]
+
+# 3. From a JSON string
+# patch = JsonPatch.from_string('[{"op": "toggle", "path": "/active"}]')
+
+patch = JsonPatch(patch_ops, registry=custom_registry)
 updated = patch.apply(doc)
 ```
 
-Operations may also be provided as instantiated operation models:
+## Framework Integration (FastAPI/OpenAPI)
 
-```py
-patch_ops = [ReplaceOp(path="/foo", value="bar"), RemoveOp(path="/baz")]
-```
+### Model-Aware Patching
 
-Or as JSON-serialized String:
-
-```py
-patch_ops = '[{"op": "replace", "path": "/foo", "value": "bar"}, {"op": "remove", "path": "/baz"}]'
-patch = JsonPatch.from_string(patch_ops)
-```
-
-### FastAPI integration
-
-`JsonPatchFor[Model]` generates a Pydantic RootModel for patching a specific BaseModel
-and validates the patched output back into that model.
+Use `JsonPatchFor[Model]` when targeting a Pydantic model. This generates a `RootModel`
+bound to that model, ensuring your OpenAPI documentation reflects the specific schema.
 
 ```py
 from fastapi import Body, FastAPI
-
 from jsonpatch import JsonPatchFor, OperationRegistry
 
 app = FastAPI()
-
-registry = OperationRegistry.with_standard(ToggleOp)
+registry = OperationRegistry.with_standard(ConcatenateOp)
 UserPatch = JsonPatchFor[User, registry]
-
 
 @app.patch("/users/{user_id}")
 def patch_user(user_id: int, patch: UserPatch = Body(...)) -> User:
-    # This endpoint is validated against User + the custom registry.
     user = get_user(user_id)
     return patch.apply(user)
 ```
 
-The OpenAPI schema for the PATCH body reflects the allowed operations and their fields.
+### Plain JSON Patching
 
-### Untyped JSON patching
-
-For untyped JSON documents, use `make_json_patch_body`.
+Use `make_json_patch_body` when patching raw JSON (dicts/lists) rather than models.
 
 ```py
 from fastapi import Body, FastAPI
-
 from jsonpatch import OperationRegistry, make_json_patch_body
 from jsonpatch.types import JSONValue
 
 app = FastAPI()
-
-registry = OperationRegistry.with_standard(ToggleOp)
-CustomPatch = make_json_patch_body(registry, name="Custom")
-
+registry = OperationRegistry.with_standard(DeduplicateOp, IncrementOp)
+CustomPatch = make_json_patch_body(registry, name="CustomConfig")
 
 @app.patch("/configs/{config_id}")
 def patch_config(config_id: str, patch: CustomPatch = Body(...)) -> JSONValue:
     doc = load_config(config_id)
     return patch.apply(doc)
+```
+
+### OpenAPI Customization
+
+Leverage `ConfigDict` and `model_validator` to create sophisticated, well-documented operations.
+
+```py
+from typing import Literal, Self
+from pydantic import ConfigDict, model_validator
+from jsonpatch import AddOp, InvalidOperationSchema, JSONValue, OperationSchema
+from jsonpatch.types import JSONPointer
+
+
+class SwapOp(OperationSchema):
+    model_config = ConfigDict(
+        title="Swap operation",
+        json_schema_extra={"description": "Swaps values at paths a and b."}
+    )
+    op: Literal["swap"] = "swap"
+    a: JSONPointer[JSONValue]
+    b: JSONPointer[JSONValue]
+
+    @model_validator(mode="after")
+    def _reject_proper_prefixes(self) -> Self:
+        if self.a.is_parent_of(self.b) or self.b.is_parent_of(self.a):
+            raise InvalidOperationSchema("Paths cannot be prefixes of each other.")
+        return self
+
+    def apply(self, doc: JSONValue) -> JSONValue:
+        val_a, val_b = self.a.get(doc), self.b.get(doc)
+        doc = AddOp(path=self.a, value=val_b).apply(doc)
+        return AddOp(path=self.b, value=val_a).apply(doc)
 ```
 
 ## Demos
@@ -221,11 +237,11 @@ See [`examples/README.md`](./examples/README.md) for the FastAPI demo suite, inc
 - pointer backends with context injection
 
 
-## Advanced: pointer backends
+## Advanced: Pointer Backends
 
 The engine is JSON Pointer backend-agnostic.
 
-To support alternative semantics (dot notation, custom escaping, relative pointers),
+To support alternative semantics (dot notation, custom escaping, relative pointers, etc),
 implement `PointerBackend` and supply it to a registry.
 
 ```py
@@ -234,13 +250,13 @@ from jsonpatch.types import PointerBackend
 
 
 class DotPointer(PointerBackend):
-    def __init__(self, pointer: str) -> None: ...
+    def __init__(self, pointer): ...
     @property
-    def parts(self): ...
+    def parts(self):...
     @classmethod
     def from_parts(cls, parts): ...
     def resolve(self, doc): ...
-    def __str__(self) -> str: ...
+    def __str__(self): ...
 
 
 registry = OperationRegistry.with_standard(pointer_cls=DotPointer)
@@ -248,7 +264,7 @@ registry = OperationRegistry.with_standard(pointer_cls=DotPointer)
 
 This changes pointer parsing and traversal without modifying any operations.
 
-### Backend access & binding
+### Backend Access & Binding
 
 - `JSONPointer.ptr` exposes the parsed backend instance for advanced use cases
 - `JSONPointer[T, Backend]` binds a backend at the type level
@@ -256,37 +272,25 @@ This changes pointer parsing and traversal without modifying any operations.
 Backend selection is still scoped by the registry, allowing different APIs
 to use different pointer semantics safely.
 
-### Integration with FastAPI
+### FastAPI Limitation: Validation Context
 
-> NOTE: This feature is fully implemented but consider it unstable API for now.
+FastAPI does not currently pass Pydantic validation context for request bodies, which
+registry-scoped backends require. Use the provided helper as a workaround:
 
-FastAPI does not currently provide Pydantic validation context for request bodies, which means
-registry-scoped pointer backends won't be applied automatically when parsing input. As a workaround,
-use the FastAPI helper that injects the registry context during validation:
+> NOTE: Features in jsonpatch.fastapi are currently considered unstable.
 
 ```py
 from fastapi import Depends, FastAPI
+from pointerlibrary import DotPointer
 
 from jsonpatch import OperationRegistry
-from jsonpatch.fastapi import (
-    JSON_PATCH_MEDIA_TYPE,
-    make_json_patch_body_with_dep,
-)
-from jsonpatch.types import JSONValue, PointerBackend
-
-
-class DotPointer(PointerBackend):
-    def __init__(self, pointer: str) -> None: ...
-    @property
-    def parts(self): ...
-    @classmethod
-    def from_parts(cls, parts): ...
-    def resolve(self, doc): ...
-    def __str__(self) -> str: ...
+from jsonpatch.types import JSONValue
+from jsonpatch.fastapi import make_json_patch_body_with_dep, JSON_PATCH_MEDIA_TYPE
 
 
 app = FastAPI()
 registry = OperationRegistry.with_standard(pointer_cls=DotPointer)
+
 PatchBody, PatchDepends, openapi_extra = make_json_patch_body_with_dep(
     registry,
     name="DotPointer",
@@ -294,11 +298,9 @@ PatchBody, PatchDepends, openapi_extra = make_json_patch_body_with_dep(
     app=app,
 )
 
-
-@app.patch("/configs/{config_id}", openapi_extra=openapi_extra)
-def patch_config(config_id: str, patch: PatchBody = Depends(PatchDepends)) -> JSONValue:
-    doc = load_config(config_id)
-    return patch.apply(doc)
+@app.patch("/configs/{id}", openapi_extra=openapi_extra)
+def patch_config(id: str, patch: PatchBody = Depends(PatchDepends)) -> JSONValue:
+    return patch.apply(load_config(id))
 ```
 
 Limitation reference: FastAPI does not expose a request-body validation context today.
