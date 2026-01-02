@@ -46,7 +46,7 @@ type JSONNumber = Annotated[
     | Annotated[float, Field(strict=True, allow_inf_nan=False)],
     Field(
         title="JSON number",
-        description="JSON number: integer or finite float (no NaN/Infinity).",
+        description="integer or finite float (no NaN/Infinity).",
     ),
 ]
 type JSONString = Annotated[str, Field(strict=True, title="JSON string")]
@@ -71,7 +71,7 @@ type JSONValue = Annotated[
     | JSONNull
     | JSONArray[JSONValue]
     | JSONObject[JSONValue],
-    Field(description="JSON value"),
+    Field(title="JSON value"),
 ]
 """
 Pydantic-friendly type representing a strict JSON value.
