@@ -4,7 +4,6 @@ from types import MappingProxyType
 from typing import (
     Annotated,
     ClassVar,
-    Final,
     Literal,
     Self,
     TypeAliasType,
