@@ -467,7 +467,7 @@ class JSONPointer(str, Generic[T_co, P_co]):
         )
         return cs.with_info_after_validator_function(
             function=validator_function,
-            schema=cs.str_schema(strict=True),
+            schema=cs.union_schema([cs.is_instance_schema(JSONPointer), cs.str_schema(strict=True)]),
         )
 
     @classmethod
