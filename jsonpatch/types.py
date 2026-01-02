@@ -669,7 +669,7 @@ class JSONPointer(str, Generic[T_co, P_co]):
             raise PatchApplicationError(f"path {str(self)!r} not found: {e}") from e
         if not _is_container(container):
             raise PatchApplicationError(
-                f"path {self._parent_ptr} resolves to a JSON primitive"
+                f"path {str(self._parent_ptr)!r} resolves to a JSON primitive"
             )
         key = _parse_JSONContainer_key(container, self.parts[-1])
         if isinstance(container, dict):
@@ -742,7 +742,7 @@ class JSONPointer(str, Generic[T_co, P_co]):
             raise PatchApplicationError(f"path {str(self)!r} not found: {e}") from e
         if not _is_container(container):
             raise PatchApplicationError(
-                f"path {self._parent_ptr} resolves to a JSON primitive"
+                f"path {str(self._parent_ptr)!r} resolves to a JSON primitive"
             )
         key = _parse_JSONContainer_key(container, self.parts[-1])
         if isinstance(container, list):
@@ -755,7 +755,7 @@ class JSONPointer(str, Generic[T_co, P_co]):
         elif isinstance(container, dict):
             if key not in container:
                 raise PatchApplicationError(
-                    f"target {key!r} does not exist in object at path {self._parent_ptr}"
+                    f"target {key!r} does not exist in object at path {str(self._parent_ptr)!r}"
                 )
         self._validate_target(container[key])
         del container[key]
