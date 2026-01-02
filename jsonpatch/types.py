@@ -667,7 +667,7 @@ class JSONPointer(str, Generic[T_co, P_co]):
             raise PatchApplicationError(f"path {str(self)!r} not found: {e}") from e
         if not _is_container(container):
             raise PatchApplicationError(
-                f"cannot add value at {str(self)!r} because {self._parent_ptr} resolves to a JSON primitive"
+                f"path {self._parent_ptr} resolves to a JSON primitive"
             )
         key = _parse_JSONContainer_key(container, self.parts[-1])
         if isinstance(container, dict):
@@ -734,15 +734,14 @@ class JSONPointer(str, Generic[T_co, P_co]):
             # Why: Keeps the system composable, predictable, and closed over JSONValue.
             #      It affects few users, who themselves can circumvent with custom ops.
             return None
-        if not self.is_gettable(doc):
-            raise PatchApplicationError(
-                f"cannot remove a missing value at {str(self)!r}"
-            )
         try:
-            container = cast(JSONContainer[JSONValue], self._parent_ptr.resolve(doc))
-            assert isinstance(container, (dict, list)), "internal error: remove"
+            container = self._parent_ptr.resolve(doc)
         except Exception as e:
             raise PatchApplicationError(f"path {str(self)!r} not found: {e}") from e
+        if not _is_container(container):
+            raise PatchApplicationError(
+                f"path {self._parent_ptr} resolves to a JSON primitive"
+            )
         key = _parse_JSONContainer_key(container, self.parts[-1])
         if key == "-" and not isinstance(container, dict):
             raise PatchApplicationError(
