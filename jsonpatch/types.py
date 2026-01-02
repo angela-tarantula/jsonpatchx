@@ -747,6 +747,10 @@ class JSONPointer(str, Generic[T_co, P_co]):
             raise PatchApplicationError(
                 f"cannot remove value at {str(self)!r} with key '-'"
             )
+        elif isinstance(container, list) and key == len(container):
+            raise PatchApplicationError(
+                f"index out of range: {key!r}"
+            )
         del container[key]  # type: ignore[arg-type]
         return doc
 
