@@ -749,6 +749,7 @@ class JSONPointer(str, Generic[T_co, P_co]):
             )
         elif isinstance(container, list) and key == len(container):
             raise PatchApplicationError(f"index out of range: {key!r}")
+        self._validate_target(container[key])  # type: ignore[index]
         del container[key]  # type: ignore[arg-type]
         return doc
 
