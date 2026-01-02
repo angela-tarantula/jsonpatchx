@@ -70,7 +70,11 @@ def get_config_endpoint(
     openapi_extra=openapi_extra,
 )
 def patch_config(
-    config_id: str,
+    config_id: str = Path(
+        ...,
+        description="Available configs: site, limits.",
+        examples={"example": {"value": "site"}},
+    ),
     patch: DotPointerPatch = Depends(DotPointerPatchDepends),
 ) -> JSONValue:
     doc = get_config(config_id)

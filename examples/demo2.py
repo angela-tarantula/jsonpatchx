@@ -76,7 +76,11 @@ def get_user_endpoint(
     ),
 )
 def patch_user(
-    user_id: int,
+    user_id: int = Path(
+        ...,
+        description="Available users: 1, 2.",
+        examples={"example": {"value": 1}},
+    ),
     patch: UserPatch = Body(
         ...,
         description="JSON Patch document. Prefer Content-Type: application/json-patch+json.",
@@ -133,7 +137,11 @@ def get_team_endpoint(
     ),
 )
 def patch_team(
-    team_id: int,
+    team_id: int = Path(
+        ...,
+        description="Available teams: 1, 2.",
+        examples={"example": {"value": 1}},
+    ),
     patch: TeamPatch = Body(
         ...,
         description="JSON Patch document. Prefer Content-Type: application/json-patch+json.",

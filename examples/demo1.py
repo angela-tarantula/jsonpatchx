@@ -67,7 +67,11 @@ def get_user_endpoint(
     dependencies=patch_content_type_dependency(STRICT_JSON_PATCH),
 )
 def patch_user(
-    user_id: int,
+    user_id: int = Path(
+        ...,
+        description="Available users: 1, 2.",
+        examples={"example": {"value": 1}},
+    ),
     patch: UserPatch = Body(
         ...,
         description="JSON Patch document. Prefer Content-Type: application/json-patch+json.",

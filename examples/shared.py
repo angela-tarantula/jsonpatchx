@@ -7,7 +7,7 @@ from typing import Any, Literal, Self
 
 from fastapi import FastAPI
 from fastapi.responses import RedirectResponse
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from jsonpatch import (
     AddOp,
@@ -171,6 +171,16 @@ class EnsureObjectOp(OperationSchema):
 
 
 class SwapOp(OperationSchema):
+    model_config = ConfigDict(
+        title="Swap operation",
+        json_schema_extra={
+            "description": (
+                "Swaps the values at paths a and b. "
+                "Paths a and b may not be proper prefixes of each other."
+            )
+        },
+    )
+
     op: Literal["swap"] = "swap"
     a: JSONPointer[JSONValue]
     b: JSONPointer[JSONValue]

@@ -99,7 +99,11 @@ def get_config_endpoint(
     ),
 )
 def patch_config(
-    config_id: str,
+    config_id: str = Path(
+        ...,
+        description="Available configs: site, limits.",
+        examples={"example": {"value": "site"}},
+    ),
     patch: CustomPatch = Body(
         ...,
         description="JSON Patch document. Prefer Content-Type: application/json-patch+json.",
