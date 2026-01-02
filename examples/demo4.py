@@ -1,5 +1,5 @@
 """
-Custom pointer backend demo: dot-separated pointers.
+Demo 4: registry-scoped pointer backend with FastAPI dependency injection.
 """
 
 from __future__ import annotations
@@ -8,32 +8,35 @@ from typing import Any
 
 from fastapi import Depends, HTTPException, Path
 
-from examples._shared.app import create_app
-from examples._shared.media import JSON_PATCH_MEDIA_TYPE
-from examples._shared.responses import patch_error_responses
-from examples._shared.store import get_config, save_config
-from examples.pointer_backends.simple_backend import DotPointer
-from jsonpatch import OperationRegistry, make_json_patch_body_with_dep
-from jsonpatch.types import JSONValue
+from examples.shared import (
+    JSON_PATCH_MEDIA_TYPE,
+    DotPointer,
+    create_app,
+    get_config,
+    save_config,
+)
+from jsonpatch import JSONValue, OperationRegistry
+from jsonpatch.fastapi import make_json_patch_body_with_dep, patch_error_responses
+
+app = create_app(
+    title="jsonpatch demo 4 (pointer backends)",
+    description=(
+        "Registry-scoped pointer backends change parsing semantics without changing ops."
+    ),
+)
 
 registry = OperationRegistry.with_standard(pointer_cls=DotPointer)
 DotPointerPatch, DotPointerPatchDepends, openapi_extra = make_json_patch_body_with_dep(
     registry,
     name="DotPointer",
     media_type=JSON_PATCH_MEDIA_TYPE,
+    app=app,
     examples={
         "dot-pointer": {
             "summary": "site: replace chat flag",
             "value": [{"op": "replace", "path": "features.chat", "value": False}],
         }
     },
-)
-
-app = create_app(
-    title="jsonpatch pointer backend demo",
-    description=(
-        "Registry-scoped pointer backends change parsing semantics without changing ops."
-    ),
 )
 
 

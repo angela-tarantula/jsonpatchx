@@ -1,18 +1,26 @@
 """
-Custom ops demo: model-aware patching with JsonPatchFor[User, registry].
+Demo 2: custom ops bound to Pydantic models.
 """
 
 from __future__ import annotations
 
 from fastapi import Body, HTTPException, Path
 
-from examples._shared.app import create_app, patch_request_body
-from examples._shared.media import JSON_PATCH_MEDIA_TYPE
-from examples._shared.responses import patch_error_responses
-from examples._shared.schemas import Team, User
-from examples._shared.store import get_team, get_user, save_team, save_user
-from examples.custom_ops import AppendOp, IncrementOp, ToggleBoolOp
+from examples.shared import (
+    JSON_PATCH_MEDIA_TYPE,
+    AppendOp,
+    IncrementOp,
+    Team,
+    ToggleBoolOp,
+    User,
+    create_app,
+    get_team,
+    get_user,
+    save_team,
+    save_user,
+)
 from jsonpatch import JsonPatchFor, OperationRegistry
+from jsonpatch.fastapi import patch_error_responses, patch_request_body
 
 user_registry = OperationRegistry.with_standard(IncrementOp, ToggleBoolOp)
 team_registry = OperationRegistry.with_standard(AppendOp, IncrementOp)
@@ -21,8 +29,8 @@ UserPatch = JsonPatchFor[User, user_registry]
 TeamPatch = JsonPatchFor[Team, team_registry]
 
 app = create_app(
-    title="jsonpatch custom ops demo (typed model)",
-    description="Patch Pydantic models with different custom registries.",
+    title="jsonpatch demo 2 (model + custom ops)",
+    description="Custom registries bound to Pydantic models.",
 )
 
 
@@ -51,14 +59,14 @@ def get_user_endpoint(
     response_model=User,
     tags=["users"],
     summary="Patch a user",
-    description="Apply a JSON Patch document to a User model.",
+    description="Apply custom ops to a User model.",
     responses=patch_error_responses(),
     openapi_extra=patch_request_body(
         "#/components/schemas/UserPatch",
         examples={
             "increment-quota": {
                 "summary": "Increment user quota",
-                "value": [{"op": "increment", "path": "/quota", "value": 1.5}],
+                "value": [{"op": "increment", "path": "/quota", "value": 10}],
             },
             "toggle-trial": {
                 "summary": "Toggle trial",
@@ -108,7 +116,7 @@ def get_team_endpoint(
     response_model=Team,
     tags=["teams"],
     summary="Patch a team",
-    description="Apply a JSON Patch document to a Team model.",
+    description="Apply custom ops to a Team model.",
     responses=patch_error_responses(),
     openapi_extra=patch_request_body(
         "#/components/schemas/TeamPatch",
@@ -119,7 +127,7 @@ def get_team_endpoint(
             },
             "increment-max": {
                 "summary": "Increment max_members",
-                "value": [{"op": "increment", "path": "/max_members", "value": 1.5}],
+                "value": [{"op": "increment", "path": "/max_members", "value": 5}],
             },
         },
     ),

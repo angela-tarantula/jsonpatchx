@@ -1,143 +1,105 @@
 # Examples: jsonpatch demo suite
 
-A focused set of demos showing how to use jsonpatch for typed, registry-driven patching.
-Baselines are an afterthought: use them only if you want to sanity-check the contrast.
-
-## Quick start (30-second tour)
-
-Run the CLI demo to see the core patch engine without any server:
-
-```bash
-uv run python -m examples.standard.cli_apply
-```
-
-## Table of contents
-
-- [Demo 1: The standard model patch](#demo-1-the-standard-model-patch)
-- [Demo 2: Untyped document patching](#demo-2-untyped-document-patching)
-- [Demo 3: First-class custom operations](#demo-3-first-class-custom-operations)
-- [Demo 4: Custom ops + Pydantic models](#demo-4-custom-ops--pydantic-models)
-- [Demo 5: Custom pointer backends](#demo-5-custom-pointer-backends)
-- [Baselines (optional)](#baselines-optional)
-- [Extras](#extras)
+Four focused FastAPI demos. Each demo is a standalone file that reads cleanly in Swagger UI.
 
 ## Setup (once)
 
 - Install demo deps: `uv sync --group fastapi`
 - Run commands from the repo root.
 
-## How to read the demos
+## Quick links
 
 - Swagger: `http://127.0.0.1:PORT/docs`
 - OpenAPI JSON: `http://127.0.0.1:PORT/openapi.json`
 - ReDoc: `http://127.0.0.1:PORT/redoc`
 
-## Demo launcher (quality-of-life)
-
-Use the launcher to start a demo without juggling ports:
+## Demo launcher
 
 ```bash
 uv run python -m examples.demo
 ```
 
-## Demo 1: The standard model patch
+## Demo 1: typed model patching
 
-**Goal:** patch a Pydantic model with full type safety.
-
-**File:** `examples.standard.api_typed_model`
-
-**Feature:** `JsonPatchFor[User]` generates a discriminated union in OpenAPI.
+**File:** `examples/demo1.py`
 
 **Run**
 
-- `uvicorn examples.standard.api_typed_model:app --reload --port 8000`
+- `uvicorn examples.demo1:app --reload --port 8000`
 
-**Links**
+**Try these requests**
 
-- `http://127.0.0.1:8000/docs`
-- `http://127.0.0.1:8000/openapi.json`
+- `GET http://127.0.0.1:8000/users/1`
+- `PATCH http://127.0.0.1:8000/users/1`
+  - Body:
+    ```json
+    [{"op": "replace", "path": "/name", "value": "Morgan"}]
+    ```
+- `PATCH http://127.0.0.1:8000/users/1`
+  - Body:
+    ```json
+    [{"op": "add", "path": "/tags/-", "value": "staff"}]
+    ```
 
-## Demo 2: Untyped document patching
+## Demo 2: model-bound custom ops
 
-**Goal:** apply typed operations to raw JSON/Dict documents.
-
-**File:** `examples.standard.api_untyped_doc`
-
-**Feature:** `make_json_patch_body` for flexible JSON schemas.
-
-**Run**
-
-- `uvicorn examples.standard.api_untyped_doc:app --reload --port 8001`
-
-**Links**
-
-- `http://127.0.0.1:8001/docs`
-- `http://127.0.0.1:8001/openapi.json`
-
-## Demo 3: First-class custom operations
-
-**Goal:** add domain-specific ops like increment or toggle.
-
-**File:** `examples.custom_ops.api_custom_ops_typed`
-
-**Feature:** custom ops appear in OpenAPI with their own schemas.
+**File:** `examples/demo2.py`
 
 **Run**
 
-- `uvicorn examples.custom_ops.api_custom_ops_typed:app --reload --port 8002`
+- `uvicorn examples.demo2:app --reload --port 8001`
 
-**Links**
+**Try these requests**
 
-- `http://127.0.0.1:8002/docs`
-- `http://127.0.0.1:8002/openapi.json`
+**Try these requests**
 
-## Demo 4: Custom ops + Pydantic models
+- `GET http://127.0.0.1:8001/users/1`
+- `PATCH http://127.0.0.1:8001/users/1`
+  - Body:
+    ```json
+    [{"op": "increment", "path": "/quota", "value": 10}]
+    ```
+- `PATCH http://127.0.0.1:8001/teams/1`
+  - Body:
+    ```json
+    [{"op": "append", "path": "/tags", "value": "infra"}]
+    ```
 
-**Goal:** bind custom registries to specific Pydantic models.
+## Demo 3: custom ops on JSON documents
 
-**File:** `examples.custom_ops.api_custom_ops_model`
-
-**Feature:** registry-driven dispatch with model-aware validation.
-
-**Run**
-
-- `uvicorn examples.custom_ops.api_custom_ops_model:app --reload --port 8003`
-
-**Links**
-
-- `http://127.0.0.1:8003/docs`
-- `http://127.0.0.1:8003/openapi.json`
-
-## Demo 5: Custom pointer backends
-
-**Goal:** change how paths are parsed (e.g., using dot.notation).
-
-**File:** `examples.pointer_backends.api_custom_pointer`
-
-**Feature:** registry-scoped backends swap pointer logic without changing ops.
+**File:** `examples/demo3.py`
 
 **Run**
 
-- `uvicorn examples.pointer_backends.api_custom_pointer:app --reload --port 8004`
+- `uvicorn examples.demo3:app --reload --port 8002`
 
-**Links**
+**Try these requests**
 
-- `http://127.0.0.1:8004/docs`
-- `http://127.0.0.1:8004/openapi.json`
+**Try these requests**
 
----
+- `GET http://127.0.0.1:8002/configs/site`
+- `PATCH http://127.0.0.1:8002/configs/limits`
+  - Body:
+    ```json
+    [{"op": "increment", "path": "/max_users", "value": 10}]
+    ```
 
-## Baselines (optional)
+## Demo 4: pointer backends with context injection
 
-These are only here for contrast. They are intentionally incomplete.
+**File:** `examples/demo4.py`
 
-- Loose schema: `uvicorn examples.baselines.average.api_loose_schema:app --reload --port 8010`
-- Ad-hoc custom ops: `uvicorn examples.baselines.average.api_ad_hoc_custom:app --reload --port 8011`
-- Best-effort union ops: `uvicorn examples.baselines.best_effort.api_union_ops:app --reload --port 8012`
-- Best-effort custom union: `uvicorn examples.baselines.best_effort.api_custom_union_ops:app --reload --port 8013`
+**Run**
 
-## Extras
+- `uvicorn examples.demo4:app --reload --port 8003`
 
-- Error semantics: `python -m examples.standard.failures`
-- Custom ops CLI: `python -m examples.custom.cli_apply`
-- REST snippets: `examples/_shared/clients.http`
+**Try these requests**
+
+- `GET http://127.0.0.1:8003/configs/site`
+- `PATCH http://127.0.0.1:8003/configs/site`
+  - Body:
+    ```json
+    [{"op": "replace", "path": "features.chat", "value": false}]
+    ```
+
+This demo uses `make_json_patch_body_with_dep(...)` to inject Pydantic validation context,
+which FastAPI does not currently provide for request bodies.

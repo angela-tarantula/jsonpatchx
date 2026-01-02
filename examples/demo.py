@@ -7,23 +7,10 @@ import sys
 import time
 
 DEMOS: dict[str, tuple[str, str, int]] = {
-    "1": ("The standard model patch", "examples.standard.api_typed_model:app", 8000),
-    "2": ("Untyped document patching", "examples.standard.api_untyped_doc:app", 8001),
-    "3": (
-        "First-class custom operations",
-        "examples.custom_ops.api_custom_ops_typed:app",
-        8002,
-    ),
-    "4": (
-        "Custom ops + Pydantic models",
-        "examples.custom_ops.api_custom_ops_model:app",
-        8003,
-    ),
-    "5": (
-        "Custom pointer backends",
-        "examples.pointer_backends.api_custom_pointer:app",
-        8004,
-    ),
+    "1": ("Typed model patching", "examples.demo1:app", 8000),
+    "2": ("Model-bound custom ops", "examples.demo2:app", 8001),
+    "3": ("Custom ops on JSON documents", "examples.demo3:app", 8002),
+    "4": ("Pointer backends with context injection", "examples.demo4:app", 8003),
 }
 
 
@@ -56,7 +43,7 @@ def main() -> None:
     for key, (label, _, port) in DEMOS.items():
         print(f"  {key}) {label} (port {port})")
 
-    choice = input("\nSelect a demo (1-5): ").strip()
+    choice = input("\nSelect a demo (1-4): ").strip()
     if choice not in DEMOS:
         print("Invalid choice.")
         return

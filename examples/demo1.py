@@ -1,34 +1,26 @@
 """
-Standard API demo: typed model patching with JsonPatchFor[User].
-
-Highlights
-- JsonPatchFor produces a typed JSON Patch request body with strong OpenAPI.
-- Typed pointer semantics show up as runtime behavior.
-- Optional strict Content-Type enforcement via a dependency.
+Demo 1: standard model patching with JsonPatchFor[User].
 """
 
 from __future__ import annotations
 
 from fastapi import Body, HTTPException, Path
 
-from examples._shared.app import (
-    create_app,
+from examples.shared import JSON_PATCH_MEDIA_TYPE, User, create_app, get_user, save_user
+from jsonpatch import JsonPatchFor
+from jsonpatch.fastapi import (
     patch_content_type_dependency,
+    patch_error_responses,
     patch_request_body,
 )
-from examples._shared.media import JSON_PATCH_MEDIA_TYPE
-from examples._shared.responses import patch_error_responses
-from examples._shared.schemas import User
-from examples._shared.store import get_user, save_user
-from jsonpatch import JsonPatchFor
 
 STRICT_JSON_PATCH = False
 
 UserPatch = JsonPatchFor[User]
 
 app = create_app(
-    title="jsonpatch standard demo (typed model)",
-    description=("Patch a Pydantic model with JsonPatchFor[User]."),
+    title="jsonpatch demo 1 (typed model)",
+    description="Patch a Pydantic model with JsonPatchFor[User].",
 )
 
 

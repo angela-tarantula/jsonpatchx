@@ -157,6 +157,13 @@ Operations may also be provided as instantiated operation models:
 patch_ops = [ReplaceOp(path="/foo", value="bar"), RemoveOp(path="/baz")]
 ```
 
+Or as JSON-serialized String:
+
+```py
+patch_ops = '[{"op": "replace", "path": "/foo", "value": "bar"}, {"op": "remove", "path": "/baz"}]'
+patch = JsonPatch.from_string(patch_ops)
+```
+
 ### FastAPI integration
 
 `JsonPatchFor[Model]` generates a Pydantic RootModel for patching a specific BaseModel
@@ -204,14 +211,15 @@ def patch_config(config_id: str, patch: CustomPatch = Body(...)) -> JSONValue:
     return patch.apply(doc)
 ```
 
-## Error semantics
+## Demos
 
-- Pointer resolution errors fail immediately
-- Type violations fail immediately
-- Operations are applied sequentially and fail-fast
-- Partial application does not occur
+See [`examples/README.md`](./examples/README.md) for the FastAPI demo suite, including:
 
-Errors are explicit by design.
+- typed model patching
+- model-bound custom ops
+- custom operations on JSON documents
+- pointer backends with context injection
+
 
 ## Advanced: pointer backends
 
@@ -248,12 +256,50 @@ This changes pointer parsing and traversal without modifying any operations.
 Backend selection is still scoped by the registry, allowing different APIs
 to use different pointer semantics safely.
 
-## Demos
+### Integration with FastAPI
 
-See [`examples/README.md`](./examples/README.md) for the FastAPI demo suite, including:
+> NOTE: This feature is fully implemented but consider it unstable API for now.
 
-- typed model patching
-- untyped JSON patching
-- custom operations
-- model-bound custom operations
-- custom JSON pointer backends
+FastAPI does not currently provide Pydantic validation context for request bodies, which means
+registry-scoped pointer backends won't be applied automatically when parsing input. As a workaround,
+use the FastAPI helper that injects the registry context during validation:
+
+```py
+from fastapi import Depends, FastAPI
+
+from jsonpatch import OperationRegistry
+from jsonpatch.fastapi import (
+    JSON_PATCH_MEDIA_TYPE,
+    make_json_patch_body_with_dep,
+)
+from jsonpatch.types import JSONValue, PointerBackend
+
+
+class DotPointer(PointerBackend):
+    def __init__(self, pointer: str) -> None: ...
+    @property
+    def parts(self): ...
+    @classmethod
+    def from_parts(cls, parts): ...
+    def resolve(self, doc): ...
+    def __str__(self) -> str: ...
+
+
+app = FastAPI()
+registry = OperationRegistry.with_standard(pointer_cls=DotPointer)
+PatchBody, PatchDepends, openapi_extra = make_json_patch_body_with_dep(
+    registry,
+    name="DotPointer",
+    media_type=JSON_PATCH_MEDIA_TYPE,
+    app=app,
+)
+
+
+@app.patch("/configs/{config_id}", openapi_extra=openapi_extra)
+def patch_config(config_id: str, patch: PatchBody = Depends(PatchDepends)) -> JSONValue:
+    doc = load_config(config_id)
+    return patch.apply(doc)
+```
+
+Limitation reference: FastAPI does not expose a request-body validation context today.
+See https://github.com/fastapi/fastapi/discussions/10864.

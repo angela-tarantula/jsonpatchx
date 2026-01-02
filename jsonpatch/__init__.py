@@ -37,7 +37,9 @@ Public API surface:
 - Pydantic helpers:
     - JsonPatchFor
     - make_json_patch_body
-    - make_json_patch_body_with_dep
+
+- FastAPI helpers (optional dependency):
+    - see ``jsonpatch.fastapi``
 """
 
 from jsonpatch.builtins import (
@@ -57,11 +59,7 @@ from jsonpatch.exceptions import (
     PatchError,
     TestOpFailed,
 )
-from jsonpatch.pydantic import (
-    JsonPatchFor,
-    make_json_patch_body,
-    make_json_patch_body_with_dep,
-)
+from jsonpatch.pydantic import JsonPatchFor, make_json_patch_body
 from jsonpatch.registry import OperationRegistry
 from jsonpatch.schema import OperationSchema
 from jsonpatch.standard import JsonPatch, apply_patch
@@ -84,7 +82,6 @@ __all__ = [
     # pydantic helpers
     "JsonPatchFor",
     "make_json_patch_body",
-    "make_json_patch_body_with_dep",
     # built-ins
     "STANDARD_OPS",
     "AddOp",

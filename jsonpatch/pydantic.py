@@ -1,7 +1,6 @@
-from collections.abc import Callable
 from typing import Any, ClassVar, Generic, Self, TypeAliasType, TypeVar, cast, override
 
-from pydantic import BaseModel, ConfigDict, RootModel, ValidationError, create_model
+from pydantic import BaseModel, ConfigDict, RootModel, create_model
 
 from jsonpatch.registry import OperationRegistry
 from jsonpatch.schema import OperationSchema
@@ -260,60 +259,3 @@ def make_json_patch_body(
     PatchBody.__registry__ = registry
     PatchBody.__doc__ = "RFC 6902 JSON Patch document (list of operations)."
     return PatchBody
-
-
-def make_json_patch_body_with_dep(
-    registry: OperationRegistry | None = None,
-    *,
-    name: str = "JsonPatchBody",
-    media_type: str = "application/json-patch+json",
-    include_application_json: bool = True,
-    examples: dict[str, Any] | None = None,
-    body_kwargs: dict[str, Any] | None = None,
-) -> tuple[
-    type[_BasePatchBody],
-    Callable[[list[dict[str, JSONValue]]], _BasePatchBody],
-    dict[str, Any] | None,
-]:
-    """
-    Create a JSON Patch RootModel plus a FastAPI dependency that injects registry context.
-
-    Optionally returns an ``openapi_extra`` requestBody override for custom media types.
-    """
-    try:
-        from fastapi import Body
-        from fastapi.exceptions import RequestValidationError
-    except Exception as e:  # pragma: no cover - only used when FastAPI is installed
-        raise RuntimeError(
-            "make_json_patch_body_with_dep requires fastapi to build a Body dependency"
-        ) from e
-
-    registry = registry or OperationRegistry.standard()
-    PatchBody = make_json_patch_body(registry, name=name)
-
-    body_kwargs = body_kwargs or {}
-    body_param = (
-        Body(..., media_type=media_type, **body_kwargs)
-        if media_type
-        else Body(..., **body_kwargs)
-    )
-
-    def _dep(patch: Any = body_param) -> _BasePatchBody:
-        try:
-            # Single source of truth for validation + context injection:
-            return PatchBody.model_validate(patch, context=registry._ctx)
-        except ValidationError as e:
-            # FastAPI-standard validation error shape (422)
-            raise RequestValidationError(e.errors(), body=patch) from e
-
-    openapi_extra = None
-    if media_type:
-        schema_ref = f"#/components/schemas/{PatchBody.__name__}"
-        content: dict[str, Any] = {media_type: {"schema": {"$ref": schema_ref}}}
-        if examples:
-            content[media_type]["examples"] = examples
-        if include_application_json:
-            content["application/json"] = {"schema": {"$ref": schema_ref}}
-        openapi_extra = {"requestBody": {"required": True, "content": content}}
-
-    return PatchBody, _dep, openapi_extra

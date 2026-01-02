@@ -1,40 +1,30 @@
 """
-Custom ops demo: registry-driven parsing and typed pointer semantics.
+Demo 3: custom ops with an untyped JSON document.
 """
 
 from __future__ import annotations
 
-from typing import Any, Literal, override
+from typing import Any
 
 from fastapi import Body, HTTPException, Path
 
-from examples._shared.app import create_app, patch_request_body
-from examples._shared.media import JSON_PATCH_MEDIA_TYPE
-from examples._shared.responses import patch_error_responses
-from examples._shared.store import get_config, save_config
-from examples.custom_ops import (
+from examples.shared import (
+    JSON_PATCH_MEDIA_TYPE,
     AppendOp,
     EnsureObjectOp,
     ExtendOp,
     IncrementOp,
+    RemoveNumberOp,
     SwapOp,
     ToggleBoolOp,
+    create_app,
+    get_config,
+    save_config,
 )
-from jsonpatch import OperationRegistry, RemoveOp, make_json_patch_body
-from jsonpatch.schema import OperationSchema
-from jsonpatch.types import JSONNumber, JSONPointer, JSONValue
+from jsonpatch import JSONValue, OperationRegistry, make_json_patch_body
+from jsonpatch.fastapi import patch_error_responses, patch_request_body
 
-
-class RemoveNumberOp(OperationSchema):
-    op: Literal["remove_number"] = "remove_number"
-    path: JSONPointer[JSONNumber]
-
-    @override
-    def apply(self, doc: JSONValue) -> JSONValue:
-        return RemoveOp(path=self.path).apply(doc)
-
-
-registry = OperationRegistry.with_standard(
+registry = OperationRegistry(
     IncrementOp,
     AppendOp,
     ExtendOp,
@@ -46,10 +36,8 @@ registry = OperationRegistry.with_standard(
 CustomPatch = make_json_patch_body(registry, name="Custom")
 
 app = create_app(
-    title="jsonpatch custom ops demo",
-    description=(
-        "Custom ops become first-class: validation, OpenAPI, dispatch, and pointer typing."
-    ),
+    title="jsonpatch demo 3 (custom ops)",
+    description="Custom ops become first-class: validation, OpenAPI, and dispatch.",
 )
 
 
@@ -85,7 +73,7 @@ def get_config_endpoint(
         examples={
             "increment-limit": {
                 "summary": "limits: increment max_users",
-                "value": [{"op": "increment", "path": "/max_users", "value": 2}],
+                "value": [{"op": "increment", "path": "/max_users", "value": 10}],
             },
             "toggle-trial": {
                 "summary": "limits: toggle trial",
@@ -104,12 +92,8 @@ def get_config_endpoint(
                 "value": [{"op": "swap", "a": "/title", "b": "/features/chat"}],
             },
             "type-gated-remove": {
-                "summary": "demo: type-gated remove (expected failure)",
+                "summary": "site: type-gated remove (expected failure)",
                 "value": [{"op": "remove_number", "path": "/title"}],
-            },
-            "swap-same": {
-                "summary": "demo: unexpected exception wrapping",
-                "value": [{"op": "swap", "a": "/title", "b": "/title"}],
             },
         },
     ),
