@@ -136,7 +136,7 @@ def _enforce_json_patch_content_type(
         raise HTTPException(
             status_code=415,
             detail=(
-                "Unsupported Media Type. Use application/json-patch+json for JSON Patch requests."
+                "Unsupported Media Type. Use {media_type} for JSON Patch requests."
             ),
         )
 

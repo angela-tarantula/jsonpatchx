@@ -14,7 +14,7 @@ from jsonpatch.fastapi import (
     patch_request_body,
 )
 
-STRICT_JSON_PATCH = False
+STRICT_JSON_PATCH = True
 
 UserPatch = JsonPatchFor[User]
 
