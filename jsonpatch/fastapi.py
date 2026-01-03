@@ -19,11 +19,16 @@ from typing import Any, cast
 
 from fastapi import Body, Depends, FastAPI, HTTPException, Request
 from fastapi.exceptions import RequestValidationError
-from fastapi.openapi.utils import get_openapi
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, ValidationError
 
-from jsonpatch.exceptions import InvalidJSONPointer, PatchError, PatchExecutionError
+from jsonpatch.exceptions import (
+    InvalidJsonPatch,
+    InvalidJSONPointer,
+    PatchApplicationError,
+    PatchError,
+    PatchExecutionError,
+)
 from jsonpatch.pydantic import _BasePatchBody, make_json_patch_body
 from jsonpatch.registry import OperationRegistry
 
@@ -53,11 +58,21 @@ def patch_error_response(exc: PatchError) -> JSONResponse:
             cause_type=detail.cause_type,
         )
         return JSONResponse(
-            status_code=400, content=PatchErrorResponse(detail=payload).model_dump()
+            status_code=500, content=PatchErrorResponse(detail=payload).model_dump()
+        )
+
+    if isinstance(exc, PatchApplicationError):
+        return JSONResponse(
+            status_code=409, content=PatchErrorResponse(detail=str(exc)).model_dump()
+        )
+
+    if isinstance(exc, (InvalidJsonPatch, InvalidJSONPointer)):
+        return JSONResponse(
+            status_code=422, content=PatchErrorResponse(detail=str(exc)).model_dump()
         )
 
     return JSONResponse(
-        status_code=400, content=PatchErrorResponse(detail=str(exc)).model_dump()
+        status_code=500, content=PatchErrorResponse(detail=str(exc)).model_dump()
     )
 
 
@@ -85,9 +100,25 @@ def patch_error_responses() -> dict[int, dict[str, Any]]:
     }
     return {
         400: {
-            "description": "Patch application error",
+            "description": "Malformed JSON",
             "content": {"application/json": {"schema": schema}},
-        }
+        },
+        409: {
+            "description": "Patch cannot be applied to current resource state",
+            "content": {"application/json": {"schema": schema}},
+        },
+        422: {
+            "description": "Patch document validation error",
+            "content": {"application/json": {"schema": schema}},
+        },
+        415: {
+            "description": "Unsupported Media Type",
+            "content": {"application/json": {"schema": schema}},
+        },
+        500: {
+            "description": "Patch execution error",
+            "content": {"application/json": {"schema": schema}},
+        },
     }
 
 
@@ -95,12 +126,6 @@ def install_jsonpatch_error_handlers(app: FastAPI) -> None:
     @app.exception_handler(PatchError)
     def _patch_error_handler(request: Request, exc: PatchError) -> JSONResponse:
         return patch_error_response(exc)
-
-    @app.exception_handler(ValidationError)
-    def _validation_error_handler(
-        request: Request, exc: ValidationError
-    ) -> JSONResponse:
-        return JSONResponse(status_code=422, content={"detail": exc.errors()})
 
 
 def _enforce_json_patch_content_type(
@@ -210,39 +235,21 @@ def _register_patch_schema(app: FastAPI, patch_model: type[_BasePatchBody]) -> N
     original_openapi = app.openapi
 
     def _register(schema: dict[str, Any]) -> None:
-        components = schema.setdefault("components", {}).setdefault("schemas", {})
-        if patch_model.__name__ in components:
+        schemas = schema.setdefault("components", {}).setdefault("schemas", {})
+        if patch_model.__name__ in schemas:
             return
         patch_schema = patch_model.model_json_schema(
             ref_template="#/components/schemas/{model}"
         )
         defs = patch_schema.pop("$defs", {})
         for key, value in defs.items():
-            components.setdefault(key, value)
-        components[patch_model.__name__] = patch_schema
-
-    def custom_openapi() -> dict[str, Any]:
-        if app.openapi_schema:
-            _register(app.openapi_schema)
-            return app.openapi_schema
-        schema = get_openapi(
-            title=app.title,
-            version=app.version,
-            description=app.description,
-            routes=app.routes,
-        )
-        _register(schema)
-        app.openapi_schema = schema
-        return schema
+            schemas.setdefault(key, value)
+        schemas[patch_model.__name__] = patch_schema
 
     # Wrap existing OpenAPI behavior
-    if original_openapi is not custom_openapi:
+    def wrapped_openapi() -> dict[str, Any]:
+        schema = original_openapi()
+        _register(schema)
+        return schema
 
-        def wrapped_openapi() -> dict[str, Any]:
-            schema = original_openapi()
-            _register(schema)
-            return schema
-
-        cast(Any, app).openapi = wrapped_openapi
-    else:
-        cast(Any, app).openapi = custom_openapi
+    cast(Any, app).openapi = wrapped_openapi
