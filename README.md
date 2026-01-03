@@ -70,9 +70,8 @@ Operations fail loudly if the runtime type contract is violated.
 
 ```py
 from typing import Literal, override
-from jsonpatch import ReplaceOp
-from jsonpatch.schema import OperationSchema
-from jsonpatch.types import JSONBoolean, JSONPointer, JSONValue
+from jsonpatch import ReplaceOp, JSONPointer, JSONValue, OperationSchema
+from jsonpatch.types import JSONBoolean
 
 class ToggleOp(OperationSchema):
     op: Literal["toggle"] = "toggle"
@@ -139,8 +138,7 @@ The registry is the vocabulary of your PATCH API.
 The `JsonPatch` class handles the parsing and execution.
 
 ```py
-from jsonpatch import JsonPatch
-from jsonpatch.types import JSONValue
+from jsonpatch import JsonPatch, JSONValue
 
 doc = {"title": "Example", "active": False}
 
@@ -184,8 +182,7 @@ Use `make_json_patch_body` when patching raw JSON (dicts/lists) rather than mode
 
 ```py
 from fastapi import Body, FastAPI
-from jsonpatch import OperationRegistry, make_json_patch_body
-from jsonpatch.types import JSONValue
+from jsonpatch import OperationRegistry, JSONValue, make_json_patch_body
 
 app = FastAPI()
 registry = OperationRegistry.with_standard(DeduplicateOp, IncrementOp)
@@ -204,9 +201,7 @@ Leverage `ConfigDict` and `model_validator` to create sophisticated, well-docume
 ```py
 from typing import Literal, Self
 from pydantic import ConfigDict, model_validator
-from jsonpatch import AddOp, InvalidOperationSchema, JSONValue, OperationSchema
-from jsonpatch.types import JSONPointer
-
+from jsonpatch import AddOp, JSONPointer, JSONValue, OperationSchema, InvalidOperationSchema
 
 class SwapOp(OperationSchema):
     model_config = ConfigDict(
@@ -285,8 +280,7 @@ registry-scoped backends require. Use the provided helper as a workaround:
 from fastapi import Depends, FastAPI
 from pointerlibrary import DotPointer
 
-from jsonpatch import OperationRegistry
-from jsonpatch.types import JSONValue
+from jsonpatch import JSONValue, OperationRegistry
 from jsonpatch.fastapi import make_json_patch_body_with_dep, JSON_PATCH_MEDIA_TYPE
 
 

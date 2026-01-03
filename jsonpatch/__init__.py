@@ -1,46 +1,4 @@
-"""
-jsonpatch
-
-A modern, strongly-typed JSON Patch implementation powered by Pydantic.
-
-Public API surface:
-
-- Exceptions:
-    - InvalidOperationSchema
-    - InvalidOperationRegistry
-    - InvalidJsonPatch
-    - PatchApplicationError
-    - PatchError
-    - TestOpFailed
-
-- Core types:
-    - JSONPointer
-    - JSONValue
-
-- Operation specs:
-    - OperationSchema
-    - OperationRegistry
-
-- Classics:
-    - JsonPatch
-    - apply_patch
-
-- Built-ins:
-    - STANDARD_OPS
-    - AddOp
-    - RemoveOp
-    - ReplaceOp
-    - MoveOp
-    - CopyOp
-    - TestOp
-
-- Pydantic helpers:
-    - JsonPatchFor
-    - make_json_patch_body
-
-- FastAPI helpers (optional dependency):
-    - see ``jsonpatch.fastapi``
-"""
+"""Typed JSON Patch (RFC 6902) utilities powered by Pydantic."""
 
 from jsonpatch.builtins import (
     STANDARD_OPS,
@@ -53,10 +11,13 @@ from jsonpatch.builtins import (
 )
 from jsonpatch.exceptions import (
     InvalidJsonPatch,
+    InvalidJSONPointer,
     InvalidOperationRegistry,
     InvalidOperationSchema,
     PatchApplicationError,
+    PatchApplyFailed,
     PatchError,
+    PatchFailureDetail,
     TestOpFailed,
 )
 from jsonpatch.pydantic import JsonPatchFor, make_json_patch_body
@@ -67,11 +28,14 @@ from jsonpatch.types import JSONPointer, JSONValue
 
 __all__ = [
     # exceptions
+    "InvalidJSONPointer",
     "InvalidJsonPatch",
     "InvalidOperationSchema",
     "InvalidOperationRegistry",
+    "PatchApplyFailed",
     "PatchApplicationError",
     "PatchError",
+    "PatchFailureDetail",
     "TestOpFailed",
     # types
     "JSONPointer",
