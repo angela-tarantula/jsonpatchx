@@ -56,9 +56,9 @@ class PatchFailureDetail:
     cause_type: str | None = None
 
 
-class PatchApplyFailed(PatchApplicationError):
+class PatchExecutionError(PatchError):
     """
-    Unexpected exception during application wrapped with structured context.
+    Unexpected exception during patch execution wrapped with structured context.
 
     This is meant for API layers and debuggability:
     - It points at the exact op index

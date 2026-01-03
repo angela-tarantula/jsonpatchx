@@ -1,3 +1,17 @@
+"""
+FastAPI integration helpers for jsonpatch.
+
+Default error mapping:
+- 415: Wrong Content-Type for JSON Patch (application/json-patch+json)
+- 400: Malformed JSON (cannot parse request body)
+- 422: Patch document validation errors (Pydantic validation, invalid pointer strings)
+- 409: Patch is valid but cannot be applied to current resource state
+- 500: Server misconfiguration or unexpected failures (e.g., invalid registry/op classes)
+
+If your API treats "missing path / invalid index" as a client semantic error rather than
+a state conflict, map PatchApplicationError to 422 instead.
+"""
+
 from __future__ import annotations
 
 from collections.abc import Callable
@@ -9,7 +23,7 @@ from fastapi.openapi.utils import get_openapi
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, ValidationError
 
-from jsonpatch.exceptions import InvalidJSONPointer, PatchApplyFailed, PatchError
+from jsonpatch.exceptions import InvalidJSONPointer, PatchError, PatchExecutionError
 from jsonpatch.pydantic import _BasePatchBody, make_json_patch_body
 from jsonpatch.registry import OperationRegistry
 
@@ -30,7 +44,7 @@ class PatchErrorResponse(BaseModel):
 
 
 def patch_error_response(exc: PatchError) -> JSONResponse:
-    if isinstance(exc, PatchApplyFailed):
+    if isinstance(exc, PatchExecutionError):
         detail = exc.detail
         payload = PatchFailureDetailResponse(
             index=detail.index,

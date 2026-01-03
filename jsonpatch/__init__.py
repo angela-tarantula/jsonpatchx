@@ -15,8 +15,8 @@ from jsonpatch.exceptions import (
     InvalidOperationRegistry,
     InvalidOperationSchema,
     PatchApplicationError,
-    PatchApplyFailed,
     PatchError,
+    PatchExecutionError,
     PatchFailureDetail,
     TestOpFailed,
 )
@@ -32,9 +32,9 @@ __all__ = [
     "InvalidJsonPatch",
     "InvalidOperationSchema",
     "InvalidOperationRegistry",
-    "PatchApplyFailed",
     "PatchApplicationError",
     "PatchError",
+    "PatchExecutionError",
     "PatchFailureDetail",
     "TestOpFailed",
     # types
