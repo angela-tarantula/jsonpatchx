@@ -60,7 +60,7 @@ class PatchFailureDetail:
     cause_type: str | None = None
 
 
-class PatchExecutionError(PatchError):
+class PatchExecutionError(PatchApplicationError):
     """
     Unexpected exception during patch execution wrapped with structured context.
 
