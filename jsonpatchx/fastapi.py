@@ -31,8 +31,10 @@ from jsonpatchx.exceptions import (
 )
 from jsonpatchx.pydantic import (
     _BasePatchBody,
+    _BasePatchModel,
     _RegistryBoundPatchRoot,
     patch_body_for_json,
+    patch_body_for_model,
 )
 from jsonpatchx.registry import OperationRegistry
 
@@ -186,9 +188,9 @@ def patch_request_body(
 
 
 def patch_body_for_json_with_dep(
-    registry: OperationRegistry | None = None,
+    schema_name: str,
     *,
-    schema_name: str = "JsonPatchBody",
+    registry: OperationRegistry | None = None,
     title: str | None = None,
     media_type: str | None = JSON_PATCH_MEDIA_TYPE,
     include_application_json: bool = True,
@@ -200,7 +202,11 @@ def patch_body_for_json_with_dep(
     Callable[..., _BasePatchBody],
     dict[str, Any] | None,
 ]:
-    """Create a PatchBody model, dependency, and optional OpenAPI requestBody."""
+    """
+    Create a PatchBody for JSON patching, plus a FastAPI dependency that injects registry context.
+
+    Returns (PatchBody, dependency, openapi_extra).
+    """
     registry = registry or OperationRegistry.standard()
     PatchBody = patch_body_for_json(schema_name, registry=registry, title=title)
     if app is not None:
@@ -236,7 +242,63 @@ def patch_body_for_json_with_dep(
     return PatchBody, _dep, openapi_extra
 
 
-def _register_patch_schema(app: FastAPI, patch_model: type[_BasePatchBody]) -> None:
+def patch_body_for_model_with_dep(
+    model: type[BaseModel],
+    registry: OperationRegistry | None = None,
+    *,
+    media_type: str | None = JSON_PATCH_MEDIA_TYPE,
+    include_application_json: bool = True,
+    examples: dict[str, Any] | None = None,
+    body_kwargs: dict[str, Any] | None = None,
+    app: FastAPI | None = None,
+) -> tuple[
+    type[_BasePatchModel],
+    Callable[..., _BasePatchModel],
+    dict[str, Any] | None,
+]:
+    """
+    Create a model-bound PatchBody, plus a FastAPI dependency that injects registry context.
+
+    Returns (PatchBody, dependency, openapi_extra).
+    """
+    registry = registry or OperationRegistry.standard()
+    PatchBody = patch_body_for_model(model, registry=registry)
+    if app is not None:
+        _register_patch_schema(app, PatchBody)
+
+    body_kwargs = body_kwargs or {}
+    if media_type is not None:
+        body_param = Body(..., media_type=media_type, **body_kwargs)
+    else:
+        body_param = Body(..., **body_kwargs)
+
+    def _dep(patch: Any = body_param) -> _BasePatchModel:
+        try:
+            return PatchBody.model_validate(patch, context=registry._ctx)
+        except ValidationError as e:
+            raise RequestValidationError(e.errors(), body=patch) from e
+        except InvalidJSONPointer as e:
+            raise RequestValidationError(
+                [{"loc": ("body",), "msg": str(e), "type": "value_error.jsonpointer"}],
+                body=patch,
+            ) from e
+
+    openapi_extra = None
+    if media_type is not None:
+        schema_ref = f"#/components/schemas/{PatchBody.__name__}"
+        content: dict[str, Any] = {media_type: {"schema": {"$ref": schema_ref}}}
+        if examples:
+            content[media_type]["examples"] = examples
+        if include_application_json:
+            content["application/json"] = {"schema": {"$ref": schema_ref}}
+        openapi_extra = {"requestBody": {"required": True, "content": content}}
+
+    return PatchBody, _dep, openapi_extra
+
+
+def _register_patch_schema(
+    app: FastAPI, patch_model: type[_RegistryBoundPatchRoot]
+) -> None:
     """
     Register a patch model's schema in OpenAPI components so $ref works in docs.
     """

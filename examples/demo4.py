@@ -30,8 +30,8 @@ app = create_app(
 
 registry = OperationRegistry.with_standard(pointer_cls=DotPointer)
 DotPointerPatch, DotPointerPatchDepends, openapi_extra = patch_body_for_json_with_dep(
-    registry,
-    schema_name="DotPointer",
+    "DotPointer",
+    registry=registry,
     media_type=JSON_PATCH_MEDIA_TYPE,
     app=app,
     examples={

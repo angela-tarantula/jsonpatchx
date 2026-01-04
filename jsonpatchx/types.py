@@ -21,7 +21,6 @@ from typing import (
     runtime_checkable,
 )
 
-from annotated_types import Ge
 from jsonpointer import JsonPointer  # type: ignore[import-untyped]
 from pydantic import (
     Field,
@@ -85,7 +84,7 @@ Notes:
     - Pydantic validation is strict (no implicit coercions).
 """
 
-type _JSONArrayKey = Annotated[int, Ge(0)] | Literal["-"]
+type _JSONArrayKey = Annotated[int, Field(ge=0)] | Literal["-"]
 type _JSONObjectKey = str
 type _JSONKey = _JSONArrayKey | _JSONObjectKey
 

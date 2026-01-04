@@ -285,15 +285,19 @@ from fastapi import Depends, FastAPI
 from pointerlibrary import DotPointer
 
 from jsonpatchx import JSONValue, OperationRegistry
-from jsonpatchx.fastapi import patch_body_for_json_with_dep, JSON_PATCH_MEDIA_TYPE
+from jsonpatchx.fastapi import (
+    patch_body_for_json_with_dep,
+    patch_body_for_model_with_dep,
+    JSON_PATCH_MEDIA_TYPE,
+)
 
 
 app = FastAPI()
 registry = OperationRegistry.with_standard(pointer_cls=DotPointer)
 
 PatchBody, PatchDepends, openapi_extra = patch_body_for_json_with_dep(
-    registry,
-    schema_name="DotPointer",
+    "DotPointer",
+    registry=registry,
     media_type=JSON_PATCH_MEDIA_TYPE,
     app=app,
 )
@@ -301,6 +305,19 @@ PatchBody, PatchDepends, openapi_extra = patch_body_for_json_with_dep(
 @app.patch("/configs/{id}", openapi_extra=openapi_extra)
 def patch_config(id: str, patch: PatchBody = Depends(PatchDepends)) -> JSONValue:
     return patch.apply(load_config(id))
+```
+
+Model-bound variant:
+
+```py
+from jsonpatchx.fastapi import patch_body_for_model_with_dep
+
+PatchBody, PatchDepends, openapi_extra = patch_body_for_model_with_dep(
+    User,
+    registry=registry,
+    media_type=JSON_PATCH_MEDIA_TYPE,
+    app=app,
+)
 ```
 
 Limitation reference: FastAPI does not expose a request-body validation context today.
