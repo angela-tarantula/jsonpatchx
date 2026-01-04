@@ -58,10 +58,6 @@ class MoveOp(OperationSchema):
             raise InvalidOperationSchema(
                 "pointer 'path' cannot be a child of pointer 'from'"
             )
-        elif self.path.is_parent_of(self.from_):
-            raise InvalidOperationSchema(
-                "pointer 'from' cannot be a child of pointer 'path'"
-            )
         return self
 
     @override
