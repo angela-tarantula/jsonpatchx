@@ -213,10 +213,9 @@ class _BasePatchBody(_RegistryBoundPatchRoot):
         return _apply_ops(self.ops, doc, inplace=inplace)
 
 
-def make_json_patch_body(
-    registry: OperationRegistry | None = None,
-    *,
+def patch_body_for_json(
     name: str,
+    registry: OperationRegistry | None = None,
 ) -> type[_BasePatchBody]:
     """
     Create a Pydantic model type suitable for a FastAPI request body representing a JSON Patch.
@@ -234,7 +233,7 @@ def make_json_patch_body(
         Typed ops applied to an untyped document:
 
         >>> registry = OperationRegistry.with_standard(IncrementOp)
-        >>> CustomPatch = make_json_patch_body(registry, name="Custom")
+        >>> CustomPatch = patch_body_for_json("Custom", registry)
 
         >>> @app.patch("/configs/{config_id}")
         ... def patch_config(config_id: str, patch: CustomPatch):

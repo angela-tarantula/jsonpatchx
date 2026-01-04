@@ -32,7 +32,7 @@ from jsonpatchx.exceptions import (
 from jsonpatchx.pydantic import (
     _BasePatchBody,
     _RegistryBoundPatchRoot,
-    make_json_patch_body,
+    patch_body_for_json,
 )
 from jsonpatchx.registry import OperationRegistry
 
@@ -182,7 +182,7 @@ def patch_request_body(
 
 
 # https://github.com/fastapi/fastapi/discussions/10864
-# Due to a limitation of FastAPI, need make_json_patch_body_with_dep instead of make_json_patch_body
+# Due to a limitation of FastAPI, need make_json_patch_body_with_dep instead of patch_body_for_json
 
 
 def make_json_patch_body_with_dep(
@@ -201,7 +201,7 @@ def make_json_patch_body_with_dep(
 ]:
     """Create a PatchBody model, dependency, and optional OpenAPI requestBody."""
     registry = registry or OperationRegistry.standard()
-    PatchBody = make_json_patch_body(registry, name=name)
+    PatchBody = patch_body_for_json(name, registry)
     if app is not None:
         _register_patch_schema(app, PatchBody)
 

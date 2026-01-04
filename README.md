@@ -176,15 +176,15 @@ def patch_user(user_id: int, patch: UserPatch = Body(...)) -> User:
 
 ### Plain JSON Patching
 
-Use `make_json_patch_body` when patching raw JSON (dicts/lists) rather than models.
+Use `patch_body_for_json` when patching raw JSON (dicts/lists) rather than models.
 
 ```py
 from fastapi import Body, FastAPI
-from jsonpatchx import OperationRegistry, JSONValue, make_json_patch_body
+from jsonpatchx import OperationRegistry, JSONValue, patch_body_for_json
 
 app = FastAPI()
 registry = OperationRegistry.with_standard(DeduplicateOp, IncrementOp)
-CustomPatch = make_json_patch_body(registry, name="CustomConfig")
+CustomPatch = patch_body_for_json("My JSON Config", registry)
 
 @app.patch("/configs/{config_id}")
 def patch_config(config_id: str, patch: CustomPatch = Body(...)) -> JSONValue:
