@@ -405,7 +405,8 @@ class JSONPointer(str, Generic[T_co, P_co]):
         **kwargs: object,
     ) -> Self:
         """Trying to instantiate JSONPointer directly will raise InvalidJSONPointer exception."""
-        if __name__ != "__main__":  # enable debugging via main
+        # debuggable with "uv run python -i -m jsonpatchx.builtins"
+        if __name__ != "jsonpatchx.types":
             raise InvalidJSONPointer(
                 "JSONPointer values are created by Pydantic validation only."
             )
