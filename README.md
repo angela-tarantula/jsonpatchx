@@ -119,12 +119,7 @@ These types allow you to reason about JSON structure rather than Python primitiv
 
 #### JSONPointer is a str
 
-`JSONPointer[T]` is also a subtype of `str` without any overrides (besides `__repr__`), so it also inherits all `str` methods.
-
-Examples where this is useful:
-- Logging or tracing: `logger.info("patch path=%s", path)`
-- Simple comparisons: `from_path == to_path` or `path.startswith("/foo")`
-- Using pointers as dict keys or set members without extra conversion
+Per [RFC 6901](https://datatracker.ietf.org/doc/html/rfc6901), “a JSON Pointer is a Unicode string”. Modeling it as a `str` is faithful to that definition: `isinstance(pointer, str)` is true, and pointers participate naturally in all string semantics (e.g. `pointer.startswith("/foo")`).
 
 ### Operation Registries
 
@@ -271,10 +266,6 @@ registry = OperationRegistry.with_standard(pointer_cls=DotPointer)
 ```
 
 This changes pointer parsing and traversal without modifying any operations.
-
-
-Probably move this into docs/design and out of README later:
-> Rant: In RFC 6901, it says "a JSON Pointer is a Unicode string". So IMO all pointer implementations trying to be RFC 6901-compatible should inherit from `str` in principle (e.g. `assert isinstance(RFCJsonPointer, str)`). This library does not require `PointerBackend` implementations to be `str` subclasses, though, because it's not necessary and the backend does not need to be compatible with RFC 6901.
 
 ### Backend Access & Binding
 

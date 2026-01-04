@@ -2,7 +2,7 @@ import copy
 from collections.abc import Set
 from typing import Final, Literal, Self, override
 
-from pydantic import Field, model_validator
+from pydantic import ConfigDict, Field, model_validator
 
 from jsonpatchx.exceptions import InvalidOperationSchema, TestOpFailed
 from jsonpatchx.schema import OperationSchema
@@ -11,6 +11,11 @@ from jsonpatchx.types import JSONPointer, JSONValue
 
 class AddOp(OperationSchema):
     """RFC 6902 Add"""
+
+    model_config = ConfigDict(
+        title="Add operation",
+        json_schema_extra={"description": "RFC 6902 add operation."},
+    )
 
     op: Literal["add"] = "add"
     path: JSONPointer[JSONValue]
@@ -24,6 +29,11 @@ class AddOp(OperationSchema):
 class RemoveOp(OperationSchema):
     """RFC 6902 Remove"""
 
+    model_config = ConfigDict(
+        title="Remove operation",
+        json_schema_extra={"description": "RFC 6902 remove operation."},
+    )
+
     op: Literal["remove"] = "remove"
     path: JSONPointer[JSONValue]
 
@@ -34,6 +44,11 @@ class RemoveOp(OperationSchema):
 
 class ReplaceOp(OperationSchema):
     """RFC 6902 Replace"""
+
+    model_config = ConfigDict(
+        title="Replace operation",
+        json_schema_extra={"description": "RFC 6902 replace operation."},
+    )
 
     op: Literal["replace"] = "replace"
     path: JSONPointer[JSONValue]
@@ -47,6 +62,11 @@ class ReplaceOp(OperationSchema):
 
 class MoveOp(OperationSchema):
     """RFC 6902 Move"""
+
+    model_config = ConfigDict(
+        title="Move operation",
+        json_schema_extra={"description": "RFC 6902 move operation."},
+    )
 
     op: Literal["move"] = "move"
     from_: JSONPointer[JSONValue] = Field(alias="from")
@@ -70,6 +90,11 @@ class MoveOp(OperationSchema):
 class CopyOp(OperationSchema):
     """RFC 6902 Copy"""
 
+    model_config = ConfigDict(
+        title="Copy operation",
+        json_schema_extra={"description": "RFC 6902 copy operation."},
+    )
+
     op: Literal["copy"] = "copy"
     from_: JSONPointer[JSONValue] = Field(alias="from")
     path: JSONPointer[JSONValue]
@@ -83,6 +108,11 @@ class CopyOp(OperationSchema):
 
 class TestOp(OperationSchema):
     """RFC 6902 Test"""
+
+    model_config = ConfigDict(
+        title="Test operation",
+        json_schema_extra={"description": "RFC 6902 test operation."},
+    )
 
     op: Literal["test"] = "test"
     path: JSONPointer[JSONValue]

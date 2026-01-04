@@ -115,6 +115,11 @@ def save_config(config_id: str, doc: JSONValue) -> None:
 
 
 class IncrementOp(OperationSchema):
+    model_config = ConfigDict(
+        title="Increment operation",
+        json_schema_extra={"description": "Increments a numeric field by a value."},
+    )
+
     op: Literal["increment"] = "increment"
     path: JSONPointer[JSONNumber]
     value: JSONNumber = Field(gt=0, multiple_of=5)
@@ -126,6 +131,11 @@ class IncrementOp(OperationSchema):
 
 
 class AppendOp(OperationSchema):
+    model_config = ConfigDict(
+        title="Append operation",
+        json_schema_extra={"description": "Appends a value to an array."},
+    )
+
     op: Literal["append"] = "append"
     path: JSONPointer[JSONArray[JSONValue]]
     value: JSONValue
@@ -136,6 +146,11 @@ class AppendOp(OperationSchema):
 
 
 class ExtendOp(OperationSchema):
+    model_config = ConfigDict(
+        title="Extend operation",
+        json_schema_extra={"description": "Extends an array with a list of values."},
+    )
+
     op: Literal["extend"] = "extend"
     path: JSONPointer[JSONArray[JSONValue]]
     values: list[JSONValue]
@@ -146,6 +161,11 @@ class ExtendOp(OperationSchema):
 
 
 class ToggleBoolOp(OperationSchema):
+    model_config = ConfigDict(
+        title="Toggle operation",
+        json_schema_extra={"description": "Toggles a boolean value at a path."},
+    )
+
     op: Literal["toggle"] = "toggle"
     path: JSONPointer[JSONBoolean]
 
@@ -155,6 +175,13 @@ class ToggleBoolOp(OperationSchema):
 
 
 class EnsureObjectOp(OperationSchema):
+    model_config = ConfigDict(
+        title="Ensure object operation",
+        json_schema_extra={
+            "description": "Ensures the target path resolves to an object, creating one if missing."
+        },
+    )
+
     op: Literal["ensure_object"] = "ensure_object"
     path: JSONPointer[JSONObject[JSONValue]]
 
@@ -203,6 +230,11 @@ class SwapOp(OperationSchema):
 
 
 class RemoveNumberOp(OperationSchema):
+    model_config = ConfigDict(
+        title="Remove number operation",
+        json_schema_extra={"description": "Removes a numeric value at a path."},
+    )
+
     op: Literal["remove_number"] = "remove_number"
     path: JSONPointer[JSONNumber]
 
