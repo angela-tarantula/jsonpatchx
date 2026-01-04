@@ -10,7 +10,7 @@ from jsonpatchx.types import JSONPointer, JSONValue
 
 
 class AddOp(OperationSchema):
-    """RFC 6902 Add"""
+    """RFC 6902 add operation."""
 
     model_config = ConfigDict(
         title="Add operation",
@@ -27,7 +27,7 @@ class AddOp(OperationSchema):
 
 
 class RemoveOp(OperationSchema):
-    """RFC 6902 Remove"""
+    """RFC 6902 remove operation."""
 
     model_config = ConfigDict(
         title="Remove operation",
@@ -43,7 +43,7 @@ class RemoveOp(OperationSchema):
 
 
 class ReplaceOp(OperationSchema):
-    """RFC 6902 Replace"""
+    """RFC 6902 replace operation."""
 
     model_config = ConfigDict(
         title="Replace operation",
@@ -61,7 +61,7 @@ class ReplaceOp(OperationSchema):
 
 
 class MoveOp(OperationSchema):
-    """RFC 6902 Move"""
+    """RFC 6902 move operation."""
 
     model_config = ConfigDict(
         title="Move operation",
@@ -88,7 +88,7 @@ class MoveOp(OperationSchema):
 
 
 class CopyOp(OperationSchema):
-    """RFC 6902 Copy"""
+    """RFC 6902 copy operation."""
 
     model_config = ConfigDict(
         title="Copy operation",
@@ -107,7 +107,7 @@ class CopyOp(OperationSchema):
 
 
 class TestOp(OperationSchema):
-    """RFC 6902 Test"""
+    """RFC 6902 test operation."""
 
     model_config = ConfigDict(
         title="Test operation",
