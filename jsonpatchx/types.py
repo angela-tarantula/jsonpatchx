@@ -414,7 +414,7 @@ class JSONPointer(str, Generic[T_co, P_co]):
     @classmethod
     def _validator(
         cls,
-        path: object,
+        path: str,
         registry_info: ValidationInfo | None,
         *,
         type_param: TypeForm[T_co],
@@ -436,17 +436,13 @@ class JSONPointer(str, Generic[T_co, P_co]):
             registry_backend, bound_backend
         )
 
-        # If path is already a JSONPointer with a compatible PointerBackend, don't rebuild it
-        if isinstance(path, JSONPointer) and isinstance(path._ptr, strictest_protocol):
-            return path
-
         # Build it
         obj: Self = str.__new__(cls, path)
         obj._type = type_param
 
-        # If path is already a compatible PointerBackend, reuse it
-        if isinstance(path, strictest_protocol):
-            obj._ptr = cast(P_co, path)
+        # If path is a JSONPointer with a compatible backend, reuse the backend
+        if isinstance(path, JSONPointer) and isinstance(path._ptr, strictest_protocol):
+            obj._ptr = cast(P_co, path._ptr)
         else:
             pointer_cls = (
                 strictest_protocol
