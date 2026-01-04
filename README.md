@@ -1,5 +1,5 @@
 # json-patch-x
-[![CI](https://github.com/angela-tarantula/jsonpatchx/actions/workflows/python-app.yml/badge.svg?branch=main)](https://github.com/marketplace/actions/super-linter)
+[![CI](https://github.com/angela-tarantula/json-patch-x/actions/workflows/python-app.yml/badge.svg?branch=main)](https://github.com/marketplace/actions/super-linter)
 
 A typed, schema‑driven PATCH framework for Python, implementing JSON Patch ([RFC 6902](https://datatracker.ietf.org/doc/html/rfc6902)) with extensible operations and first‑class FastAPI/OpenAPI support.
 
@@ -34,8 +34,8 @@ python -m pip install --upgrade pip uv
 1. Clone the repository
 
 ```sh
-git clone https://github.com/angela-tarantula/jsonpatchx
-cd jsonpatchx
+git clone https://github.com/angela-tarantula/json-patch-x
+cd json-patch-x
 ```
 
 2. Install the dependencies
@@ -281,7 +281,7 @@ to use different pointer semantics safely.
 FastAPI does not currently pass Pydantic validation context for request bodies, which
 registry-scoped backends require. Use the provided helper as a workaround:
 
-> NOTE: Features in jsonpatchx.fastapi are currently considered unstable.
+> NOTE: Features in `jsonpatchx.fastapi` are currently considered unstable.
 
 ```py
 from fastapi import Depends, FastAPI
