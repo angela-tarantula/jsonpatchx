@@ -7,8 +7,8 @@ from pytest import Subtests
 
 from jsonpatchx.exceptions import (
     InvalidJSONPointer,
+    InvalidOperationDefinition,
     InvalidOperationRegistry,
-    InvalidOperationSchema,
 )
 from jsonpatchx.registry import OperationRegistry
 from jsonpatchx.schema import OperationSchema
@@ -17,27 +17,27 @@ from jsonpatchx.types import JSONPointer, JSONValue, PointerBackend
 
 def test_invalid_operation_schema(subtests: Subtests) -> None:
     with subtests.test("OperationSchema requires op field"):
-        with pytest.raises(InvalidOperationSchema):
+        with pytest.raises(InvalidOperationDefinition):
 
             class NoOp(OperationSchema):
                 path: str
 
     with subtests.test("OperationSchema op must be Literal"):
-        with pytest.raises(InvalidOperationSchema):
+        with pytest.raises(InvalidOperationDefinition):
 
             class NonLiteralOp(OperationSchema):
                 op: str = "add"
                 path: str
 
     with subtests.test("OperationSchema op literal must declare at least one value"):
-        with pytest.raises(InvalidOperationSchema):
+        with pytest.raises(InvalidOperationDefinition):
 
             class EmptyLiteral(OperationSchema):
                 op: Literal  # type: ignore[valid-type]
                 path: str
 
     with subtests.test("OperationSchema op literal values must be strings"):
-        with pytest.raises(InvalidOperationSchema):
+        with pytest.raises(InvalidOperationDefinition):
 
             class NonStringLiteral(OperationSchema):
                 op: Literal[1] = 1

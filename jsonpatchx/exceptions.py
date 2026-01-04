@@ -11,8 +11,12 @@ class PatchError(Exception):
     """Base class for JSON Patch errors."""
 
 
-class InvalidOperationSchema(PatchError):
-    """An OperationSchema definition or instance is invalid."""
+class InvalidOperationDefinition(PatchError):
+    """An OperationSchema definition is invalid."""
+
+
+class OperationValidationError(PatchError):
+    """An OperationSchema instance failed validation."""
 
 
 class InvalidJSONPointer(PatchError):

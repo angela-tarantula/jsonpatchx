@@ -3,7 +3,7 @@ from typing import Final, Literal, Self, override
 
 from pydantic import ConfigDict, Field, model_validator
 
-from jsonpatchx.exceptions import InvalidOperationSchema, TestOpFailed
+from jsonpatchx.exceptions import OperationValidationError, TestOpFailed
 from jsonpatchx.schema import OperationSchema
 from jsonpatchx.types import JSONPointer, JSONValue
 
@@ -74,7 +74,7 @@ class MoveOp(OperationSchema):
     @model_validator(mode="after")
     def _regect_proper_prefixes(self) -> Self:
         if self.from_.is_parent_of(self.path):
-            raise InvalidOperationSchema(
+            raise OperationValidationError(
                 "pointer 'path' cannot be a child of pointer 'from'"
             )
         return self

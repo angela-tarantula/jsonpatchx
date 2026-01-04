@@ -11,9 +11,9 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from jsonpatchx import (
     AddOp,
-    InvalidOperationSchema,
     JSONValue,
     OperationSchema,
+    OperationValidationError,
     PatchConflictError,
     RemoveOp,
     ReplaceOp,
@@ -215,9 +215,13 @@ class SwapOp(OperationSchema):
     @model_validator(mode="after")
     def _reject_proper_prefixes(self) -> Self:
         if self.a.is_parent_of(self.b):
-            raise InvalidOperationSchema("pointer 'b' cannot be a child of pointer 'a'")
+            raise OperationValidationError(
+                "pointer 'b' cannot be a child of pointer 'a'"
+            )
         if self.b.is_parent_of(self.a):
-            raise InvalidOperationSchema("pointer 'a' cannot be a child of pointer 'b'")
+            raise OperationValidationError(
+                "pointer 'a' cannot be a child of pointer 'b'"
+            )
         return self
 
     def apply(self, doc: JSONValue) -> JSONValue:

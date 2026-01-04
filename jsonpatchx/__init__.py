@@ -11,8 +11,9 @@ from jsonpatchx.builtins import (
 )
 from jsonpatchx.exceptions import (
     InvalidJSONPointer,
+    InvalidOperationDefinition,
     InvalidOperationRegistry,
-    InvalidOperationSchema,
+    OperationValidationError,
     PatchConflictError,
     PatchError,
     PatchFailureDetail,
@@ -29,8 +30,9 @@ from jsonpatchx.types import JSONPointer, JSONValue
 __all__ = [
     # exceptions
     "InvalidJSONPointer",
-    "InvalidOperationSchema",
+    "InvalidOperationDefinition",
     "InvalidOperationRegistry",
+    "OperationValidationError",
     "PatchConflictError",
     "PatchError",
     "PatchInternalError",

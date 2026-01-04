@@ -24,6 +24,7 @@ from pydantic import BaseModel, ValidationError
 
 from jsonpatchx.exceptions import (
     InvalidJSONPointer,
+    OperationValidationError,
     PatchConflictError,
     PatchError,
     PatchInternalError,
@@ -78,7 +79,7 @@ def _patch_error_response_map(exc: PatchError) -> JSONResponse:
             status_code=409, content=PatchErrorResponse(detail=str(exc)).model_dump()
         )
 
-    if isinstance(exc, InvalidJSONPointer):
+    if isinstance(exc, (InvalidJSONPointer, OperationValidationError)):
         return JSONResponse(
             status_code=422, content=PatchErrorResponse(detail=str(exc)).model_dump()
         )

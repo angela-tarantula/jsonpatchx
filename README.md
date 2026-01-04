@@ -206,7 +206,7 @@ Leverage `ConfigDict` and `model_validator` to create sophisticated, well-docume
 ```py
 from typing import Literal, Self
 from pydantic import ConfigDict, model_validator
-from jsonpatchx import AddOp, JSONPointer, JSONValue, OperationSchema, InvalidOperationSchema
+from jsonpatchx import AddOp, JSONPointer, JSONValue, OperationSchema, OperationValidationError
 
 class SwapOp(OperationSchema):
     model_config = ConfigDict(
@@ -220,7 +220,7 @@ class SwapOp(OperationSchema):
     @model_validator(mode="after")
     def _reject_proper_prefixes(self) -> Self:
         if self.a.is_parent_of(self.b) or self.b.is_parent_of(self.a):
-            raise InvalidOperationSchema("Paths cannot be prefixes of each other.")
+            raise OperationValidationError("Paths cannot be prefixes of each other.")
         return self
 
     def apply(self, doc: JSONValue) -> JSONValue:

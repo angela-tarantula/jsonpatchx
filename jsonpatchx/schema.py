@@ -14,7 +14,7 @@ from typing import (
 from pydantic import BaseModel, ConfigDict, GetJsonSchemaHandler
 from pydantic_core import core_schema as cs
 
-from jsonpatchx.exceptions import InvalidOperationSchema
+from jsonpatchx.exceptions import InvalidOperationDefinition
 from jsonpatchx.types import JSONValue
 
 
@@ -53,7 +53,7 @@ class OperationSchema(BaseModel, ABC):
         - Instances are revalidated when parsed, which matters for fields that depend on validation
           context (for example, registry-scoped pointer backends).
         - Subclasses are validated at class-definition time. If ``op`` is not declared correctly, the
-          class raises ``InvalidOperationSchema`` during import.
+          class raises ``InvalidOperationDefinition`` during import.
     """
 
     model_config = ConfigDict(
@@ -83,7 +83,7 @@ class OperationSchema(BaseModel, ABC):
         super().__init_subclass__(**kwargs)
 
         if not (literals := cls._extract_op_literals()):
-            raise InvalidOperationSchema(
+            raise InvalidOperationDefinition(
                 f"OperationSchema '{cls.__name__}'.op must be annotated as Literal of string(s). "
                 "op must be declared as a model field (not ClassVar)."
             )
