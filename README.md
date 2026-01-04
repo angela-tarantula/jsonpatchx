@@ -109,15 +109,6 @@ These types allow you to reason about JSON structure rather than Python primitiv
 
 Additionally, json-patch-x preserves the pointer's type parameter at runtime, so stricter constraints remain enforced when passed through operations with broader constraints (i.e. a custom op using `JSONPointer[JSONBoolean]` can delegate to `ReplaceOp.apply()` without losing the `JSONBoolean` constraint).
 
-#### Additional JSONPointer Helpers
-
-- `parts`: Access unescaped pointer path tokens
-- `type_param`: Inspect the pointer's expected type
-- `is_root()`: Check if the pointer is the document root
-- `is_parent_of(other)`: Check for pointer ancestry
-- `is_gettable(doc)`: Safety check before resolution
-- `is_addable(doc, value=..., validate_value=True)`: Safety check before modification
-
 #### JSONPointer is a str
 
 Per [RFC 6901](https://datatracker.ietf.org/doc/html/rfc6901), “a JSON Pointer is a Unicode string”. Modeling it as a `str` is faithful to that definition: `isinstance(pointer, str)` is true, and pointers participate naturally in all string semantics (e.g. `pointer.count("/")`, `"".join([pointer, "/suffix"])`, or `pointer.endswith("/foo")`).

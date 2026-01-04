@@ -392,6 +392,10 @@ class JSONPointer(str, Generic[T_co, P_co]):
         # NOTE: Cache this outside too?
         return self._ptr.from_parts(self.parts[:-1])
 
+    def is_root(self) -> bool:
+        """Check whether this JSONPointer's target is the root."""
+        return self == ""
+
     def __new__(
         cls,
         path: str,
@@ -567,6 +571,58 @@ class JSONPointer(str, Generic[T_co, P_co]):
                 f"invalid target type {type(target).__name__} for pointer {str(self)!r}"
             ) from e
 
+    # Parse-time helpers
+
+    def is_parent_of(self, other: str) -> bool:
+        """
+        Check whether this pointer is a parent of `other`.
+
+        `other` may be a JSONPointer or a pointer string; strings are parsed using this pointer's syntax.
+
+        Root is treated as a parent of all paths.
+
+        Raises InvalidJSONPointer if comparison is called with an `other` pointer with different or invalid syntax.
+        """
+        if isinstance(other, JSONPointer) and not isinstance(
+            other._ptr, type(self._ptr)
+        ):
+            raise InvalidJSONPointer(
+                f"other pointer {other._ptr!r} has incompatible syntax with {self!r}"
+            )
+        other_ptr: P_co = _cached_json_pointer(other, pointer_cls=type(self._ptr))
+
+        # Strict parentage only
+        if self == str(other_ptr):
+            return False
+
+        return other_ptr.parts[: len(self.parts)] == self.parts
+
+    def is_child_of(self, other: str) -> bool:
+        """
+        Check whether this pointer is a child of `other`.
+
+        `other` may be a JSONPointer or a pointer string; strings are parsed using this pointer's syntax.
+
+        Root is treated as a parent of all paths.
+
+        Raises InvalidJSONPointer if comparison is called with an `other` pointer with different or invalid syntax.
+        """
+        if isinstance(other, JSONPointer) and not isinstance(
+            other._ptr, type(self._ptr)
+        ):
+            raise InvalidJSONPointer(
+                f"other pointer {other._ptr!r} has incompatible syntax with {self!r}"
+            )
+        other_ptr: P_co = _cached_json_pointer(other, pointer_cls=type(self._ptr))
+
+        # Strict parentage only
+        if self == str(other_ptr):
+            return False
+
+        return self.parts[: len(other_ptr.parts)] == other_ptr.parts
+
+    # Runtime helpers
+
     def is_valid_target(self, target: object) -> bool:
         """Validate whether a target conforms to this pointer's type."""
         try:
@@ -574,22 +630,6 @@ class JSONPointer(str, Generic[T_co, P_co]):
             return True
         except Exception:
             return False
-
-    def is_root(self) -> bool:
-        """Check whether this JSONPointer's target is the root."""
-        return self == ""
-
-    def is_parent_of(self, other: JSONPointer[Any]) -> bool:
-        """
-        Check whether this JSONPointer's path is a parent of the `other` JSONPointer's path.
-
-        Root is treated as a parent of all paths.
-        """
-        # Strict parentage only
-        if self == other:
-            return False
-
-        return other.parts[: len(self.parts)] == self.parts
 
     def get(self, doc: JSONValue) -> T_co:
         """
