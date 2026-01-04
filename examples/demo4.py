@@ -16,7 +16,10 @@ from examples.shared import (
     save_config,
 )
 from jsonpatchx import JSONValue, OperationRegistry
-from jsonpatchx.fastapi import make_json_patch_body_with_dep, patch_error_responses
+from jsonpatchx.fastapi import (
+    make_json_patch_body_with_dep,
+    patch_error_openapi_responses,
+)
 
 app = create_app(
     title="jsonpatch demo 4 (pointer backends)",
@@ -66,7 +69,7 @@ def get_config_endpoint(
     tags=["configs"],
     summary="Patch a config (dot pointers)",
     description="Use dot-separated pointers like 'features.chat'.",
-    responses=patch_error_responses(),
+    responses=patch_error_openapi_responses(),
     openapi_extra=openapi_extra,
 )
 def patch_config(

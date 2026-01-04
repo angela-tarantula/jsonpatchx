@@ -20,7 +20,7 @@ from examples.shared import (
     save_user,
 )
 from jsonpatchx import JsonPatchFor, OperationRegistry
-from jsonpatchx.fastapi import patch_error_responses, patch_request_body
+from jsonpatchx.fastapi import patch_error_openapi_responses, patch_request_body
 
 user_registry = OperationRegistry.with_standard(IncrementOp, ToggleBoolOp)
 team_registry = OperationRegistry.with_standard(AppendOp, IncrementOp)
@@ -60,9 +60,9 @@ def get_user_endpoint(
     tags=["users"],
     summary="Patch a user",
     description="Apply custom ops to a User model.",
-    responses=patch_error_responses(),
+    responses=patch_error_openapi_responses(),
     openapi_extra=patch_request_body(
-        "#/components/schemas/UserPatch",
+        f"#/components/schemas/{UserPatch.__name__}",
         examples={
             "increment-quota": {
                 "summary": "Increment user quota",
@@ -121,9 +121,9 @@ def get_team_endpoint(
     tags=["teams"],
     summary="Patch a team",
     description="Apply custom ops to a Team model.",
-    responses=patch_error_responses(),
+    responses=patch_error_openapi_responses(),
     openapi_extra=patch_request_body(
-        "#/components/schemas/TeamPatch",
+        f"#/components/schemas/{TeamPatch.__name__}",
         examples={
             "append-tag": {
                 "summary": "Append a tag",

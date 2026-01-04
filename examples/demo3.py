@@ -22,7 +22,7 @@ from examples.shared import (
     save_config,
 )
 from jsonpatchx import JSONValue, OperationRegistry, make_json_patch_body
-from jsonpatchx.fastapi import patch_error_responses, patch_request_body
+from jsonpatchx.fastapi import patch_error_openapi_responses, patch_request_body
 
 registry = OperationRegistry(
     IncrementOp,
@@ -67,9 +67,9 @@ def get_config_endpoint(
     tags=["configs"],
     summary="Patch a config",
     description="Apply standard RFC 6902 ops plus custom ops to a config.",
-    responses=patch_error_responses(),
+    responses=patch_error_openapi_responses(),
     openapi_extra=patch_request_body(
-        "#/components/schemas/CustomPatch",
+        f"#/components/schemas/{CustomPatch.__name__}",
         examples={
             "increment-limit": {
                 "summary": "limits: increment max_users",

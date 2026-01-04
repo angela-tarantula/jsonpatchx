@@ -10,7 +10,7 @@ from examples.shared import JSON_PATCH_MEDIA_TYPE, User, create_app, get_user, s
 from jsonpatchx import JsonPatchFor
 from jsonpatchx.fastapi import (
     patch_content_type_dependency,
-    patch_error_responses,
+    patch_error_openapi_responses,
     patch_request_body,
 )
 
@@ -50,9 +50,9 @@ def get_user_endpoint(
     tags=["users"],
     summary="Patch a user",
     description="Apply a JSON Patch document to a User model.",
-    responses=patch_error_responses(),
+    responses=patch_error_openapi_responses(),
     openapi_extra=patch_request_body(
-        "#/components/schemas/UserPatch",
+        f"#/components/schemas/{UserPatch.__name__}",
         examples={
             "rename-user": {
                 "summary": "Replace the user's name",

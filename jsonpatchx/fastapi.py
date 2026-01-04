@@ -48,7 +48,8 @@ class PatchErrorResponse(BaseModel):
     detail: str | PatchFailureDetailResponse
 
 
-def patch_error_response(exc: PatchError) -> JSONResponse:
+def _patch_error_response_map(exc: PatchError) -> JSONResponse:
+    """Map a PatchError to a JSONResponse for FastAPI exception handlers."""
     if isinstance(exc, PatchExecutionError):
         detail = exc.detail
         payload = PatchFailureDetailResponse(
@@ -76,7 +77,16 @@ def patch_error_response(exc: PatchError) -> JSONResponse:
     )
 
 
-def patch_error_responses() -> dict[int, dict[str, Any]]:
+def install_jsonpatch_error_handlers(app: FastAPI) -> None:
+    """Register a single FastAPI exception handler for PatchError."""
+
+    @app.exception_handler(PatchError)
+    def _patch_error_handler(request: Request, exc: PatchError) -> JSONResponse:
+        return _patch_error_response_map(exc)
+
+
+def patch_error_openapi_responses() -> dict[int, dict[str, Any]]:
+    """Return OpenAPI response schema entries for JSON Patch errors."""
     schema = {
         "type": "object",
         "properties": {
@@ -122,12 +132,6 @@ def patch_error_responses() -> dict[int, dict[str, Any]]:
     }
 
 
-def install_jsonpatch_error_handlers(app: FastAPI) -> None:
-    @app.exception_handler(PatchError)
-    def _patch_error_handler(request: Request, exc: PatchError) -> JSONResponse:
-        return patch_error_response(exc)
-
-
 def _enforce_json_patch_content_type(
     request: Request, *, media_type: str = JSON_PATCH_MEDIA_TYPE
 ) -> None:
@@ -144,6 +148,7 @@ def _enforce_json_patch_content_type(
 def patch_content_type_dependency(
     enabled: bool, *, media_type: str = JSON_PATCH_MEDIA_TYPE
 ) -> list[Callable[..., Any]]:
+    """Return a dependency list that enforces the JSON Patch media type."""
     if not enabled:
         return []
 
@@ -160,6 +165,7 @@ def patch_request_body(
     include_application_json: bool = True,
     media_type: str = JSON_PATCH_MEDIA_TYPE,
 ) -> dict[str, Any]:
+    """Build an OpenAPI requestBody for JSON Patch with optional examples."""
     content: dict[str, Any] = {
         media_type: {"schema": {"$ref": schema_ref}},
     }
@@ -188,11 +194,7 @@ def make_json_patch_body_with_dep(
     Callable[..., _BasePatchBody],
     dict[str, Any] | None,
 ]:
-    """
-    Create a JSON Patch RootModel plus a FastAPI dependency that injects registry context.
-
-    Returns (PatchBody, dependency, openapi_extra).
-    """
+    """Create a PatchBody model, dependency, and optional OpenAPI requestBody."""
     registry = registry or OperationRegistry.standard()
     PatchBody = make_json_patch_body(registry, name=name)
     if app is not None:
