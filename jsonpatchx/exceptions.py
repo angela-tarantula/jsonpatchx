@@ -31,6 +31,10 @@ class PatchApplicationError(PatchError):
     """A JSON Patch failed during application."""
 
 
+class PatchValidationError(PatchApplicationError):
+    """Patched data failed validation against a target schema."""
+
+
 class TestOpFailed(PatchApplicationError):
     """A test operation failed."""
 

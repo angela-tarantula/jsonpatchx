@@ -28,6 +28,7 @@ from jsonpatchx.exceptions import (
     PatchApplicationError,
     PatchError,
     PatchExecutionError,
+    PatchValidationError,
 )
 from jsonpatchx.pydantic import (
     _BasePatchBody,
@@ -66,6 +67,11 @@ def _patch_error_response_map(exc: PatchError) -> JSONResponse:
         )
         return JSONResponse(
             status_code=500, content=PatchErrorResponse(detail=payload).model_dump()
+        )
+
+    if isinstance(exc, PatchValidationError):
+        return JSONResponse(
+            status_code=422, content=PatchErrorResponse(detail=str(exc)).model_dump()
         )
 
     if isinstance(exc, PatchApplicationError):

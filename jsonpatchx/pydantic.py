@@ -11,8 +11,16 @@ from typing import (
     override,
 )
 
-from pydantic import BaseModel, ConfigDict, Field, RootModel, create_model
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+    RootModel,
+    ValidationError,
+    create_model,
+)
 
+from jsonpatchx.exceptions import PatchValidationError
 from jsonpatchx.registry import OperationRegistry
 from jsonpatchx.schema import OperationSchema
 from jsonpatchx.standard import _apply_ops
@@ -87,7 +95,12 @@ class _BasePatchModel(_RegistryBoundPatchRoot):
             return target
         data = target.model_dump()
         patched = _apply_ops(self.ops, data, inplace=True)
-        return self.__target_model__.model_validate(patched)
+        try:
+            return self.__target_model__.model_validate(patched)
+        except ValidationError as e:
+            raise PatchValidationError(
+                f"Patched data failed validation for {self.__target_model__.__name__}: {e}"
+            ) from e
 
 
 ModelT = TypeVar("ModelT", bound=BaseModel)

@@ -18,6 +18,7 @@ from jsonpatchx.exceptions import (
     PatchError,
     PatchExecutionError,
     PatchFailureDetail,
+    PatchValidationError,
     TestOpFailed,
 )
 from jsonpatchx.pydantic import JsonPatchFor, patch_body_for_json, patch_body_for_model
@@ -36,6 +37,7 @@ __all__ = [
     "PatchError",
     "PatchExecutionError",
     "PatchFailureDetail",
+    "PatchValidationError",
     "TestOpFailed",
     # types
     "JSONPointer",
