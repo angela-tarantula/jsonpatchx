@@ -17,21 +17,21 @@ from examples.shared import (
 )
 from jsonpatchx import JSONValue, OperationRegistry
 from jsonpatchx.fastapi import (
-    make_json_patch_body_with_dep,
+    patch_body_for_json_with_dep,
     patch_error_openapi_responses,
 )
 
 app = create_app(
     title="Demo 4: Custom JSON Pointer implementations",
     description=(
-        "Registry-scoped pointer backends change parsing semantics without changing operation schemas. Requires `make_json_patch_body_with_dep`."
+        "Registry-scoped pointer backends change parsing semantics without changing operation schemas. Requires `patch_body_for_json_with_dep`."
     ),
 )
 
 registry = OperationRegistry.with_standard(pointer_cls=DotPointer)
-DotPointerPatch, DotPointerPatchDepends, openapi_extra = make_json_patch_body_with_dep(
+DotPointerPatch, DotPointerPatchDepends, openapi_extra = patch_body_for_json_with_dep(
     registry,
-    name="DotPointer",
+    schema_name="DotPointer",
     media_type=JSON_PATCH_MEDIA_TYPE,
     app=app,
     examples={

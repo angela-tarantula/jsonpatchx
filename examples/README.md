@@ -101,5 +101,5 @@ uv run python -m examples.demo
     [{"op": "replace", "path": "features.chat", "value": false}]
     ```
 
-This demo uses `make_json_patch_body_with_dep(...)` to inject Pydantic validation context,
+This demo uses `patch_body_for_json_with_dep(...)` to inject Pydantic validation context,
 which FastAPI does not currently provide for request bodies.

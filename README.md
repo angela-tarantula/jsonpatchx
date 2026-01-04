@@ -285,15 +285,15 @@ from fastapi import Depends, FastAPI
 from pointerlibrary import DotPointer
 
 from jsonpatchx import JSONValue, OperationRegistry
-from jsonpatchx.fastapi import make_json_patch_body_with_dep, JSON_PATCH_MEDIA_TYPE
+from jsonpatchx.fastapi import patch_body_for_json_with_dep, JSON_PATCH_MEDIA_TYPE
 
 
 app = FastAPI()
 registry = OperationRegistry.with_standard(pointer_cls=DotPointer)
 
-PatchBody, PatchDepends, openapi_extra = make_json_patch_body_with_dep(
+PatchBody, PatchDepends, openapi_extra = patch_body_for_json_with_dep(
     registry,
-    name="DotPointer",
+    schema_name="DotPointer",
     media_type=JSON_PATCH_MEDIA_TYPE,
     app=app,
 )

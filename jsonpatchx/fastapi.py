@@ -182,13 +182,13 @@ def patch_request_body(
 
 
 # https://github.com/fastapi/fastapi/discussions/10864
-# Due to a limitation of FastAPI, need make_json_patch_body_with_dep instead of patch_body_for_json
+# Due to a limitation of FastAPI, need patch_body_for_json_with_dep instead of patch_body_for_json
 
 
-def make_json_patch_body_with_dep(
+def patch_body_for_json_with_dep(
     registry: OperationRegistry | None = None,
     *,
-    name: str = "JsonPatchBody",
+    schema_name: str = "JsonPatchBody",
     title: str | None = None,
     media_type: str | None = JSON_PATCH_MEDIA_TYPE,
     include_application_json: bool = True,
@@ -202,7 +202,7 @@ def make_json_patch_body_with_dep(
 ]:
     """Create a PatchBody model, dependency, and optional OpenAPI requestBody."""
     registry = registry or OperationRegistry.standard()
-    PatchBody = patch_body_for_json(name, registry=registry, title=title)
+    PatchBody = patch_body_for_json(schema_name, registry=registry, title=title)
     if app is not None:
         _register_patch_schema(app, PatchBody)
 
