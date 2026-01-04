@@ -189,6 +189,7 @@ def make_json_patch_body_with_dep(
     registry: OperationRegistry | None = None,
     *,
     name: str = "JsonPatchBody",
+    title: str | None = None,
     media_type: str | None = JSON_PATCH_MEDIA_TYPE,
     include_application_json: bool = True,
     examples: dict[str, Any] | None = None,
@@ -201,7 +202,7 @@ def make_json_patch_body_with_dep(
 ]:
     """Create a PatchBody model, dependency, and optional OpenAPI requestBody."""
     registry = registry or OperationRegistry.standard()
-    PatchBody = patch_body_for_json(name, registry)
+    PatchBody = patch_body_for_json(name, registry=registry, title=title)
     if app is not None:
         _register_patch_schema(app, PatchBody)
 

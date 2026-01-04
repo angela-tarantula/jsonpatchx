@@ -33,7 +33,7 @@ registry = OperationRegistry(
     EnsureObjectOp,
     RemoveNumberOp,
 )
-CustomPatch = patch_body_for_json("My JSON Config", registry)
+ConfigPatch = patch_body_for_json("Config", registry=registry)
 
 app = create_app(
     title="jsonpatch demo 3 (custom ops)",
@@ -69,7 +69,7 @@ def get_config_endpoint(
     description="Apply standard RFC 6902 ops plus custom ops to a config.",
     responses=patch_error_openapi_responses(),
     openapi_extra=patch_request_body(
-        CustomPatch,
+        ConfigPatch,
         examples={
             "increment-limit": {
                 "summary": "limits: increment max_users",
@@ -104,7 +104,7 @@ def patch_config(
         description="Available configs: site, limits.",
         examples={"example": {"value": "site"}},
     ),
-    patch: CustomPatch = Body(
+    patch: ConfigPatch = Body(
         ...,
         description="JSON Patch document. Prefer Content-Type: application/json-patch+json.",
         media_type=JSON_PATCH_MEDIA_TYPE,

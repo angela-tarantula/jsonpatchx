@@ -184,10 +184,10 @@ from jsonpatchx import OperationRegistry, JSONValue, patch_body_for_json
 
 app = FastAPI()
 registry = OperationRegistry.with_standard(DeduplicateOp, IncrementOp)
-CustomPatch = patch_body_for_json("My JSON Config", registry)
+UserPatch = patch_body_for_json("User", registry=registry)
 
 @app.patch("/configs/{config_id}")
-def patch_config(config_id: str, patch: CustomPatch = Body(...)) -> JSONValue:
+def patch_config(config_id: str, patch: UserPatch = Body(...)) -> JSONValue:
     doc = load_config(config_id)
     return patch.apply(doc)
 ```

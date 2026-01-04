@@ -1,3 +1,4 @@
+import re
 from typing import (
     Annotated,
     Any,
@@ -214,8 +215,10 @@ class _BasePatchBody(_RegistryBoundPatchRoot):
 
 
 def patch_body_for_json(
-    name: str,
+    openapi_schema_name: str,
+    *,
     registry: OperationRegistry | None = None,
+    title: str | None = None,
 ) -> type[_BasePatchBody]:
     """
     Create a Pydantic model type suitable for a FastAPI request body representing a JSON Patch.
@@ -233,19 +236,22 @@ def patch_body_for_json(
         Typed ops applied to an untyped document:
 
         >>> registry = OperationRegistry.with_standard(IncrementOp)
-        >>> CustomPatch = patch_body_for_json("Custom", registry)
+        >>> MedicalRecordPatch = patch_body_for_json(
+        ...     "MedicalRecord", registry=registry, title="Hospital Medical Record"
+        ... )
 
         >>> @app.patch("/configs/{config_id}")
-        ... def patch_config(config_id: str, patch: CustomPatch):
+        ... def patch_config(config_id: str, patch: MedicalRecordPatch):
         ...     doc = load_config(config_id)
         ...     updated = patch.apply(doc)
         ...     save_config(config_id, updated)
         ...     return updated
 
     Args:
+        openapi_schema_name: Name of the generated model class. This becomes the OpenAPI schema key.
         registry: OperationRegistry used to validate and parse operations. Defaults to the standard
             RFC 6902 registry.
-        name: Optional name of the generated model class. Naming the class can improve OpenAPI output.
+        title: Optional display title used in OpenAPI docs (can be more human-friendly than ``openapi_schema_name``).
 
     Notes:
         - The registry's validation context is automatically injected during parsing so ``JSONPointer``
@@ -253,31 +259,40 @@ def patch_body_for_json(
         - Create these model types at import time (module scope) so FastAPI/OpenAPI sees a stable schema.
     """
 
+    if not re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", openapi_schema_name):
+        raise ValueError(
+            "openapi_schema_name must be a valid identifier (letters, digits, underscores)"
+        )
+
     registry = registry or OperationRegistry.standard()
 
+    display_name = title or openapi_schema_name
+
     BodyPatchOperation = TypeAliasType(  # type: ignore[misc]
-        f"{name}PatchOperation",
+        f"{openapi_schema_name}PatchOperation",
         Annotated[
             registry.union.__value__,
             Field(
-                title=f"{name} Patch Operation",
-                description=f"Discriminated union of patch operations for {name}.",
+                title=f"{display_name} Patch Operation",
+                description=(
+                    f"Discriminated union of patch operations for {display_name}."
+                ),
             ),
         ],
     )
 
     PatchBody = create_model(
-        f"{name}PatchDocument",
+        f"{openapi_schema_name}PatchDocument",
         __base__=_BasePatchBody,
         __config__=ConfigDict(
-            title=f"{name} Patch Document",
+            title=f"{display_name} Patch Document",
             json_schema_extra={
-                "description": f"Array of patch operations for {name}.",
+                "description": f"Array of patch operations for {display_name}.",
             },
         ),
         root=(list[BodyPatchOperation], ...),  # type: ignore[valid-type]
     )
 
     PatchBody.__registry__ = registry
-    PatchBody.__doc__ = f"Discriminated union of patch operations for {name}."
+    PatchBody.__doc__ = f"Discriminated union of patch operations for {display_name}."
     return PatchBody
