@@ -119,7 +119,7 @@ These types allow you to reason about JSON structure rather than Python primitiv
 
 #### JSONPointer is a str
 
-Per [RFC 6901](https://datatracker.ietf.org/doc/html/rfc6901), “a JSON Pointer is a Unicode string”. Modeling it as a `str` is faithful to that definition: `isinstance(pointer, str)` is true, and pointers participate naturally in all string semantics (e.g. `pointer.startswith("/foo")`).
+Per [RFC 6901](https://datatracker.ietf.org/doc/html/rfc6901), “a JSON Pointer is a Unicode string”. Modeling it as a `str` is faithful to that definition: `isinstance(pointer, str)` is true, and pointers participate naturally in all string semantics (e.g. `pointer.count("/")`, `"".join([pointer, "/suffix"])`, or `pointer.endswith("/foo")`).
 
 ### Operation Registries
 
