@@ -91,10 +91,9 @@ class _BasePatchModel(_RegistryBoundPatchRoot):
 
 
 ModelT = TypeVar("ModelT", bound=BaseModel)
-RegistryU = TypeVar("RegistryU", bound=OperationRegistry, default=OperationRegistry)
 
 
-class JsonPatchFor(Generic[ModelT, RegistryU]):
+class JsonPatchFor(Generic[ModelT]):
     """
     Factory for creating typed JSON Patch models for a specific Pydantic model.
 
@@ -113,45 +112,25 @@ class JsonPatchFor(Generic[ModelT, RegistryU]):
     ... )
     >>> updated_user = patch.apply(user)
 
-        Custom operations or pointer backend (registry-scoped):
-
-    >>> registry = OperationRegistry.with_standard(IncrementOp, pointer_cls=MyPointer)
-    >>> UserPatch = JsonPatchFor[User, registry]
-
     Notes:
-        ``JsonPatchFor[...]`` accepts either ``JsonPatchFor[MyModel]`` (standard registry) or
-        ``JsonPatchFor[MyModel, registry]`` (explicit ``OperationRegistry``). The returned type is a
-        dynamically generated ``pydantic.RootModel`` subclass whose JSON shape is a top-level list.
+        ``JsonPatchFor[...]`` accepts ``JsonPatchFor[MyModel]`` (standard registry). For custom
+        registries, use ``patch_body_for_model``. The returned type is a dynamically generated
+        ``pydantic.RootModel`` subclass whose JSON shape is a top-level list.
     """
 
-    def __class_getitem__(
-        cls, param: type[BaseModel] | tuple[type[BaseModel], OperationRegistry]
-    ) -> type[_BasePatchModel]:
+    def __class_getitem__(cls, param: type[BaseModel]) -> type[_BasePatchModel]:
         """
         Create a registry-bound patch RootModel type for the given target model.
 
-        This is the implementation behind ``JsonPatchFor[Model]`` and
-        ``JsonPatchFor[Model, registry]``.
+        This is the implementation behind ``JsonPatchFor[Model]``.
         """
-        if isinstance(param, tuple):
-            if len(param) != 2:
-                raise TypeError(
-                    "JsonPatchFor[Model, registry] expects exactly two items"
-                )
-            model, registry = param
-        else:
-            model, registry = param, OperationRegistry.standard()
+        model = param
+        registry = OperationRegistry.standard()
 
         # Verify that model is a BaseModel subclass. Must verify that model is a type first or else issubclass complains.
         if not isinstance(model, type) or not issubclass(model, BaseModel):  # type: ignore[redundant-expr]
             raise TypeError(
                 f"JsonPatchFor[...] expects a Pydantic BaseModel, got {model!r}"
-            )
-
-        if not isinstance(registry, OperationRegistry):
-            raise TypeError(
-                "JsonPatchFor[Model, registry] second argument must be an OperationRegistry, "
-                f"got {type(registry).__name__}"
             )
 
         return cls._create_patch_model(model, registry)
@@ -218,7 +197,7 @@ class _BasePatchBody(_RegistryBoundPatchRoot):
 
 
 def patch_body_for_json(
-    openapi_schema_name: str,
+    schema_name: str,
     *,
     registry: OperationRegistry | None = None,
     title: str | None = None,
@@ -251,10 +230,10 @@ def patch_body_for_json(
         ...     return updated
 
     Args:
-        openapi_schema_name: Name of the generated model class. This becomes the OpenAPI schema key.
+        schema_name: Name of the generated model class. This becomes the OpenAPI schema key.
         registry: OperationRegistry used to validate and parse operations. Defaults to the standard
             RFC 6902 registry.
-        title: Optional display title used in OpenAPI docs (can be more human-friendly than ``openapi_schema_name``).
+        title: Optional display title used in OpenAPI docs (can be more human-friendly than ``schema_name``).
 
     Notes:
         - The registry's validation context is automatically injected during parsing so ``JSONPointer``
@@ -262,17 +241,17 @@ def patch_body_for_json(
         - Create these model types at import time (module scope) so FastAPI/OpenAPI sees a stable schema.
     """
 
-    if not re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", openapi_schema_name):
+    if not re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", schema_name):
         raise ValueError(
-            "openapi_schema_name must be a valid identifier (letters, digits, underscores)"
+            "schema_name must be a valid identifier (letters, digits, underscores)"
         )
 
     registry = registry or OperationRegistry.standard()
 
-    display_name = title or openapi_schema_name
+    display_name = title or schema_name
 
     BodyPatchOperation = TypeAliasType(  # type: ignore[misc]
-        f"{openapi_schema_name}PatchOperation",
+        f"{schema_name}PatchOperation",
         Annotated[
             registry.union.__value__,
             Field(
@@ -285,7 +264,7 @@ def patch_body_for_json(
     )
 
     PatchBody = create_model(
-        f"{openapi_schema_name}PatchDocument",
+        f"{schema_name}PatchDocument",
         __base__=_BasePatchBody,
         __config__=ConfigDict(
             title=f"{display_name} Patch Document",
@@ -299,3 +278,26 @@ def patch_body_for_json(
     PatchBody.__registry__ = registry
     PatchBody.__doc__ = f"Discriminated union of patch operations for {display_name}."
     return PatchBody
+
+
+def patch_body_for_model(
+    model: type[BaseModel],
+    *,
+    registry: OperationRegistry | None = None,
+) -> type[_BasePatchModel]:
+    """
+    Create a patch RootModel for a Pydantic model using a registry (standard by default).
+    """
+    if not isinstance(model, type) or not issubclass(model, BaseModel):  # type: ignore[redundant-expr]
+        raise TypeError(
+            f"patch_body_for_model expects a Pydantic BaseModel, got {model!r}"
+        )
+
+    if registry is not None and not isinstance(registry, OperationRegistry):
+        raise TypeError(
+            "registry must be an OperationRegistry instance or None, "
+            f"got {type(registry).__name__}"
+        )
+
+    registry = registry or OperationRegistry.standard()
+    return JsonPatchFor._create_patch_model(model, registry)

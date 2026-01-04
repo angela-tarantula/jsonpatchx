@@ -157,21 +157,28 @@ updated = patch.apply(doc)
 
 ### Model-Aware Patching
 
-Use `JsonPatchFor[Model]` when targeting a Pydantic model. This generates a `RootModel`
-bound to that model, ensuring your OpenAPI documentation reflects the specific schema.
+Use `JsonPatchFor[Model]` when targeting a Pydantic model with the standard registry.
 
 ```py
 from fastapi import Body, FastAPI
-from jsonpatchx import JsonPatchFor, OperationRegistry
+from jsonpatchx import JsonPatchFor
 
 app = FastAPI()
-registry = OperationRegistry.with_standard(ConcatenateOp)
-UserPatch = JsonPatchFor[User, registry]
+UserPatch = JsonPatchFor[User]
 
 @app.patch("/users/{user_id}")
 def patch_user(user_id: int, patch: UserPatch = Body(...)) -> User:
     user = get_user(user_id)
     return patch.apply(user)
+```
+
+For custom registries, use `patch_body_for_model`.
+
+```py
+from jsonpatchx import OperationRegistry, patch_body_for_model
+
+registry = OperationRegistry.with_standard(ConcatenateOp)
+UserPatch = patch_body_for_model(User, registry=registry)
 ```
 
 ### Plain JSON Patching

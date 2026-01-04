@@ -20,7 +20,7 @@ from jsonpatchx.exceptions import (
     PatchFailureDetail,
     TestOpFailed,
 )
-from jsonpatchx.pydantic import JsonPatchFor, patch_body_for_json
+from jsonpatchx.pydantic import JsonPatchFor, patch_body_for_json, patch_body_for_model
 from jsonpatchx.registry import OperationRegistry
 from jsonpatchx.schema import OperationSchema
 from jsonpatchx.standard import JsonPatch, apply_patch
@@ -46,6 +46,7 @@ __all__ = [
     # pydantic helpers
     "JsonPatchFor",
     "patch_body_for_json",
+    "patch_body_for_model",
     # built-ins
     "STANDARD_OPS",
     "AddOp",

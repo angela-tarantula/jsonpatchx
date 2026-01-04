@@ -19,14 +19,14 @@ from examples.shared import (
     save_team,
     save_user,
 )
-from jsonpatchx import JsonPatchFor, OperationRegistry
+from jsonpatchx import OperationRegistry, patch_body_for_model
 from jsonpatchx.fastapi import patch_error_openapi_responses, patch_request_body
 
 user_registry = OperationRegistry.with_standard(IncrementOp, ToggleBoolOp)
 team_registry = OperationRegistry.with_standard(AppendOp, IncrementOp)
 
-UserPatch = JsonPatchFor[User, user_registry]
-TeamPatch = JsonPatchFor[Team, team_registry]
+UserPatch = patch_body_for_model(User, registry=user_registry)
+TeamPatch = patch_body_for_model(Team, registry=team_registry)
 
 app = create_app(
     title="jsonpatch demo 2 (model + custom ops)",
