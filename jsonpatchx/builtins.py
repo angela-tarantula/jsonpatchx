@@ -1,5 +1,4 @@
 import copy
-from collections.abc import Set
 from typing import Final, Literal, Self, override
 
 from pydantic import ConfigDict, Field, model_validator
@@ -128,13 +127,11 @@ class TestOp(OperationSchema):
         return doc
 
 
-STANDARD_OPS: Final[Set[type[OperationSchema]]] = frozenset(
-    [
-        AddOp,
-        RemoveOp,
-        ReplaceOp,
-        MoveOp,
-        CopyOp,
-        TestOp,
-    ]
+STANDARD_OPS: Final[tuple[type[OperationSchema], ...]] = (
+    AddOp,
+    CopyOp,
+    MoveOp,
+    RemoveOp,
+    ReplaceOp,
+    TestOp,
 )

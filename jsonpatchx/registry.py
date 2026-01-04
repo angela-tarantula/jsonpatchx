@@ -176,8 +176,12 @@ class OperationRegistry:
         - ``op_adapter`` validates a single operation.
         - ``patch_adapter`` validates a list of operations (a JSON Patch document).
         """
-        type RegistryPatchOperation = Annotated[  # type: ignore[valid-type] # dynamic runtime type for Pydantic
-            Union[tuple(op_schemas)],
+        ordered_ops_tuple: tuple[type[OperationSchema], ...] = (
+            OperationRegistry._deterministic_sort(*op_schemas)
+        )
+
+        type RegistryPatchOperation = Annotated[
+            Union[ordered_ops_tuple],  # type: ignore[valid-type]  # dynamic runtime type for Pydantic
             Field(discriminator="op"),
         ]
         op_adapter: TypeAdapter[OperationSchema] = TypeAdapter(RegistryPatchOperation)
@@ -185,6 +189,19 @@ class OperationRegistry:
             list[RegistryPatchOperation]
         )
         return RegistryPatchOperation, op_adapter, patch_adapter
+
+    @staticmethod
+    def _deterministic_sort(
+        *op_schemas: type[OperationSchema],
+    ) -> tuple[type[OperationSchema], ...]:
+        """
+        Deterministically order the schemas for deterministic OpenAPI output.
+
+        Happens to sort alphabetically by first op literal, but that's an implementation detail.
+        """
+        return tuple(  # deterministic ordering of ops in OpenAPI
+            sorted(op_schemas, key=lambda op: op._op_literals[0])
+        )
 
     @property
     def ops_by_name(self) -> Mapping[str, type[OperationSchema]]:
