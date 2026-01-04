@@ -60,6 +60,9 @@ class ReplaceOp(OperationSchema):
     def apply(self, doc: JSONValue) -> JSONValue:
         doc = RemoveOp(path=self.path).apply(doc)
         return AddOp(path=self.path, value=self.value).apply(doc)
+
+op = ReplaceOp(path="/title", value="New")
+op = ReplaceOp.model_validate({"op": "replace", "path": "/other/jsonpatch/libraries", "value": True})
 ```
 
 ### Typed JSON Pointers
