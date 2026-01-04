@@ -273,7 +273,7 @@ class OperationRegistry:
         )
 
     def parse_python_patch(
-        self, python: Sequence[Mapping[str, JSONValue]] | Sequence[OperationSchema]
+        self, python: Sequence[OperationSchema | Mapping[str, JSONValue]]
     ) -> list[OperationSchema]:
         """
         Parse and validate a JSON Patch document from Python objects.
