@@ -69,7 +69,7 @@ def get_config_endpoint(
     description="Apply standard RFC 6902 ops plus custom ops to a config.",
     responses=patch_error_openapi_responses(),
     openapi_extra=patch_request_body(
-        f"#/components/schemas/{CustomPatch.__name__}",
+        CustomPatch,
         examples={
             "increment-limit": {
                 "summary": "limits: increment max_users",

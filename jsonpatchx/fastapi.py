@@ -15,7 +15,7 @@ a state conflict, map PatchApplicationError to 422 instead.
 from __future__ import annotations
 
 from collections.abc import Callable
-from typing import Any, cast
+from typing import Annotated, Any, cast
 
 from fastapi import Body, Depends, FastAPI, HTTPException, Request
 from fastapi.exceptions import RequestValidationError
@@ -29,7 +29,11 @@ from jsonpatchx.exceptions import (
     PatchError,
     PatchExecutionError,
 )
-from jsonpatchx.pydantic import _BasePatchBody, make_json_patch_body
+from jsonpatchx.pydantic import (
+    _BasePatchBody,
+    _RegistryBoundPatchRoot,
+    make_json_patch_body,
+)
 from jsonpatchx.registry import OperationRegistry
 
 JSON_PATCH_MEDIA_TYPE = "application/json-patch+json"
@@ -159,13 +163,14 @@ def patch_content_type_dependency(
 
 
 def patch_request_body(
-    schema_ref: str,
+    patch_model: Annotated[type[_RegistryBoundPatchRoot], type[BaseModel]],
     examples: dict[str, Any] | None = None,
     *,
     include_application_json: bool = True,
     media_type: str = JSON_PATCH_MEDIA_TYPE,
 ) -> dict[str, Any]:
     """Build an OpenAPI requestBody for JSON Patch with optional examples."""
+    schema_ref = f"#/components/schemas/{patch_model.__name__}"
     content: dict[str, Any] = {
         media_type: {"schema": {"$ref": schema_ref}},
     }

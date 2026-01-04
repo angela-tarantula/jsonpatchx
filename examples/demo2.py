@@ -62,7 +62,7 @@ def get_user_endpoint(
     description="Apply custom ops to a User model.",
     responses=patch_error_openapi_responses(),
     openapi_extra=patch_request_body(
-        f"#/components/schemas/{UserPatch.__name__}",
+        UserPatch,
         examples={
             "increment-quota": {
                 "summary": "Increment user quota",
@@ -123,7 +123,7 @@ def get_team_endpoint(
     description="Apply custom ops to a Team model.",
     responses=patch_error_openapi_responses(),
     openapi_extra=patch_request_body(
-        f"#/components/schemas/{TeamPatch.__name__}",
+        TeamPatch,
         examples={
             "append-tag": {
                 "summary": "Append a tag",

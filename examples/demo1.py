@@ -52,7 +52,7 @@ def get_user_endpoint(
     description="Apply a JSON Patch document to a User model.",
     responses=patch_error_openapi_responses(),
     openapi_extra=patch_request_body(
-        f"#/components/schemas/{UserPatch.__name__}",
+        UserPatch,
         examples={
             "rename-user": {
                 "summary": "Replace the user's name",
