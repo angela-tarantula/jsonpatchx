@@ -33,7 +33,7 @@ from pydantic import (
 from pydantic_core import core_schema as cs
 from typing_extensions import TypeForm
 
-from jsonpatch.exceptions import (
+from jsonpatchx.exceptions import (
     InvalidJSONPointer,
     PatchApplicationError,
 )

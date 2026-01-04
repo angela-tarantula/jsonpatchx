@@ -7,8 +7,8 @@ from __future__ import annotations
 from fastapi import Body, HTTPException, Path
 
 from examples.shared import JSON_PATCH_MEDIA_TYPE, User, create_app, get_user, save_user
-from jsonpatch import JsonPatchFor
-from jsonpatch.fastapi import (
+from jsonpatchx import JsonPatchFor
+from jsonpatchx.fastapi import (
     patch_content_type_dependency,
     patch_error_responses,
     patch_request_body,

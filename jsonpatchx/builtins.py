@@ -4,9 +4,9 @@ from typing import Final, Literal, Self, override
 
 from pydantic import Field, model_validator
 
-from jsonpatch.exceptions import InvalidOperationSchema, TestOpFailed
-from jsonpatch.schema import OperationSchema
-from jsonpatch.types import JSONPointer, JSONValue
+from jsonpatchx.exceptions import InvalidOperationSchema, TestOpFailed
+from jsonpatchx.schema import OperationSchema
+from jsonpatchx.types import JSONPointer, JSONValue
 
 
 class AddOp(OperationSchema):

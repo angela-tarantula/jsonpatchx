@@ -9,7 +9,7 @@ from fastapi import FastAPI
 from fastapi.responses import RedirectResponse
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
-from jsonpatch import (
+from jsonpatchx import (
     AddOp,
     InvalidOperationSchema,
     JSONValue,
@@ -18,8 +18,8 @@ from jsonpatch import (
     RemoveOp,
     ReplaceOp,
 )
-from jsonpatch.fastapi import JSON_PATCH_MEDIA_TYPE, install_jsonpatch_error_handlers
-from jsonpatch.types import (
+from jsonpatchx.fastapi import JSON_PATCH_MEDIA_TYPE, install_jsonpatch_error_handlers
+from jsonpatchx.types import (
     JSONArray,
     JSONBoolean,
     JSONNumber,

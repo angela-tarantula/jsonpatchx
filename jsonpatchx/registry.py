@@ -13,10 +13,10 @@ from typing import (
 
 from pydantic import Field, TypeAdapter
 
-from jsonpatch.builtins import STANDARD_OPS
-from jsonpatch.exceptions import InvalidJSONPointer, InvalidOperationRegistry
-from jsonpatch.schema import OperationSchema
-from jsonpatch.types import (
+from jsonpatchx.builtins import STANDARD_OPS
+from jsonpatchx.exceptions import InvalidJSONPointer, InvalidOperationRegistry
+from jsonpatchx.schema import OperationSchema
+from jsonpatchx.types import (
     _DEFAULT_POINTER_CLS,
     _POINTER_BACKEND_CTX_KEY,
     JSONPointer,

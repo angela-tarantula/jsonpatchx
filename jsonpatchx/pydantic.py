@@ -2,10 +2,10 @@ from typing import Any, ClassVar, Generic, Self, TypeAliasType, TypeVar, cast, o
 
 from pydantic import BaseModel, ConfigDict, RootModel, create_model
 
-from jsonpatch.registry import OperationRegistry
-from jsonpatch.schema import OperationSchema
-from jsonpatch.standard import _apply_ops
-from jsonpatch.types import _JSON_VALUE_ADAPTER, JSONValue
+from jsonpatchx.registry import OperationRegistry
+from jsonpatchx.schema import OperationSchema
+from jsonpatchx.standard import _apply_ops
+from jsonpatchx.types import _JSON_VALUE_ADAPTER, JSONValue
 
 
 def _named_union(name: str, union: TypeAliasType) -> TypeAliasType:

@@ -21,8 +21,8 @@ from examples.shared import (
     get_config,
     save_config,
 )
-from jsonpatch import JSONValue, OperationRegistry, make_json_patch_body
-from jsonpatch.fastapi import patch_error_responses, patch_request_body
+from jsonpatchx import JSONValue, OperationRegistry, make_json_patch_body
+from jsonpatchx.fastapi import patch_error_responses, patch_request_body
 
 registry = OperationRegistry(
     IncrementOp,

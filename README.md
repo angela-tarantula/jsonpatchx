@@ -1,12 +1,12 @@
-# json-patch
-[![CI](https://github.com/angela-tarantula/jsonpatch/actions/workflows/python-app.yml/badge.svg?branch=main)](https://github.com/marketplace/actions/super-linter)
+# jsonpatchx
+[![CI](https://github.com/angela-tarantula/jsonpatchx/actions/workflows/python-app.yml/badge.svg?branch=main)](https://github.com/marketplace/actions/super-linter)
 
 A typed JSON Patch ([RFC 6902](https://datatracker.ietf.org/doc/html/rfc6902)) engine for Python, built for explicit runtime semantics, custom operations,
 and clean FastAPI/OpenAPI integration.
 
 ## About
 
-json-patch is for teams who need PATCH to be **precise, explainable, and evolvable**.
+jsonpatchx is for teams who need PATCH to be **precise, explainable, and evolvable**.
 
 Typical use cases:
 
@@ -35,8 +35,8 @@ python -m pip install --upgrade pip uv
 1. Clone the repository
 
 ```sh
-git clone https://github.com/angela-tarantula/jsonpatch
-cd jsonpatch
+git clone https://github.com/angela-tarantula/jsonpatchx
+cd jsonpatchx
 ```
 
 2. Install the dependencies
@@ -70,8 +70,8 @@ Operations fail loudly if the runtime type contract is violated.
 
 ```py
 from typing import Literal, override
-from jsonpatch import ReplaceOp, JSONPointer, JSONValue, OperationSchema
-from jsonpatch.types import JSONBoolean
+from jsonpatchx import ReplaceOp, JSONPointer, JSONValue, OperationSchema
+from jsonpatchx.types import JSONBoolean
 
 class ToggleOp(OperationSchema):
     op: Literal["toggle"] = "toggle"
@@ -124,7 +124,7 @@ An `OperationRegistry` defines:
 - which JSON Pointer backend is used ([advanced](#advanced-pointer-backends))
 
 ```py
-from jsonpatch import AddOp, MoveOp, OperationRegistry
+from jsonpatchx import AddOp, MoveOp, OperationRegistry
 
 standard_registry = OperationRegistry.standard()
 limited_registry = OperationRegistry(AddOp, MoveOp)
@@ -138,7 +138,7 @@ The registry is the vocabulary of your PATCH API.
 The `JsonPatch` class handles the parsing and execution.
 
 ```py
-from jsonpatch import JsonPatch, JSONValue
+from jsonpatchx import JsonPatch, JSONValue
 
 doc = {"title": "Example", "active": False}
 
@@ -164,7 +164,7 @@ bound to that model, ensuring your OpenAPI documentation reflects the specific s
 
 ```py
 from fastapi import Body, FastAPI
-from jsonpatch import JsonPatchFor, OperationRegistry
+from jsonpatchx import JsonPatchFor, OperationRegistry
 
 app = FastAPI()
 registry = OperationRegistry.with_standard(ConcatenateOp)
@@ -182,7 +182,7 @@ Use `make_json_patch_body` when patching raw JSON (dicts/lists) rather than mode
 
 ```py
 from fastapi import Body, FastAPI
-from jsonpatch import OperationRegistry, JSONValue, make_json_patch_body
+from jsonpatchx import OperationRegistry, JSONValue, make_json_patch_body
 
 app = FastAPI()
 registry = OperationRegistry.with_standard(DeduplicateOp, IncrementOp)
@@ -201,7 +201,7 @@ Leverage `ConfigDict` and `model_validator` to create sophisticated, well-docume
 ```py
 from typing import Literal, Self
 from pydantic import ConfigDict, model_validator
-from jsonpatch import AddOp, JSONPointer, JSONValue, OperationSchema, InvalidOperationSchema
+from jsonpatchx import AddOp, JSONPointer, JSONValue, OperationSchema, InvalidOperationSchema
 
 class SwapOp(OperationSchema):
     model_config = ConfigDict(
@@ -242,8 +242,8 @@ To support alternative semantics (dot notation, custom escaping, relative pointe
 implement `PointerBackend` and supply it to a registry.
 
 ```py
-from jsonpatch import OperationRegistry
-from jsonpatch.types import PointerBackend
+from jsonpatchx import OperationRegistry
+from jsonpatchx.types import PointerBackend
 
 
 class DotPointer(PointerBackend):
@@ -274,14 +274,14 @@ to use different pointer semantics safely.
 FastAPI does not currently pass Pydantic validation context for request bodies, which
 registry-scoped backends require. Use the provided helper as a workaround:
 
-> NOTE: Features in jsonpatch.fastapi are currently considered unstable.
+> NOTE: Features in jsonpatchx.fastapi are currently considered unstable.
 
 ```py
 from fastapi import Depends, FastAPI
 from pointerlibrary import DotPointer
 
-from jsonpatch import JSONValue, OperationRegistry
-from jsonpatch.fastapi import make_json_patch_body_with_dep, JSON_PATCH_MEDIA_TYPE
+from jsonpatchx import JSONValue, OperationRegistry
+from jsonpatchx.fastapi import make_json_patch_body_with_dep, JSON_PATCH_MEDIA_TYPE
 
 
 app = FastAPI()

@@ -47,10 +47,10 @@ import json
 from collections.abc import Mapping, Sequence
 from typing import Self, overload, override
 
-from jsonpatch.exceptions import PatchError, PatchExecutionError, PatchFailureDetail
-from jsonpatch.registry import OperationRegistry
-from jsonpatch.schema import OperationSchema
-from jsonpatch.types import _JSON_VALUE_ADAPTER, JSONValue
+from jsonpatchx.exceptions import PatchError, PatchExecutionError, PatchFailureDetail
+from jsonpatchx.registry import OperationRegistry
+from jsonpatchx.schema import OperationSchema
+from jsonpatchx.types import _JSON_VALUE_ADAPTER, JSONValue
 
 
 def _apply_ops(

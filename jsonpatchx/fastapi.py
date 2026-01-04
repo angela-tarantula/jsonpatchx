@@ -22,15 +22,15 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, ValidationError
 
-from jsonpatch.exceptions import (
+from jsonpatchx.exceptions import (
     InvalidJsonPatch,
     InvalidJSONPointer,
     PatchApplicationError,
     PatchError,
     PatchExecutionError,
 )
-from jsonpatch.pydantic import _BasePatchBody, make_json_patch_body
-from jsonpatch.registry import OperationRegistry
+from jsonpatchx.pydantic import _BasePatchBody, make_json_patch_body
+from jsonpatchx.registry import OperationRegistry
 
 JSON_PATCH_MEDIA_TYPE = "application/json-patch+json"
 

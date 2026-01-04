@@ -32,7 +32,7 @@ jobs:
         run: uv run ruff check
 
       - name: Type check with mypy
-        run: uv run mypy jsonpatch
+        run: uv run mypy jsonpatchx
 
       - name: Run tests
         run: uv run pytest

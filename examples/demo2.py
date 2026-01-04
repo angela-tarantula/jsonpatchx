@@ -19,8 +19,8 @@ from examples.shared import (
     save_team,
     save_user,
 )
-from jsonpatch import JsonPatchFor, OperationRegistry
-from jsonpatch.fastapi import patch_error_responses, patch_request_body
+from jsonpatchx import JsonPatchFor, OperationRegistry
+from jsonpatchx.fastapi import patch_error_responses, patch_request_body
 
 user_registry = OperationRegistry.with_standard(IncrementOp, ToggleBoolOp)
 team_registry = OperationRegistry.with_standard(AppendOp, IncrementOp)

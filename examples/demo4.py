@@ -15,8 +15,8 @@ from examples.shared import (
     get_config,
     save_config,
 )
-from jsonpatch import JSONValue, OperationRegistry
-from jsonpatch.fastapi import make_json_patch_body_with_dep, patch_error_responses
+from jsonpatchx import JSONValue, OperationRegistry
+from jsonpatchx.fastapi import make_json_patch_body_with_dep, patch_error_responses
 
 app = create_app(
     title="jsonpatch demo 4 (pointer backends)",

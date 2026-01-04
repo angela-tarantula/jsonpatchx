@@ -14,8 +14,8 @@ from typing import (
 from pydantic import BaseModel, ConfigDict, GetJsonSchemaHandler
 from pydantic_core import core_schema as cs
 
-from jsonpatch.exceptions import InvalidOperationSchema
-from jsonpatch.types import JSONValue
+from jsonpatchx.exceptions import InvalidOperationSchema
+from jsonpatchx.types import JSONValue
 
 
 class OperationSchema(BaseModel, ABC):
