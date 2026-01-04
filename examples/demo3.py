@@ -1,5 +1,5 @@
 """
-Demo 3: custom ops with an untyped JSON document.
+Demo 3: Non-pydantic JSON patching.
 """
 
 from __future__ import annotations
@@ -36,8 +36,8 @@ registry = OperationRegistry(
 ConfigPatch = patch_body_for_json("Config", registry=registry)
 
 app = create_app(
-    title="jsonpatch demo 3 (custom ops)",
-    description="Custom ops become first-class: validation, OpenAPI, and dispatch.",
+    title="Demo 3: Custom PATCH endpoints for standard JSON documents",
+    description='Non-pydantic JSON patching with custom registries using `patch_body_for_json("Name", registry=custom_registry)`.',
 )
 
 

@@ -1,5 +1,5 @@
 """
-Demo 1: standard model patching with JsonPatchFor[User].
+Demo 1: Standard JSON Patch with Pydantic models using JsonPatchFor[Model].
 """
 
 from __future__ import annotations
@@ -19,8 +19,8 @@ STRICT_JSON_PATCH = True
 UserPatch = JsonPatchFor[User]
 
 app = create_app(
-    title="jsonpatch demo 1 (typed model)",
-    description="Patch a Pydantic model with JsonPatchFor[User].",
+    title="Demo 1: Standard JSON Patch",
+    description="Standard JSON Patch with Pydantic models using `JsonPatchFor[Model]`.",
 )
 
 

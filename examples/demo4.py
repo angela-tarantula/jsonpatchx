@@ -22,9 +22,9 @@ from jsonpatchx.fastapi import (
 )
 
 app = create_app(
-    title="jsonpatch demo 4 (pointer backends)",
+    title="Demo 4: Custom JSON Pointer implementations",
     description=(
-        "Registry-scoped pointer backends change parsing semantics without changing ops."
+        "Registry-scoped pointer backends change parsing semantics without changing operation schemas. Requires `make_json_patch_body_with_dep`."
     ),
 )
 
