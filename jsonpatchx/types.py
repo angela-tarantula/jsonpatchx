@@ -523,6 +523,7 @@ class JSONPointer(str, Generic[T_co, P_co]):
     def _implements_PointerBackend_protocol(
         pointer_cls: type,
     ) -> TypeGuard[type[P_co]]:
+        """Verifies a ``PointerBackend`` implementation using the empty string as a probe."""
         try:
             probe = _cached_json_pointer(path="", pointer_cls=pointer_cls)
         except TypeError as e:

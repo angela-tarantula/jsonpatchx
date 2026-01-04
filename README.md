@@ -263,8 +263,8 @@ This changes pointer parsing and traversal without modifying any operations.
 
 ### Backend Access & Binding
 
-- `JSONPointer.ptr` exposes the parsed backend instance for advanced use cases
-- `JSONPointer[T, Backend]` binds a backend at the type level
+- `JSONPointer.ptr` exposes the parsed backend instance for advanced use cases.
+- `JSONPointer[T, Backend]` binds a backend at the type level. JSONPointer is also covariant in `Backend`.
 
 Backend selection is still scoped by the registry, allowing different APIs
 to use different pointer semantics safely.
