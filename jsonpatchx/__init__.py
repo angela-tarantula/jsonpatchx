@@ -10,7 +10,6 @@ from jsonpatchx.builtins import (
     TestOp,
 )
 from jsonpatchx.exceptions import (
-    InvalidJsonPatch,
     InvalidJSONPointer,
     InvalidOperationRegistry,
     InvalidOperationSchema,
@@ -30,7 +29,6 @@ from jsonpatchx.types import JSONPointer, JSONValue
 __all__ = [
     # exceptions
     "InvalidJSONPointer",
-    "InvalidJsonPatch",
     "InvalidOperationSchema",
     "InvalidOperationRegistry",
     "PatchApplicationError",

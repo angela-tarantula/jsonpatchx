@@ -23,7 +23,6 @@ from fastapi.responses import JSONResponse
 from pydantic import BaseModel, ValidationError
 
 from jsonpatchx.exceptions import (
-    InvalidJsonPatch,
     InvalidJSONPointer,
     PatchApplicationError,
     PatchError,
@@ -79,7 +78,7 @@ def _patch_error_response_map(exc: PatchError) -> JSONResponse:
             status_code=409, content=PatchErrorResponse(detail=str(exc)).model_dump()
         )
 
-    if isinstance(exc, (InvalidJsonPatch, InvalidJSONPointer)):
+    if isinstance(exc, InvalidJSONPointer):
         return JSONResponse(
             status_code=422, content=PatchErrorResponse(detail=str(exc)).model_dump()
         )

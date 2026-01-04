@@ -23,10 +23,6 @@ class InvalidOperationRegistry(PatchError):
     """An OperationRegistry has incompatible OperationSchemas."""
 
 
-class InvalidJsonPatch(PatchError):
-    """A JsonPatch document is invalid or malformed."""
-
-
 class PatchApplicationError(PatchError):
     """A JSON Patch failed during application."""
 
