@@ -8,39 +8,106 @@ if TYPE_CHECKING:
 
 
 class PatchError(Exception):
-    """Base class for JSON Patch errors."""
+    """
+    Base class for JSON Patch errors.
+
+    This type is not raised directly; it anchors the error hierarchy for tooling
+    and API error mapping.
+    """
 
 
 class PatchInputError(PatchError):
-    """Patch input is invalid or fails validation."""
+    """
+    Patch input is invalid or fails validation.
+
+    Examples:
+        - Invalid JSON Pointer syntax in an incoming operation.
+        - Operation-specific validation failure (e.g., swap parent/child paths).
+        - Model revalidation fails after applying a patch.
+
+    Typical HTTP mapping:
+        422 Unprocessable Entity.
+    """
 
 
 class InvalidOperationDefinition(PatchError):
-    """An OperationSchema definition is invalid."""
+    """
+    An OperationSchema definition is invalid (developer error).
+
+    Examples:
+        - ``op`` is missing or not declared as ``Literal[...]``.
+        - ``op`` is declared as a ClassVar, so it is not a model field.
+    """
 
 
 class OperationValidationError(PatchInputError):
-    """An OperationSchema instance failed validation."""
+    """
+    An OperationSchema instance failed validation (client error).
+
+    Examples:
+        - Swap operation rejects parent/child pointers via a model validator.
+        - Operation fields violate custom constraints in validators.
+
+    Typical HTTP mapping:
+        422 Unprocessable Entity.
+    """
 
 
 class InvalidJSONPointer(PatchInputError):
-    """A JSON Pointer definition or instance is invalid."""
+    """
+    A JSON Pointer definition or instance is invalid.
+
+    Examples:
+        - Pointer string is malformed or uses an incompatible backend.
+        - Pointer backend class fails protocol checks.
+
+    Typical HTTP mapping:
+        422 Unprocessable Entity for request input.
+    """
 
 
 class InvalidOperationRegistry(PatchError):
-    """An OperationRegistry has incompatible OperationSchemas."""
+    """
+    An OperationRegistry has incompatible OperationSchemas (developer error).
+
+    Examples:
+        - Duplicate ``op`` identifiers across schemas.
+        - Non-OperationSchema classes provided to the registry.
+    """
 
 
 class PatchConflictError(PatchError):
-    """A JSON Patch failed due to a conflict with the current document state."""
+    """
+    A JSON Patch failed due to a conflict with the current document state.
+
+    Examples:
+        - Path does not exist or array index is out of range.
+        - Removing a value at a missing or invalid path.
+
+    Typical HTTP mapping:
+        409 Conflict (some APIs may prefer 422).
+    """
 
 
 class PatchValidationError(PatchInputError):
-    """Patched data failed validation against a target schema."""
+    """
+    Patched data failed validation against a target schema.
+
+    Examples:
+        - Model-aware patching produces a document that violates the target model.
+
+    Typical HTTP mapping:
+        422 Unprocessable Entity.
+    """
 
 
 class TestOpFailed(PatchConflictError):
-    """A test operation failed."""
+    """
+    A test operation failed (RFC 6902).
+
+    Typical HTTP mapping:
+        409 Conflict (state mismatch).
+    """
 
 
 @dataclass(frozen=True, slots=True)
@@ -69,10 +136,15 @@ class PatchInternalError(PatchError):
     Unexpected exception during patch execution wrapped with structured context.
 
     This is meant for API layers and debuggability:
-    - It points at the exact op index
-    - It includes the full op payload (best-effort JSON shape)
+        - points at the exact op index
+        - includes the full op payload (best-effort JSON shape)
 
-    Example: Providing context for a ZeroDivisionError during patch application.
+    Example:
+        A ZeroDivisionError raised inside a custom op implementation that fails
+        to catch it.
+
+    Typical HTTP mapping:
+        500 Internal Server Error (unexpected failure).
     """
 
     def __init__(
