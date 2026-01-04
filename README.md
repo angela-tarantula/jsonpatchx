@@ -105,8 +105,9 @@ These types allow you to reason about JSON structure rather than Python primitiv
 
 #### Covariance
 
-`JSONPointer[T]` is covariant, meaning stricter types survive composition. If a custom op uses a
-`JSONPointer[JSONNumber]`, it maintains that numeric constraint even when passed to a generic `ReplaceOp`.
+`JSONPointer[T]` is [covariant](https://peps.python.org/pep-0483/#covariance-and-contravariance) in `T` (type-checker concept), so a `JSONPointer[JSONNumber]` can be used where `JSONPointer[JSONValue]` is expected.
+
+Additionally, json-patch-x preserves the pointer's type parameter at runtime, so stricter constraints remain enforced when passed through operations with broader constraints (i.e. a custom op using `JSONPointer[JSONBoolean]` can delegate to `ReplaceOp.apply()` without losing the `JSONBoolean` constraint).
 
 #### Additional JSONPointer Helpers
 
