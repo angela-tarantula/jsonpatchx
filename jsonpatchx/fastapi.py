@@ -26,7 +26,7 @@ from jsonpatchx.exceptions import (
     InvalidJSONPointer,
     PatchConflictError,
     PatchError,
-    PatchExecutionError,
+    PatchInternalError,
     PatchValidationError,
 )
 from jsonpatchx.pydantic import (
@@ -56,7 +56,7 @@ class PatchErrorResponse(BaseModel):
 
 def _patch_error_response_map(exc: PatchError) -> JSONResponse:
     """Map a PatchError to a JSONResponse for FastAPI exception handlers."""
-    if isinstance(exc, PatchExecutionError):
+    if isinstance(exc, PatchInternalError):
         detail = exc.detail
         payload = PatchFailureDetailResponse(
             index=detail.index,

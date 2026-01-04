@@ -56,7 +56,7 @@ class PatchFailureDetail:
     cause_type: str | None = None
 
 
-class PatchExecutionError(PatchConflictError):
+class PatchInternalError(PatchConflictError):
     """
     Unexpected exception during patch execution wrapped with structured context.
 

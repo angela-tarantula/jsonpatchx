@@ -47,7 +47,7 @@ import json
 from collections.abc import Mapping, Sequence
 from typing import Self, overload, override
 
-from jsonpatchx.exceptions import PatchError, PatchExecutionError, PatchFailureDetail
+from jsonpatchx.exceptions import PatchError, PatchFailureDetail, PatchInternalError
 from jsonpatchx.registry import OperationRegistry
 from jsonpatchx.schema import OperationSchema
 from jsonpatchx.types import _JSON_VALUE_ADAPTER, JSONValue
@@ -71,7 +71,7 @@ def _apply_ops(
 
     Raises:
         PatchError: Expected patch failures raised by operation implementations.
-        PatchExecutionError: Unexpected exceptions wrapped with structured context.
+        PatchInternalError: Unexpected exceptions wrapped with structured context.
 
     Notes:
         - ``inplace=False`` (default): the engine deep-copies ``doc`` first, then applies operations
@@ -99,7 +99,7 @@ def _apply_ops(
                 message=str(e),
                 cause_type=type(e).__name__,
             )
-            raise PatchExecutionError(detail, cause=e) from e
+            raise PatchInternalError(detail, cause=e) from e
 
     return doc
 
@@ -197,7 +197,7 @@ class JsonPatch(Sequence[OperationSchema]):
 
         Raises:
             PatchError: Expected patch failures raised by operation implementations.
-            PatchExecutionError: Unexpected errors wrapped by the engine.
+            PatchInternalError: Unexpected errors wrapped by the engine.
         """
         if validate_doc:
             _JSON_VALUE_ADAPTER.validate_python(doc, strict=True)
