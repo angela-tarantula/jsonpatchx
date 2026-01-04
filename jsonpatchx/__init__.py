@@ -17,6 +17,7 @@ from jsonpatchx.exceptions import (
     PatchConflictError,
     PatchError,
     PatchFailureDetail,
+    PatchInputError,
     PatchInternalError,
     PatchValidationError,
     TestOpFailed,
@@ -37,6 +38,7 @@ __all__ = [
     "PatchError",
     "PatchInternalError",
     "PatchFailureDetail",
+    "PatchInputError",
     "PatchValidationError",
     "TestOpFailed",
     # types

@@ -4,7 +4,7 @@ FastAPI integration helpers for jsonpatch.
 Default error mapping:
 - 415: Wrong Content-Type for JSON Patch (application/json-patch+json)
 - 400: Malformed JSON (cannot parse request body)
-- 422: Patch document validation errors (Pydantic validation, invalid pointer strings)
+- 422: Patch input validation errors (invalid pointers, invalid operations, model revalidation)
 - 409: Patch is valid but cannot be applied to current resource state
 - 500: Server misconfiguration or unexpected failures (e.g., invalid registry/op classes)
 
@@ -24,11 +24,10 @@ from pydantic import BaseModel, ValidationError
 
 from jsonpatchx.exceptions import (
     InvalidJSONPointer,
-    OperationValidationError,
     PatchConflictError,
     PatchError,
+    PatchInputError,
     PatchInternalError,
-    PatchValidationError,
 )
 from jsonpatchx.pydantic import (
     _BasePatchBody,
@@ -69,7 +68,7 @@ def _patch_error_response_map(exc: PatchError) -> JSONResponse:
             status_code=500, content=PatchErrorResponse(detail=payload).model_dump()
         )
 
-    if isinstance(exc, PatchValidationError):
+    if isinstance(exc, PatchInputError):
         return JSONResponse(
             status_code=422, content=PatchErrorResponse(detail=str(exc)).model_dump()
         )
@@ -77,11 +76,6 @@ def _patch_error_response_map(exc: PatchError) -> JSONResponse:
     if isinstance(exc, PatchConflictError):
         return JSONResponse(
             status_code=409, content=PatchErrorResponse(detail=str(exc)).model_dump()
-        )
-
-    if isinstance(exc, (InvalidJSONPointer, OperationValidationError)):
-        return JSONResponse(
-            status_code=422, content=PatchErrorResponse(detail=str(exc)).model_dump()
         )
 
     return JSONResponse(

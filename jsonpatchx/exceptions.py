@@ -11,15 +11,19 @@ class PatchError(Exception):
     """Base class for JSON Patch errors."""
 
 
+class PatchInputError(PatchError):
+    """Patch input is invalid or fails validation."""
+
+
 class InvalidOperationDefinition(PatchError):
     """An OperationSchema definition is invalid."""
 
 
-class OperationValidationError(PatchError):
+class OperationValidationError(PatchInputError):
     """An OperationSchema instance failed validation."""
 
 
-class InvalidJSONPointer(PatchError):
+class InvalidJSONPointer(PatchInputError):
     """A JSON Pointer definition or instance is invalid."""
 
 
@@ -31,7 +35,7 @@ class PatchConflictError(PatchError):
     """A JSON Patch failed due to a conflict with the current document state."""
 
 
-class PatchValidationError(PatchConflictError):
+class PatchValidationError(PatchInputError):
     """Patched data failed validation against a target schema."""
 
 
@@ -60,7 +64,7 @@ class PatchFailureDetail:
     cause_type: str | None = None
 
 
-class PatchInternalError(PatchConflictError):
+class PatchInternalError(PatchError):
     """
     Unexpected exception during patch execution wrapped with structured context.
 
