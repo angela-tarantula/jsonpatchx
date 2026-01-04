@@ -162,12 +162,21 @@ class JsonPatchFor(Generic[ModelT, RegistryU]):
         JSON Patch document into typed operations using discriminated-union dispatch.
         """
         registry_union: TypeAliasType = _named_union(
-            f"{model.__name__}PatchOperation", registry.union
+            f"{model.__name__} Patch Operation", registry.union
         )
 
         PatchModel = create_model(
             f"{model.__name__}Patch",
             __base__=_BasePatchModel,
+            __config__=ConfigDict(
+                title=f"{model.__name__} Patch Document",
+                json_schema_extra={
+                    "description": (
+                        f"RFC 6902 JSON Patch document (list of operations) for {model.__name__}."
+                    ),
+                    "x-target-model": model.__name__,
+                },
+            ),
             root=(list[registry_union], ...),  # type: ignore[valid-type]
         )
 
@@ -236,21 +245,16 @@ def make_json_patch_body(
 
     registry = registry or OperationRegistry.standard()
     registry_union: TypeAliasType = _named_union(
-        f"{name}PatchOperation", registry.union
+        f"{name} Patch Operation", registry.union
     )
 
     PatchBody = create_model(
         f"{name}Patch",
         __base__=_BasePatchBody,
         __config__=ConfigDict(
-            frozen=True,
-            strict=True,
+            title=f"{name} Patch Document",
             json_schema_extra={
                 "description": "RFC 6902 JSON Patch document (list of operations).",
-                "examples": [
-                    [{"op": "replace", "path": "/name", "value": "Angela"}],
-                    [{"op": "add", "path": "/tags/-", "value": "staff"}],
-                ],
             },
         ),
         root=(list[registry_union], ...),  # type: ignore[valid-type]
