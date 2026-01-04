@@ -1,6 +1,16 @@
-from typing import Any, ClassVar, Generic, Self, TypeAliasType, TypeVar, cast, override
+from typing import (
+    Annotated,
+    Any,
+    ClassVar,
+    Generic,
+    Self,
+    TypeAliasType,
+    TypeVar,
+    cast,
+    override,
+)
 
-from pydantic import BaseModel, ConfigDict, RootModel, create_model
+from pydantic import BaseModel, ConfigDict, Field, RootModel, create_model
 
 from jsonpatchx.registry import OperationRegistry
 from jsonpatchx.schema import OperationSchema
@@ -161,9 +171,13 @@ class JsonPatchFor(Generic[ModelT, RegistryU]):
         The generated model's root type is ``list[registry.union]`` so Pydantic can parse a
         JSON Patch document into typed operations using discriminated-union dispatch.
         """
-        registry_union: TypeAliasType = _named_union(
-            f"{model.__name__} Patch Operation", registry.union
-        )
+        type ModelPatchOperation = Annotated[
+            registry.union.__value__,  # type: ignore[name-defined]
+            Field(
+                title=f"{model.__name__} Patch Operation",
+                description=f"Discriminated union of patch operations for {model.__name__}.",
+            ),
+        ]
 
         PatchModel = create_model(
             f"{model.__name__}Patch",
@@ -171,13 +185,11 @@ class JsonPatchFor(Generic[ModelT, RegistryU]):
             __config__=ConfigDict(
                 title=f"{model.__name__} Patch Document",
                 json_schema_extra={
-                    "description": (
-                        f"RFC 6902 JSON Patch document (list of operations) for {model.__name__}."
-                    ),
+                    "description": (f"List of patch operations for {model.__name__}."),
                     "x-target-model": model.__name__,
                 },
             ),
-            root=(list[registry_union], ...),  # type: ignore[valid-type]
+            root=(list[ModelPatchOperation], ...),
         )
 
         PatchModel.__target_model__ = model
@@ -244,9 +256,14 @@ def make_json_patch_body(
     """
 
     registry = registry or OperationRegistry.standard()
-    registry_union: TypeAliasType = _named_union(
-        f"{name} Patch Operation", registry.union
-    )
+
+    type BodyPatchOperation = Annotated[
+        registry.union.__value__,  # type: ignore[name-defined]
+        Field(
+            title=f"{name} Patch Operation",
+            description=f"Discriminated union of patch operations for {name}.",
+        ),
+    ]
 
     PatchBody = create_model(
         f"{name}Patch",
@@ -254,10 +271,10 @@ def make_json_patch_body(
         __config__=ConfigDict(
             title=f"{name} Patch Document",
             json_schema_extra={
-                "description": "RFC 6902 JSON Patch document (list of operations).",
+                "description": f"List of patch operations for {name}.",
             },
         ),
-        root=(list[registry_union], ...),  # type: ignore[valid-type]
+        root=(list[BodyPatchOperation], ...),
     )
 
     PatchBody.__registry__ = registry

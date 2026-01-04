@@ -176,15 +176,15 @@ class OperationRegistry:
         - ``op_adapter`` validates a single operation.
         - ``patch_adapter`` validates a list of operations (a JSON Patch document).
         """
-        type PatchOperation = Annotated[  # type: ignore[valid-type] # dynamic runtime type for Pydantic
+        type RegistryPatchOperation = Annotated[  # type: ignore[valid-type] # dynamic runtime type for Pydantic
             Union[tuple(op_schemas)],
             Field(discriminator="op"),
         ]
-        op_adapter: TypeAdapter[OperationSchema] = TypeAdapter(PatchOperation)
+        op_adapter: TypeAdapter[OperationSchema] = TypeAdapter(RegistryPatchOperation)
         patch_adapter: TypeAdapter[list[OperationSchema]] = TypeAdapter(
-            list[PatchOperation]
+            list[RegistryPatchOperation]
         )
-        return PatchOperation, op_adapter, patch_adapter
+        return RegistryPatchOperation, op_adapter, patch_adapter
 
     @property
     def ops_by_name(self) -> Mapping[str, type[OperationSchema]]:
