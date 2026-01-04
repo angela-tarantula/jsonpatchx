@@ -569,7 +569,7 @@ class JSONPointer(str, Generic[T_co, P_co]):
             return self._adapter.validate_python(target, strict=True)
         except Exception as e:
             raise PatchApplicationError(
-                f"invalid target type {type(target).__name__} for pointer {str(self)!r}"
+                f"expected target type {self.type_param} for pointer{str(self)!r}, got: {type(target)}"
             ) from e
 
     # Parse-time helpers
