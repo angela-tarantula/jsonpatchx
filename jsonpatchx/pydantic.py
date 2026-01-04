@@ -184,7 +184,10 @@ class JsonPatchFor(Generic[ModelT, RegistryU]):
             __config__=ConfigDict(
                 title=f"{model.__name__} Patch Document",
                 json_schema_extra={
-                    "description": f"Array of patch operations for {model.__name__}.",
+                    "description": (
+                        f"Array of patch operations for {model.__name__}. "
+                        "Applied to model_dump() and re-validated against the model schema."
+                    ),
                     "x-target-model": model.__name__,
                 },
             ),
