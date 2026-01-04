@@ -1,12 +1,11 @@
-# jsonpatchx
+# json-patch-x
 [![CI](https://github.com/angela-tarantula/jsonpatchx/actions/workflows/python-app.yml/badge.svg?branch=main)](https://github.com/marketplace/actions/super-linter)
 
-A typed JSON Patch ([RFC 6902](https://datatracker.ietf.org/doc/html/rfc6902)) engine for Python, built for explicit runtime semantics, custom operations,
-and clean FastAPI/OpenAPI integration.
+A typed, schema‑driven PATCH framework for Python, implementing JSON Patch ([RFC 6902](https://datatracker.ietf.org/doc/html/rfc6902)) with extensible operations and first‑class FastAPI/OpenAPI support.
 
 ## About
 
-jsonpatchx is for teams who need PATCH to be **precise, explainable, and evolvable**.
+json-patch-x is for teams who need PATCH to be **precise, explainable, and evolvable**.
 
 Typical use cases:
 
