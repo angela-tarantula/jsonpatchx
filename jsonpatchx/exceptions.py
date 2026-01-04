@@ -23,15 +23,15 @@ class InvalidOperationRegistry(PatchError):
     """An OperationRegistry has incompatible OperationSchemas."""
 
 
-class PatchApplicationError(PatchError):
-    """A JSON Patch failed during application."""
+class PatchConflictError(PatchError):
+    """A JSON Patch failed due to a conflict with the current document state."""
 
 
-class PatchValidationError(PatchApplicationError):
+class PatchValidationError(PatchConflictError):
     """Patched data failed validation against a target schema."""
 
 
-class TestOpFailed(PatchApplicationError):
+class TestOpFailed(PatchConflictError):
     """A test operation failed."""
 
 
@@ -56,7 +56,7 @@ class PatchFailureDetail:
     cause_type: str | None = None
 
 
-class PatchExecutionError(PatchApplicationError):
+class PatchExecutionError(PatchConflictError):
     """
     Unexpected exception during patch execution wrapped with structured context.
 

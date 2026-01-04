@@ -34,7 +34,7 @@ from typing_extensions import TypeForm
 
 from jsonpatchx.exceptions import (
     InvalidJSONPointer,
-    PatchApplicationError,
+    PatchConflictError,
 )
 
 # Pydantic-aware JSON type aliases
@@ -104,10 +104,10 @@ def _parse_JSONArray_key(array: JSONArray[JSONValue], key: str) -> _JSONArrayKey
     if key == "-":
         return "-"
     if not _ARRAY_INDEX_PATTERN.fullmatch(key):
-        raise PatchApplicationError(f"invalid array index: {key!r}")
+        raise PatchConflictError(f"invalid array index: {key!r}")
     idx = int(key)
     if idx > len(array):
-        raise PatchApplicationError(f"index out of range: {key!r}")
+        raise PatchConflictError(f"index out of range: {key!r}")
     return idx
 
 
@@ -327,7 +327,7 @@ class JSONPointer(str, Generic[T_co, P_co]):
       bound directly via ``JSONPointer[T, Backend]``.
     - Invalid pointer strings raise ``InvalidJSONPointer``.
     - Backend traversal failures in ``get``/``add``/``remove`` are normalized into
-      ``PatchApplicationError``.
+      ``PatchConflictError``.
 
     Mutation semantics:
     - ``add`` and ``remove`` may mutate the document object they are given (or containers reachable
@@ -581,7 +581,7 @@ class JSONPointer(str, Generic[T_co, P_co]):
         try:
             return self._adapter.validate_python(target, strict=True)
         except Exception as e:
-            raise PatchApplicationError(
+            raise PatchConflictError(
                 f"expected target type {self.type_param} for pointer{str(self)!r}, got: {type(target)}"
             ) from e
 
@@ -658,7 +658,7 @@ class JSONPointer(str, Generic[T_co, P_co]):
             The resolved value, validated against ``T``.
 
         Raises:
-            PatchApplicationError: If the pointer cannot be resolved (missing object member,
+            PatchConflictError: If the pointer cannot be resolved (missing object member,
                 out-of-range array index, or backend traversal failure) or if the resolved value
                 does not conform to ``T``.
         """
@@ -667,7 +667,7 @@ class JSONPointer(str, Generic[T_co, P_co]):
         try:
             target = self._ptr.resolve(doc)
         except Exception as e:
-            raise PatchApplicationError(f"path {str(self)!r} not found: {e}") from e
+            raise PatchConflictError(f"path {str(self)!r} not found: {e}") from e
         return self._validate_target(target)
 
     def is_gettable(self, doc: JSONValue) -> bool:
@@ -698,7 +698,7 @@ class JSONPointer(str, Generic[T_co, P_co]):
             The updated document (or the new root value for ``""``).
 
         Raises:
-            PatchApplicationError: If the path cannot be resolved, the parent is not a container,
+            PatchConflictError: If the path cannot be resolved, the parent is not a container,
                 or the final token is not a valid container key.
 
         Notes:
@@ -717,9 +717,9 @@ class JSONPointer(str, Generic[T_co, P_co]):
         try:
             container = self._parent_ptr.resolve(doc)
         except Exception as e:
-            raise PatchApplicationError(f"path {str(self)!r} not found: {e}") from e
+            raise PatchConflictError(f"path {str(self)!r} not found: {e}") from e
         if not _is_container(container):
-            raise PatchApplicationError(
+            raise PatchConflictError(
                 f"path {str(self._parent_ptr)!r} resolves to a JSON primitive"
             )
         key = _parse_JSONContainer_key(container, self.parts[-1])
@@ -775,12 +775,12 @@ class JSONPointer(str, Generic[T_co, P_co]):
             The mutated document.
 
         Raises:
-            PatchApplicationError: If the pointer is the root or the target does not exist.
+            PatchConflictError: If the pointer is the root or the target does not exist.
 
         Notes:
             - Removeal is type-gated by ``T``.
             - Removing the root (``""``) returns ``None``.
-            - Removing a missing target raises ``PatchApplicationError``.
+            - Removing a missing target raises ``PatchConflictError``.
         """
         if self.is_root():
             # Choice: Removal returns None at the root.
@@ -790,22 +790,22 @@ class JSONPointer(str, Generic[T_co, P_co]):
         try:
             container = self._parent_ptr.resolve(doc)
         except Exception as e:
-            raise PatchApplicationError(f"path {str(self)!r} not found: {e}") from e
+            raise PatchConflictError(f"path {str(self)!r} not found: {e}") from e
         if not _is_container(container):
-            raise PatchApplicationError(
+            raise PatchConflictError(
                 f"path {str(self._parent_ptr)!r} resolves to a JSON primitive"
             )
         key = _parse_JSONContainer_key(container, self.parts[-1])
         if isinstance(container, list):
             if key == "-":
-                raise PatchApplicationError(
+                raise PatchConflictError(
                     f"cannot remove value at {str(self)!r} with key '-'"
                 )
             elif key == len(container):
-                raise PatchApplicationError(f"index out of range: {key!r}")
+                raise PatchConflictError(f"index out of range: {key!r}")
         elif isinstance(container, dict):
             if key not in container:
-                raise PatchApplicationError(
+                raise PatchConflictError(
                     f"target {key!r} does not exist in object at path {str(self._parent_ptr)!r}"
                 )
         self._validate_target(container[key])

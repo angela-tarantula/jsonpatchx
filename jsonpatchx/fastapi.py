@@ -9,7 +9,7 @@ Default error mapping:
 - 500: Server misconfiguration or unexpected failures (e.g., invalid registry/op classes)
 
 If your API treats "missing path / invalid index" as a client semantic error rather than
-a state conflict, map PatchApplicationError to 422 instead.
+a state conflict, map PatchConflictError to 422 instead.
 """
 
 from __future__ import annotations
@@ -24,7 +24,7 @@ from pydantic import BaseModel, ValidationError
 
 from jsonpatchx.exceptions import (
     InvalidJSONPointer,
-    PatchApplicationError,
+    PatchConflictError,
     PatchError,
     PatchExecutionError,
     PatchValidationError,
@@ -73,7 +73,7 @@ def _patch_error_response_map(exc: PatchError) -> JSONResponse:
             status_code=422, content=PatchErrorResponse(detail=str(exc)).model_dump()
         )
 
-    if isinstance(exc, PatchApplicationError):
+    if isinstance(exc, PatchConflictError):
         return JSONResponse(
             status_code=409, content=PatchErrorResponse(detail=str(exc)).model_dump()
         )

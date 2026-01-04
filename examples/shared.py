@@ -14,7 +14,7 @@ from jsonpatchx import (
     InvalidOperationSchema,
     JSONValue,
     OperationSchema,
-    PatchApplicationError,
+    PatchConflictError,
     RemoveOp,
     ReplaceOp,
 )
@@ -191,7 +191,7 @@ class EnsureObjectOp(OperationSchema):
         except Exception:
             return AddOp(path=self.path, value={}).apply(doc)
         if not isinstance(current, dict):
-            raise PatchApplicationError(
+            raise PatchConflictError(
                 f"expected object at {str(self.path)!r}, got {type(current).__name__}"
             )
         return doc
