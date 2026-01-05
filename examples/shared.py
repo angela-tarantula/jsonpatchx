@@ -18,6 +18,7 @@ from jsonpatchx import (
     RemoveOp,
     ReplaceOp,
 )
+from jsonpatchx.exceptions import InvalidJSONPointer
 from jsonpatchx.fastapi import JSON_PATCH_MEDIA_TYPE, install_jsonpatch_error_handlers
 from jsonpatchx.types import (
     JSONArray,
@@ -264,7 +265,7 @@ class DotPointer(PointerBackend):
         else:
             parts = tuple(pointer.split("."))
         if any(part == "" for part in parts):
-            raise ValueError("invalid dot pointer")
+            raise InvalidJSONPointer("invalid dot pointer")
         self._parts = parts
 
     @property
