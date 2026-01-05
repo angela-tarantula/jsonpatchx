@@ -51,11 +51,9 @@ type JSONNumber = Annotated[
 type JSONString = Annotated[str, Field(strict=True, title="JSON string")]
 type JSONNull = Annotated[None, Field(title="JSON null")]
 
-type JSONArray[T_co] = Annotated[list[T_co], Field(strict=True, title="JSON array")]
-type JSONObject[T_co] = Annotated[
-    dict[str, T_co], Field(strict=True, title="JSON object")
-]
-type JSONContainer[T_co] = JSONArray[T_co] | JSONObject[T_co]
+type JSONArray[T] = Annotated[list[T], Field(strict=True, title="JSON array")]
+type JSONObject[T] = Annotated[dict[str, T], Field(strict=True, title="JSON object")]
+type JSONContainer[T] = JSONArray[T] | JSONObject[T]
 
 
 def _is_container(value: JSONValue) -> TypeGuard[JSONContainer[JSONValue]]:
