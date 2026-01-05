@@ -17,6 +17,23 @@ Typical use cases:
 
 Non-goal: This is not a minimal or high-performance patch applicator.
 
+## Alternatives
+
+### JSON Merge Patch (RFC 7386)
+
+JSON Merge Patch is a simple, underspecified partial documentreplacement format that
+optimizes for convenience over clarity. It collapses intent into outcome; it cannot
+distinguish between standard operations (e.g. replace vs add) or domain-specific
+operations (e.g. replace vs concatenate), nor can it distinguish between path removal
+and `null` assignment. Choose json-patch-x if you want a vocabulary of intent that’s
+precise and evolvable.
+
+### python-json-patch
+
+[`python-json-patch`](https://github.com/stefankoegl/python-json-patch) is a classic,
+minimal RFC 6902 implementation. It is fast and compact, but does not model operations
+as typed schemas or provide the registry, pointer, or OpenAPI integrations offered here.
+
 ## Getting Started
 
 To get a local copy up and running follow these simple steps.
