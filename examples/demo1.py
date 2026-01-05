@@ -19,8 +19,8 @@ STRICT_JSON_PATCH = True
 UserPatch = JsonPatchFor[User]
 
 app = create_app(
-    title="Demo 1: Standard JSON Patch",
-    description="Standard JSON Patch with Pydantic models using `JsonPatchFor[Model]`.",
+    title="Demo 1: Customer profile patching",
+    description="Standard JSON Patch on customer profiles using `JsonPatchFor[Model]`.",
 )
 
 
@@ -54,13 +54,13 @@ def get_user_endpoint(
     openapi_extra=patch_request_body(
         UserPatch,
         examples={
-            "rename-user": {
-                "summary": "Replace the user's name",
-                "value": [{"op": "replace", "path": "/name", "value": "Morgan"}],
+            "rename-customer": {
+                "summary": "Rename the customer",
+                "value": [{"op": "replace", "path": "/name", "value": "Avery"}],
             },
-            "append-tag": {
-                "summary": "Append a tag",
-                "value": [{"op": "add", "path": "/tags/-", "value": "staff"}],
+            "add-segment": {
+                "summary": "Add a segment tag",
+                "value": [{"op": "add", "path": "/tags/-", "value": "enterprise"}],
             },
         },
     ),

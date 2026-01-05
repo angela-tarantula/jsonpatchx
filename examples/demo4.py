@@ -26,9 +26,9 @@ from jsonpatchx.fastapi import (
 )
 
 app = create_app(
-    title="Demo 4: Custom JSON Pointer implementations",
+    title="Demo 4: Dot-pointer settings",
     description=(
-        "Registry-scoped pointer backends change parsing semantics without changing operation schemas. "
+        "Registry-scoped dot-pointer backends for config and user settings. "
         "Uses `patch_body_for_json_with_dep(...)` and `patch_body_for_model_with_dep(...)`."
     ),
 )
@@ -54,7 +54,7 @@ UserPatch, UserPatchDepends, user_openapi_extra = patch_body_for_model_with_dep(
     examples={
         "set-quota": {
             "summary": "set user quota",
-            "value": [{"op": "replace", "path": "quota", "value": 10}],
+            "value": [{"op": "replace", "path": "quota", "value": 300}],
         }
     },
 )

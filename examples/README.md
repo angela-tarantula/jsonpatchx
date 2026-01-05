@@ -21,9 +21,9 @@ uv run python -m examples.demo
 
 FastAPI docs already include example requests and payloads.
 
-## Demo 1: Standard JSON Patch
+## Demo 1: Customer profile patching
 
-Standard JSON Patch with Pydantic models using `JsonPatchFor[Model]`.
+Standard JSON Patch on customer profiles using `JsonPatchFor[Model]`.
 
 **File:** `examples/demo1.py`
 
@@ -31,9 +31,9 @@ Standard JSON Patch with Pydantic models using `JsonPatchFor[Model]`.
 
 - `uv run uvicorn examples.demo1:app --reload --port 8000`
 
-## Demo 2: Custom PATCH endpoints
+## Demo 2: Billing and team ops
 
-Custom registries bound to different Pydantic models using `patch_body_for_model(...)`.
+Custom registries for billing-style ops on users and teams using `patch_body_for_model(...)`.
 
 **File:** `examples/demo2.py`
 
@@ -41,9 +41,9 @@ Custom registries bound to different Pydantic models using `patch_body_for_model
 
 - `uv run uvicorn examples.demo2:app --reload --port 8001`
 
-## Demo 3: Custom PATCH endpoints for standard JSON documents
+## Demo 3: Feature flags and limits
 
-Non-pydantic JSON patching with custom registries using `patch_body_for_json(...)`.
+Non-pydantic JSON patching for config docs using `patch_body_for_json(...)`.
 
 **File:** `examples/demo3.py`
 
@@ -51,9 +51,9 @@ Non-pydantic JSON patching with custom registries using `patch_body_for_json(...
 
 - `uv run uvicorn examples.demo3:app --reload --port 8002`
 
-## Demo 4: Custom JSON Pointer implementations
+## Demo 4: Dot-pointer settings
 
-Registry-scoped pointer backends change parsing semantics without changing operation schemas.
+Registry-scoped dot-pointer backends for config and user settings.
 Uses `patch_body_for_json_with_dep(...)` and `patch_body_for_model_with_dep(...)`.
 
 **File:** `examples/demo4.py`

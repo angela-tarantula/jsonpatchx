@@ -46,7 +46,10 @@ def create_app(*, title: str, description: str, version: str = "0.1.0") -> FastA
 class User(BaseModel):
     id: int
     name: str
+    email: str
     tags: list[str] = Field(default_factory=list)
+    role: str = "member"
+    status: str = "active"
     trial: bool = False
     quota: int = 0
 
@@ -54,27 +57,62 @@ class User(BaseModel):
 class Team(BaseModel):
     id: int
     name: str
+    slug: str
     tags: list[str] = Field(default_factory=list)
+    plan: str = "pro"
+    region: str = "us-east"
     max_members: int = 0
 
 
 _SEED_USERS: dict[int, User] = {
-    1: User(id=1, name="Angela", tags=["admin"], trial=False, quota=5),
-    2: User(id=2, name="Pat", tags=["editor", "qa"], trial=True, quota=2),
+    1: User(
+        id=1,
+        name="Morgan Lee",
+        email="morgan@example.com",
+        tags=["beta", "newsletter"],
+        role="owner",
+        trial=False,
+        quota=250,
+    ),
+    2: User(
+        id=2,
+        name="Jules Park",
+        email="jules@example.com",
+        tags=["growth", "internal"],
+        role="member",
+        trial=True,
+        quota=75,
+    ),
 }
 
 _SEED_TEAMS: dict[int, Team] = {
-    1: Team(id=1, name="Core", tags=["backend"], max_members=5),
-    2: Team(id=2, name="Docs", tags=["writers"], max_members=3),
+    1: Team(
+        id=1,
+        name="Core Platform",
+        slug="core-platform",
+        tags=["backend", "infra"],
+        plan="enterprise",
+        region="us-west",
+        max_members=12,
+    ),
+    2: Team(
+        id=2,
+        name="Docs Studio",
+        slug="docs-studio",
+        tags=["writers", "design"],
+        plan="pro",
+        region="eu-central",
+        max_members=6,
+    ),
 }
 
 _SEED_CONFIGS: MutableMapping[str, JSONValue] = {
     "site": {
-        "title": "Example",
-        "features": {"chat": True, "list": []},
-        "tags": ["admin"],
+        "title": "Atlas",
+        "features": {"chat": True, "list": ["beta", "dark-launch"]},
+        "tags": ["internal", "staff"],
     },
-    "limits": {"max_users": 5, "trial": False},
+    "limits": {"max_users": 250, "trial": True},
 }
 
 _USERS: dict[int, User] = copy.deepcopy(_SEED_USERS)

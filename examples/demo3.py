@@ -36,8 +36,8 @@ registry = OperationRegistry(
 ConfigPatch = patch_body_for_json("Config", registry=registry)
 
 app = create_app(
-    title="Demo 3: Custom PATCH endpoints for standard JSON documents",
-    description="Non-pydantic JSON patching with custom registries using `patch_body_for_json(...)`.",
+    title="Demo 3: Feature flags and limits",
+    description="Non-pydantic JSON patching for config docs using `patch_body_for_json(...)`.",
 )
 
 
@@ -72,11 +72,11 @@ def get_config_endpoint(
         ConfigPatch,
         examples={
             "increment-limit": {
-                "summary": "limits: increment max_users",
-                "value": [{"op": "increment", "path": "/max_users", "value": 10}],
+                "summary": "limits: increase max_users",
+                "value": [{"op": "increment", "path": "/max_users", "value": 50}],
             },
             "toggle-trial": {
-                "summary": "limits: toggle trial",
+                "summary": "limits: toggle trial access",
                 "value": [{"op": "toggle", "path": "/trial"}],
             },
             "ensure-flags": {
@@ -85,7 +85,7 @@ def get_config_endpoint(
             },
             "append-tag": {
                 "summary": "site: append a tag",
-                "value": [{"op": "append", "path": "/tags", "value": "staff"}],
+                "value": [{"op": "append", "path": "/tags", "value": "beta"}],
             },
             "swap": {
                 "summary": "site: swap title and chat flag",

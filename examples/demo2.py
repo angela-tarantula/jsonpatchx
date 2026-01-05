@@ -29,8 +29,8 @@ UserPatch = patch_body_for_model(User, registry=user_registry)
 TeamPatch = patch_body_for_model(Team, registry=team_registry)
 
 app = create_app(
-    title="Demo 2: Custom PATCH endpoints",
-    description="Custom registries bound to different Pydantic models using `patch_body_for_model(...)`.",
+    title="Demo 2: Billing and team ops",
+    description="Custom registries for billing-style ops on users and teams using `patch_body_for_model(...)`.",
 )
 
 
@@ -64,12 +64,12 @@ def get_user_endpoint(
     openapi_extra=patch_request_body(
         UserPatch,
         examples={
-            "increment-quota": {
-                "summary": "Increment user quota",
-                "value": [{"op": "increment", "path": "/quota", "value": 10}],
+            "increase-quota": {
+                "summary": "Increase user quota",
+                "value": [{"op": "increment", "path": "/quota", "value": 25}],
             },
             "toggle-trial": {
-                "summary": "Toggle trial",
+                "summary": "Toggle trial status",
                 "value": [{"op": "toggle", "path": "/trial"}],
             },
         },
@@ -126,12 +126,12 @@ def get_team_endpoint(
         TeamPatch,
         examples={
             "append-tag": {
-                "summary": "Append a tag",
-                "value": [{"op": "append", "path": "/tags", "value": "infra"}],
+                "summary": "Append a team tag",
+                "value": [{"op": "append", "path": "/tags", "value": "oncall"}],
             },
             "increment-max": {
-                "summary": "Increment max_members",
-                "value": [{"op": "increment", "path": "/max_members", "value": 5}],
+                "summary": "Increase max_members",
+                "value": [{"op": "increment", "path": "/max_members", "value": 3}],
             },
         },
     ),
