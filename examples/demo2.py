@@ -1,5 +1,5 @@
 """
-Demo 2: Custom registries bound to different Pydantic models using `patch_body_for_model(Model, registry=model_registry)`.
+Demo 2: Custom registries bound to different Pydantic models using `patch_body_for_model(...)`.
 """
 
 from __future__ import annotations
@@ -30,7 +30,7 @@ TeamPatch = patch_body_for_model(Team, registry=team_registry)
 
 app = create_app(
     title="Demo 2: Custom PATCH endpoints",
-    description="Custom registries bound to different Pydantic models using `patch_body_for_model(Model, registry=model_registry)`.",
+    description="Custom registries bound to different Pydantic models using `patch_body_for_model(...)`.",
 )
 
 

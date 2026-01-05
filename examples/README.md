@@ -19,7 +19,11 @@ Four focused FastAPI demos. Each demo is a standalone file that reads cleanly in
 uv run python -m examples.demo
 ```
 
-## Demo 1: typed model patching
+FastAPI docs already include example requests and payloads.
+
+## Demo 1: Standard JSON Patch
+
+Standard JSON Patch with Pydantic models using `JsonPatchFor[Model]`.
 
 **File:** `examples/demo1.py`
 
@@ -27,21 +31,9 @@ uv run python -m examples.demo
 
 - `uv run uvicorn examples.demo1:app --reload --port 8000`
 
-**Try these requests**
+## Demo 2: Custom PATCH endpoints
 
-- `GET http://127.0.0.1:8000/users/1`
-- `PATCH http://127.0.0.1:8000/users/1`
-  - Body:
-    ```json
-    [{"op": "replace", "path": "/name", "value": "Morgan"}]
-    ```
-- `PATCH http://127.0.0.1:8000/users/1`
-  - Body:
-    ```json
-    [{"op": "add", "path": "/tags/-", "value": "staff"}]
-    ```
-
-## Demo 2: model-bound custom ops
+Custom registries bound to different Pydantic models using `patch_body_for_model(...)`.
 
 **File:** `examples/demo2.py`
 
@@ -49,23 +41,9 @@ uv run python -m examples.demo
 
 - `uv run uvicorn examples.demo2:app --reload --port 8001`
 
-**Try these requests**
+## Demo 3: Custom PATCH endpoints for standard JSON documents
 
-**Try these requests**
-
-- `GET http://127.0.0.1:8001/users/1`
-- `PATCH http://127.0.0.1:8001/users/1`
-  - Body:
-    ```json
-    [{"op": "increment", "path": "/quota", "value": 10}]
-    ```
-- `PATCH http://127.0.0.1:8001/teams/1`
-  - Body:
-    ```json
-    [{"op": "append", "path": "/tags", "value": "infra"}]
-    ```
-
-## Demo 3: custom ops on JSON documents
+Non-pydantic JSON patching with custom registries using `patch_body_for_json(...)`.
 
 **File:** `examples/demo3.py`
 
@@ -73,18 +51,10 @@ uv run python -m examples.demo
 
 - `uv run uvicorn examples.demo3:app --reload --port 8002`
 
-**Try these requests**
+## Demo 4: Custom JSON Pointer implementations
 
-**Try these requests**
-
-- `GET http://127.0.0.1:8002/configs/site`
-- `PATCH http://127.0.0.1:8002/configs/limits`
-  - Body:
-    ```json
-    [{"op": "increment", "path": "/max_users", "value": 10}]
-    ```
-
-## Demo 4: pointer backends with context injection
+Registry-scoped pointer backends change parsing semantics without changing operation schemas.
+Uses `patch_body_for_json_with_dep(...)` and `patch_body_for_model_with_dep(...)`.
 
 **File:** `examples/demo4.py`
 
@@ -92,14 +62,5 @@ uv run python -m examples.demo
 
 - `uv run uvicorn examples.demo4:app --reload --port 8003`
 
-**Try these requests**
-
-- `GET http://127.0.0.1:8003/configs/site`
-- `PATCH http://127.0.0.1:8003/configs/site`
-  - Body:
-    ```json
-    [{"op": "replace", "path": "features.chat", "value": false}]
-    ```
-
-This demo uses `patch_body_for_json_with_dep(...)` to inject Pydantic validation context,
-which FastAPI does not currently provide for request bodies.
+This demo uses `patch_body_for_json_with_dep(...)` and `patch_body_for_model_with_dep(...)`
+to inject Pydantic validation context, which FastAPI does not currently provide for request bodies.

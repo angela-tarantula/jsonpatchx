@@ -37,7 +37,7 @@ ConfigPatch = patch_body_for_json("Config", registry=registry)
 
 app = create_app(
     title="Demo 3: Custom PATCH endpoints for standard JSON documents",
-    description='Non-pydantic JSON patching with custom registries using `patch_body_for_json("Name", registry=custom_registry)`.',
+    description="Non-pydantic JSON patching with custom registries using `patch_body_for_json(...)`.",
 )
 
 

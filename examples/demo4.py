@@ -29,7 +29,7 @@ app = create_app(
     title="Demo 4: Custom JSON Pointer implementations",
     description=(
         "Registry-scoped pointer backends change parsing semantics without changing operation schemas. "
-        "Requires `patch_body_for_json_with_dep` and `patch_body_for_model_with_dep`."
+        "Uses `patch_body_for_json_with_dep(...)` and `patch_body_for_model_with_dep(...)`."
     ),
 )
 
