@@ -44,7 +44,7 @@ rigid safety of Pydantic.
 ## When to use alternatives
 
 **json-patch-x prioritizes correctness, clarity, and extensibility over raw throughput.**
-- Use [python-json-patch](https://github.com/stefankoegl/python-json-patch) if you need a minimal, faster applicator for internal state syncing where the input is already trusted.
+- Use [python-json-patch](https://github.com/stefankoegl/python-json-patch) if you need a minimal, faster applicator for internal state syncing where the patch is already trusted.
 - Use JSON Merge Patch (RFC 7386) if you prefer the "last-write-wins" simplicity of partial document replacement and don't need to distinguish between `null` assignment and key removal.
 
 ## Core Concepts
