@@ -1,3 +1,12 @@
+# NOTE: The tests.json and spec_tests.json are not free to use without Apache-2.0 License.
+#       Remember to NOT publish those files with this repo, and instead show users how to
+#       run those tests using this repo.
+# TODO: Make this code flexible with outside import.
+
+# Source of those files: https://github.com/json-patch/json-patch-tests
+# How python-json-patch mentions it: https://github.com/stefankoegl/python-json-patch?tab=readme-ov-file#running-external-tests
+
+
 from __future__ import annotations
 
 import json
