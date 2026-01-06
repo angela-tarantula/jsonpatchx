@@ -52,7 +52,7 @@ def get_config_endpoint(
     config_id: str = Path(
         ...,
         description="Available configs: site, limits.",
-        examples={"example": {"value": "site"}},
+        example="site",
     ),
 ) -> JSONValue:
     doc = get_config(config_id)
@@ -102,7 +102,7 @@ def patch_config(
     config_id: str = Path(
         ...,
         description="Available configs: site, limits.",
-        examples={"example": {"value": "site"}},
+        example="site",
     ),
     patch: ConfigPatch = Body(
         ...,

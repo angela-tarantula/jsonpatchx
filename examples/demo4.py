@@ -71,7 +71,7 @@ def get_config_endpoint(
     config_id: str = Path(
         ...,
         description="Available configs: site, limits.",
-        examples={"example": {"value": "site"}},
+        example="site",
     ),
 ) -> JSONValue:
     doc = get_config(config_id)
@@ -93,7 +93,7 @@ def patch_config(
     config_id: str = Path(
         ...,
         description="Available configs: site, limits.",
-        examples={"example": {"value": "site"}},
+        example="site",
     ),
     patch: DotPointerPatch = Depends(DotPointerPatchDepends),
 ) -> JSONValue:
@@ -116,7 +116,7 @@ def get_user_endpoint(
     user_id: int = Path(
         ...,
         description="Available users: 1, 2.",
-        examples={"example": {"value": 1}},
+        example=1,
     ),
 ) -> User:
     user = get_user(user_id)
@@ -138,7 +138,7 @@ def patch_user(
     user_id: int = Path(
         ...,
         description="Available users: 1, 2.",
-        examples={"example": {"value": 1}},
+        example=1,
     ),
     patch: UserPatch = Depends(UserPatchDepends),
 ) -> User:

@@ -45,7 +45,7 @@ def get_user_endpoint(
     user_id: int = Path(
         ...,
         description="Available users: 1, 2.",
-        examples={"example": {"value": 1}},
+        example=1,
     ),
 ) -> User:
     user = get_user(user_id)
@@ -79,7 +79,7 @@ def patch_user(
     user_id: int = Path(
         ...,
         description="Available users: 1, 2.",
-        examples={"example": {"value": 1}},
+        example=1,
     ),
     patch: UserPatch = Body(
         ...,
@@ -106,7 +106,7 @@ def get_team_endpoint(
     team_id: int = Path(
         ...,
         description="Available teams: 1, 2.",
-        examples={"example": {"value": 1}},
+        example=1,
     ),
 ) -> Team:
     team = get_team(team_id)
@@ -140,7 +140,7 @@ def patch_team(
     team_id: int = Path(
         ...,
         description="Available teams: 1, 2.",
-        examples={"example": {"value": 1}},
+        example=1,
     ),
     patch: TeamPatch = Body(
         ...,

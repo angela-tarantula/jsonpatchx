@@ -35,7 +35,7 @@ def get_user_endpoint(
     user_id: int = Path(
         ...,
         description="Available users: 1, 2.",
-        examples={"example": {"value": 1}},
+        example=1,
     ),
 ) -> User:
     user = get_user(user_id)
@@ -70,7 +70,7 @@ def patch_user(
     user_id: int = Path(
         ...,
         description="Available users: 1, 2.",
-        examples={"example": {"value": 1}},
+        example=1,
     ),
     patch: UserPatch = Body(
         ...,

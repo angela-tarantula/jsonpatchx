@@ -3,7 +3,7 @@ from __future__ import annotations
 import copy
 import os
 from collections.abc import Iterable, MutableMapping, Sequence
-from typing import Any, Literal, Self
+from typing import Any, Literal, Self, override
 
 from fastapi import FastAPI
 from fastapi.responses import RedirectResponse
@@ -163,6 +163,7 @@ class IncrementOp(OperationSchema):
     path: JSONPointer[JSONNumber]
     value: JSONNumber = Field(gt=0, multiple_of=5)
 
+    @override
     def apply(self, doc: JSONValue) -> JSONValue:
         current = self.path.get(doc)
         total = current + self.value
@@ -179,6 +180,7 @@ class AppendOp(OperationSchema):
     path: JSONPointer[JSONArray[JSONValue]]
     value: JSONValue
 
+    @override
     def apply(self, doc: JSONValue) -> JSONValue:
         current = self.path.get(doc)
         return AddOp(path=self.path, value=[*current, self.value]).apply(doc)
@@ -194,6 +196,7 @@ class ExtendOp(OperationSchema):
     path: JSONPointer[JSONArray[JSONValue]]
     values: list[JSONValue]
 
+    @override
     def apply(self, doc: JSONValue) -> JSONValue:
         current = self.path.get(doc)
         return AddOp(path=self.path, value=[*current, *self.values]).apply(doc)
@@ -208,6 +211,7 @@ class ToggleBoolOp(OperationSchema):
     op: Literal["toggle"] = "toggle"
     path: JSONPointer[JSONBoolean]
 
+    @override
     def apply(self, doc: JSONValue) -> JSONValue:
         current = self.path.get(doc)
         return ReplaceOp(path=self.path, value=not current).apply(doc)
@@ -224,6 +228,7 @@ class EnsureObjectOp(OperationSchema):
     op: Literal["ensure_object"] = "ensure_object"
     path: JSONPointer[JSONObject[JSONValue]]
 
+    @override
     def apply(self, doc: JSONValue) -> JSONValue:
         try:
             current = self.path.ptr.resolve(doc)
@@ -263,6 +268,7 @@ class SwapOp(OperationSchema):
             )
         return self
 
+    @override
     def apply(self, doc: JSONValue) -> JSONValue:
         value_a = self.a.get(doc)
         value_b = self.b.get(doc)
@@ -281,6 +287,7 @@ class RemoveNumberOp(OperationSchema):
     op: Literal["remove_number"] = "remove_number"
     path: JSONPointer[JSONNumber]
 
+    @override
     def apply(self, doc: JSONValue) -> JSONValue:
         return RemoveOp(path=self.path).apply(doc)
 
@@ -293,30 +300,33 @@ class DotPointer(PointerBackend):
     - Root pointer is the empty string.
     - No escaping is supported; empty segments are rejected.
     """
+    _parts: tuple[str, ...]
 
     def __init__(self, pointer: str) -> None:
         if pointer == "":
             self._parts = tuple()
             return
         if "." not in pointer:
-            parts = (pointer,)
+            self._parts = (pointer,)
         else:
-            parts = tuple(pointer.split("."))
-        if any(part == "" for part in parts):
+            self._parts = tuple(pointer.split("."))
+        if any(part == "" for part in self._parts):
             raise InvalidJSONPointer("invalid dot pointer")
-        self._parts = parts
 
     @property
+    @override
     def parts(self) -> Sequence[str]:
         return self._parts
 
     @classmethod
+    @override
     def from_parts(cls, parts: Iterable[Any]) -> Self:
         tokens = [str(p) for p in parts]
         if not tokens:
             return cls("")
         return cls(".".join(tokens))
 
+    @override
     def resolve(self, doc: Any) -> Any:
         cur = doc
         for part in self._parts:
@@ -331,8 +341,13 @@ class DotPointer(PointerBackend):
                 raise KeyError("non-container")
         return cur
 
+    @override
     def __str__(self) -> str:
         return ".".join(self._parts)
+
+    @override
+    def __hash__(self) -> int:
+        return hash(self._parts)
 
 
 __all__ = [
