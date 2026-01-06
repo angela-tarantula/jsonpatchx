@@ -3,8 +3,6 @@ from pydantic import BaseModel, ConfigDict
 
 from jsonpatchx.exceptions import PatchConflictError, PatchValidationError
 from jsonpatchx.pydantic import JsonPatchFor
-from jsonpatchx.schema import OperationSchema
-from jsonpatchx.types import JSONPointer, JSONValue
 
 
 class User(BaseModel):

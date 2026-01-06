@@ -65,15 +65,15 @@ def _apply_case(case: dict[str, Any]) -> None:
 _RFC_CASES = _load_cases("tests.json")
 _RFC_IDS = [case.get("comment", f"case-{idx}") for idx, case in enumerate(_RFC_CASES)]
 
+
 @pytest.mark.parametrize("case", _RFC_CASES, ids=_RFC_IDS)
 def test_rfc_examples(case: dict[str, Any]) -> None:
     _apply_case(case)
 
 
 _SPEC_CASES = _load_cases("spec_tests.json")
-_SPEC_IDS = [
-    case.get("comment", f"case-{idx}") for idx, case in enumerate(_SPEC_CASES)
-]
+_SPEC_IDS = [case.get("comment", f"case-{idx}") for idx, case in enumerate(_SPEC_CASES)]
+
 
 @pytest.mark.parametrize("case", _SPEC_CASES, ids=_SPEC_IDS)
 def test_spec_cases(case: dict[str, Any]) -> None:
