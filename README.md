@@ -19,9 +19,9 @@ Non-goal: This is not a minimal or high-performance patch applicator.
 
 ## Alternatives
 
-### JSON Merge Patch (RFC 7386)
+### JSON Merge Patch (RFC 7396)
 
-JSON Merge Patch is a simple, underspecified partial documentreplacement format that
+JSON Merge Patch is a simple, underspecified partial document replacement format that
 optimizes for convenience over clarity. It collapses intent into outcome; it cannot
 distinguish between standard operations (e.g. replace vs add) or domain-specific
 operations (e.g. replace vs concatenate), nor can it distinguish between path removal
