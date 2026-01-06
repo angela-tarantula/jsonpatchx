@@ -109,6 +109,8 @@ class TestOpFailed(PatchConflictError):
         409 Conflict (state mismatch).
     """
 
+    __test__ = False
+
 
 @dataclass(frozen=True, slots=True)
 class PatchFailureDetail:

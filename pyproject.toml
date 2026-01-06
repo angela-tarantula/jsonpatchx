@@ -70,3 +70,6 @@ enable_error_code = [
   "exhaustive-match",
   "untyped-decorator",
 ]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
