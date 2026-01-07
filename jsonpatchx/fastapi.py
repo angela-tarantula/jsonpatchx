@@ -19,6 +19,7 @@ from typing import Annotated, Any, cast
 
 from fastapi import Body, Depends, FastAPI, HTTPException, Request
 from fastapi.exceptions import RequestValidationError
+from fastapi.params import Depends as DependsParam
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, ValidationError
 
@@ -91,7 +92,7 @@ def install_jsonpatch_error_handlers(app: FastAPI) -> None:
         return _patch_error_response_map(exc)
 
 
-def patch_error_openapi_responses() -> dict[int, dict[str, Any]]:
+def patch_error_openapi_responses() -> dict[int | str, dict[str, Any]]:
     """Return OpenAPI response schema entries for JSON Patch errors."""
     schema = {
         "type": "object",
@@ -153,7 +154,7 @@ def _enforce_json_patch_content_type(
 
 def patch_content_type_dependency(
     enabled: bool, *, media_type: str = JSON_PATCH_MEDIA_TYPE
-) -> list[Callable[..., Any]]:
+) -> list[DependsParam]:
     """Return a dependency list that enforces the JSON Patch media type."""
     if not enabled:
         return []
