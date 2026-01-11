@@ -15,7 +15,8 @@ a state conflict, map PatchConflictError to 422 instead.
 from __future__ import annotations
 
 from collections.abc import Callable
-from typing import Annotated, Any, cast
+from inspect import isclass
+from typing import Any, TypeVar, cast
 
 from fastapi import Body, Depends, FastAPI, HTTPException, Request
 from fastapi.exceptions import RequestValidationError
@@ -30,18 +31,26 @@ from jsonpatchx.exceptions import (
     PatchInputError,
     PatchInternalError,
 )
-from jsonpatchx.pydantic import (
-    _BasePatchBody,
-    _BasePatchModel,
-    _RegistryBoundPatchRoot,
-    patch_body_for_json,
-    patch_body_for_model,
+from jsonpatchx.pydantic import JsonPatchFor
+from jsonpatchx.registry import (
+    AnyRegistry,
+    GenericOperationRegistry,
+    StandardRegistry,
 )
-from jsonpatchx.registry import OperationRegistry
 
 JSON_PATCH_MEDIA_TYPE = "application/json-patch+json"
+ModelT = TypeVar("ModelT", bound=BaseModel)
 
 # FastAPI helpers
+
+
+def _require_registry_type(registry: object) -> type[AnyRegistry]:
+    if not isclass(registry) or not issubclass(registry, GenericOperationRegistry):
+        raise TypeError(
+            "registry must be an OperationRegistry type (OperationRegistry[...]), "
+            f"got {registry!r}"
+        )
+    return registry
 
 
 class PatchFailureDetailResponse(BaseModel):
@@ -166,7 +175,7 @@ def patch_content_type_dependency(
 
 
 def patch_request_body(
-    patch_model: Annotated[type[_RegistryBoundPatchRoot], type[BaseModel]],
+    patch_model: type[JsonPatchFor[Any, Any]],
     examples: dict[str, Any] | None = None,
     *,
     include_application_json: bool = True,
@@ -185,22 +194,21 @@ def patch_request_body(
 
 
 # https://github.com/fastapi/fastapi/discussions/10864
-# Due to a limitation of FastAPI, need patch_body_for_json_with_dep instead of patch_body_for_json
+# Due to a limitation of FastAPI, use patch_body_for_json_with_dep when you need custom parsing.
 
 
 def patch_body_for_json_with_dep(
     schema_name: str,
     *,
-    registry: OperationRegistry | None = None,
-    title: str | None = None,
+    registry: type[AnyRegistry] | None = None,
     media_type: str | None = JSON_PATCH_MEDIA_TYPE,
     include_application_json: bool = True,
     examples: dict[str, Any] | None = None,
     body_kwargs: dict[str, Any] | None = None,
     app: FastAPI | None = None,
 ) -> tuple[
-    type[_BasePatchBody],
-    Callable[..., _BasePatchBody],
+    type[JsonPatchFor[str, Any]],
+    Callable[..., JsonPatchFor[str, Any]],
     dict[str, Any] | None,
 ]:
     """
@@ -208,8 +216,9 @@ def patch_body_for_json_with_dep(
 
     Returns (PatchBody, dependency, openapi_extra).
     """
-    registry = registry or OperationRegistry.standard()
-    PatchBody = patch_body_for_json(schema_name, registry=registry, title=title)
+    registry = registry or StandardRegistry
+    registry = _require_registry_type(registry)
+    PatchBody = JsonPatchFor[schema_name, registry]  # type: ignore[valid-type]
     if app is not None:
         _register_patch_schema(app, PatchBody)
 
@@ -219,9 +228,9 @@ def patch_body_for_json_with_dep(
     else:
         body_param = Body(..., **body_kwargs)
 
-    def _dep(patch: Any = body_param) -> _BasePatchBody:
+    def _dep(patch: Any = body_param) -> PatchBody:
         try:
-            return PatchBody.model_validate(patch, context=registry._ctx)
+            return PatchBody.model_validate(patch)
         except ValidationError as e:
             raise RequestValidationError(e.errors(), body=patch) from e
         except InvalidJSONPointer as e:
@@ -244,8 +253,8 @@ def patch_body_for_json_with_dep(
 
 
 def patch_body_for_model_with_dep(
-    model: type[BaseModel],
-    registry: OperationRegistry | None = None,
+    model: type[ModelT],
+    registry: type[AnyRegistry] | None = None,
     *,
     media_type: str | None = JSON_PATCH_MEDIA_TYPE,
     include_application_json: bool = True,
@@ -253,8 +262,8 @@ def patch_body_for_model_with_dep(
     body_kwargs: dict[str, Any] | None = None,
     app: FastAPI | None = None,
 ) -> tuple[
-    type[_BasePatchModel],
-    Callable[..., _BasePatchModel],
+    type[JsonPatchFor[ModelT, Any]],
+    Callable[[Any], JsonPatchFor[ModelT, Any]],
     dict[str, Any] | None,
 ]:
     """
@@ -262,8 +271,9 @@ def patch_body_for_model_with_dep(
 
     Returns (PatchBody, dependency, openapi_extra).
     """
-    registry = registry or OperationRegistry.standard()
-    PatchBody = patch_body_for_model(model, registry=registry)
+    registry = registry or StandardRegistry
+    registry = _require_registry_type(registry)
+    PatchBody = JsonPatchFor[model, registry]  # type: ignore[valid-type]
     if app is not None:
         _register_patch_schema(app, PatchBody)
 
@@ -273,9 +283,9 @@ def patch_body_for_model_with_dep(
     else:
         body_param = Body(..., **body_kwargs)
 
-    def _dep(patch: Any = body_param) -> _BasePatchModel:
+    def _dep(patch: Any = body_param) -> PatchBody:
         try:
-            return PatchBody.model_validate(patch, context=registry._ctx)
+            return PatchBody.model_validate(patch)
         except ValidationError as e:
             raise RequestValidationError(e.errors(), body=patch) from e
         except InvalidJSONPointer as e:
@@ -298,7 +308,7 @@ def patch_body_for_model_with_dep(
 
 
 def _register_patch_schema(
-    app: FastAPI, patch_model: type[_RegistryBoundPatchRoot]
+    app: FastAPI, patch_model: type[JsonPatchFor[Any, Any]]
 ) -> None:
     """
     Register a patch model's schema in OpenAPI components so $ref works in docs.
