@@ -48,7 +48,7 @@ from collections.abc import Mapping, Sequence
 from typing import Self, overload, override
 
 from jsonpatchx.exceptions import PatchError, PatchFailureDetail, PatchInternalError
-from jsonpatchx.registry import OperationRegistry
+from jsonpatchx.registry import AnyRegistry, StandardRegistry
 from jsonpatchx.schema import OperationSchema
 from jsonpatchx.types import _JSON_VALUE_ADAPTER, JSONValue
 
@@ -129,7 +129,7 @@ class JsonPatch(Sequence[OperationSchema]):
         self,
         patch: Sequence[Mapping[str, JSONValue]] | Sequence[OperationSchema],
         *,
-        registry: OperationRegistry | None = None,
+        registry: type[AnyRegistry] | None = None,
     ):
         """
         Construct a JsonPatch from a sequence of operation dicts.
@@ -139,7 +139,7 @@ class JsonPatch(Sequence[OperationSchema]):
             registry: OperationRegistry to use for parsing/validation. If omitted,
                       the standard RFC 6902 registry is used.
         """
-        self._registry = registry or OperationRegistry.standard()
+        self._registry = registry or StandardRegistry
         self._ops: list[OperationSchema] = self._registry.parse_python_patch(patch)
 
     @classmethod
@@ -147,7 +147,7 @@ class JsonPatch(Sequence[OperationSchema]):
         cls,
         text: str | bytes | bytearray,
         *,
-        registry: OperationRegistry | None = None,
+        registry: type[AnyRegistry] | None = None,
     ) -> Self:
         """
         Construct a JsonPatch from a JSON-formatted string.
@@ -158,17 +158,20 @@ class JsonPatch(Sequence[OperationSchema]):
                       the standard RFC 6902 registry is used.
         """
         instance = cls.__new__(cls)
-        registry = registry or OperationRegistry.standard()
+        registry = registry or StandardRegistry
         instance._registry = registry
         instance._ops = registry.parse_json_patch(text)
         return instance
 
     @classmethod
     def _from_operations(
-        cls, ops: list[OperationSchema], *, registry: OperationRegistry | None = None
+        cls,
+        ops: list[OperationSchema],
+        *,
+        registry: type[AnyRegistry] | None = None,
     ) -> Self:
         instance = cls.__new__(cls)
-        registry = registry or OperationRegistry.standard()
+        registry = registry or StandardRegistry
         instance._registry = registry
         instance._ops = ops
         return instance
@@ -190,14 +193,17 @@ class JsonPatch(Sequence[OperationSchema]):
         Apply this patch to ``doc`` and return the patched document.
 
         Args:
-            doc: Target JSON document.
+            doc: The target JSON document.
             validate_doc: If True, validate that ``doc`` is a strict ``JSONValue`` before applying.
-            inplace: Controls copy and mutation behavior. See ``_apply_ops(..., inplace=...)`` for
-                full semantics.
+            inplace: Controls whether ``doc`` is deep-copied before application.
+
+        Return:
+            patched: The patched JSON document.
 
         Raises:
-            PatchError: Expected patch failures raised by operation implementations.
-            PatchInternalError: Unexpected errors wrapped by the engine.
+            ValidationError: ``validate_doc=True`` and the input is not a strict JSON value.
+            PatchError: Any patch-domain error raised by operations, including conflicts.
+                ``PatchInternalError`` is a ``PatchError`` raised for unexpected failures.
         """
         if validate_doc:
             _JSON_VALUE_ADAPTER.validate_python(doc, strict=True)
@@ -225,9 +231,9 @@ class JsonPatch(Sequence[OperationSchema]):
 
     @override
     def __eq__(self, other: object) -> bool:
-        if not isinstance(other, JsonPatch):
+        if not isinstance(other, self.__class__):
             return NotImplemented
-        return self._ops == other._ops
+        return tuple(self) == tuple(other) and self._registry == other._registry
 
     @override
     def __str__(self) -> str:
@@ -238,7 +244,7 @@ class JsonPatch(Sequence[OperationSchema]):
         return f"{self.__class__.__name__}({self})"
 
     def __add__(self, other: object) -> Self:
-        if not isinstance(other, JsonPatch):
+        if not isinstance(other, self.__class__):
             return NotImplemented
         if self._registry is not other._registry:
             raise TypeError("Cannot add JsonPatch instances with different registries")
