@@ -1,19 +1,34 @@
-from collections.abc import Mapping, Sequence, Set
+from collections.abc import Mapping, Sequence
 from inspect import isabstract, isclass
 from types import MappingProxyType
 from typing import (
+    TYPE_CHECKING,
     Annotated,
+    Any,
     ClassVar,
+    Generic,
     Literal,
-    Self,
     TypeAliasType,
+    TypeVar,
+    TypeVarTuple,
     Union,
+    Unpack,
+    cast,
+    overload,
     override,
 )
 
 from pydantic import Field, TypeAdapter
 
-from jsonpatchx.builtins import STANDARD_OPS
+from jsonpatchx.builtins import (
+    STANDARD_OPS,
+    AddOp,
+    CopyOp,
+    MoveOp,
+    RemoveOp,
+    ReplaceOp,
+    TestOp,
+)
 from jsonpatchx.exceptions import InvalidJSONPointer, InvalidOperationRegistry
 from jsonpatchx.schema import OperationSchema
 from jsonpatchx.types import (
@@ -24,111 +39,176 @@ from jsonpatchx.types import (
     PointerBackend,
 )
 
+type AnyRegistry = GenericOperationRegistry[*tuple[Any, ...]]
+Ops = TypeVarTuple("Ops")  # bound=type[OperationSchema] | type[AnyRegistry]
+PBT = TypeVar("PBT", bound=PointerBackend)
 
-class OperationRegistry:
+_REGISTRY_CACHE: dict[
+    tuple[tuple[type[OperationSchema], ...], type[PointerBackend] | None],
+    type[AnyRegistry],
+] = {}
+
+
+class _RegistryMeta(type):
+    @override
+    def __call__(cls, *args: object, **kwargs: object) -> None:
+        raise TypeError(
+            f"{cls.__name__} is a registry type and cannot be instantiated. "
+            "Use it directly or via OperationRegistry[Op1, Op2, ...]."
+        )
+
+    @staticmethod
+    def _registry_type_name(
+        ops: tuple[type[OperationSchema], ...],
+        pointer_cls: type[PointerBackend] | None,
+    ) -> str:
+        if (
+            ops == GenericOperationRegistry._deterministic_sort(*STANDARD_OPS)
+            and pointer_cls is None
+        ):
+            return "StandardRegistry"
+        op_names = "_".join(op.__name__ for op in ops)
+        if pointer_cls is None:
+            return f"OperationRegistry_{op_names}"
+        return f"GenericOperationRegistry_{op_names}__{pointer_cls.__name__}"
+
+    @staticmethod
+    def _registry_display_name(
+        ops: tuple[type[OperationSchema], ...],
+        pointer_cls: type[PointerBackend] | None,
+    ) -> str:
+        op_names = ", ".join(op.__name__ for op in ops)
+        if pointer_cls is None:
+            return f"OperationRegistry[{op_names}]"
+        return f"GenericOperationRegistry[{op_names}, {pointer_cls.__name__}]"
+
+    @override
+    def __repr__(cls) -> str:
+        if cls is GenericOperationRegistry or cls is OperationRegistry:
+            return cls.__name__
+        assert hasattr(cls, "ops"), "internal error: OperationRegistry"
+        assert hasattr(cls, "pointer_cls"), "internal error: OperationRegistry"
+        return _RegistryMeta._registry_display_name(cls.ops, cls.pointer_cls)
+
+
+class GenericOperationRegistry(Generic[*Ops, PBT], metaclass=_RegistryMeta):
     """
-    Registry for JSON Patch operation types.
+    Registry for JSON Patch operation types with a custom JSON Pointer.
 
-    An ``OperationRegistry`` defines the operation vocabulary for your application:
-
-    - which operation schemas are allowed (standard RFC 6902 ops and/or custom ops),
-    - how to parse and validate incoming patch documents into concrete ``OperationSchema`` instances,
-    - which RFC 6901 pointer backend to use when validating ``JSONPointer[...]`` fields.
-
-    This type is a key building block for two common workflows:
-
-    1) Programmatic patch parsing (validate Python dicts / JSON strings into typed operations)
-    2) Framework integration (FastAPI/OpenAPI request bodies via dynamically generated RootModels)
-
-    Example:
-        Standard RFC 6902 registry:
-
-        registry = OperationRegistry.standard()
-        op = registry.parse_python_op({"op": "remove", "path": "/foo"})
-
-        Standard + custom ops, optionally with a custom pointer backend:
-
-        registry = OperationRegistry.with_standard(IncrementOp, pointer_cls=MyPointer)
-        ops = registry.parse_json_patch(b'[{"op": "increment", "path": "/count", "value": 1}]')
-
-    Notes:
-        - Dispatch: maps each allowed ``op`` identifier to the corresponding ``OperationSchema`` subclass.
-        - Validation: builds a Pydantic discriminated union on the ``op`` field.
-        - Pointer semantics: injects registry-scoped validation context so ``JSONPointer`` fields are
-          instantiated with the registry's configured pointer backend.
-        - Registries are effectively immutable after construction: they cache the union and adapters
-          used for parsing. Treat them as long-lived singletons (module-level constants) rather than
-          per-request objects.
-        - The registry does not apply patches; it only parses and validates operations.
+    >>> DotPointerRegistry = GenericOperationRegistry[AddOp, RemoveOp, DotPointer]
+    >>> LogRegistry = GenericOperationRegistry[StandardRegistry, IncrementOp, LogPointer]
     """
 
-    __slots__ = (
-        "_model_map",
-        "_op_adapter",
-        "_patch_adapter",
-        "_union_type",
-        "_pointer_cls",
-    )
-    _standard: ClassVar[Self | None] = None
+    # Normally, ClassVars can't be generic (https://github.com/python/typing/discussions/1424#discussioncomment-7989934)
+    # But in this case, GenericOperationRegistry[A] and GenericOperationRegistry[B] are different runtime objects.
+    ops: ClassVar[tuple[type[OperationSchema], ...]]
+    pointer_cls: ClassVar[type[PBT] | None]
+    union: ClassVar[TypeAliasType]
+    _model_map: ClassVar[Mapping[str, type[OperationSchema]]]
+    _op_adapter: ClassVar[TypeAdapter[OperationSchema]]
+    _patch_adapter: ClassVar[TypeAdapter[list[OperationSchema]]]
+    _ctx: ClassVar[dict[Literal["jsonpatch:pointer_backend"], type[PBT] | None]]
 
-    def __init__(
-        self,
-        *op_schemas: type[OperationSchema],
-        pointer_cls: type[PointerBackend] = _DEFAULT_POINTER_CLS,
-    ) -> None:
-        """
-        Create a registry from a set of OperationSchema subclasses.
+    @overload
+    def __class_getitem__(cls, params: tuple[Unpack[Ops]]) -> type[AnyRegistry]: ...
 
-        Args:
-            op_schemas:
-                One or more ``OperationSchema`` subclasses.
-                Each schema must declare ``op: Literal[...]``. The set of op identifiers across
-                all schemas must be disjoint.
+    @overload
+    def __class_getitem__(
+        cls, params: tuple[Unpack[Ops], type[PBT]]
+    ) -> type[AnyRegistry]: ...
 
-            pointer_cls:
-                The RFC 6901 pointer backend class to use when validating
-                ``JSONPointer[...]`` fields within these operations.
+    def __class_getitem__(cls, params: object) -> type[AnyRegistry]:
+        op_schemas, pointer_cls = cls._split_ops_and_pointer(params)
+        ordered_ops = cls._deterministic_sort(*op_schemas)
+        cache_key = (ordered_ops, pointer_cls)
+        cached = _REGISTRY_CACHE.get(cache_key)
+        if cached is not None:
+            return cached
 
-                This does *not* change the runtime patch semantics directly; it changes how pointer
-                strings are parsed/validated and how pointer tokens are interpreted during pointer
-                operations.
+        model_map = cls._build_model_map(*ordered_ops)
+        union_type, op_adapter, patch_adapter = cls._build_adapters(*ordered_ops)
+        ctx_backend = _DEFAULT_POINTER_CLS if pointer_cls is None else pointer_cls
+        ctx: dict[Literal["jsonpatch:pointer_backend"], type[PBT] | None] = {
+            _POINTER_BACKEND_CTX_KEY: ctx_backend
+        }
 
-        Raises:
-            InvalidOperationRegistry:
-                If no schemas are provided, a schema is abstract/not a class, or op identifiers overlap.
+        name = cls._registry_type_name(ordered_ops, pointer_cls)
+        namespace = {
+            "ops": ordered_ops,
+            "pointer_cls": pointer_cls,
+            "union": union_type,
+            "_model_map": model_map,
+            "_op_adapter": op_adapter,
+            "_patch_adapter": patch_adapter,
+            "_ctx": ctx,
+        }
+        registry_type = type(name, (cls,), namespace)
+        _REGISTRY_CACHE[cache_key] = registry_type
+        return registry_type
 
-            InvalidJSONPointer:
-                If ``pointer_cls("")`` cannot construct a valid root pointer or does not satisfy the
-                ``PointerBackend`` protocol.
+    @classmethod
+    def _split_ops_and_pointer(
+        cls,
+        params: object,
+    ) -> tuple[tuple[type[OperationSchema], ...], type[PBT] | None]:
+        if not params or not isinstance(params, tuple):
+            raise InvalidOperationRegistry(f"Invalid registry params: {params!r}")
+        variadic_params = params[:-1]
+        last_param = params[-1]
 
-        Notes:
-            Registries cache Pydantic TypeAdapters internally. Construct registries once (module scope)
-            rather than per request.
-        """
-        self._validate_models(*op_schemas)
-        self._model_map = self._build_model_map(*op_schemas)
-
-        if not JSONPointer._implements_PointerBackend_protocol(pointer_cls):
+        pointer_cls: type[PBT] | None
+        if last_param is PointerBackend:
+            pointer_cls = None
+        elif JSONPointer._implements_PointerBackend_protocol(last_param):
+            pointer_cls = cast(type[PBT], last_param)
+        else:
             raise InvalidJSONPointer(
-                f"pointer_cls {pointer_cls!r} instances must implement the PointerBackend Protocol"
+                f"pointer_cls {last_param!r} instances must implement the PointerBackend Protocol"
             )
-        self._pointer_cls = pointer_cls
 
-        union_type, op_adapter, patch_adapter = self._build_adapters(*op_schemas)
-        self._union_type = union_type
-        self._op_adapter = op_adapter
-        self._patch_adapter = patch_adapter
+        op_schemas, pointer_cls = cls._expand_op_params(variadic_params, pointer_cls)
+        cls._validate_models(*op_schemas)
+        return op_schemas, pointer_cls
+
+    @staticmethod
+    def _expand_op_params(
+        variadic_params: tuple[object, ...],
+        pointer_cls: type[PBT] | None,
+    ) -> tuple[tuple[type[OperationSchema], ...], type[PBT] | None]:
+        ops: list[type[OperationSchema]] = []
+        registry_pointer_classes: set[type[PointerBackend] | None] = set()
+
+        for param in variadic_params:
+            if not isclass(param):
+                raise InvalidOperationRegistry(f"{param!r} is not a class")
+
+            if issubclass(param, GenericOperationRegistry):
+                ops.extend(param.ops)
+                registry_pointer_classes.add(param.pointer_cls)
+                continue
+
+            if not issubclass(param, OperationSchema) or isabstract(param):
+                raise InvalidOperationRegistry(
+                    f"{param!r} is not an concrete OperationSchema"
+                )
+            ops.append(param)
+
+        if pointer_cls is None:
+            if registry_pointer_classes and registry_pointer_classes != set([None]):
+                raise InvalidOperationRegistry(
+                    f"Expected standard operation registries, got generics: {[ptr_cls for ptr_cls in registry_pointer_classes if ptr_cls is not None]}"
+                )
+        else:
+            for ptr_cls in registry_pointer_classes:
+                if ptr_cls is not None and not issubclass(pointer_cls, ptr_cls):
+                    raise InvalidOperationRegistry(
+                        f"pointer class {ptr_cls!r} cannot be stricter thatn {pointer_cls!r}"
+                    )
+
+        return tuple(ops), pointer_cls
 
     @staticmethod
     def _validate_models(*op_schemas: type[OperationSchema]) -> None:
-        """
-        Internal: validate that registry inputs are usable for discriminated-union dispatch.
-
-        Requirements:
-        - at least one schema
-        - each entry is a concrete (non-abstract) class
-        - each entry subclasses OperationSchema
-        """
         if not op_schemas:
             raise InvalidOperationRegistry("At least one OperationSchema is required")
         for op in op_schemas:
@@ -143,12 +223,6 @@ class OperationRegistry:
     def _build_model_map(
         *op_schemas: type[OperationSchema],
     ) -> Mapping[str, type[OperationSchema]]:
-        """
-        Internal: build an ``op`` identifier -> schema type mapping.
-
-        Ensures that all declared ``op: Literal[...]`` identifiers across schemas are disjoint,
-        since Pydantic discriminated unions require an unambiguous discriminator value.
-        """
         model_map: dict[str, type[OperationSchema]] = {}
         for model in op_schemas:
             for op_literal in model._op_literals:
@@ -169,15 +243,8 @@ class OperationRegistry:
         TypeAdapter[OperationSchema],
         TypeAdapter[list[OperationSchema]],
     ]:
-        """
-        Internal: construct the discriminated union type and the cached Pydantic TypeAdapters.
-
-        - ``PatchOperation`` is a runtime-generated ``Annotated[Union[...], Field(discriminator="op")]``.
-        - ``op_adapter`` validates a single operation.
-        - ``patch_adapter`` validates a list of operations (a JSON Patch document).
-        """
         ordered_ops_tuple: tuple[type[OperationSchema], ...] = (
-            OperationRegistry._deterministic_sort(*op_schemas)
+            GenericOperationRegistry._deterministic_sort(*op_schemas)
         )
 
         type RegistryPatchOperation = Annotated[
@@ -194,217 +261,90 @@ class OperationRegistry:
     def _deterministic_sort(
         *op_schemas: type[OperationSchema],
     ) -> tuple[type[OperationSchema], ...]:
-        """
-        Deterministically order the schemas for deterministic OpenAPI output.
-
-        Happens to sort alphabetically by first op literal, but that's an implementation detail.
-        """
         return tuple(  # deterministic ordering of ops in OpenAPI
             sorted(op_schemas, key=lambda op: op._op_literals[0])
         )
 
-    @property
-    def ops_by_name(self) -> Mapping[str, type[OperationSchema]]:
-        """
-        Mapping of operation identifier -> OperationSchema type.
+    @classmethod
+    def ops_by_name(cls) -> Mapping[str, type[OperationSchema]]:
+        return cls._model_map
 
-        This is primarily useful for tooling and introspection (e.g., building docs,
-        debugging registry contents). Most users will not need this directly.
-        """
-        return self._model_map
+    @classmethod
+    def ops_set(cls) -> frozenset[type[OperationSchema]]:
+        return frozenset(cls._model_map.values())
 
-    @property
-    def ops(self) -> Set[type[OperationSchema]]:
-        """
-        Set of OperationSchema types registered in this registry.
-
-        Note: if an OperationSchema declares multiple ``op`` identifiers (aliases), it will still
-        appear only once in this set.
-        """
-        return frozenset(self._model_map.values())
-
-    @property
-    def union(self) -> TypeAliasType:
-        """
-        Runtime-generated discriminated union of all registered operation schemas.
-
-        This is primarily intended for framework integration (e.g., as the element type inside a
-        Pydantic RootModel request body). Treat it as an implementation detail unless you are
-        building custom Pydantic models around the registry.
-        """
-        # In a perfect world, OperationRegistry would be generic in a covariant union type,
-        # but that union is created dynamically at runtime and only Pydantic can consume it.
-        return self._union_type
-
-    @property
-    def _ctx(self) -> dict[Literal["jsonpatch:pointer_backend"], type[PointerBackend]]:
-        """
-        Internal: Pydantic validation context injected during parsing.
-
-        This context allows ``JSONPointer[...]`` fields to instantiate with the registry's configured
-        pointer backend.
-        """
-        return {_POINTER_BACKEND_CTX_KEY: self._pointer_cls}
-
+    @classmethod
     def parse_python_op(
-        self, obj: Mapping[str, JSONValue] | OperationSchema
+        cls, obj: Mapping[str, JSONValue] | OperationSchema
     ) -> OperationSchema:
-        """
-        Parse and validate a single operation from a Python object.
-
-        Accepts either:
-        - a mapping like ``{"op": "remove", "path": "/foo"}``, or
-        - an existing OperationSchema instance (which will be revalidated).
-
-        Returns:
-            A concrete ``OperationSchema`` instance (for example, ``RemoveOp(...)``).
-
-        Notes:
-            - Validation is strict (no implicit coercions).
-            - Extra fields are forbidden.
-            - Validation context is injected so ``JSONPointer`` fields use this registry's pointer backend.
-        """
-        return self._op_adapter.validate_python(
+        return cls._op_adapter.validate_python(
             obj,
             strict=True,
             by_alias=True,
             by_name=False,
-            context=self._ctx,
+            context=cls._ctx,
         )
 
+    @classmethod
     def parse_python_patch(
-        self, python: Sequence[OperationSchema | Mapping[str, JSONValue]]
+        cls, python: Sequence[OperationSchema | Mapping[str, JSONValue]]
     ) -> list[OperationSchema]:
-        """
-        Parse and validate a JSON Patch document from Python objects.
-
-        A JSON Patch document is a list of operation objects. This method validates the entire list
-        and returns a list of concrete OperationSchema instances.
-
-        Example:
-            ops = registry.parse_python_patch([
-                {"op": "remove", "path": "/foo/bar"},
-                {"op": "add", "path": "/baz", "value": 42},
-            ])
-
-        Notes:
-            - Validation is strict (no implicit coercions).
-            - Extra fields are forbidden.
-            - Validation context is injected so ``JSONPointer`` fields use this registry's pointer backend.
-        """
-        return self._patch_adapter.validate_python(
+        return cls._patch_adapter.validate_python(
             python,
             strict=True,
             by_alias=True,
             by_name=False,
-            context=self._ctx,
+            context=cls._ctx,
         )
 
-    def parse_json_op(self, text: str | bytes | bytearray) -> OperationSchema:
-        """
-        Parse and validate a single operation from a JSON string/bytes payload.
-
-        Example:
-            op = registry.parse_json_op(b'{"op":"remove","path":"/foo/bar"}')
-
-        Notes:
-            - Uses strict validation (no implicit coercions).
-            - Extra fields are forbidden.
-            - Validation context is injected so ``JSONPointer`` fields use this registry's pointer backend.
-        """
-        return self._op_adapter.validate_json(
+    @classmethod
+    def parse_json_op(cls, text: str | bytes | bytearray) -> OperationSchema:
+        return cls._op_adapter.validate_json(
             text,
             strict=True,
             by_alias=True,
             by_name=False,
-            context=self._ctx,
+            context=cls._ctx,
         )
 
-    def parse_json_patch(self, text: str | bytes | bytearray) -> list[OperationSchema]:
-        """
-        Parse and validate a JSON Patch document from a JSON string/bytes payload.
-
-        Example:
-            ops = registry.parse_json_patch(b'''
-            [
-                {"op":"move","from":"/a","path":"/b"},
-                {"op":"add","path":"/c","value":123}
-            ]
-            ''')
-
-        Notes:
-            - Uses strict validation (no implicit coercions).
-            - Extra fields are forbidden.
-            - Validation context is injected so ``JSONPointer`` fields use this registry's pointer backend.
-        """
-        return self._patch_adapter.validate_json(
+    @classmethod
+    def parse_json_patch(cls, text: str | bytes | bytearray) -> list[OperationSchema]:
+        return cls._patch_adapter.validate_json(
             text,
             strict=True,
             by_alias=True,
             by_name=False,
-            context=self._ctx,
+            context=cls._ctx,
         )
 
-    @override
-    def __repr__(self) -> str:
-        ops = ", ".join(m.__name__ for m in self.ops)
-        return f"{self.__class__.__name__}({ops})"
 
-    @classmethod
-    def standard(cls) -> Self:
+# A statement like ``type OperationRegistry[*Ops] = GenericOperationRegistry[*Ops, PointerBackend]``
+# creates a typing.TypeAliasType at runtime, not an actual class, so it would lack the metaclass
+# machinery (__class_getitem__, registry caching, etc.) that the runtime relies on.
+if TYPE_CHECKING:
+    # Mypy only needs a generic alias form, but at runtime a concrete class is necessary to inject the
+    # default pointer backend into __class_getitem__.
+    class OperationRegistry(GenericOperationRegistry[*Ops, PointerBackend]):
         """
-        Return the shared standard RFC 6902 registry.
+        Registry for JSON Patch operation types.
 
-        This is a cached singleton registry containing only the built-in RFC 6902 operations.
-        It uses the library's default pointer backend.
+        >>> LimitedRegistry = OperationRegistry[AddOp, RemoveOp]
+        >>> ExpandedRegistry = OperationRegistry[StandardRegistry, ToggleOp]
         """
-        if cls._standard is None:
-            cls._standard = cls(*STANDARD_OPS)
-        return cls._standard
+else:
 
-    @classmethod
-    def with_standard(
-        cls,
-        *extra_ops: type[OperationSchema],
-        pointer_cls: type[PointerBackend] = _DEFAULT_POINTER_CLS,
-    ) -> Self:
-        """
-        Create a registry containing the standard RFC 6902 ops plus additional custom operations.
-
-        Args:
-            extra_ops:
-                One or more custom OperationSchema subclasses.
-
-            pointer_cls:
-                Optional pointer backend override used when validating JSONPointer fields.
-
-        Returns:
-            A new OperationRegistry instance (not cached).
-        """
-        return cls(*STANDARD_OPS, *extra_ops, pointer_cls=pointer_cls)
-
-    @override
-    def __hash__(self) -> int:
-        """
-        Best-effort structural hash.
-
-        The hash incorporates the registry's operation set and pointer backend class so registries
-        can be used as dictionary keys in higher-level wrappers.
-
-        Notes:
-            This is not an identity hash. Two registries with the same operation set and pointer backend
-            will hash the same, even if they are distinct instances.
-        """
-        return hash((self.__class__, self._pointer_cls, self.ops))
+    class OperationRegistry(GenericOperationRegistry):
+        @override
+        @classmethod
+        def _split_ops_and_pointer(
+            cls,
+            params: object,
+        ) -> tuple[tuple[type[OperationSchema], ...], type[PBT]]:
+            if not isinstance(params, tuple):
+                params = (params, PointerBackend)
+            else:
+                params = (*params, PointerBackend)
+            return super()._split_ops_and_pointer(params)
 
 
-if __name__ == "__main__":
-    raw = {"op": "add", "path": "/4", "value": "bar"}
-
-    op = OperationRegistry.standard().parse_python_op(raw)
-    raw_patch = [
-        {"op": "move", "path": "/foo", "from": "/bar"},
-        {"op": "add", "path": "/bar", "value": "baz"},
-        {"op": "add", "path": "/bar", "value": "baz"},
-    ]
-    ops = OperationRegistry.standard().parse_python_patch(raw_patch)
+StandardRegistry = OperationRegistry[AddOp, CopyOp, MoveOp, RemoveOp, ReplaceOp, TestOp]
