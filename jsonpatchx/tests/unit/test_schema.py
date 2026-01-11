@@ -10,7 +10,7 @@ from jsonpatchx.exceptions import (
     InvalidOperationDefinition,
     InvalidOperationRegistry,
 )
-from jsonpatchx.registry import OperationRegistry
+from jsonpatchx.registry import GenericOperationRegistry, OperationRegistry
 from jsonpatchx.schema import OperationSchema
 from jsonpatchx.types import JSONPointer, JSONValue, PointerBackend
 
@@ -91,30 +91,30 @@ def test_invalid_operation_registry(subtests: Subtests) -> None:
 
     with subtests.test("OperationRegistry requires at least one model"):
         with pytest.raises(InvalidOperationRegistry):
-            OperationRegistry()
+            OperationRegistry.__class_getitem__(())
 
     with subtests.test("OperationRegistry requires unique op identifiers"):
         with pytest.raises(InvalidOperationRegistry):
-            OperationRegistry(FirstOp, SecondOp)
+            OperationRegistry[FirstOp, SecondOp]
 
     with subtests.test("OperationRegistry rejects non-OperationSchema input"):
         with pytest.raises(InvalidOperationRegistry):
-            OperationRegistry(str)  # type: ignore[arg-type]
+            OperationRegistry[str]  # type: ignore[type-arg]
 
         with pytest.raises(InvalidOperationRegistry):
-            OperationRegistry(42)  # type: ignore[arg-type]
+            OperationRegistry[42]  # type: ignore[type-arg]
 
     with subtests.test("OperationRegistry rejects OperationSchema base class"):
         with pytest.raises(InvalidOperationRegistry):
-            OperationRegistry(OperationSchema)  # type: ignore[type-abstract]
+            OperationRegistry[OperationSchema]  # type: ignore[type-abstract]
 
     with subtests.test("OperationRegistry rejects abstract OperationSchema subclasses"):
         with pytest.raises(InvalidOperationRegistry):
-            OperationRegistry(AbstractOp)  # type: ignore[type-abstract]
+            OperationRegistry[AbstractOp]  # type: ignore[type-abstract]
 
     with subtests.test("OperationRegistry rejects OperationSchema instances"):
         with pytest.raises(InvalidOperationRegistry):
-            OperationRegistry(FirstOp())  # type: ignore[arg-type]
+            OperationRegistry[FirstOp()]  # type: ignore[type-arg]
 
 
 def test_valid_operation_schema(subtests: Subtests) -> None:
@@ -165,7 +165,7 @@ def test_patch_schema_parse_happy_path(subtests: Subtests) -> None:
         def apply(self, doc: JSONValue) -> JSONValue:
             return None
 
-    schema = OperationRegistry(IncrementOp, ToggleOp)
+    schema = OperationRegistry[IncrementOp, ToggleOp]
 
     with subtests.test("parse_op succeeds"):
         op = schema.parse_python_op({"op": "increment", "path": "/foo", "value": 3})
@@ -226,14 +226,12 @@ def test_pointer_backend_binding(subtests: Subtests) -> None:
         assert isinstance(op.path.ptr, DotPointer)
 
     with subtests.test("registry backend mismatch fails"):
-        registry = OperationRegistry(DotRemoveOp)
+        registry = OperationRegistry[DotRemoveOp]
         with pytest.raises(InvalidJSONPointer):
             registry.parse_python_op({"op": "dot-remove", "path": "a.b"})
 
     with subtests.test("registry backend match succeeds"):
-        registry = OperationRegistry(
-            DotRemoveOp, pointer_cls=cast(type[PointerBackend], DotPointer)
-        )
+        registry = GenericOperationRegistry[DotRemoveOp, DotPointer]
         op = cast(
             DotRemoveOp, registry.parse_python_op({"op": "dot-remove", "path": "a.b"})
         )

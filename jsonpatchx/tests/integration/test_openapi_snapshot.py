@@ -13,8 +13,7 @@ from jsonpatchx.fastapi import (
     patch_body_for_json_with_dep,
     patch_body_for_model_with_dep,
 )
-from jsonpatchx.pydantic import patch_body_for_json, patch_body_for_model
-from jsonpatchx.registry import OperationRegistry
+from jsonpatchx.registry import OperationRegistry, StandardRegistry
 from jsonpatchx.schema import OperationSchema
 from jsonpatchx.types import JSONBoolean, JSONPointer, JSONValue
 
@@ -39,16 +38,16 @@ class ToggleOp(OperationSchema):
 def _build_openapi() -> dict[str, object]:
     app = FastAPI(title="jsonpatchx openapi snapshot", version="0.1.0")
 
-    registry = OperationRegistry.with_standard(ToggleOp)
-    UserPatch = JsonPatchFor[User]
-    CustomUserPatch = patch_body_for_model(User, registry=registry)
-    JsonPatch = patch_body_for_json("ConfigPatch", registry=registry)
+    ToggleRegistry = OperationRegistry[ToggleOp]
+    UserPatch = JsonPatchFor[User, StandardRegistry]
+    CustomUserPatch = JsonPatchFor[User, ToggleRegistry]
+    JsonPatch = JsonPatchFor["Config", ToggleRegistry]
 
     JsonPatchWithDep, JsonDepends, json_openapi = patch_body_for_json_with_dep(
-        "DotConfigPatch", registry=registry, app=app
+        "DotConfigPatch", registry=ToggleRegistry, app=app
     )
     ModelPatchWithDep, ModelDepends, model_openapi = patch_body_for_model_with_dep(
-        User, registry=registry, app=app
+        User, registry=ToggleRegistry, app=app
     )
 
     @app.patch("/users/{user_id}")

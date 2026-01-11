@@ -30,7 +30,7 @@ class ExplodeOp(OperationSchema):
 
 
 def test_custom_op_apply() -> None:
-    registry = OperationRegistry.with_standard(IncrementOp)
+    registry = OperationRegistry[IncrementOp]
     patch = JsonPatch(
         [{"op": "increment", "path": "/count", "amount": 2}], registry=registry
     )
@@ -39,7 +39,7 @@ def test_custom_op_apply() -> None:
 
 
 def test_custom_op_internal_error_wrapped() -> None:
-    registry = OperationRegistry.with_standard(ExplodeOp)
+    registry = OperationRegistry[ExplodeOp]
     patch = JsonPatch([{"op": "explode", "path": "/"}], registry=registry)
     with pytest.raises(PatchInternalError) as exc:
         patch.apply({"a": 1})

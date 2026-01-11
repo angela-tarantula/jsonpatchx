@@ -1,7 +1,7 @@
 from collections.abc import Iterable
 from typing import Any, Literal, override
 
-from jsonpatchx.registry import OperationRegistry
+from jsonpatchx.registry import GenericOperationRegistry
 from jsonpatchx.schema import OperationSchema
 from jsonpatchx.standard import JsonPatch
 from jsonpatchx.types import JSONPointer, JSONValue, PointerBackend
@@ -43,7 +43,7 @@ class DotRemoveOp(OperationSchema):
 
 
 def test_custom_backend_with_registry() -> None:
-    registry = OperationRegistry(DotRemoveOp, pointer_cls=DotPointer)
+    registry = GenericOperationRegistry[DotRemoveOp, DotPointer]
     patch = JsonPatch([{"op": "dot-remove", "path": "a.b"}], registry=registry)
     result = patch.apply({"a": {"b": 1}})
     assert result == {"a": {}}

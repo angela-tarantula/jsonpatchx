@@ -17,9 +17,8 @@ class ToggleOp(OperationSchema):
 
 
 def test_registry_repr_and_hash() -> None:
-    registry = OperationRegistry(ToggleOp)
+    registry = OperationRegistry[ToggleOp]
     rep = repr(registry)
-    assert "OperationRegistry" in rep
     assert "ToggleOp" in rep
     assert isinstance(hash(registry), int)
 
@@ -30,7 +29,7 @@ def test_jsonpatch_dunders_and_to_string() -> None:
             {"op": "toggle", "path": "/a"},
             {"op": "toggle", "path": "/b"},
         ],
-        registry=OperationRegistry(ToggleOp),
+        registry=OperationRegistry[ToggleOp],
     )
     assert len(patch) == 2
     assert patch[0].op == "toggle"
