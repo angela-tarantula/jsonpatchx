@@ -398,7 +398,7 @@ class JSONPointer(str, Generic[T_co, P_co]):
         path: str,
         type_param: TypeForm[T_co],
         *args: object,
-        pointer_cls: type[P_co] = _DEFAULT_POINTER_CLS,
+        pointer_cls: type[P_co] = cast(type[P_co], PointerBackend),
         **kwargs: object,
     ) -> Self:
         """Trying to instantiate JSONPointer directly will raise InvalidJSONPointer exception."""
@@ -407,6 +407,8 @@ class JSONPointer(str, Generic[T_co, P_co]):
             raise InvalidJSONPointer(
                 "JSONPointer values are created by Pydantic validation only."
             )
+        if pointer_cls is PointerBackend:
+            pointer_cls = _DEFAULT_POINTER_CLS
         _, __ = cls._parse_pointer_type_args(type_param, pointer_cls)
 
         return cls._validator(
@@ -559,16 +561,15 @@ class JSONPointer(str, Generic[T_co, P_co]):
         bound_backend: type[PointerBackend] | None,
     ) -> type[PointerBackend]:
         """Determine the strictest PointerBackend class, given optional ``registry_backend`` and ``bound_backend``."""
-        if registry_backend is not None:
-            # Enforce registry_backend ⊆ bound_backend
-            if bound_backend is not None and not issubclass(
-                registry_backend, bound_backend
-            ):
+        if registry_backend is not None and bound_backend is not None:
+            if not issubclass(registry_backend, bound_backend):
                 raise InvalidJSONPointer(
                     "JSONPointer backend mismatch: "
                     f"registry requires {registry_backend.__name__} but field uses "
                     f"{bound_backend.__name__}"
                 )
+            return registry_backend
+        if registry_backend is not None:
             return registry_backend
         if bound_backend is not None:
             return bound_backend
