@@ -1,5 +1,5 @@
 """
-Demo 2: Custom registries bound to different Pydantic models using `patch_body_for_model(...)`.
+Demo 2: Custom registries bound to different Pydantic models using `JsonPatchFor[Model, CustomRegistry]`.
 """
 
 from __future__ import annotations
@@ -19,18 +19,19 @@ from examples.shared import (
     save_team,
     save_user,
 )
-from jsonpatchx import OperationRegistry, patch_body_for_model
+from jsonpatchx import OperationRegistry, StandardRegistry
 from jsonpatchx.fastapi import patch_error_openapi_responses, patch_request_body
+from jsonpatchx.pydantic import JsonPatchFor
 
-user_registry = OperationRegistry.with_standard(IncrementOp, ToggleBoolOp)
-team_registry = OperationRegistry.with_standard(AppendOp, IncrementOp)
+UserRegistry = OperationRegistry[StandardRegistry, IncrementOp, ToggleBoolOp]
+TeamRegistry = OperationRegistry[StandardRegistry, AppendOp, IncrementOp]
 
-UserPatch = patch_body_for_model(User, registry=user_registry)
-TeamPatch = patch_body_for_model(Team, registry=team_registry)
+UserPatch = JsonPatchFor[User, UserRegistry]
+TeamPatch = JsonPatchFor[Team, TeamRegistry]
 
 app = create_app(
     title="Demo 2: Billing and team ops",
-    description="Custom registries for billing-style ops on users and teams using `patch_body_for_model(...)`.",
+    description="Custom registries for billing-style ops on users and teams using `JsonPatchFor[Model, CustomRegistry]`.",
 )
 
 
@@ -45,7 +46,7 @@ def get_user_endpoint(
     user_id: int = Path(
         ...,
         description="Available users: 1, 2.",
-        example=1,
+        examples=[1, 2],
     ),
 ) -> User:
     user = get_user(user_id)
@@ -79,7 +80,7 @@ def patch_user(
     user_id: int = Path(
         ...,
         description="Available users: 1, 2.",
-        example=1,
+        examples=[1, 2],
     ),
     patch: UserPatch = Body(
         ...,
@@ -106,7 +107,7 @@ def get_team_endpoint(
     team_id: int = Path(
         ...,
         description="Available teams: 1, 2.",
-        example=1,
+        examples=[1, 2],
     ),
 ) -> Team:
     team = get_team(team_id)
@@ -140,7 +141,7 @@ def patch_team(
     team_id: int = Path(
         ...,
         description="Available teams: 1, 2.",
-        example=1,
+        examples=[1, 2],
     ),
     patch: TeamPatch = Body(
         ...,

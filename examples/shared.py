@@ -300,6 +300,7 @@ class DotPointer(PointerBackend):
     - Root pointer is the empty string.
     - No escaping is supported; empty segments are rejected.
     """
+
     _parts: tuple[str, ...]
 
     def __init__(self, pointer: str) -> None:

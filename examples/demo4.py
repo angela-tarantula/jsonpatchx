@@ -18,12 +18,13 @@ from examples.shared import (
     save_config,
     save_user,
 )
-from jsonpatchx import JSONValue, OperationRegistry
+from jsonpatchx import GenericOperationRegistry, JSONValue, StandardRegistry
 from jsonpatchx.fastapi import (
     patch_body_for_json_with_dep,
     patch_body_for_model_with_dep,
     patch_error_openapi_responses,
 )
+from jsonpatchx.pydantic import _BasePatchBody, _BasePatchModel
 
 app = create_app(
     title="Demo 4: Dot-pointer settings",
@@ -33,7 +34,7 @@ app = create_app(
     ),
 )
 
-registry = OperationRegistry.with_standard(pointer_cls=DotPointer)
+registry = GenericOperationRegistry[StandardRegistry, DotPointer]
 DotPointerPatch, DotPointerPatchDepends, openapi_extra = patch_body_for_json_with_dep(
     "Config",
     registry=registry,
@@ -46,6 +47,7 @@ DotPointerPatch, DotPointerPatchDepends, openapi_extra = patch_body_for_json_wit
         }
     },
 )
+
 UserPatch, UserPatchDepends, user_openapi_extra = patch_body_for_model_with_dep(
     User,
     registry=registry,
@@ -71,7 +73,7 @@ def get_config_endpoint(
     config_id: str = Path(
         ...,
         description="Available configs: site, limits.",
-        example="site",
+        examples=["site", "limits"],
     ),
 ) -> JSONValue:
     doc = get_config(config_id)
@@ -93,9 +95,9 @@ def patch_config(
     config_id: str = Path(
         ...,
         description="Available configs: site, limits.",
-        example="site",
+        examples=["site", "limits"],
     ),
-    patch: DotPointerPatch = Depends(DotPointerPatchDepends),
+    patch: _BasePatchBody = Depends(DotPointerPatchDepends),
 ) -> JSONValue:
     doc = get_config(config_id)
     if doc is None:
@@ -116,7 +118,7 @@ def get_user_endpoint(
     user_id: int = Path(
         ...,
         description="Available users: 1, 2.",
-        example=1,
+        examples=[1, 2],
     ),
 ) -> User:
     user = get_user(user_id)
@@ -138,9 +140,9 @@ def patch_user(
     user_id: int = Path(
         ...,
         description="Available users: 1, 2.",
-        example=1,
+        examples=[1, 2],
     ),
-    patch: UserPatch = Depends(UserPatchDepends),
+    patch: _BasePatchModel[User] = Depends(UserPatchDepends),
 ) -> User:
     user = get_user(user_id)
     if user is None:

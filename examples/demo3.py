@@ -4,7 +4,7 @@ Demo 3: Non-pydantic JSON patching.
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, Literal
 
 from fastapi import Body, HTTPException, Path
 
@@ -21,10 +21,11 @@ from examples.shared import (
     get_config,
     save_config,
 )
-from jsonpatchx import JSONValue, OperationRegistry, patch_body_for_json
+from jsonpatchx import JSONValue, OperationRegistry
 from jsonpatchx.fastapi import patch_error_openapi_responses, patch_request_body
+from jsonpatchx.pydantic import JsonPatchFor
 
-registry = OperationRegistry(
+ConfigRegistry = OperationRegistry[
     IncrementOp,
     AppendOp,
     ExtendOp,
@@ -32,12 +33,12 @@ registry = OperationRegistry(
     SwapOp,
     EnsureObjectOp,
     RemoveNumberOp,
-)
-ConfigPatch = patch_body_for_json("Config", registry=registry)
+]
+ConfigPatch = JsonPatchFor[Literal["Config"], ConfigRegistry]
 
 app = create_app(
     title="Demo 3: Feature flags and limits",
-    description="Non-pydantic JSON patching for config docs using `patch_body_for_json(...)`.",
+    description="Non-pydantic JSON patching for config docs using `JsonPatchFor[Name, Registry]`.",
 )
 
 
@@ -52,7 +53,7 @@ def get_config_endpoint(
     config_id: str = Path(
         ...,
         description="Available configs: site, limits.",
-        example="site",
+        examples=["site", "limits"],
     ),
 ) -> JSONValue:
     doc = get_config(config_id)
@@ -102,7 +103,7 @@ def patch_config(
     config_id: str = Path(
         ...,
         description="Available configs: site, limits.",
-        example="site",
+        examplse=["site", "limits"],
     ),
     patch: ConfigPatch = Body(
         ...,

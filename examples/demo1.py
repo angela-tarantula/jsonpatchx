@@ -1,5 +1,5 @@
 """
-Demo 1: Standard JSON Patch with Pydantic models using JsonPatchFor[Model].
+Demo 1: Standard JSON Patch with Pydantic models using JsonPatchFor[Model, StandardRegistry].
 """
 
 from __future__ import annotations
@@ -7,20 +7,21 @@ from __future__ import annotations
 from fastapi import Body, HTTPException, Path
 
 from examples.shared import JSON_PATCH_MEDIA_TYPE, User, create_app, get_user, save_user
-from jsonpatchx import JsonPatchFor
+from jsonpatchx import StandardRegistry
 from jsonpatchx.fastapi import (
     patch_content_type_dependency,
     patch_error_openapi_responses,
     patch_request_body,
 )
+from jsonpatchx.pydantic import JsonPatchFor
 
 STRICT_JSON_PATCH = True
 
-UserPatch = JsonPatchFor[User]
+UserPatch = JsonPatchFor[User, StandardRegistry]
 
 app = create_app(
     title="Demo 1: Customer profile patching",
-    description="Standard JSON Patch on customer profiles using `JsonPatchFor[Model]`.",
+    description="Standard JSON Patch on customer profiles using `JsonPatchFor[Model, StandardRegistry]`.",
 )
 
 
@@ -35,7 +36,7 @@ def get_user_endpoint(
     user_id: int = Path(
         ...,
         description="Available users: 1, 2.",
-        example=1,
+        examples=[1, 2],
     ),
 ) -> User:
     user = get_user(user_id)
@@ -70,7 +71,7 @@ def patch_user(
     user_id: int = Path(
         ...,
         description="Available users: 1, 2.",
-        example=1,
+        examples=[1, 2],
     ),
     patch: UserPatch = Body(
         ...,
