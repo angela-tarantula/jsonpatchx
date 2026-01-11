@@ -200,7 +200,7 @@ class GenericOperationRegistry(Generic[*Ops, PBT], metaclass=_RegistryMeta):
                 )
         else:
             for ptr_cls in registry_pointer_classes:
-                if ptr_cls is not None and not issubclass(pointer_cls, ptr_cls):
+                if isclass(ptr_cls) and not issubclass(pointer_cls, ptr_cls):
                     raise InvalidOperationRegistry(
                         f"pointer class {ptr_cls!r} cannot be stricter thatn {pointer_cls!r}"
                     )

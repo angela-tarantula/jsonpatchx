@@ -3,6 +3,7 @@ from __future__ import annotations
 import re
 from collections.abc import Iterable, Sequence
 from functools import lru_cache, partial
+from inspect import isclass
 from typing import (
     Annotated,
     Any,
@@ -446,8 +447,8 @@ class JSONPointer(str, Generic[T_co, P_co]):
         # Try to reuse the type parameters (type checkers already enforce covariance)
         if isinstance(path, JSONPointer):
             if (
-                isinstance(path._type, type)
-                and isinstance(type_param, type)
+                isclass(path._type)
+                and isclass(type_param)
                 and not issubclass(path._type, type_param)
             ):
                 # Ideally, compare TypeAdapters to cover all TypeForm covariance, but Pydantic doesn't expose subtype relation.
