@@ -1,5 +1,5 @@
 from collections.abc import Iterable
-from typing import Any, Literal, cast, override
+from typing import Any, Literal, override
 
 import pytest
 from pydantic import ValidationError

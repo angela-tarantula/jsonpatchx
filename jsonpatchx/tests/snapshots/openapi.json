@@ -107,53 +107,6 @@
         "title": "Copy operation",
         "type": "object"
       },
-      "DotConfigPatch_Patch_Document": {
-        "description": "Array of patch operations for DotConfigPatch.",
-        "items": {
-          "$ref": "#/components/schemas/DotConfigPatch_Patch_Operation"
-        },
-        "title": "DotConfigPatch Patch Document",
-        "type": "array"
-      },
-      "DotConfigPatch_Patch_Operation": {
-        "description": "Discriminated union of patch operations for DotConfigPatch.",
-        "discriminator": {
-          "mapping": {
-            "add": "#/components/schemas/AddOp",
-            "copy": "#/components/schemas/CopyOp",
-            "move": "#/components/schemas/MoveOp",
-            "remove": "#/components/schemas/RemoveOp",
-            "replace": "#/components/schemas/ReplaceOp",
-            "test": "#/components/schemas/TestOp",
-            "toggle": "#/components/schemas/ToggleOp"
-          },
-          "propertyName": "op"
-        },
-        "oneOf": [
-          {
-            "$ref": "#/components/schemas/AddOp"
-          },
-          {
-            "$ref": "#/components/schemas/CopyOp"
-          },
-          {
-            "$ref": "#/components/schemas/MoveOp"
-          },
-          {
-            "$ref": "#/components/schemas/RemoveOp"
-          },
-          {
-            "$ref": "#/components/schemas/ReplaceOp"
-          },
-          {
-            "$ref": "#/components/schemas/TestOp"
-          },
-          {
-            "$ref": "#/components/schemas/ToggleOp"
-          }
-        ],
-        "title": "DotConfigPatch Patch Operation"
-      },
       "HTTPValidationError": {
         "properties": {
           "detail": {
@@ -166,13 +119,6 @@
         },
         "title": "HTTPValidationError",
         "type": "object"
-      },
-      "JSONArray_JSONValue_": {
-        "items": {
-          "$ref": "#/components/schemas/JSONValue"
-        },
-        "title": "JSON array",
-        "type": "array"
       },
       "JSONArray_JSONValue_-Input": {
         "items": {
@@ -208,13 +154,6 @@
         "description": "integer or finite float (no NaN/Infinity).",
         "title": "JSON number"
       },
-      "JSONObject_JSONValue_": {
-        "additionalProperties": {
-          "$ref": "#/components/schemas/JSONValue"
-        },
-        "title": "JSON object",
-        "type": "object"
-      },
       "JSONObject_JSONValue_-Input": {
         "additionalProperties": {
           "$ref": "#/components/schemas/JSONValue-Input"
@@ -232,29 +171,6 @@
       "JSONString": {
         "title": "JSON string",
         "type": "string"
-      },
-      "JSONValue": {
-        "anyOf": [
-          {
-            "$ref": "#/components/schemas/JSONBoolean"
-          },
-          {
-            "$ref": "#/components/schemas/JSONNumber"
-          },
-          {
-            "$ref": "#/components/schemas/JSONString"
-          },
-          {
-            "$ref": "#/components/schemas/JSONNull"
-          },
-          {
-            "$ref": "#/components/schemas/JSONArray_JSONValue_"
-          },
-          {
-            "$ref": "#/components/schemas/JSONObject_JSONValue_"
-          }
-        ],
-        "title": "JSON value"
       },
       "JSONValue-Input": {
         "anyOf": [
@@ -654,13 +570,13 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/DotConfigPatch_Patch_Document"
+                "$ref": "#/components/schemas/DotConfigPatch_Patch_Document",
+                "title": "Patch"
               }
             },
             "application/json-patch+json": {
               "schema": {
-                "$ref": "#/components/schemas/DotConfigPatch_Patch_Document",
-                "title": "Patch"
+                "$ref": "#/components/schemas/DotConfigPatch_Patch_Document"
               }
             }
           },
@@ -758,13 +674,13 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/MedicalRecord_Patch_Document"
+                "$ref": "#/components/schemas/MedicalRecord_Patch_Document",
+                "title": "Patch"
               }
             },
             "application/json-patch+json": {
               "schema": {
-                "$ref": "#/components/schemas/MedicalRecord_Patch_Document",
-                "title": "Patch"
+                "$ref": "#/components/schemas/MedicalRecord_Patch_Document"
               }
             }
           },

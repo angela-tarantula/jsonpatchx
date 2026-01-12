@@ -4,9 +4,9 @@ Demo 4: registry-scoped pointer backend with FastAPI dependency injection.
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, Literal
 
-from fastapi import Depends, HTTPException, Path
+from fastapi import Body, Depends, HTTPException, Path
 
 from examples.shared import (
     JSON_PATCH_MEDIA_TYPE,
@@ -20,10 +20,11 @@ from examples.shared import (
 )
 from jsonpatchx import GenericOperationRegistry, JSONValue, StandardRegistry
 from jsonpatchx.fastapi import (
-    patch_body_for_json_with_dep,
-    patch_body_for_model_with_dep,
+    PatchDependency,
     patch_error_openapi_responses,
+    patch_request_body,
 )
+from jsonpatchx.pydantic import JsonPatchFor
 
 app = create_app(
     title="Demo 4: Dot-pointer settings",
@@ -34,31 +35,8 @@ app = create_app(
 )
 
 registry = GenericOperationRegistry[StandardRegistry, DotPointer]
-DotPointerPatch, DotPointerPatchDepends, openapi_extra = patch_body_for_json_with_dep(
-    "Config",
-    registry=registry,
-    media_type=JSON_PATCH_MEDIA_TYPE,
-    app=app,
-    examples={
-        "dot-pointer": {
-            "summary": "site: replace chat flag",
-            "value": [{"op": "replace", "path": "features.chat", "value": False}],
-        }
-    },
-)
-
-UserPatch, UserPatchDepends, user_openapi_extra = patch_body_for_model_with_dep(
-    User,
-    registry=registry,
-    media_type=JSON_PATCH_MEDIA_TYPE,
-    app=app,
-    examples={
-        "set-quota": {
-            "summary": "set user quota",
-            "value": [{"op": "replace", "path": "quota", "value": 300}],
-        }
-    },
-)
+DotPointerPatch = JsonPatchFor[Literal["Config"], registry]
+UserPatch = JsonPatchFor[User, registry]
 
 
 @app.get(
@@ -88,7 +66,15 @@ def get_config_endpoint(
     summary="Patch a config (dot pointers)",
     description="Use dot-separated pointers like 'features.chat'.",
     responses=patch_error_openapi_responses(),
-    openapi_extra=openapi_extra,
+    openapi_extra=patch_request_body(
+        DotPointerPatch,
+        examples={
+            "dot-pointer": {
+                "summary": "site: replace chat flag",
+                "value": [{"op": "replace", "path": "features.chat", "value": False}],
+            }
+        },
+    ),
 )
 def patch_config(
     config_id: str = Path(
@@ -96,7 +82,16 @@ def patch_config(
         description="Available configs: site, limits.",
         examples=["site", "limits"],
     ),
-    patch: DotPointerPatch = Depends(DotPointerPatchDepends),
+    patch: DotPointerPatch = Depends(
+        PatchDependency(
+            DotPointerPatch,
+            body_param=Body(
+                ...,
+                description="JSON Patch document. Prefer Content-Type: application/json-patch+json.",
+                media_type=JSON_PATCH_MEDIA_TYPE,
+            ),
+        )
+    ),
 ) -> JSONValue:
     doc = get_config(config_id)
     if doc is None:
@@ -133,7 +128,15 @@ def get_user_endpoint(
     summary="Patch a user (dot pointers)",
     description="Use dot-separated pointers like 'quota' or 'tags.0'.",
     responses=patch_error_openapi_responses(),
-    openapi_extra=user_openapi_extra,
+    openapi_extra=patch_request_body(
+        UserPatch,
+        examples={
+            "set-quota": {
+                "summary": "set user quota",
+                "value": [{"op": "replace", "path": "quota", "value": 300}],
+            }
+        },
+    ),
 )
 def patch_user(
     user_id: int = Path(
@@ -141,7 +144,16 @@ def patch_user(
         description="Available users: 1, 2.",
         examples=[1, 2],
     ),
-    patch: UserPatch = Depends(UserPatchDepends),
+    patch: UserPatch = Depends(
+        PatchDependency(
+            UserPatch,
+            body_param=Body(
+                ...,
+                description="JSON Patch document. Prefer Content-Type: application/json-patch+json.",
+                media_type=JSON_PATCH_MEDIA_TYPE,
+            ),
+        )
+    ),
 ) -> User:
     user = get_user(user_id)
     if user is None:

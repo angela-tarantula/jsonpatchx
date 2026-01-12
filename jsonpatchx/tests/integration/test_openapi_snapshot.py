@@ -9,10 +9,7 @@ from fastapi import Body, Depends, FastAPI
 from pydantic import BaseModel, ConfigDict
 
 from jsonpatchx import JsonPatchFor
-from jsonpatchx.fastapi import (
-    patch_body_for_json_with_dep,
-    patch_body_for_model_with_dep,
-)
+from jsonpatchx.fastapi import PatchDependency, patch_request_body
 from jsonpatchx.registry import OperationRegistry, StandardRegistry
 from jsonpatchx.schema import OperationSchema
 from jsonpatchx.types import JSONBoolean, JSONPointer, JSONValue
@@ -41,21 +38,22 @@ class ToggleOp(OperationSchema):
         return doc
 
 
+LimitedRegistry = OperationRegistry[ToggleOp]
+ExtendedRegistry = OperationRegistry[StandardRegistry, ToggleOp]
+UserPatch = JsonPatchFor[User, LimitedRegistry]
+MedicalPatch = JsonPatchFor[MedicalRecord, ExtendedRegistry]
+JsonPatch = JsonPatchFor[Literal["Config"], ExtendedRegistry]
+JsonPatchWithDep = JsonPatchFor[Literal["DotConfigPatch"], ExtendedRegistry]
+ModelPatchWithDep = JsonPatchFor[MedicalRecord, ExtendedRegistry]
+
+
 def _build_openapi() -> dict[str, object]:
     app = FastAPI(title="jsonpatchx openapi snapshot", version="0.1.0")
+    JsonDepends = PatchDependency(JsonPatchWithDep, body_param=Body(...))
+    json_openapi = patch_request_body(JsonPatchWithDep)
 
-    LimitedRegistry = OperationRegistry[ToggleOp]
-    ExtendedRegistry = OperationRegistry[StandardRegistry, ToggleOp]
-    UserPatch = JsonPatchFor[User, LimitedRegistry]
-    MedicalPatch = JsonPatchFor[MedicalRecord, ExtendedRegistry]
-    JsonPatch = JsonPatchFor[Literal["Config"], ExtendedRegistry]
-
-    JsonPatchWithDep, JsonDepends, json_openapi = patch_body_for_json_with_dep(
-        "DotConfigPatch", registry=ExtendedRegistry, app=app
-    )
-    ModelPatchWithDep, ModelDepends, model_openapi = patch_body_for_model_with_dep(
-        MedicalRecord, registry=ExtendedRegistry, app=app
-    )
+    ModelDepends = PatchDependency(ModelPatchWithDep, body_param=Body(...))
+    model_openapi = patch_request_body(ModelPatchWithDep)
 
     @app.patch("/users/{user_id}")
     def patch_user(user_id: int, patch: UserPatch = Body(...)) -> User:

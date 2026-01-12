@@ -40,7 +40,7 @@ def test_invalid_operation_schema(subtests: Subtests) -> None:
         with pytest.raises(InvalidOperationDefinition):
 
             class NonStringLiteral(OperationSchema):
-                op: Literal[1] = 1 # type: ignore[assignment]
+                op: Literal[1] = 1  # type: ignore[assignment]
                 path: str
 
     with subtests.test("pydantic enforces field type hints"):
