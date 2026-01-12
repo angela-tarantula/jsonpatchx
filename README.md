@@ -20,6 +20,18 @@ mutation is precise, explainable, and safe.
 
 ---
 
+## Table of Contents
+
+- [Why this exists](#why-this-exists)
+- [When to use json-patch-x](#when-to-use-json-patch-x)
+- [When to use alternatives](#when-to-use-alternatives)
+- [Core Concepts](#core-concepts)
+- [Framework Integration (FastAPI/OpenAPI)](#framework-integration-fastapiopenapi)
+- [Demos](#demos)
+- [Advanced: Pointer Backends](#advanced-pointer-backends)
+- [Limitations](#limitations)
+- [Contributing](#contributing)
+
 ## Why this exists
 
 Standard JSON Patch implementations are intentionally minimal. They apply
@@ -118,7 +130,7 @@ admin_registry = StandardRegistry
 user_registry = OperationRegistry[AddOp, MoveOp]
 
 # Extend the language with domain-specific verbs
-custom_registry = OperationRegistry[StandardRegistry, ToggleOp, SwapOp]
+dev_registry = OperationRegistry[StandardRegistry, ToggleOp, SwapOp]
 ```
 
 The registry ensures that your API doesn't just "apply patches"; it speaks your
@@ -220,11 +232,11 @@ class SwapOp(OperationSchema):
         return AddOp(path=self.b, value=val_a).apply(doc)
 ```
 
-See [`examples/recipes.py`](./examples/recipes.py) for a catalog of custom operation recipes.
-
 ---
 
 ## Demos
+
+See [`examples/recipes.py`](./examples/recipes.py) for a catalog of custom operation recipes.
 
 See [`examples/fastapi/README.md`](./examples/fastapi/README.md) for the FastAPI demo suite, including:
 
@@ -257,37 +269,12 @@ class DotPointer(PointerBackend):
     # ... implement required interface ...
 
 # Bind the backend to a registry
-registry = GenericOperationRegistry[StandardRegistry, ToggleOp, DotPointer] # last param is the PointerBackend
-# OperationRegistry is just a GenericOperationRegistry with a default PointerBackend
+registry = GenericOperationRegistry[StandardRegistry, ToggleOp, DotPointer]
 ```
 
-### Registering the Backend to a Route
+The last param of `GenericOperationRegistry` must be the custom pointer class.
 
-FastAPI does not yet natively pass `validation_context` from
-the request body into Pydantic models, which is required to validate
-requests against your custom backend.
-
-As a workaround, json-patch-x provides a `PatchDependency`.
-
-```py
-from fastapi import Body, Depends
-from jsonpatchx.fastapi import PatchDependency
-
-PatchBody = JsonPatchFor["DotPointerPatch", registry]
-PatchDepends = PatchDependency(
-    PatchBody,
-    app=app,
-    request_param=Body(..., media_type="application/json-patch+json"),
-)
-
-@app.patch("/configs/{id}")
-def patch_config(id: str, patch: PatchBody = Depends(PatchDepends)) -> JSONValue:
-    # 'patch' is now fully validated using your DotPointer backend
-    return patch.apply(load_config(id))
-```
-
-Limitation reference: FastAPI does not expose a request-body validation context today.
-See https://github.com/fastapi/fastapi/discussions/10864.
+An `OperationRegistry` is just a `GenericOperationRegistry` with a default PointerBackend.
 
 ### Backend Binding
 
@@ -316,6 +303,9 @@ class JsonPathReplaceOp(OperationSchema):
 
 Ops that require a custom pointer backend can only live in registries that bind
 that backend for all ops.
+
+See [FastAPI Validation Context](#fastapi-validation-context) for the FastAPI
+request-body validation workaround.
 
 ---
 
@@ -363,6 +353,34 @@ incorrect API contract and would force casts or copies everywhere.
 **Current guidance:** Keep the runtime model honest and use a targeted `# type: ignore`
 on pointer annotations that need narrower array/object types. If anyone is interesting
 in mentoring me to submit a PEP to improve Python's type system, please reach out!
+
+## FastAPI Validation Context
+
+FastAPI does not yet natively pass `validation_context` from
+the request body into Pydantic models, which is required to validate
+requests against your custom backend.
+
+As a workaround, json-patch-x provides a `PatchDependency`.
+
+```py
+from fastapi import Body, Depends
+from jsonpatchx.fastapi import PatchDependency
+
+PatchBody = JsonPatchFor["DotPointerPatch", registry]
+PatchDepends = PatchDependency(
+    PatchBody,
+    app=app,
+    request_param=Body(..., media_type="application/json-patch+json"),
+)
+
+@app.patch("/configs/{id}")
+def patch_config(id: str, patch: PatchBody = Depends(PatchDepends)) -> JSONValue:
+    # 'patch' is now fully validated using your DotPointer backend
+    return patch.apply(load_config(id))
+```
+
+Limitation reference: FastAPI does not expose a request-body validation context today.
+See https://github.com/fastapi/fastapi/discussions/10864.
 
 ---
 
