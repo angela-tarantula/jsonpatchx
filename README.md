@@ -284,31 +284,20 @@ sophisticated pointer backends that require registry-level context,
 json-patch-x provides a "dependency bridge" as a workaround.
 
 ```py
-from jsonpatchx.fastapi import patch_body_for_json_with_dep
+from fastapi import Body
+from jsonpatchx.fastapi import PatchDependency
 
-# The helper returns a Type and a Dependency to keep FastAPI's DI system happy
-PatchBody, PatchDepends, openapi_extra = patch_body_for_json_with_dep(
-    "DotPointerPatch",
-    registry=registry,
+PatchBody = JsonPatchFor["DotPointerPatch", registry]
+PatchDepends = PatchDependency(
+    PatchBody,
     app=app,
+    body_param=Body(..., media_type="application/json-patch+json"),
 )
 
-@app.patch("/configs/{id}", openapi_extra=openapi_extra)
+@app.patch("/configs/{id}")
 def patch_config(id: str, patch: PatchBody = Depends(PatchDepends)) -> JSONValue:
     # 'patch' is now fully validated using your DotPointer backend
     return patch.apply(load_config(id))
-```
-
-For model-aware patches, use `patch_body_for_model_with_dep`.
-
-```py
-from jsonpatchx.fastapi import patch_body_for_model_with_dep
-
-UserPatch, PatchDepends, openapi_extra = patch_body_for_model_with_dep(
-    User,
-    registry=registry,
-    app=app,
-)
 ```
 
 Limitation reference: FastAPI does not expose a request-body validation context today.

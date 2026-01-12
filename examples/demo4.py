@@ -30,7 +30,7 @@ app = create_app(
     title="Demo 4: Dot-pointer settings",
     description=(
         "Registry-scoped dot-pointer backends for config and user settings. "
-        "Uses `patch_body_for_json_with_dep(...)` and `patch_body_for_model_with_dep(...)`."
+        "Uses `PatchDependency(...)` with explicit request body configuration."
     ),
 )
 
@@ -85,6 +85,7 @@ def patch_config(
     patch: DotPointerPatch = Depends(
         PatchDependency(
             DotPointerPatch,
+            app=app,
             body_param=Body(
                 ...,
                 description="JSON Patch document. Prefer Content-Type: application/json-patch+json.",
@@ -147,6 +148,7 @@ def patch_user(
     patch: UserPatch = Depends(
         PatchDependency(
             UserPatch,
+            app=app,
             body_param=Body(
                 ...,
                 description="JSON Patch document. Prefer Content-Type: application/json-patch+json.",

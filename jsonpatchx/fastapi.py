@@ -16,7 +16,7 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from inspect import isclass
-from typing import Any, Protocol, Self, TypeVar, cast
+from typing import Any, Protocol, Self, TypeVar
 
 from fastapi import Depends, FastAPI, HTTPException, Request
 from fastapi.exceptions import RequestValidationError
@@ -31,11 +31,7 @@ from jsonpatchx.exceptions import (
     PatchInternalError,
 )
 from jsonpatchx.pydantic import JsonPatchFor
-from jsonpatchx.registry import (
-    AnyRegistry,
-    GenericOperationRegistry,
-    StandardRegistry,
-)
+from jsonpatchx.registry import AnyRegistry, GenericOperationRegistry
 
 JSON_PATCH_MEDIA_TYPE = "application/json-patch+json"
 ModelT = TypeVar("ModelT", bound=BaseModel)
@@ -203,11 +199,14 @@ def patch_request_body(
 def PatchDependency(
     patch_model: type[PatchT],
     *,
+    app: FastAPI | None = None,
     body_param: Any | None = None,
 ) -> Callable[[Any], PatchT]:
     """
     Return a dependency function that validates a JSON Patch document with FastAPI-style errors.
     """
+    if app is not None:
+        register_patch_schema(app, patch_model)
 
     def _dep(patch: Any = body_param) -> PatchT:
         try:
@@ -221,72 +220,47 @@ def PatchDependency(
     return _dep
 
 
-# https://github.com/fastapi/fastapi/discussions/10864
-# Due to a limitation of FastAPI, use patch_body_for_json_with_dep when you need custom parsing.
-
-
-def patch_body_for_json_with_dep(
-    schema_name: str,
-    *,
-    registry: type[AnyRegistry] | None = None,
-    body_kwargs: dict[str, Any] | None = None,
-    app: FastAPI | None = None,
-) -> Callable[[Any], JsonPatchFor[str, Any]]:
-    """
-    Create a PatchBody for JSON patching, plus a FastAPI dependency that injects registry context.
-    """
-    registry = registry or StandardRegistry
-    registry = _require_registry_type(registry)
-    PatchBody = JsonPatchFor[schema_name, registry]  # type: ignore[valid-type]
-    if app is not None:
-        _register_patch_schema(app, PatchBody)
-
-    return cast(Callable[[Any], JsonPatchFor[str, Any]], PatchDependency(PatchBody))
-
-
-def patch_body_for_model_with_dep(
-    model: type[ModelT],
-    registry: type[AnyRegistry] | None = None,
-    *,
-    body_kwargs: dict[str, Any] | None = None,
-    app: FastAPI | None = None,
-) -> Callable[[Any], JsonPatchFor[ModelT, Any]]:
-    """
-    Create a model-bound PatchBody, plus a FastAPI dependency that injects registry context.
-    """
-    registry = registry or StandardRegistry
-    registry = _require_registry_type(registry)
-    PatchBody = JsonPatchFor[model, registry]  # type: ignore[valid-type]
-    if app is not None:
-        _register_patch_schema(app, PatchBody)
-
-    return cast(Callable[[Any], JsonPatchFor[ModelT, Any]], PatchDependency(PatchBody))
-
-
-def _register_patch_schema(
-    app: FastAPI, patch_model: type[JsonPatchFor[Any, Any]]
+def _register_patch_schema_in_openapi(
+    schema: dict[str, Any],
+    patch_model: type[Any],
 ) -> None:
+    schemas = schema.setdefault("components", {}).setdefault("schemas", {})
+    if patch_model.__name__ in schemas:
+        return
+
+    patch_schema = patch_model.model_json_schema(
+        ref_template="#/components/schemas/{model}"
+    )
+    defs = patch_schema.pop("$defs", {})
+    for key, value in defs.items():
+        schemas.setdefault(key, value)
+    schemas[patch_model.__name__] = patch_schema
+
+
+def register_patch_schema(app: FastAPI, patch_model: type[Any]) -> None:
     """
     Register a patch model's schema in OpenAPI components so $ref works in docs.
     """
+    if app.openapi_schema is not None:
+        _register_patch_schema_in_openapi(app.openapi_schema, patch_model)
+        return
+
+    pending = getattr(app.state, "_jsonpatchx_patch_models", None)
+    if pending is None:
+        pending = set()
+        app.state._jsonpatchx_patch_models = pending
+    pending.add(patch_model)
+
+    if getattr(app.state, "_jsonpatchx_openapi_wrapped", False):
+        return
+
     original_openapi = app.openapi
 
-    def _register(schema: dict[str, Any]) -> None:
-        schemas = schema.setdefault("components", {}).setdefault("schemas", {})
-        if patch_model.__name__ in schemas:
-            return
-        patch_schema = patch_model.model_json_schema(
-            ref_template="#/components/schemas/{model}"
-        )
-        defs = patch_schema.pop("$defs", {})
-        for key, value in defs.items():
-            schemas.setdefault(key, value)
-        schemas[patch_model.__name__] = patch_schema
-
-    # Wrap existing OpenAPI behavior
     def wrapped_openapi() -> dict[str, Any]:
         schema = original_openapi()
-        _register(schema)
+        for model in app.state._jsonpatchx_patch_models:
+            _register_patch_schema_in_openapi(schema, model)
         return schema
 
-    cast(Any, app).openapi = wrapped_openapi
+    app.state._jsonpatchx_openapi_wrapped = True
+    app.openapi = wrapped_openapi  # type: ignore[method-assign]

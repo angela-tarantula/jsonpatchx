@@ -54,7 +54,7 @@ Non-pydantic JSON patching for config docs using `patch_body_for_json(...)`.
 ## Demo 4: Dot-pointer settings
 
 Registry-scoped dot-pointer backends for config and user settings.
-Uses `patch_body_for_json_with_dep(...)` and `patch_body_for_model_with_dep(...)`.
+Uses `PatchDependency(...)` with explicit request body configuration.
 
 **File:** `examples/demo4.py`
 
@@ -62,5 +62,5 @@ Uses `patch_body_for_json_with_dep(...)` and `patch_body_for_model_with_dep(...)
 
 - `uv run uvicorn examples.demo4:app --reload --port 8003`
 
-This demo uses `patch_body_for_json_with_dep(...)` and `patch_body_for_model_with_dep(...)`
-to inject Pydantic validation context, which FastAPI does not currently provide for request bodies.
+This demo uses `PatchDependency(...)` to inject Pydantic validation context, which FastAPI
+does not currently provide for request bodies.
