@@ -236,6 +236,8 @@ class SwapOp(OperationSchema):
         return AddOp(path=self.b, value=val_a).apply(doc)
 ```
 
+See [`examples/recipes.py`](./examples/recipes.py) for a catalog of custom operation recipes.
+
 ## Demos
 
 See [`examples/fastapi/README.md`](./examples/fastapi/README.md) for the FastAPI demo suite, including:
