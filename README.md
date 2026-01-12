@@ -159,7 +159,7 @@ Use `JsonPatchFor[Model, Registry]` when targeting a Pydantic model with an Oper
 
 ```py
 from fastapi import Body, FastAPI
-from jsonpatchx import JsonPatchFor, StandardRegistry
+from jsonpatchx import JsonPatchFor, OperationRegistry, StandardRegistry
 
 app = FastAPI()
 UserRegistry = OperationRegistry[StandardRegistry, ConcatenateOp]
@@ -185,7 +185,7 @@ ConfigRegistry = OperationRegistry[StandardRegistry, DeduplicateOp, IncrementOp]
 ConfigPatch = JsonPatchFor[Literal["Database Config"], ConfigRegistry]
 
 @app.patch("/configs/{config_id}")
-def patch_config(config_id: str, patch: UserPatch = Body(...)) -> JSONValue:
+def patch_config(config_id: str, patch: ConfigPatch = Body(...)) -> JSONValue:
     doc = load_config(config_id)
     return patch.apply(doc)
 ```
@@ -246,6 +246,7 @@ Custom backends let you implement:
 - **Path Materialization:** Creating missing segments during traversal instead of failing.
 
 ```py
+from typing import Any
 from jsonpatchx import GenericOperationRegistry, StandardRegistry
 from jsonpatchx.types import PointerBackend
 
@@ -298,9 +299,10 @@ can call custom helper APIs (e.g., wildcard expansion, JsonPath expressions, etc
 ```py
 from typing import Literal
 from jsonpatchx import JSONPointer, JSONValue, OperationSchema, ReplaceOp
+from your-next-OS-project import JsonPathPointer
 
 class JsonPathReplaceOp(OperationSchema):
-    op: Literal["jsonpath_substitute"] = "jsonpath_replace"
+    op: Literal["jsonpath_replace"] = "jsonpath_replace"
     path: JSONPointer[JSONValue, JsonPathPointer]
     value: JSONValue
 
