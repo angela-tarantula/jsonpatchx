@@ -38,7 +38,7 @@ class ToggleOp(OperationSchema):
 def _build_openapi() -> dict[str, object]:
     app = FastAPI(title="jsonpatchx openapi snapshot", version="0.1.0")
 
-    ToggleRegistry = OperationRegistry[ToggleOp]
+    ToggleRegistry = OperationRegistry[StandardRegistry, ToggleOp]
     UserPatch = JsonPatchFor[User, StandardRegistry]
     CustomUserPatch = JsonPatchFor[User, ToggleRegistry]
     JsonPatch = JsonPatchFor["Config", ToggleRegistry]

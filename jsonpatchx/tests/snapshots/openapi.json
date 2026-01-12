@@ -29,16 +29,16 @@
         "title": "Add operation",
         "type": "object"
       },
-      "ConfigPatchPatchDocument": {
-        "description": "Array of patch operations for ConfigPatch.",
+      "Config_Patch_Document": {
+        "description": "Array of patch operations for Config.",
         "items": {
-          "$ref": "#/components/schemas/ConfigPatchPatchOperation"
+          "$ref": "#/components/schemas/Config_Patch_Operation"
         },
-        "title": "ConfigPatch Patch Document",
+        "title": "Config Patch Document",
         "type": "array"
       },
-      "ConfigPatchPatchOperation": {
-        "description": "Discriminated union of patch operations for ConfigPatch.",
+      "Config_Patch_Operation": {
+        "description": "Discriminated union of patch operations for Config.",
         "discriminator": {
           "mapping": {
             "add": "#/components/schemas/AddOp",
@@ -74,7 +74,7 @@
             "$ref": "#/components/schemas/ToggleOp"
           }
         ],
-        "title": "ConfigPatch Patch Operation"
+        "title": "Config Patch Operation"
       },
       "CopyOp": {
         "additionalProperties": false,
@@ -107,15 +107,15 @@
         "title": "Copy operation",
         "type": "object"
       },
-      "DotConfigPatchPatchDocument": {
+      "DotConfigPatch_Patch_Document": {
         "description": "Array of patch operations for DotConfigPatch.",
         "items": {
-          "$ref": "#/components/schemas/DotConfigPatchPatchOperation"
+          "$ref": "#/components/schemas/DotConfigPatch_Patch_Operation"
         },
         "title": "DotConfigPatch Patch Document",
         "type": "array"
       },
-      "DotConfigPatchPatchOperation": {
+      "DotConfigPatch_Patch_Operation": {
         "description": "Discriminated union of patch operations for DotConfigPatch.",
         "discriminator": {
           "mapping": {
@@ -455,10 +455,10 @@
         "title": "User",
         "type": "object"
       },
-      "UserPatchDocument": {
+      "User_Patch_Document": {
         "description": "Array of patch operations for User. Applied to model_dump() and re-validated against the model schema.",
         "items": {
-          "$ref": "#/components/schemas/jsonpatchx__pydantic__UserPatchOperation__2"
+          "$ref": "#/components/schemas/jsonpatchx__pydantic__User_Patch_Operation__2"
         },
         "title": "User Patch Document",
         "type": "array",
@@ -497,16 +497,16 @@
         "title": "ValidationError",
         "type": "object"
       },
-      "jsonpatchx__pydantic__UserPatchDocument__1": {
+      "jsonpatchx__pydantic__User_Patch_Document__1": {
         "description": "Array of patch operations for User. Applied to model_dump() and re-validated against the model schema.",
         "items": {
-          "$ref": "#/components/schemas/jsonpatchx__pydantic__UserPatchOperation__1"
+          "$ref": "#/components/schemas/jsonpatchx__pydantic__User_Patch_Operation__1"
         },
         "title": "User Patch Document",
         "type": "array",
         "x-target-model": "User"
       },
-      "jsonpatchx__pydantic__UserPatchOperation__1": {
+      "jsonpatchx__pydantic__User_Patch_Operation__1": {
         "description": "Discriminated union of patch operations for User.",
         "discriminator": {
           "mapping": {
@@ -541,7 +541,7 @@
         ],
         "title": "User Patch Operation"
       },
-      "jsonpatchx__pydantic__UserPatchOperation__2": {
+      "jsonpatchx__pydantic__User_Patch_Operation__2": {
         "description": "Discriminated union of patch operations for User.",
         "discriminator": {
           "mapping": {
@@ -606,7 +606,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/ConfigPatchPatchDocument"
+                "$ref": "#/components/schemas/Config_Patch_Document"
               }
             }
           },
@@ -655,12 +655,12 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/DotConfigPatchPatchDocument"
+                "$ref": "#/components/schemas/DotConfigPatch_Patch_Document"
               }
             },
             "application/json-patch+json": {
               "schema": {
-                "$ref": "#/components/schemas/DotConfigPatchPatchDocument",
+                "$ref": "#/components/schemas/DotConfigPatch_Patch_Document",
                 "title": "Patch"
               }
             }
@@ -710,7 +710,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/jsonpatchx__pydantic__UserPatchDocument__1"
+                "$ref": "#/components/schemas/jsonpatchx__pydantic__User_Patch_Document__1"
               }
             }
           },
@@ -759,7 +759,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/UserPatchDocument"
+                "$ref": "#/components/schemas/User_Patch_Document"
               }
             }
           },
@@ -808,12 +808,12 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/UserPatchDocument"
+                "$ref": "#/components/schemas/User_Patch_Document"
               }
             },
             "application/json-patch+json": {
               "schema": {
-                "$ref": "#/components/schemas/UserPatchDocument",
+                "$ref": "#/components/schemas/User_Patch_Document",
                 "title": "Patch"
               }
             }
