@@ -1,4 +1,4 @@
-from typing import Literal
+from typing import Literal, override
 
 import pytest
 from pydantic import BaseModel, ConfigDict
@@ -17,15 +17,15 @@ class User(BaseModel):
 
 def test_jsonpatchfor_requires_basemodel_type() -> None:
     with pytest.raises(TypeError):
-        JsonPatchFor[int, StandardRegistry]  # type: ignore[misc]
+        JsonPatchFor[int, StandardRegistry]  # type: ignore[type-var]
 
 
 def test_jsonpatchfor_requires_model_type() -> None:
     with pytest.raises(TypeError):
-        JsonPatchFor[int, StandardRegistry]  # type: ignore[misc]
+        JsonPatchFor[int, StandardRegistry]  # type: ignore[type-var]
 
     with pytest.raises(TypeError):
-        JsonPatchFor["Config", int]  # type: ignore[misc]
+        JsonPatchFor[Literal["Config"], int]  # type: ignore[type-var]
 
 
 def test_jsonpatchfor_with_custom_registry() -> None:
@@ -34,6 +34,7 @@ def test_jsonpatchfor_with_custom_registry() -> None:
         path: JSONPointer[JSONValue]
         value: JSONValue
 
+        @override
         def apply(self, doc: JSONValue) -> JSONValue:
             return doc
 

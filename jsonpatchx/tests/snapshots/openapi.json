@@ -302,6 +302,73 @@
         ],
         "title": "JSON value"
       },
+      "MedicalRecord": {
+        "additionalProperties": false,
+        "properties": {
+          "diagnosis": {
+            "title": "Diagnosis",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "diagnosis"
+        ],
+        "title": "MedicalRecord",
+        "type": "object"
+      },
+      "MedicalRecord_Patch_Document": {
+        "description": "Array of patch operations for MedicalRecord. Applied to model_dump() and re-validated against the model schema.",
+        "items": {
+          "$ref": "#/components/schemas/MedicalRecord_Patch_Operation"
+        },
+        "title": "MedicalRecord Patch Document",
+        "type": "array",
+        "x-target-model": "MedicalRecord"
+      },
+      "MedicalRecord_Patch_Operation": {
+        "description": "Discriminated union of patch operations for MedicalRecord.",
+        "discriminator": {
+          "mapping": {
+            "add": "#/components/schemas/AddOp",
+            "copy": "#/components/schemas/CopyOp",
+            "move": "#/components/schemas/MoveOp",
+            "remove": "#/components/schemas/RemoveOp",
+            "replace": "#/components/schemas/ReplaceOp",
+            "test": "#/components/schemas/TestOp",
+            "toggle": "#/components/schemas/ToggleOp"
+          },
+          "propertyName": "op"
+        },
+        "oneOf": [
+          {
+            "$ref": "#/components/schemas/AddOp"
+          },
+          {
+            "$ref": "#/components/schemas/CopyOp"
+          },
+          {
+            "$ref": "#/components/schemas/MoveOp"
+          },
+          {
+            "$ref": "#/components/schemas/RemoveOp"
+          },
+          {
+            "$ref": "#/components/schemas/ReplaceOp"
+          },
+          {
+            "$ref": "#/components/schemas/TestOp"
+          },
+          {
+            "$ref": "#/components/schemas/ToggleOp"
+          }
+        ],
+        "title": "MedicalRecord Patch Operation"
+      },
       "MoveOp": {
         "additionalProperties": false,
         "description": "RFC 6902 move operation.",
@@ -458,11 +525,26 @@
       "User_Patch_Document": {
         "description": "Array of patch operations for User. Applied to model_dump() and re-validated against the model schema.",
         "items": {
-          "$ref": "#/components/schemas/jsonpatchx__pydantic__User_Patch_Operation__2"
+          "$ref": "#/components/schemas/User_Patch_Operation"
         },
         "title": "User Patch Document",
         "type": "array",
         "x-target-model": "User"
+      },
+      "User_Patch_Operation": {
+        "description": "Discriminated union of patch operations for User.",
+        "discriminator": {
+          "mapping": {
+            "toggle": "#/components/schemas/ToggleOp"
+          },
+          "propertyName": "op"
+        },
+        "oneOf": [
+          {
+            "$ref": "#/components/schemas/ToggleOp"
+          }
+        ],
+        "title": "User Patch Operation"
       },
       "ValidationError": {
         "properties": {
@@ -496,89 +578,6 @@
         ],
         "title": "ValidationError",
         "type": "object"
-      },
-      "jsonpatchx__pydantic__User_Patch_Document__1": {
-        "description": "Array of patch operations for User. Applied to model_dump() and re-validated against the model schema.",
-        "items": {
-          "$ref": "#/components/schemas/jsonpatchx__pydantic__User_Patch_Operation__1"
-        },
-        "title": "User Patch Document",
-        "type": "array",
-        "x-target-model": "User"
-      },
-      "jsonpatchx__pydantic__User_Patch_Operation__1": {
-        "description": "Discriminated union of patch operations for User.",
-        "discriminator": {
-          "mapping": {
-            "add": "#/components/schemas/AddOp",
-            "copy": "#/components/schemas/CopyOp",
-            "move": "#/components/schemas/MoveOp",
-            "remove": "#/components/schemas/RemoveOp",
-            "replace": "#/components/schemas/ReplaceOp",
-            "test": "#/components/schemas/TestOp"
-          },
-          "propertyName": "op"
-        },
-        "oneOf": [
-          {
-            "$ref": "#/components/schemas/AddOp"
-          },
-          {
-            "$ref": "#/components/schemas/CopyOp"
-          },
-          {
-            "$ref": "#/components/schemas/MoveOp"
-          },
-          {
-            "$ref": "#/components/schemas/RemoveOp"
-          },
-          {
-            "$ref": "#/components/schemas/ReplaceOp"
-          },
-          {
-            "$ref": "#/components/schemas/TestOp"
-          }
-        ],
-        "title": "User Patch Operation"
-      },
-      "jsonpatchx__pydantic__User_Patch_Operation__2": {
-        "description": "Discriminated union of patch operations for User.",
-        "discriminator": {
-          "mapping": {
-            "add": "#/components/schemas/AddOp",
-            "copy": "#/components/schemas/CopyOp",
-            "move": "#/components/schemas/MoveOp",
-            "remove": "#/components/schemas/RemoveOp",
-            "replace": "#/components/schemas/ReplaceOp",
-            "test": "#/components/schemas/TestOp",
-            "toggle": "#/components/schemas/ToggleOp"
-          },
-          "propertyName": "op"
-        },
-        "oneOf": [
-          {
-            "$ref": "#/components/schemas/AddOp"
-          },
-          {
-            "$ref": "#/components/schemas/CopyOp"
-          },
-          {
-            "$ref": "#/components/schemas/MoveOp"
-          },
-          {
-            "$ref": "#/components/schemas/RemoveOp"
-          },
-          {
-            "$ref": "#/components/schemas/ReplaceOp"
-          },
-          {
-            "$ref": "#/components/schemas/TestOp"
-          },
-          {
-            "$ref": "#/components/schemas/ToggleOp"
-          }
-        ],
-        "title": "User Patch Operation"
       }
     }
   },
@@ -692,6 +691,110 @@
         "summary": "Patch Config Dep"
       }
     },
+    "/records/{record_id}": {
+      "patch": {
+        "operationId": "patch_record_records__record_id__patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "record_id",
+            "required": true,
+            "schema": {
+              "title": "Record Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MedicalRecord_Patch_Document"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MedicalRecord"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Patch Record"
+      }
+    },
+    "/records/{record_id}/dep": {
+      "patch": {
+        "operationId": "patch_record_dep_records__record_id__dep_patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "record_id",
+            "required": true,
+            "schema": {
+              "title": "Record Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MedicalRecord_Patch_Document"
+              }
+            },
+            "application/json-patch+json": {
+              "schema": {
+                "$ref": "#/components/schemas/MedicalRecord_Patch_Document",
+                "title": "Patch"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MedicalRecord"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Patch Record Dep"
+      }
+    },
     "/users/{user_id}": {
       "patch": {
         "operationId": "patch_user_users__user_id__patch",
@@ -710,7 +813,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/jsonpatchx__pydantic__User_Patch_Document__1"
+                "$ref": "#/components/schemas/User_Patch_Document"
               }
             }
           },
@@ -739,110 +842,6 @@
           }
         },
         "summary": "Patch User"
-      }
-    },
-    "/users/{user_id}/custom": {
-      "patch": {
-        "operationId": "patch_user_custom_users__user_id__custom_patch",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "user_id",
-            "required": true,
-            "schema": {
-              "title": "User Id",
-              "type": "integer"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/User_Patch_Document"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/User"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Patch User Custom"
-      }
-    },
-    "/users/{user_id}/dep": {
-      "patch": {
-        "operationId": "patch_user_dep_users__user_id__dep_patch",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "user_id",
-            "required": true,
-            "schema": {
-              "title": "User Id",
-              "type": "integer"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/User_Patch_Document"
-              }
-            },
-            "application/json-patch+json": {
-              "schema": {
-                "$ref": "#/components/schemas/User_Patch_Document",
-                "title": "Patch"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/User"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Patch User Dep"
       }
     }
   }

@@ -26,6 +26,12 @@ class User(BaseModel):
     name: str
 
 
+class MedicalRecord(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    id: int
+    diagnosis: str
+
+
 class ToggleOp(OperationSchema):
     op: Literal["toggle"] = "toggle"
     path: JSONPointer[JSONBoolean]
@@ -38,25 +44,26 @@ class ToggleOp(OperationSchema):
 def _build_openapi() -> dict[str, object]:
     app = FastAPI(title="jsonpatchx openapi snapshot", version="0.1.0")
 
-    ToggleRegistry = OperationRegistry[StandardRegistry, ToggleOp]
-    UserPatch = JsonPatchFor[User, StandardRegistry]
-    CustomUserPatch = JsonPatchFor[User, ToggleRegistry]
-    JsonPatch = JsonPatchFor["Config", ToggleRegistry]
+    LimitedRegistry = OperationRegistry[ToggleOp]
+    ExtendedRegistry = OperationRegistry[StandardRegistry, ToggleOp]
+    UserPatch = JsonPatchFor[User, LimitedRegistry]
+    MedicalPatch = JsonPatchFor[MedicalRecord, ExtendedRegistry]
+    JsonPatch = JsonPatchFor[Literal["Config"], ExtendedRegistry]
 
     JsonPatchWithDep, JsonDepends, json_openapi = patch_body_for_json_with_dep(
-        "DotConfigPatch", registry=ToggleRegistry, app=app
+        "DotConfigPatch", registry=ExtendedRegistry, app=app
     )
     ModelPatchWithDep, ModelDepends, model_openapi = patch_body_for_model_with_dep(
-        User, registry=ToggleRegistry, app=app
+        MedicalRecord, registry=ExtendedRegistry, app=app
     )
 
     @app.patch("/users/{user_id}")
     def patch_user(user_id: int, patch: UserPatch = Body(...)) -> User:
         return User(id=user_id, name="ok")
 
-    @app.patch("/users/{user_id}/custom")
-    def patch_user_custom(user_id: int, patch: CustomUserPatch = Body(...)) -> User:
-        return User(id=user_id, name="ok")
+    @app.patch("/records/{record_id}")
+    def patch_record(record_id: int, patch: MedicalPatch = Body(...)) -> MedicalRecord:
+        return MedicalRecord(id=record_id, diagnosis="ok")
 
     @app.patch("/configs/{config_id}")
     def patch_config(config_id: str, patch: JsonPatch = Body(...)) -> JSONValue:
@@ -68,11 +75,11 @@ def _build_openapi() -> dict[str, object]:
     ) -> JSONValue:
         return {"ok": True}
 
-    @app.patch("/users/{user_id}/dep", openapi_extra=model_openapi)
-    def patch_user_dep(
-        user_id: int, patch: ModelPatchWithDep = Depends(ModelDepends)
-    ) -> User:
-        return User(id=user_id, name="ok")
+    @app.patch("/records/{record_id}/dep", openapi_extra=model_openapi)
+    def patch_record_dep(
+        record_id: int, patch: ModelPatchWithDep = Depends(ModelDepends)
+    ) -> MedicalRecord:
+        return MedicalRecord(id=record_id, diagnosis="ok")
 
     return app.openapi()
 

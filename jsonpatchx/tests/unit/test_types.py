@@ -114,8 +114,8 @@ def test_jsonpointer_backend_mismatch_parent_check() -> None:
         def apply(self, doc: JSONValue) -> JSONValue:
             return doc
 
-    dot = cast(DotOp, DotOp.model_validate({"path": "a.b"}))
-    slash = cast(SlashOp, SlashOp.model_validate({"path": "/a/b"}))
+    dot = DotOp.model_validate({"path": "a.b"})
+    slash = SlashOp.model_validate({"path": "/a/b"})
 
     with pytest.raises(InvalidJSONPointer):
         dot.path.is_parent_of(slash.path)

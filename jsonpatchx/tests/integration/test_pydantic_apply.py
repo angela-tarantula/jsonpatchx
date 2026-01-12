@@ -31,4 +31,4 @@ def test_wrong_model_instance() -> None:
         [{"op": "replace", "path": "/name", "value": "Ada"}]
     )
     with pytest.raises(PatchConflictError):
-        patch.apply(Other(id=1, title="Dr."))
+        patch.apply(Other(id=1, title="Dr."))  # type: ignore[arg-type]

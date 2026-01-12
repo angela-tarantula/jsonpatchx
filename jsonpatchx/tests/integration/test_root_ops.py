@@ -5,10 +5,10 @@ from jsonpatchx.standard import JsonPatch
 
 
 def test_root_add_replace_remove() -> None:
-    add_patch = JsonPatch([{"op": "add", "path": "", "value": {"x": 1}}])
+    add_patch = JsonPatch([{"op": "add", "path": "", "value": {"x": 1}}])  # type: ignore[arg-type]
     assert add_patch.apply({"a": 1}) == {"x": 1}
 
-    replace_patch = JsonPatch([{"op": "replace", "path": "", "value": [1, 2]}])
+    replace_patch = JsonPatch([{"op": "replace", "path": "", "value": [1, 2]}])  # type: ignore[arg-type]
     assert replace_patch.apply({"a": 1}) == [1, 2]
 
     remove_patch = JsonPatch([{"op": "remove", "path": ""}])
@@ -24,10 +24,10 @@ def test_root_copy_move() -> None:
 
 
 def test_root_test() -> None:
-    test_patch = JsonPatch([{"op": "test", "path": "", "value": {"a": 1}}])
+    test_patch = JsonPatch([{"op": "test", "path": "", "value": {"a": 1}}])  # type: ignore[arg-type]
     assert test_patch.apply({"a": 1}) == {"a": 1}
 
-    bad_test = JsonPatch([{"op": "test", "path": "", "value": {"a": 2}}])
+    bad_test = JsonPatch([{"op": "test", "path": "", "value": {"a": 2}}])  # type: ignore[arg-type]
     with pytest.raises(TestOpFailed):
         bad_test.apply({"a": 1})
 

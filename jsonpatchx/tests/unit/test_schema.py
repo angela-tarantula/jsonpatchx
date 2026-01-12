@@ -40,7 +40,7 @@ def test_invalid_operation_schema(subtests: Subtests) -> None:
         with pytest.raises(InvalidOperationDefinition):
 
             class NonStringLiteral(OperationSchema):
-                op: Literal[1] = 1
+                op: Literal[1] = 1 # type: ignore[assignment]
                 path: str
 
     with subtests.test("pydantic enforces field type hints"):
@@ -99,22 +99,22 @@ def test_invalid_operation_registry(subtests: Subtests) -> None:
 
     with subtests.test("OperationRegistry rejects non-OperationSchema input"):
         with pytest.raises(InvalidOperationRegistry):
-            OperationRegistry[str]  # type: ignore[type-arg]
+            OperationRegistry[str]
 
         with pytest.raises(InvalidOperationRegistry):
-            OperationRegistry[42]  # type: ignore[type-arg]
+            OperationRegistry[42]  # type: ignore[valid-type]
 
     with subtests.test("OperationRegistry rejects OperationSchema base class"):
         with pytest.raises(InvalidOperationRegistry):
-            OperationRegistry[OperationSchema]  # type: ignore[type-abstract]
+            OperationRegistry[OperationSchema]
 
     with subtests.test("OperationRegistry rejects abstract OperationSchema subclasses"):
         with pytest.raises(InvalidOperationRegistry):
-            OperationRegistry[AbstractOp]  # type: ignore[type-abstract]
+            OperationRegistry[AbstractOp]
 
     with subtests.test("OperationRegistry rejects OperationSchema instances"):
         with pytest.raises(InvalidOperationRegistry):
-            OperationRegistry[FirstOp()]  # type: ignore[type-arg]
+            OperationRegistry[FirstOp()]  # type: ignore[misc]
 
 
 def test_valid_operation_schema(subtests: Subtests) -> None:
@@ -226,13 +226,13 @@ def test_pointer_backend_binding(subtests: Subtests) -> None:
         assert isinstance(op.path.ptr, DotPointer)
 
     with subtests.test("registry backend mismatch fails"):
-        registry = OperationRegistry[DotRemoveOp]
+        registry_1 = OperationRegistry[DotRemoveOp]
         with pytest.raises(InvalidJSONPointer):
-            registry.parse_python_op({"op": "dot-remove", "path": "a.b"})
+            registry_1.parse_python_op({"op": "dot-remove", "path": "a.b"})
 
     with subtests.test("registry backend match succeeds"):
-        registry = GenericOperationRegistry[DotRemoveOp, DotPointer]
+        registry_2 = GenericOperationRegistry[DotRemoveOp, DotPointer]
         op = cast(
-            DotRemoveOp, registry.parse_python_op({"op": "dot-remove", "path": "a.b"})
+            DotRemoveOp, registry_2.parse_python_op({"op": "dot-remove", "path": "a.b"})
         )
         assert isinstance(op.path.ptr, DotPointer)

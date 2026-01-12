@@ -24,7 +24,6 @@ from jsonpatchx.fastapi import (
     patch_body_for_model_with_dep,
     patch_error_openapi_responses,
 )
-from jsonpatchx.pydantic import _BasePatchBody, _BasePatchModel
 
 app = create_app(
     title="Demo 4: Dot-pointer settings",
@@ -97,7 +96,7 @@ def patch_config(
         description="Available configs: site, limits.",
         examples=["site", "limits"],
     ),
-    patch: _BasePatchBody = Depends(DotPointerPatchDepends),
+    patch: DotPointerPatch = Depends(DotPointerPatchDepends),
 ) -> JSONValue:
     doc = get_config(config_id)
     if doc is None:
@@ -142,7 +141,7 @@ def patch_user(
         description="Available users: 1, 2.",
         examples=[1, 2],
     ),
-    patch: _BasePatchModel[User] = Depends(UserPatchDepends),
+    patch: UserPatch = Depends(UserPatchDepends),
 ) -> User:
     user = get_user(user_id)
     if user is None:

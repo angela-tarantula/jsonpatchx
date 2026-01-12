@@ -28,7 +28,7 @@ plugins = ["pydantic.mypy"]
 python_version = "3.14"
 strict = true
 enable_incomplete_feature = ["TypeForm"]
-exclude = ["temp.py", "jsonpatchx/tests/"]
+exclude = ["temp.py", "jsonpatchx/tests/", "examples"]
 
 # Extra strictness that isn't always covered by `strict`
 warn_unused_configs = true

@@ -64,6 +64,7 @@ class OperationSchema(BaseModel, ABC):
     )
 
     _op_literals: ClassVar[tuple[str, ...]]
+    op: str
     """
     Internal: cached tuple of string op identifiers declared by the subclass' ``op: Literal[...]``.
 
