@@ -102,6 +102,7 @@ We provide a suite of helper types so you can reason about JSON rather than Pyth
 - `JSONNumber` (`int` or `float`, but explicitly excludes `bool`)
 - `JSONString`, `JSONBoolean`, `JSONNull`
 - `JSONArray[T]`, `JSONObject[T]`
+- `JSONValue`
 
 ---
 
@@ -112,14 +113,14 @@ allowing any arbitrary operation, you explicitly define which verbs are "legal"
 in your domain.
 
 ```py
-from jsonpatchx import AddOp, MoveOp, OperationRegistry
+from jsonpatchx import AddOp, MoveOp, OperationRegistry, StandardRegistry
 
 # Create a restricted vocabulary for high-security endpoints
-admin_registry = OperationRegistry.standard()
-user_registry = OperationRegistry(AddOp, MoveOp) 
+admin_registry = StandardRegistry
+user_registry = OperationRegistry[AddOp, MoveOp]
 
 # Extend the language with domain-specific verbs
-custom_registry = OperationRegistry.with_standard(ToggleOp, SwapOp)
+custom_registry = OperationRegistry[StandardRegistry, ToggleOp, SwapOp]
 ```
 
 The registry ensures that your API doesn't just "apply patches"; it speaks your
@@ -156,14 +157,15 @@ schema.
 
 ### Model-Aware Patching
 
-Use `JsonPatchFor[Model]` when targeting a Pydantic model with the standard registry.
+Use `JsonPatchFor[Model, Registry]` when targeting a Pydantic model with an OperationRegistry.
 
 ```py
 from fastapi import Body, FastAPI
-from jsonpatchx import JsonPatchFor
+from jsonpatchx import JsonPatchFor, StandardRegistry
 
 app = FastAPI()
-UserPatch = JsonPatchFor[User] # Generates a schema bound to the User model
+UserRegistry = OperationRegistry[StandardRegistry, ConcatenateOp]
+UserPatch = JsonPatchFor[User, UserRegistry] # Generates a schema bound to the User model
 
 @app.patch("/users/{user_id}")
 def patch_user(user_id: int, patch: UserPatch = Body(...)) -> User:
@@ -172,33 +174,17 @@ def patch_user(user_id: int, patch: UserPatch = Body(...)) -> User:
     return patch.apply(user)
 ```
 
-### The "Registry-to-Schema" Pipeline
-
-By using the `OperationRegistry`, your OpenAPI documentation automatically
-reflects your custom vocabulary. If you add a `ToggleOp` or a `SwapOp`, they
-appear in the OpenAPI `oneOf` definition for the request body, complete with
-descriptions and field constraints.
-
-```py
-from jsonpatchx import OperationRegistry, patch_body_for_model
-
-registry = OperationRegistry.with_standard(ConcatenateOp)
-# This creates a Pydantic-validated request body that
-# knows how to handle 'concatenate' in addition to standard ops.
-UserPatch = patch_body_for_model(User, registry=registry)
-```
-
 ### Plain JSON Patching
 
-You can also use `patch_body_for_json` when you're patching raw JSON (dicts/lists) but you still want that sweet OpenAPI.
+You can also use `JsonPatchFor[Literal["Name"], Registry]` when you're patching raw JSON (dicts/lists) but you still want that sweet OpenAPI.
 
 ```py
 from fastapi import Body, FastAPI
-from jsonpatchx import OperationRegistry, JSONValue, patch_body_for_json
+from jsonpatchx import JsonPatchFor, OperationRegistry, StandardRegistry, JSONValue
 
 app = FastAPI()
-registry = OperationRegistry.with_standard(DeduplicateOp, IncrementOp)
-UserPatch = patch_body_for_json("User", registry=registry)
+ConfigRegistry = OperationRegistry[StandardRegistry, DeduplicateOp, IncrementOp]
+ConfigPatch = JsonPatchFor[Literal["Database Config"], ConfigRegistry]
 
 @app.patch("/configs/{config_id}")
 def patch_config(config_id: str, patch: UserPatch = Body(...)) -> JSONValue:
@@ -258,7 +244,7 @@ Custom backends let you implement:
 - **Path Materialization:** Creating missing segments during traversal instead of failing.
 
 ```py
-from jsonpatchx import OperationRegistry
+from jsonpatchx import GenericOperationRegistry, StandardRegistry
 from jsonpatchx.types import PointerBackend
 
 class DotPointer(PointerBackend):
@@ -268,7 +254,7 @@ class DotPointer(PointerBackend):
     # ... implement required interface ...
 
 # Bind the backend to a registry
-registry = OperationRegistry.with_standard(pointer_cls=DotPointer)
+registry = GenericOperationRegistry[StandardRegistry, DotPointer]
 ```
 
 ### Backend Binding
@@ -286,7 +272,7 @@ sophisticated pointer backends that require registry-level context,
 json-patch-x provides a "dependency bridge" as a workaround.
 
 ```py
-from fastapi import Body
+from fastapi import Body, Depends
 from jsonpatchx.fastapi import PatchDependency
 
 PatchBody = JsonPatchFor["DotPointerPatch", registry]
