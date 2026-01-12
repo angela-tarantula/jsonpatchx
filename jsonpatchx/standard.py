@@ -84,7 +84,9 @@ def _apply_ops(
            mutations hit the original input or a deep-copied working document.
     """
     if not inplace:
-        doc = copy.deepcopy(doc)
+        doc = copy.deepcopy(
+            doc
+        )  # NOTE: consider letting users inject their own copy function
 
     for index, op in enumerate(ops):
         try:

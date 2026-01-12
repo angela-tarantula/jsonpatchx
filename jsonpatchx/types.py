@@ -41,7 +41,7 @@ from jsonpatchx.exceptions import (
 # Pydantic-aware JSON type aliases
 
 type JSONBoolean = Annotated[bool, Field(strict=True, title="JSON boolean")]
-type JSONNumber = Annotated[
+type JSONNumber = Annotated[  # NOTE: document the necessity of field strictness. adapters strict too for preventing "2" -> 2 for JSONBoolean and int/float
     Annotated[int, Field(strict=True)]
     | Annotated[float, Field(strict=True, allow_inf_nan=False)],
     Field(
@@ -70,7 +70,7 @@ type JSONValue = Annotated[
     | JSONArray[JSONValue]
     | JSONObject[JSONValue],
     Field(title="JSON value"),
-]
+]  # NOTE: document somewhere tha you can't do isinstance because these are type aliases
 """
 Pydantic-friendly type representing a strict JSON value.
 
@@ -91,7 +91,7 @@ _ARRAY_INDEX_PATTERN: re.Pattern[str] = re.compile(r"^(0|[1-9][0-9]*)$")
 
 
 def _parse_JSONArray_key(array: JSONArray[JSONValue], key: str) -> _JSONArrayKey:
-    """
+    """# NOTE document that it follows add semantics (key==len(array) allowed) and remove must tighten restrictions
     Internal: parse a JSON Pointer token as a list index or '-' append marker.
 
     This helper implements the JSON Patch array-index semantics used by the patch engine:
@@ -198,6 +198,8 @@ class PointerBackend(Protocol):
           backend failures into library patch errors for a consistent user experience.
     """
 
+    # NOTE: with init defined, this protocol is counter-intuitively instantiable
+    # make the other methods abstract
     def __init__(self, pointer: str) -> None:
         """
         Parse and construct an RFC 6901 JSON Pointer.
@@ -241,6 +243,8 @@ class PointerBackend(Protocol):
 
     @override
     def __hash__(self) -> int: ...
+
+    # NOTE: if mutable, unhashable backends are compelling, can loosen this requirement
 
 
 @lru_cache(maxsize=512)
@@ -404,7 +408,9 @@ class JSONPointer(str, Generic[T_co, P_co]):
     ) -> Self:
         """Trying to instantiate JSONPointer directly will raise InvalidJSONPointer exception."""
         # debuggable with "uv run python -i -m jsonpatchx.builtins"
-        if __name__ != "jsonpatchx.types":
+        if (
+            __name__ != "jsonpatchx.types"
+        ):  # NOTE: make a class-level private constructor instead
             raise InvalidJSONPointer(
                 "JSONPointer values are created by Pydantic validation only."
             )
@@ -582,7 +588,7 @@ class JSONPointer(str, Generic[T_co, P_co]):
             return self._adapter.validate_python(target, strict=True)
         except Exception as e:
             raise PatchConflictError(
-                f"expected target type {self.type_param} for pointer{str(self)!r}, got: {type(target)}"
+                f"expected target type {self.type_param} for pointer {str(self)!r}, got: {type(target)}"
             ) from e
 
     # Parse-time helpers
@@ -681,7 +687,7 @@ class JSONPointer(str, Generic[T_co, P_co]):
 
     def add(
         self, doc: JSONValue, value: JSONValue, *, validate_value: bool = True
-    ) -> JSONValue:
+    ) -> JSONValue:  # NOTE: require type-gating for consistency
         """
         RFC 6902 add.
 
@@ -760,7 +766,7 @@ class JSONPointer(str, Generic[T_co, P_co]):
         else:
             return True
 
-    def remove(self, doc: JSONValue) -> JSONValue:
+    def remove(self, doc: JSONValue) -> JSONValue:  # NOTE: document root behavior
         """
         RFC 6902 remove.
 
@@ -775,7 +781,7 @@ class JSONPointer(str, Generic[T_co, P_co]):
             The mutated document.
 
         Raises:
-            PatchConflictError: If the pointer is the root or the target does not exist.
+            PatchConflictError: If the target does not exist, or it is not type ``T``.
 
         Notes:
             - Removeal is type-gated by ``T``.

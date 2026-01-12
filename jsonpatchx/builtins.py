@@ -25,7 +25,7 @@ class AddOp(OperationSchema):
         return self.path.add(doc, self.value)
 
 
-class RemoveOp(OperationSchema):
+class RemoveOp(OperationSchema):  # NOTE: document root behavior
     """RFC 6902 remove operation."""
 
     model_config = ConfigDict(
@@ -72,7 +72,7 @@ class MoveOp(OperationSchema):
     path: JSONPointer[JSONValue]
 
     @model_validator(mode="after")
-    def _regect_proper_prefixes(self) -> Self:
+    def _reject_proper_prefixes(self) -> Self:
         if self.from_.is_parent_of(self.path):
             raise OperationValidationError(
                 "pointer 'path' cannot be a child of pointer 'from'"

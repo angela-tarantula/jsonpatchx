@@ -234,7 +234,9 @@ def PatchDependency(
             if error_mapper:
                 raise error_mapper(e, patch) from e
             raise RequestValidationError(
-                [{"loc": ("body",), "msg": str(e), "type": "value_error.patch_input"}],
+                [
+                    {"loc": ("body",), "msg": str(e), "type": "value_error.patch_input"}
+                ],  # NOTE: consider "cause_type": type(e).__name__
                 body=patch,
             ) from e
 
@@ -254,7 +256,9 @@ def _register_patch_schema_in_openapi(
     )
     defs = patch_schema.pop("$defs", {})
     for key, value in defs.items():
-        schemas.setdefault(key, value)
+        schemas.setdefault(
+            key, value
+        )  # NOTE: do I need a collision check? make opschema enforce __name__ uniqueness. maybe enforce model uniquess here too
     schemas[patch_model.__name__] = patch_schema
 
 

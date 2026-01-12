@@ -18,7 +18,7 @@ from jsonpatchx.exceptions import InvalidOperationDefinition
 from jsonpatchx.types import JSONValue
 
 
-class OperationSchema(BaseModel, ABC):
+class OperationSchema(BaseModel, ABC):  # NOTE: make generic in PB? (with default)
     """
     Base class for typed JSON Patch operations.
 
