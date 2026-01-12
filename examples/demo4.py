@@ -4,7 +4,7 @@ Demo 4: registry-scoped pointer backend with FastAPI dependency injection.
 
 from __future__ import annotations
 
-from typing import Any, Literal
+from typing import Literal
 
 from fastapi import Body, Depends, HTTPException, Path
 
@@ -21,10 +21,13 @@ from examples.shared import (
 from jsonpatchx import GenericOperationRegistry, JSONValue, StandardRegistry
 from jsonpatchx.fastapi import (
     PatchDependency,
+    patch_content_type_dependency,
     patch_error_openapi_responses,
     patch_request_body,
 )
 from jsonpatchx.pydantic import JsonPatchFor
+
+STRICT_JSON_PATCH = True
 
 app = create_app(
     title="Demo 4: Dot-pointer settings",
@@ -41,7 +44,7 @@ UserPatch = JsonPatchFor[User, registry]
 
 @app.get(
     "/configs/{config_id}",
-    response_model=Any,
+    response_model=JSONValue,
     tags=["configs"],
     summary="Get a config",
     description="Fetch a config by id.",
@@ -61,7 +64,7 @@ def get_config_endpoint(
 
 @app.patch(
     "/configs/{config_id}",
-    response_model=Any,
+    response_model=JSONValue,
     tags=["configs"],
     summary="Patch a config (dot pointers)",
     description="Use dot-separated pointers like 'features.chat'.",
@@ -75,6 +78,7 @@ def get_config_endpoint(
             }
         },
     ),
+    dependencies=patch_content_type_dependency(STRICT_JSON_PATCH),
 )
 def patch_config(
     config_id: str = Path(
@@ -138,6 +142,7 @@ def get_user_endpoint(
             }
         },
     ),
+    dependencies=patch_content_type_dependency(STRICT_JSON_PATCH),
 )
 def patch_user(
     user_id: int = Path(

@@ -4,7 +4,7 @@ Demo 3: Non-pydantic JSON patching.
 
 from __future__ import annotations
 
-from typing import Any, Literal
+from typing import Literal
 
 from fastapi import Body, HTTPException, Path
 
@@ -22,8 +22,14 @@ from examples.shared import (
     save_config,
 )
 from jsonpatchx import JSONValue, OperationRegistry
-from jsonpatchx.fastapi import patch_error_openapi_responses, patch_request_body
+from jsonpatchx.fastapi import (
+    patch_content_type_dependency,
+    patch_error_openapi_responses,
+    patch_request_body,
+)
 from jsonpatchx.pydantic import JsonPatchFor
+
+STRICT_JSON_PATCH = True
 
 ConfigRegistry = OperationRegistry[
     IncrementOp,
@@ -44,7 +50,7 @@ app = create_app(
 
 @app.get(
     "/configs/{config_id}",
-    response_model=Any,
+    response_model=JSONValue,
     tags=["configs"],
     summary="Get a config",
     description="Fetch a config by id.",
@@ -64,7 +70,7 @@ def get_config_endpoint(
 
 @app.patch(
     "/configs/{config_id}",
-    response_model=Any,
+    response_model=JSONValue,
     tags=["configs"],
     summary="Patch a config",
     description="Apply standard RFC 6902 ops plus custom ops to a config.",
@@ -98,12 +104,13 @@ def get_config_endpoint(
             },
         },
     ),
+    dependencies=patch_content_type_dependency(STRICT_JSON_PATCH),
 )
 def patch_config(
     config_id: str = Path(
         ...,
         description="Available configs: site, limits.",
-        examplse=["site", "limits"],
+        examples=["site", "limits"],
     ),
     patch: ConfigPatch = Body(
         ...,

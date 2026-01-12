@@ -20,8 +20,14 @@ from examples.shared import (
     save_user,
 )
 from jsonpatchx import OperationRegistry, StandardRegistry
-from jsonpatchx.fastapi import patch_error_openapi_responses, patch_request_body
+from jsonpatchx.fastapi import (
+    patch_content_type_dependency,
+    patch_error_openapi_responses,
+    patch_request_body,
+)
 from jsonpatchx.pydantic import JsonPatchFor
+
+STRICT_JSON_PATCH = True
 
 UserRegistry = OperationRegistry[StandardRegistry, IncrementOp, ToggleBoolOp]
 TeamRegistry = OperationRegistry[StandardRegistry, AppendOp, IncrementOp]
@@ -75,6 +81,7 @@ def get_user_endpoint(
             },
         },
     ),
+    dependencies=patch_content_type_dependency(STRICT_JSON_PATCH),
 )
 def patch_user(
     user_id: int = Path(
@@ -136,6 +143,7 @@ def get_team_endpoint(
             },
         },
     ),
+    dependencies=patch_content_type_dependency(STRICT_JSON_PATCH),
 )
 def patch_team(
     team_id: int = Path(
