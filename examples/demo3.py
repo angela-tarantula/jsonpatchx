@@ -103,6 +103,7 @@ def get_config_endpoint(
                 "value": [{"op": "remove_number", "path": "/title"}],
             },
         },
+        strict=STRICT_JSON_PATCH,
     ),
     dependencies=patch_content_type_dependency(STRICT_JSON_PATCH),
 )

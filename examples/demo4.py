@@ -77,6 +77,7 @@ def get_config_endpoint(
                 "value": [{"op": "replace", "path": "features.chat", "value": False}],
             }
         },
+        strict=STRICT_JSON_PATCH,
     ),
     dependencies=patch_content_type_dependency(STRICT_JSON_PATCH),
 )
@@ -141,6 +142,7 @@ def get_user_endpoint(
                 "value": [{"op": "replace", "path": "quota", "value": 300}],
             }
         },
+        strict=STRICT_JSON_PATCH,
     ),
     dependencies=patch_content_type_dependency(STRICT_JSON_PATCH),
 )

@@ -80,6 +80,7 @@ def get_user_endpoint(
                 "value": [{"op": "toggle", "path": "/trial"}],
             },
         },
+        strict=STRICT_JSON_PATCH,
     ),
     dependencies=patch_content_type_dependency(STRICT_JSON_PATCH),
 )
@@ -142,6 +143,7 @@ def get_team_endpoint(
                 "value": [{"op": "increment", "path": "/max_members", "value": 3}],
             },
         },
+        strict=STRICT_JSON_PATCH,
     ),
     dependencies=patch_content_type_dependency(STRICT_JSON_PATCH),
 )

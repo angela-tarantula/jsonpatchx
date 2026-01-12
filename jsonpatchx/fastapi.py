@@ -181,12 +181,15 @@ def patch_request_body(
     patch_model: type[JsonPatchFor[Any, Any]],
     examples: dict[str, Any] | None = None,
     *,
-    include_application_json: bool = True,
+    strict: bool = True,
+    include_application_json: bool | None = None,
     media_type: str = JSON_PATCH_MEDIA_TYPE,
     request_body_overrides: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Build an OpenAPI requestBody for JSON Patch with optional examples."""
     schema_ref = f"#/components/schemas/{patch_model.__name__}"
+    if include_application_json is None:
+        include_application_json = not strict
     content: dict[str, Any] = {
         media_type: {"schema": {"$ref": schema_ref}},
     }

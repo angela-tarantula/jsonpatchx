@@ -10,7 +10,7 @@ DEMOS: dict[str, tuple[str, str, int]] = {
     "1": ("Typed model patching", "examples.demo1:app", 8000),
     "2": ("Model-bound custom ops", "examples.demo2:app", 8001),
     "3": ("Custom ops on JSON documents", "examples.demo3:app", 8002),
-    "4": ("Pointer backends with context injection", "examples.demo4:app", 8003),
+    "4": ("Dot-pointer settings", "examples.demo4:app", 8003),
 }
 
 

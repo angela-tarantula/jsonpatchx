@@ -64,6 +64,7 @@ def get_user_endpoint(
                 "value": [{"op": "add", "path": "/tags/-", "value": "enterprise"}],
             },
         },
+        strict=STRICT_JSON_PATCH,
     ),
     dependencies=patch_content_type_dependency(STRICT_JSON_PATCH),
 )

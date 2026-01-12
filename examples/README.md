@@ -33,7 +33,7 @@ Standard JSON Patch on customer profiles using `JsonPatchFor[Model]`.
 
 ## Demo 2: Billing and team ops
 
-Custom registries for billing-style ops on users and teams using `patch_body_for_model(...)`.
+Custom registries for billing-style ops on users and teams using `JsonPatchFor[Model, CustomRegistry]`.
 
 **File:** `examples/demo2.py`
 
@@ -43,7 +43,7 @@ Custom registries for billing-style ops on users and teams using `patch_body_for
 
 ## Demo 3: Feature flags and limits
 
-Non-pydantic JSON patching for config docs using `patch_body_for_json(...)`.
+Non-pydantic JSON patching for config docs using `JsonPatchFor[Name, Registry]`.
 
 **File:** `examples/demo3.py`
 
