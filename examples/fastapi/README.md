@@ -16,20 +16,20 @@ Four focused FastAPI demos. Each demo is a standalone file that reads cleanly in
 ## Demo launcher
 
 ```bash
-uv run python -m examples.demo
+uv run python -m examples.fastapi.demo
 ```
 
 FastAPI docs already include example requests and payloads.
 
 ## Demo 1: Customer profile patching
 
-Standard JSON Patch on customer profiles using `JsonPatchFor[Model]`.
+Standard JSON Patch on customer profiles using `JsonPatchFor[Model, StandardRegistry]`.
 
 **File:** `examples/demo1.py`
 
 **Run**
 
-- `uv run uvicorn examples.demo1:app --reload --port 8000`
+- `uv run uvicorn examples.fastapi.demo1:app --reload --port 8000`
 
 ## Demo 2: Billing and team ops
 
@@ -39,7 +39,7 @@ Custom registries for billing-style ops on users and teams using `JsonPatchFor[M
 
 **Run**
 
-- `uv run uvicorn examples.demo2:app --reload --port 8001`
+- `uv run uvicorn examples.fastapi.demo2:app --reload --port 8001`
 
 ## Demo 3: Feature flags and limits
 
@@ -49,7 +49,7 @@ Non-pydantic JSON patching for config docs using `JsonPatchFor[Name, Registry]`.
 
 **Run**
 
-- `uv run uvicorn examples.demo3:app --reload --port 8002`
+- `uv run uvicorn examples.fastapi.demo3:app --reload --port 8002`
 
 ## Demo 4: Dot-pointer settings
 
@@ -60,7 +60,7 @@ Uses `PatchDependency(...)` with explicit request body configuration.
 
 **Run**
 
-- `uv run uvicorn examples.demo4:app --reload --port 8003`
+- `uv run uvicorn examples.fastapi.demo4:app --reload --port 8003`
 
 This demo uses `PatchDependency(...)` to inject Pydantic validation context, which FastAPI
 does not currently provide for request bodies.

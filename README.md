@@ -238,7 +238,7 @@ class SwapOp(OperationSchema):
 
 ## Demos
 
-See [`examples/README.md`](./examples/README.md) for the FastAPI demo suite, including:
+See [`examples/fastapi/README.md`](./examples/fastapi/README.md) for the FastAPI demo suite, including:
 
 - typed model patching
 - model-bound custom ops

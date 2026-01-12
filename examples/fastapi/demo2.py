@@ -6,7 +6,7 @@ from __future__ import annotations
 
 from fastapi import Body, HTTPException, Path
 
-from examples.shared import (
+from examples.fastapi.shared import (
     JSON_PATCH_MEDIA_TYPE,
     AppendOp,
     IncrementOp,
