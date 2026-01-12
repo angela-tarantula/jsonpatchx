@@ -200,18 +200,23 @@ def PatchDependency(
     patch_model: type[PatchT],
     *,
     app: FastAPI | None = None,
-    body_param: Any | None = None,
+    request_param: Any | None = None,
+    error_mapper: Callable[[PatchInputError, Any], Exception] | None = None,
 ) -> Callable[[Any], PatchT]:
     """
     Return a dependency function that validates a JSON Patch document with FastAPI-style errors.
+
+    ``request_param`` is any FastAPI-injectable default (Body/Depends/etc.).
     """
     if app is not None:
         register_patch_schema(app, patch_model)
 
-    def _dep(patch: Any = body_param) -> PatchT:
+    def _dep(patch: Any = request_param) -> PatchT:
         try:
             return patch_model.model_validate(patch)
         except PatchInputError as e:
+            if error_mapper:
+                raise error_mapper(e, patch) from e
             raise RequestValidationError(
                 [{"loc": ("body",), "msg": str(e), "type": "value_error.patch_input"}],
                 body=patch,

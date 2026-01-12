@@ -49,10 +49,10 @@ ModelPatchWithDep = JsonPatchFor[MedicalRecord, ExtendedRegistry]
 
 def _build_openapi() -> dict[str, object]:
     app = FastAPI(title="jsonpatchx openapi snapshot", version="0.1.0")
-    JsonDepends = PatchDependency(JsonPatchWithDep, app=app, body_param=Body(...))
+    JsonDepends = PatchDependency(JsonPatchWithDep, app=app, request_param=Body(...))
     json_openapi = patch_request_body(JsonPatchWithDep)
 
-    ModelDepends = PatchDependency(ModelPatchWithDep, app=app, body_param=Body(...))
+    ModelDepends = PatchDependency(ModelPatchWithDep, app=app, request_param=Body(...))
     model_openapi = patch_request_body(ModelPatchWithDep)
 
     @app.patch("/users/{user_id}")

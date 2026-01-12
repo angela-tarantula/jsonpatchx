@@ -86,7 +86,7 @@ def patch_config(
         PatchDependency(
             DotPointerPatch,
             app=app,
-            body_param=Body(
+            request_param=Body(
                 ...,
                 description="JSON Patch document. Prefer Content-Type: application/json-patch+json.",
                 media_type=JSON_PATCH_MEDIA_TYPE,
@@ -149,7 +149,7 @@ def patch_user(
         PatchDependency(
             UserPatch,
             app=app,
-            body_param=Body(
+            request_param=Body(
                 ...,
                 description="JSON Patch document. Prefer Content-Type: application/json-patch+json.",
                 media_type=JSON_PATCH_MEDIA_TYPE,

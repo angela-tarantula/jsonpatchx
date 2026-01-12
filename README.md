@@ -291,7 +291,7 @@ PatchBody = JsonPatchFor["DotPointerPatch", registry]
 PatchDepends = PatchDependency(
     PatchBody,
     app=app,
-    body_param=Body(..., media_type="application/json-patch+json"),
+    request_param=Body(..., media_type="application/json-patch+json"),
 )
 
 @app.patch("/configs/{id}")
