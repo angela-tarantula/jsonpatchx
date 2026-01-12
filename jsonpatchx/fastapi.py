@@ -183,6 +183,7 @@ def patch_request_body(
     *,
     include_application_json: bool = True,
     media_type: str = JSON_PATCH_MEDIA_TYPE,
+    request_body_overrides: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Build an OpenAPI requestBody for JSON Patch with optional examples."""
     schema_ref = f"#/components/schemas/{patch_model.__name__}"
@@ -193,7 +194,19 @@ def patch_request_body(
         content[media_type]["examples"] = examples
     if include_application_json:
         content["application/json"] = {"schema": {"$ref": schema_ref}}
-    return {"requestBody": {"required": True, "content": content}}
+    request_body: dict[str, Any] = {"required": True, "content": content}
+    if request_body_overrides:
+        override_content = request_body_overrides.get("content")
+        if isinstance(override_content, dict):
+            content.update(override_content)
+        request_body.update(
+            {
+                key: value
+                for key, value in request_body_overrides.items()
+                if key != "content"
+            }
+        )
+    return {"requestBody": request_body}
 
 
 def PatchDependency(
