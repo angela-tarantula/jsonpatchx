@@ -32,8 +32,6 @@ This simplicity is a liability in systems that require:
 json-patch-x bridges the gap between the raw flexibility of RFC 6902 and the
 rigid safety of Pydantic.
 
----
-
 ## When to use json-patch-x
 
 - **You maintain "Contract-First" APIs:** You need your OpenAPI docs to accurately reflect allowed patch operations.
@@ -46,6 +44,8 @@ rigid safety of Pydantic.
 **json-patch-x prioritizes correctness, clarity, and extensibility over raw throughput.**
 - Use [python-json-patch](https://github.com/stefankoegl/python-json-patch) if you need a minimal, faster applicator for internal state syncing where the patch is already trusted.
 - Use JSON Merge Patch ([RFC 7386](https://datatracker.ietf.org/doc/html/rfc7386)) if you prefer the "last-write-wins" simplicity of partial document replacement and don't need to distinguish between `null` assignment and key removal.
+
+---
 
 ## Core Concepts
 
@@ -103,8 +103,6 @@ We provide a suite of helper types so you can reason about JSON rather than Pyth
 - `JSONString`, `JSONBoolean`, `JSONNull`
 - `JSONArray[T]`, `JSONObject[T]`
 - `JSONValue`
-
----
 
 ### Operation Registries
 
@@ -224,6 +222,8 @@ class SwapOp(OperationSchema):
 
 See [`examples/recipes.py`](./examples/recipes.py) for a catalog of custom operation recipes.
 
+---
+
 ## Demos
 
 See [`examples/fastapi/README.md`](./examples/fastapi/README.md) for the FastAPI demo suite, including:
@@ -232,6 +232,8 @@ See [`examples/fastapi/README.md`](./examples/fastapi/README.md) for the FastAPI
 - model-bound custom ops
 - custom operations on JSON documents
 - pointer backends with context injection
+
+---
 
 ## Advanced: Pointer Backends
 
@@ -257,19 +259,13 @@ class DotPointer(PointerBackend):
 registry = GenericOperationRegistry[StandardRegistry, DotPointer]
 ```
 
-### Backend Binding
+### Registering the Backend to a Route
 
-`JSONPointer[T, Backend]` allows you to bind a specific backend at the type
-level, so operations can require a particular pointer syntax when needed.
+FastAPI does not yet natively pass `validation_context` from
+the request body into Pydantic models, which is required to validate
+requests against your custom backend.
 
----
-
-## FastAPI: Bridging the Validation Gap
-
-One architectural hurdle in FastAPI is that it does not natively pass
-`validation_context` from the request body into Pydantic models. For
-sophisticated pointer backends that require registry-level context,
-json-patch-x provides a "dependency bridge" as a workaround.
+As a workaround, json-patch-x provides a `PatchDependency`.
 
 ```py
 from fastapi import Body, Depends
@@ -290,6 +286,33 @@ def patch_config(id: str, patch: PatchBody = Depends(PatchDepends)) -> JSONValue
 
 Limitation reference: FastAPI does not expose a request-body validation context today.
 See https://github.com/fastapi/fastapi/discussions/10864.
+
+### Backend Binding
+
+`JSONPointer[T, Backend]` allows you to bind a specific backend at the type
+level, so operations can require a particular pointer syntax when needed.
+For advanced use cases, `JSONPointer.ptr` exposes the backend instance so you
+can call custom helper APIs (e.g., wildcard expansion, JsonPath expressions, etc).
+
+```py
+from typing import Literal
+from jsonpatchx import JSONPointer, JSONValue, OperationSchema, ReplaceOp
+
+class JsonPathReplaceOp(OperationSchema):
+    op: Literal["jsonpath_substitute"] = "jsonpath_replace"
+    path: JSONPointer[JSONValue, JsonPathPointer]
+    value: JSONValue
+
+    def apply(self, doc: JSONValue) -> JSONValue:
+        # JsonPathPointer could expose richer APIs (e.g. resolve_jsonpath) for multi-target ops
+        targets = self.path.ptr.resolve_jsonpath(doc)
+        for target in targets:
+            ReplaceOp(path=target, value=self.value).apply(doc)
+        return doc
+```
+
+Ops that require a custom pointer backend can only live in registries that bind
+that backend for all ops.
 
 ---
 
