@@ -235,8 +235,13 @@ def PatchDependency(
                 raise error_mapper(e, patch) from e
             raise RequestValidationError(
                 [
-                    {"loc": ("body",), "msg": str(e), "type": "value_error.patch_input"}
-                ],  # NOTE: consider "cause_type": type(e).__name__
+                    {
+                        "loc": ("body",),
+                        "msg": str(e),
+                        "type": "value_error.patch_input",
+                        "ctx": {"cause_type": type(e).__name__},
+                    }
+                ],
                 body=patch,
             ) from e
 
