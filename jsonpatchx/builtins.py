@@ -25,12 +25,14 @@ class AddOp(OperationSchema):
         return self.path.add(doc, self.value)
 
 
-class RemoveOp(OperationSchema):  # NOTE: document root behavior
-    """RFC 6902 remove operation."""
+class RemoveOp(OperationSchema):
+    """RFC 6902 remove operation. Removal of the root sets it to null."""
 
     model_config = ConfigDict(
         title="Remove operation",
-        json_schema_extra={"description": "RFC 6902 remove operation."},
+        json_schema_extra={
+            "description": "RFC 6902 remove operation. Removal of the root sets it to null."
+        },
     )
 
     op: Literal["remove"] = "remove"

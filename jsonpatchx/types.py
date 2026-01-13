@@ -742,7 +742,7 @@ class JSONPointer(str, Generic[T_co, P_co]):
         else:
             return True
 
-    def remove(self, doc: JSONValue) -> JSONValue:  # NOTE: document root behavior
+    def remove(self, doc: JSONValue) -> JSONValue:
         """
         RFC 6902 remove (type-gated). Removal of the root sets it to null.
 
@@ -756,8 +756,8 @@ class JSONPointer(str, Generic[T_co, P_co]):
             PatchConflictError: If the target does not exist, or it is not type ``T``.
         """
         if self.is_root():
-            # Choice: Removal returns None at the root.
-            # Why: Keeps the system composable, predictable, and closed over JSONValue.
+            # Choice: Removal of root sets root to null.
+            # Why: Keeps all operations closed over JSONValue. Remove is also more composable this way.
             #      It affects few users, who themselves can circumvent with custom ops.
             return None
         try:
