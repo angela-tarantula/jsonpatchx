@@ -681,16 +681,13 @@ class JSONPointer(str, Generic[T_co, P_co]):
         else:
             return True
 
-    def add(
-        self, doc: JSONValue, value: JSONValue, *, validate_value: bool = True
-    ) -> JSONValue:  # NOTE: require type-gating for consistency
+    def add(self, doc: JSONValue, value: JSONValue) -> JSONValue:
         """
         RFC 6902 add (type-gated).
 
         Args:
             doc: Target JSON document.
             value: Value to add at this path, validated against ``T``.
-            validate_value: If True, validate ``value`` against ``T`` before setting.
 
         Returns:
             The updated document.
@@ -699,11 +696,7 @@ class JSONPointer(str, Generic[T_co, P_co]):
             PatchConflictError: If the target does not exist, or it is not type ``T``.
         """
         # Type errors first
-        target: JSONValue
-        if validate_value:
-            target = self._validate_target(target=value)
-        else:
-            target = value
+        target = self._validate_target(target=value)
 
         if self.is_root():
             return target
@@ -729,19 +722,15 @@ class JSONPointer(str, Generic[T_co, P_co]):
         self,
         doc: JSONValue,
         value: object = _Nothing,
-        *,
-        validate_value: bool = True,
     ) -> bool:
         """
         Return True if ``add`` would succeed for this document (and optional value), else False.
 
-        If ``value`` is provided and ``validate_value`` is True, it must conform to the
-        pointer's type parameter ``T``.
+        If ``value`` is provided, it must conform to the pointer's type parameter ``T``.
         """
         try:
-            if value is not _Nothing and validate_value:
-                if not self.is_valid_target(value):
-                    return False
+            if value is not _Nothing and not self.is_valid_target(value):
+                return False
             if self.is_root():
                 return True
             container = self._parent_ptr.resolve(doc)
