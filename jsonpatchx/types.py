@@ -653,9 +653,7 @@ class JSONPointer(str, Generic[T_co, P_co]):
 
     def get(self, doc: JSONValue) -> T_co:
         """
-        Resolve this pointer against ``doc`` and return the target value.
-
-        The returned value is type-gated against the pointer's type parameter ``T``.
+        Resolve this pointer against ``doc`` and return the target value (type-gated).
 
         Args:
             doc: Target JSON document.
@@ -664,9 +662,7 @@ class JSONPointer(str, Generic[T_co, P_co]):
             The resolved value, validated against ``T``.
 
         Raises:
-            PatchConflictError: If the pointer cannot be resolved (missing object member,
-                out-of-range array index, or backend traversal failure) or if the resolved value
-                does not conform to ``T``.
+            PatchConflictError: If the target does not exist, or it is not type ``T``.
         """
         # Choice: always defer to the PointerBackend implementation for pointer resolution.
         # Why: Don't reinvent the wheel (and maintain it). Plus, give more power to custom PointerBackends.
@@ -689,27 +685,18 @@ class JSONPointer(str, Generic[T_co, P_co]):
         self, doc: JSONValue, value: JSONValue, *, validate_value: bool = True
     ) -> JSONValue:  # NOTE: require type-gating for consistency
         """
-        RFC 6902 add.
-
-        Important: whether this affects your *original* document depends on how you obtained ``doc``.
-        In patch application, the patch engine may first deep-copy the input document before calling
-        operations/JSONPointer methods.
+        RFC 6902 add (type-gated).
 
         Args:
             doc: Target JSON document.
-            value: Value to add at this path.
+            value: Value to add at this path, validated against ``T``.
             validate_value: If True, validate ``value`` against ``T`` before setting.
 
         Returns:
-            The updated document (or the new root value for ``""``).
+            The updated document.
 
         Raises:
-            PatchConflictError: If the path cannot be resolved, the parent is not a container,
-                or the final token is not a valid container key.
-
-        Notes:
-            - Addition is type-gated by ``T``.
-            - Adding to the root (``""``) returns ``value`` as the new document.
+            PatchConflictError: If the target does not exist, or it is not type ``T``.
         """
         # Type errors first
         target: JSONValue
@@ -768,25 +755,16 @@ class JSONPointer(str, Generic[T_co, P_co]):
 
     def remove(self, doc: JSONValue) -> JSONValue:  # NOTE: document root behavior
         """
-        RFC 6902 remove.
-
-        This mutates the *provided* document object in-place. Whether this affects your *original*
-        document depends on the patch engine: in typical patch application, the engine may deep-copy
-        the input document first (``inplace=False``) before applying operations.
+        RFC 6902 remove (type-gated). Removal of the root sets it to null.
 
         Args:
             doc: Target JSON document.
 
         Returns:
-            The mutated document.
+            The updated document.
 
         Raises:
             PatchConflictError: If the target does not exist, or it is not type ``T``.
-
-        Notes:
-            - Removeal is type-gated by ``T``.
-            - Removing the root (``""``) returns ``None``.
-            - Removing a missing target raises ``PatchConflictError``.
         """
         if self.is_root():
             # Choice: Removal returns None at the root.
