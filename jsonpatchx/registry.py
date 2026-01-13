@@ -211,6 +211,7 @@ class GenericOperationRegistry(Generic[*Ops, PBT], metaclass=_RegistryMeta):
     def _validate_models(*op_schemas: type[OperationSchema]) -> None:
         if not op_schemas:
             raise InvalidOperationRegistry("At least one OperationSchema is required")
+        seen_names: set[str] = set()
         for op in op_schemas:
             if not isclass(op):
                 raise InvalidOperationRegistry(f"{op!r} is not a class")
@@ -218,6 +219,12 @@ class GenericOperationRegistry(Generic[*Ops, PBT], metaclass=_RegistryMeta):
                 raise InvalidOperationRegistry(f"{op!r} is not an OperationSchema")
             if isabstract(op):
                 raise InvalidOperationRegistry(f"{op!r} cannot be abstract")
+            op_name = op.__name__
+            if op_name in seen_names:
+                raise InvalidOperationRegistry(
+                    f"OperationSchema names must be unique; duplicate {op_name!r}"
+                )
+            seen_names.add(op_name)
 
     @staticmethod
     def _build_model_map(
