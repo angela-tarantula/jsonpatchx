@@ -23,7 +23,6 @@ from jsonpatchx.fastapi import (
     PatchDependency,
     patch_content_type_dependency,
     patch_error_openapi_responses,
-    patch_request_body,
 )
 from jsonpatchx.pydantic import JsonPatchFor
 
@@ -69,16 +68,6 @@ def get_config_endpoint(
     summary="Patch a config (dot pointers)",
     description="Use dot-separated pointers like 'features.chat'.",
     responses=patch_error_openapi_responses(),
-    openapi_extra=patch_request_body(
-        DotPointerPatch,
-        examples={
-            "dot-pointer": {
-                "summary": "site: replace chat flag",
-                "value": [{"op": "replace", "path": "features.chat", "value": False}],
-            }
-        },
-        strict=STRICT_JSON_PATCH,
-    ),
     dependencies=patch_content_type_dependency(STRICT_JSON_PATCH),
 )
 def patch_config(
@@ -90,11 +79,18 @@ def patch_config(
     patch: DotPointerPatch = Depends(
         PatchDependency(
             DotPointerPatch,
-            app=app,
             request_param=Body(
                 ...,
                 description="JSON Patch document. Prefer Content-Type: application/json-patch+json.",
                 media_type=JSON_PATCH_MEDIA_TYPE,
+                openapi_examples={
+                    "dot-pointer": {
+                        "summary": "site: replace chat flag",
+                        "value": [
+                            {"op": "replace", "path": "features.chat", "value": False}
+                        ],
+                    }
+                },
             ),
         )
     ),
@@ -134,16 +130,6 @@ def get_user_endpoint(
     summary="Patch a user (dot pointers)",
     description="Use dot-separated pointers like 'quota' or 'tags.0'.",
     responses=patch_error_openapi_responses(),
-    openapi_extra=patch_request_body(
-        UserPatch,
-        examples={
-            "set-quota": {
-                "summary": "set user quota",
-                "value": [{"op": "replace", "path": "quota", "value": 300}],
-            }
-        },
-        strict=STRICT_JSON_PATCH,
-    ),
     dependencies=patch_content_type_dependency(STRICT_JSON_PATCH),
 )
 def patch_user(
@@ -155,11 +141,16 @@ def patch_user(
     patch: UserPatch = Depends(
         PatchDependency(
             UserPatch,
-            app=app,
             request_param=Body(
                 ...,
                 description="JSON Patch document. Prefer Content-Type: application/json-patch+json.",
                 media_type=JSON_PATCH_MEDIA_TYPE,
+                openapi_examples={
+                    "set-quota": {
+                        "summary": "set user quota",
+                        "value": [{"op": "replace", "path": "quota", "value": 300}],
+                    }
+                },
             ),
         )
     ),

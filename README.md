@@ -369,7 +369,6 @@ from jsonpatchx.fastapi import PatchDependency
 PatchBody = JsonPatchFor["DotPointerPatch", registry]
 PatchDepends = PatchDependency(
     PatchBody,
-    app=app,
     request_param=Body(..., media_type="application/json-patch+json"),
 )
 

@@ -9,7 +9,7 @@ from fastapi import Body, Depends, FastAPI
 from pydantic import BaseModel, ConfigDict
 
 from jsonpatchx import JsonPatchFor
-from jsonpatchx.fastapi import PatchDependency, patch_request_body
+from jsonpatchx.fastapi import JSON_PATCH_MEDIA_TYPE, PatchDependency
 from jsonpatchx.registry import OperationRegistry, StandardRegistry
 from jsonpatchx.schema import OperationSchema
 from jsonpatchx.types import JSONBoolean, JSONPointer, JSONValue
@@ -48,12 +48,19 @@ ModelPatchWithDep = JsonPatchFor[MedicalRecord, ExtendedRegistry]
 
 
 def _build_openapi() -> dict[str, object]:
-    app = FastAPI(title="jsonpatchx openapi snapshot", version="0.1.0")
-    JsonDepends = PatchDependency(JsonPatchWithDep, app=app, request_param=Body(...))
-    json_openapi = patch_request_body(JsonPatchWithDep, strict=False)
-
-    ModelDepends = PatchDependency(ModelPatchWithDep, app=app, request_param=Body(...))
-    model_openapi = patch_request_body(ModelPatchWithDep, strict=False)
+    app = FastAPI(
+        title="jsonpatchx openapi snapshot",
+        version="0.1.0",
+        separate_input_output_schemas=False,
+    )
+    JsonDepends = PatchDependency(
+        JsonPatchWithDep,
+        request_param=Body(..., media_type=JSON_PATCH_MEDIA_TYPE),
+    )
+    ModelDepends = PatchDependency(
+        ModelPatchWithDep,
+        request_param=Body(..., media_type=JSON_PATCH_MEDIA_TYPE),
+    )
 
     @app.patch("/users/{user_id}")
     def patch_user(user_id: int, patch: UserPatch = Body(...)) -> User:
@@ -67,13 +74,13 @@ def _build_openapi() -> dict[str, object]:
     def patch_config(config_id: str, patch: JsonPatch = Body(...)) -> JSONValue:
         return {"ok": True}
 
-    @app.patch("/configs/{config_id}/dep", openapi_extra=json_openapi)
+    @app.patch("/configs/{config_id}/dep")
     def patch_config_dep(
         config_id: str, patch: JsonPatchWithDep = Depends(JsonDepends)
     ) -> JSONValue:
         return {"ok": True}
 
-    @app.patch("/records/{record_id}/dep", openapi_extra=model_openapi)
+    @app.patch("/records/{record_id}/dep")
     def patch_record_dep(
         record_id: int, patch: ModelPatchWithDep = Depends(ModelDepends)
     ) -> MedicalRecord:

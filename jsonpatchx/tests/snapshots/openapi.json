@@ -18,7 +18,7 @@
             "type": "string"
           },
           "value": {
-            "$ref": "#/components/schemas/JSONValue-Input"
+            "$ref": "#/components/schemas/JSONValue"
           }
         },
         "required": [
@@ -174,20 +174,6 @@
         "title": "JSON array",
         "type": "array"
       },
-      "JSONArray_JSONValue_-Input": {
-        "items": {
-          "$ref": "#/components/schemas/JSONValue-Input"
-        },
-        "title": "JSON array",
-        "type": "array"
-      },
-      "JSONArray_JSONValue_-Output": {
-        "items": {
-          "$ref": "#/components/schemas/JSONValue-Output"
-        },
-        "title": "JSON array",
-        "type": "array"
-      },
       "JSONBoolean": {
         "title": "JSON boolean",
         "type": "boolean"
@@ -215,20 +201,6 @@
         "title": "JSON object",
         "type": "object"
       },
-      "JSONObject_JSONValue_-Input": {
-        "additionalProperties": {
-          "$ref": "#/components/schemas/JSONValue-Input"
-        },
-        "title": "JSON object",
-        "type": "object"
-      },
-      "JSONObject_JSONValue_-Output": {
-        "additionalProperties": {
-          "$ref": "#/components/schemas/JSONValue-Output"
-        },
-        "title": "JSON object",
-        "type": "object"
-      },
       "JSONString": {
         "title": "JSON string",
         "type": "string"
@@ -252,52 +224,6 @@
           },
           {
             "$ref": "#/components/schemas/JSONObject_JSONValue_"
-          }
-        ],
-        "title": "JSON value"
-      },
-      "JSONValue-Input": {
-        "anyOf": [
-          {
-            "$ref": "#/components/schemas/JSONBoolean"
-          },
-          {
-            "$ref": "#/components/schemas/JSONNumber"
-          },
-          {
-            "$ref": "#/components/schemas/JSONString"
-          },
-          {
-            "$ref": "#/components/schemas/JSONNull"
-          },
-          {
-            "$ref": "#/components/schemas/JSONArray_JSONValue_-Input"
-          },
-          {
-            "$ref": "#/components/schemas/JSONObject_JSONValue_-Input"
-          }
-        ],
-        "title": "JSON value"
-      },
-      "JSONValue-Output": {
-        "anyOf": [
-          {
-            "$ref": "#/components/schemas/JSONBoolean"
-          },
-          {
-            "$ref": "#/components/schemas/JSONNumber"
-          },
-          {
-            "$ref": "#/components/schemas/JSONString"
-          },
-          {
-            "$ref": "#/components/schemas/JSONNull"
-          },
-          {
-            "$ref": "#/components/schemas/JSONArray_JSONValue_-Output"
-          },
-          {
-            "$ref": "#/components/schemas/JSONObject_JSONValue_-Output"
           }
         ],
         "title": "JSON value"
@@ -441,7 +367,7 @@
             "type": "string"
           },
           "value": {
-            "$ref": "#/components/schemas/JSONValue-Input"
+            "$ref": "#/components/schemas/JSONValue"
           }
         },
         "required": [
@@ -469,7 +395,7 @@
             "type": "string"
           },
           "value": {
-            "$ref": "#/components/schemas/JSONValue-Input"
+            "$ref": "#/components/schemas/JSONValue"
           }
         },
         "required": [
@@ -616,7 +542,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/JSONValue-Output"
+                  "$ref": "#/components/schemas/JSONValue"
                 }
               }
             },
@@ -652,15 +578,14 @@
         ],
         "requestBody": {
           "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/DotConfigPatch_Patch_Document",
-                "title": "Patch"
-              }
-            },
             "application/json-patch+json": {
               "schema": {
-                "$ref": "#/components/schemas/DotConfigPatch_Patch_Document"
+                "description": "Array of patch operations for DotConfigPatch.",
+                "items": {
+                  "$ref": "#/components/schemas/DotConfigPatch_Patch_Operation"
+                },
+                "title": "Patch",
+                "type": "array"
               }
             }
           },
@@ -671,7 +596,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/JSONValue-Output"
+                  "$ref": "#/components/schemas/JSONValue"
                 }
               }
             },
@@ -756,15 +681,15 @@
         ],
         "requestBody": {
           "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/MedicalRecord_Patch_Document",
-                "title": "Patch"
-              }
-            },
             "application/json-patch+json": {
               "schema": {
-                "$ref": "#/components/schemas/MedicalRecord_Patch_Document"
+                "description": "Array of patch operations for MedicalRecord. Applied to model_dump() and re-validated against the model schema.",
+                "items": {
+                  "$ref": "#/components/schemas/MedicalRecord_Patch_Operation"
+                },
+                "title": "Patch",
+                "type": "array",
+                "x-target-model": "MedicalRecord"
               }
             }
           },

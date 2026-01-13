@@ -15,14 +15,15 @@ a state conflict, map PatchConflictError to 422 instead.
 from __future__ import annotations
 
 from collections.abc import Callable
-from inspect import isclass
-from typing import Any, Protocol, Self, TypeVar
+from typing import Any, TypeVar
 
 from fastapi import Depends, FastAPI, HTTPException, Request
 from fastapi.exceptions import RequestValidationError
+from fastapi.params import Body as BodyParam
 from fastapi.params import Depends as DependsParam
 from fastapi.responses import JSONResponse
-from pydantic import BaseModel
+from pydantic import BaseModel, GetCoreSchemaHandler, GetJsonSchemaHandler
+from pydantic_core import core_schema
 
 from jsonpatchx.exceptions import (
     PatchConflictError,
@@ -31,29 +32,11 @@ from jsonpatchx.exceptions import (
     PatchInternalError,
 )
 from jsonpatchx.pydantic import JsonPatchFor
-from jsonpatchx.registry import AnyRegistry, GenericOperationRegistry
 
 JSON_PATCH_MEDIA_TYPE = "application/json-patch+json"
-ModelT = TypeVar("ModelT", bound=BaseModel)
-
-
-class _PatchModel(Protocol):
-    @classmethod
-    def model_validate(cls, obj: Any) -> Self: ...
-
-
-PatchT = TypeVar("PatchT", bound=_PatchModel)
+PatchT = TypeVar("PatchT", bound=BaseModel)
 
 # FastAPI helpers
-
-
-def _require_registry_type(registry: object) -> type[AnyRegistry]:
-    if not isclass(registry) or not issubclass(registry, GenericOperationRegistry):
-        raise TypeError(
-            "registry must be an OperationRegistry type (OperationRegistry[...]), "
-            f"got {registry!r}"
-        )
-    return registry
 
 
 class PatchFailureDetailResponse(BaseModel):
@@ -65,6 +48,39 @@ class PatchFailureDetailResponse(BaseModel):
 
 class PatchErrorResponse(BaseModel):
     detail: str | PatchFailureDetailResponse
+
+
+def _patch_body_annotation(patch_model: type[Any]) -> type[Any]:
+    class PatchBodyAnnotation:
+        __patch_model__ = patch_model
+        __patch_core_schema__: core_schema.CoreSchema | None = None
+
+        @classmethod
+        def __get_pydantic_core_schema__(
+            cls, source_type: Any, handler: GetCoreSchemaHandler
+        ) -> core_schema.CoreSchema:
+            original_schema = handler.generate_schema(cls.__patch_model__)
+            cls.__patch_core_schema__ = original_schema
+            metadata = {
+                "pydantic_js_annotation_functions": [lambda _c, h: h(original_schema)]
+            }
+            return core_schema.any_schema(
+                metadata=metadata,
+                serialization=core_schema.wrap_serializer_function_ser_schema(
+                    function=lambda v, h: h(v),
+                    schema=original_schema,
+                ),
+            )
+
+        @classmethod
+        def __get_pydantic_json_schema__(
+            cls, schema: core_schema.CoreSchema, handler: GetJsonSchemaHandler
+        ) -> dict[str, Any]:
+            core_schema_to_use = cls.__patch_core_schema__ or schema
+            return handler(core_schema_to_use)
+
+    PatchBodyAnnotation.__name__ = f"{patch_model.__name__}Body"
+    return PatchBodyAnnotation
 
 
 def _patch_error_response_map(exc: PatchError) -> JSONResponse:
@@ -215,20 +231,20 @@ def patch_request_body(
 def PatchDependency(
     patch_model: type[PatchT],
     *,
-    app: FastAPI | None = None,
-    request_param: Any | None = None,
+    request_param: BodyParam,
     error_mapper: Callable[[PatchInputError, Any], Exception] | None = None,
 ) -> Callable[[Any], PatchT]:
     """
     Return a dependency function that validates a JSON Patch document with FastAPI-style errors.
 
-    ``request_param`` is any FastAPI-injectable default (Body/Depends/etc.).
+    ``request_param`` must be a FastAPI Body parameter.
     """
-    if app is not None:
-        register_patch_schema(app, patch_model)
 
     def _dep(patch: Any = request_param) -> PatchT:
         try:
+            if isinstance(patch, patch_model):
+                patch_payload = patch.model_dump(mode="json", by_alias=True)
+                return patch_model.model_validate(patch_payload)
             return patch_model.model_validate(patch)
         except PatchInputError as e:
             if error_mapper:
@@ -245,52 +261,7 @@ def PatchDependency(
                 body=patch,
             ) from e
 
+    _dep.__annotations__["patch"] = _patch_body_annotation(patch_model)
+    _dep.__annotations__["return"] = patch_model
+
     return _dep
-
-
-def _register_patch_schema_in_openapi(
-    schema: dict[str, Any],
-    patch_model: type[Any],
-) -> None:
-    schemas = schema.setdefault("components", {}).setdefault("schemas", {})
-    if patch_model.__name__ in schemas:
-        return
-
-    patch_schema = patch_model.model_json_schema(
-        ref_template="#/components/schemas/{model}"
-    )
-    defs = patch_schema.pop("$defs", {})
-    for key, value in defs.items():
-        schemas.setdefault(
-            key, value
-        )  # NOTE: do I need a collision check? make opschema enforce __name__ uniqueness. maybe enforce model uniquess here too
-    schemas[patch_model.__name__] = patch_schema
-
-
-def register_patch_schema(app: FastAPI, patch_model: type[Any]) -> None:
-    """
-    Register a patch model's schema in OpenAPI components so $ref works in docs.
-    """
-    if app.openapi_schema is not None:
-        _register_patch_schema_in_openapi(app.openapi_schema, patch_model)
-        return
-
-    pending = getattr(app.state, "_jsonpatchx_patch_models", None)
-    if pending is None:
-        pending = set()
-        app.state._jsonpatchx_patch_models = pending
-    pending.add(patch_model)
-
-    if getattr(app.state, "_jsonpatchx_openapi_wrapped", False):
-        return
-
-    original_openapi = app.openapi
-
-    def wrapped_openapi() -> dict[str, Any]:
-        schema = original_openapi()
-        for model in app.state._jsonpatchx_patch_models:
-            _register_patch_schema_in_openapi(schema, model)
-        return schema
-
-    app.state._jsonpatchx_openapi_wrapped = True
-    app.openapi = wrapped_openapi  # type: ignore[method-assign]

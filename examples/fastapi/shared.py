@@ -33,7 +33,12 @@ DEMO_UNEXPECTED_ERRORS = os.getenv("JSONPATCH_DEMO_UNEXPECTED_ERRORS", "1") != "
 
 
 def create_app(*, title: str, description: str, version: str = "0.1.0") -> FastAPI:
-    app = FastAPI(title=title, description=description, version=version)
+    app = FastAPI(
+        title=title,
+        description=description,
+        version=version,
+        separate_input_output_schemas=False,
+    )
     install_jsonpatch_error_handlers(app)
 
     @app.get("/", include_in_schema=False)
