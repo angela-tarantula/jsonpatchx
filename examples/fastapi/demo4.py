@@ -4,14 +4,16 @@ Demo 4: registry-scoped pointer backend with FastAPI dependency injection.
 
 from __future__ import annotations
 
-from typing import Literal
+from typing import Annotated, Literal
 
 from fastapi import Body, Depends, HTTPException, Path
 
 from examples.fastapi.shared import (
     JSON_PATCH_MEDIA_TYPE,
+    ConfigId,
     DotPointer,
     User,
+    UserId,
     create_app,
     get_config,
     get_user,
@@ -49,11 +51,12 @@ UserPatch = JsonPatchFor[User, registry]
     description="Fetch a config by id.",
 )
 def get_config_endpoint(
-    config_id: str = Path(
-        ...,
-        description="Available configs: site, limits.",
-        examples=["site", "limits"],
-    ),
+    config_id: Annotated[
+        ConfigId,
+        Path(
+            ...,
+        ),
+    ],
 ) -> JSONValue:
     doc = get_config(config_id)
     if doc is None:
@@ -71,29 +74,37 @@ def get_config_endpoint(
     dependencies=patch_content_type_dependency(STRICT_JSON_PATCH),
 )
 def patch_config(
-    config_id: str = Path(
-        ...,
-        description="Available configs: site, limits.",
-        examples=["site", "limits"],
-    ),
-    patch: DotPointerPatch = Depends(
-        PatchDependency(
-            DotPointerPatch,
-            request_param=Body(
-                ...,
-                description="JSON Patch document. Prefer Content-Type: application/json-patch+json.",
-                media_type=JSON_PATCH_MEDIA_TYPE,
-                openapi_examples={
-                    "dot-pointer": {
-                        "summary": "site: replace chat flag",
-                        "value": [
-                            {"op": "replace", "path": "features.chat", "value": False}
-                        ],
-                    }
-                },
-            ),
-        )
-    ),
+    config_id: Annotated[
+        ConfigId,
+        Path(
+            ...,
+        ),
+    ],
+    patch: Annotated[
+        DotPointerPatch,
+        Depends(
+            PatchDependency(
+                DotPointerPatch,
+                request_param=Body(
+                    ...,
+                    description="JSON Patch document. Prefer Content-Type: application/json-patch+json.",
+                    media_type=JSON_PATCH_MEDIA_TYPE,
+                    openapi_examples={
+                        "dot-pointer": {
+                            "summary": "site: replace chat flag",
+                            "value": [
+                                {
+                                    "op": "replace",
+                                    "path": "features.chat",
+                                    "value": False,
+                                }
+                            ],
+                        }
+                    },
+                ),
+            )
+        ),
+    ],
 ) -> JSONValue:
     doc = get_config(config_id)
     if doc is None:
@@ -111,11 +122,12 @@ def patch_config(
     description="Fetch a user by id.",
 )
 def get_user_endpoint(
-    user_id: int = Path(
-        ...,
-        description="Available users: 1, 2.",
-        examples=[1, 2],
-    ),
+    user_id: Annotated[
+        UserId,
+        Path(
+            ...,
+        ),
+    ],
 ) -> User:
     user = get_user(user_id)
     if user is None:
@@ -133,27 +145,31 @@ def get_user_endpoint(
     dependencies=patch_content_type_dependency(STRICT_JSON_PATCH),
 )
 def patch_user(
-    user_id: int = Path(
-        ...,
-        description="Available users: 1, 2.",
-        examples=[1, 2],
-    ),
-    patch: UserPatch = Depends(
-        PatchDependency(
-            UserPatch,
-            request_param=Body(
-                ...,
-                description="JSON Patch document. Prefer Content-Type: application/json-patch+json.",
-                media_type=JSON_PATCH_MEDIA_TYPE,
-                openapi_examples={
-                    "set-quota": {
-                        "summary": "set user quota",
-                        "value": [{"op": "replace", "path": "quota", "value": 300}],
-                    }
-                },
-            ),
-        )
-    ),
+    user_id: Annotated[
+        UserId,
+        Path(
+            ...,
+        ),
+    ],
+    patch: Annotated[
+        UserPatch,
+        Depends(
+            PatchDependency(
+                UserPatch,
+                request_param=Body(
+                    ...,
+                    description="JSON Patch document. Prefer Content-Type: application/json-patch+json.",
+                    media_type=JSON_PATCH_MEDIA_TYPE,
+                    openapi_examples={
+                        "set-quota": {
+                            "summary": "set user quota",
+                            "value": [{"op": "replace", "path": "quota", "value": 300}],
+                        }
+                    },
+                ),
+            )
+        ),
+    ],
 ) -> User:
     user = get_user(user_id)
     if user is None:

@@ -281,7 +281,7 @@ An `OperationRegistry` is just a `GenericOperationRegistry` with a default Point
 `JSONPointer[T, Backend]` allows you to bind a specific backend at the type
 level, so operations can require a particular pointer syntax when needed.
 For advanced use cases, `JSONPointer.ptr` exposes the backend instance so you
-can call custom helper APIs (e.g., wildcard expansion, JsonPath expressions, etc).
+can call custom helper APIs (e.g., [JsonPath expressions](https://www.rfc-editor.org/rfc/rfc9535), domain-specific helpers, etc).
 
 ```py
 from typing import Literal
@@ -363,6 +363,8 @@ requests against your custom backend.
 As a workaround, json-patch-x provides a `PatchDependency`.
 
 ```py
+from typing import Annotated
+
 from fastapi import Body, Depends
 from jsonpatchx.fastapi import PatchDependency
 
@@ -373,7 +375,10 @@ PatchDepends = PatchDependency(
 )
 
 @app.patch("/configs/{id}")
-def patch_config(id: str, patch: PatchBody = Depends(PatchDepends)) -> JSONValue:
+def patch_config(
+    id: str,
+    patch: Annotated[PatchBody, Depends(PatchDepends)],
+) -> JSONValue:
     # 'patch' is now fully validated using your DotPointer backend
     return patch.apply(load_config(id))
 ```

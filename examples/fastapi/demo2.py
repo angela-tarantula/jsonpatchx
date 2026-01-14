@@ -4,6 +4,8 @@ Demo 2: Custom registries bound to different Pydantic models using `JsonPatchFor
 
 from __future__ import annotations
 
+from typing import Annotated
+
 from fastapi import Body, HTTPException, Path
 
 from examples.fastapi.shared import (
@@ -11,8 +13,10 @@ from examples.fastapi.shared import (
     AppendOp,
     IncrementOp,
     Team,
+    TeamId,
     ToggleBoolOp,
     User,
+    UserId,
     create_app,
     get_team,
     get_user,
@@ -49,11 +53,10 @@ app = create_app(
     description="Fetch a user by id.",
 )
 def get_user_endpoint(
-    user_id: int = Path(
-        ...,
-        description="Available users: 1, 2.",
-        examples=[1, 2],
-    ),
+    user_id: Annotated[
+        UserId,
+        Path(...),
+    ],
 ) -> User:
     user = get_user(user_id)
     if user is None:
@@ -85,16 +88,18 @@ def get_user_endpoint(
     dependencies=patch_content_type_dependency(STRICT_JSON_PATCH),
 )
 def patch_user(
-    user_id: int = Path(
-        ...,
-        description="Available users: 1, 2.",
-        examples=[1, 2],
-    ),
-    patch: UserPatch = Body(
-        ...,
-        description="JSON Patch document. Prefer Content-Type: application/json-patch+json.",
-        media_type=JSON_PATCH_MEDIA_TYPE,
-    ),
+    user_id: Annotated[
+        UserId,
+        Path(...),
+    ],
+    patch: Annotated[
+        UserPatch,
+        Body(
+            ...,
+            description="JSON Patch document. Prefer Content-Type: application/json-patch+json.",
+            media_type=JSON_PATCH_MEDIA_TYPE,
+        ),
+    ],
 ) -> User:
     user = get_user(user_id)
     if user is None:
@@ -112,11 +117,10 @@ def patch_user(
     description="Fetch a team by id.",
 )
 def get_team_endpoint(
-    team_id: int = Path(
-        ...,
-        description="Available teams: 1, 2.",
-        examples=[1, 2],
-    ),
+    team_id: Annotated[
+        TeamId,
+        Path(...),
+    ],
 ) -> Team:
     team = get_team(team_id)
     if team is None:
@@ -148,16 +152,18 @@ def get_team_endpoint(
     dependencies=patch_content_type_dependency(STRICT_JSON_PATCH),
 )
 def patch_team(
-    team_id: int = Path(
-        ...,
-        description="Available teams: 1, 2.",
-        examples=[1, 2],
-    ),
-    patch: TeamPatch = Body(
-        ...,
-        description="JSON Patch document. Prefer Content-Type: application/json-patch+json.",
-        media_type=JSON_PATCH_MEDIA_TYPE,
-    ),
+    team_id: Annotated[
+        TeamId,
+        Path(...),
+    ],
+    patch: Annotated[
+        TeamPatch,
+        Body(
+            ...,
+            description="JSON Patch document. Prefer Content-Type: application/json-patch+json.",
+            media_type=JSON_PATCH_MEDIA_TYPE,
+        ),
+    ],
 ) -> Team:
     team = get_team(team_id)
     if team is None:

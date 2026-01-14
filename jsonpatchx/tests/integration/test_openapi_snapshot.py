@@ -1,6 +1,6 @@
 import json
 from pathlib import Path
-from typing import Literal, override
+from typing import Annotated, Literal, override
 
 import pytest
 
@@ -76,13 +76,15 @@ def _build_openapi() -> dict[str, object]:
 
     @app.patch("/configs/{config_id}/dep")
     def patch_config_dep(
-        config_id: str, patch: JsonPatchWithDep = Depends(JsonDepends)
+        config_id: str,
+        patch: Annotated[JsonPatchWithDep, Depends(JsonDepends)],
     ) -> JSONValue:
         return {"ok": True}
 
     @app.patch("/records/{record_id}/dep")
     def patch_record_dep(
-        record_id: int, patch: ModelPatchWithDep = Depends(ModelDepends)
+        record_id: int,
+        patch: Annotated[ModelPatchWithDep, Depends(ModelDepends)],
     ) -> MedicalRecord:
         return MedicalRecord(id=record_id, diagnosis="ok")
 

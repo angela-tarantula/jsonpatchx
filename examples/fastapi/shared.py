@@ -3,6 +3,7 @@ from __future__ import annotations
 import copy
 import os
 from collections.abc import Iterable, MutableMapping, Sequence
+from enum import Enum, IntEnum
 from typing import Any, Literal, Self, override
 
 from fastapi import FastAPI
@@ -46,6 +47,21 @@ def create_app(*, title: str, description: str, version: str = "0.1.0") -> FastA
         return RedirectResponse(url="/docs")
 
     return app
+
+
+class UserId(IntEnum):
+    one = 1
+    two = 2
+
+
+class TeamId(IntEnum):
+    one = 1
+    two = 2
+
+
+class ConfigId(str, Enum):
+    site = "site"
+    limits = "limits"
 
 
 class User(BaseModel):

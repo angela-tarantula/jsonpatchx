@@ -9,7 +9,7 @@ Default error mapping:
 - 500: Server misconfiguration or unexpected failures (e.g., invalid registry/op classes)
 
 If your API treats "missing path / invalid index" as a client semantic error rather than
-a state conflict, map PatchConflictError to 422 instead.
+ a state conflict, map PatchConflictError to 422 instead.
 """
 
 from __future__ import annotations
@@ -36,8 +36,6 @@ from jsonpatchx.pydantic import JsonPatchFor
 JSON_PATCH_MEDIA_TYPE = "application/json-patch+json"
 PatchT = TypeVar("PatchT", bound=BaseModel)
 
-# FastAPI helpers
-
 
 class PatchFailureDetailResponse(BaseModel):
     index: int
@@ -48,6 +46,9 @@ class PatchFailureDetailResponse(BaseModel):
 
 class PatchErrorResponse(BaseModel):
     detail: str | PatchFailureDetailResponse
+
+
+# Internal schema helpers
 
 
 def _patch_body_annotation(patch_model: type[Any]) -> type[Any]:
@@ -83,6 +84,9 @@ def _patch_body_annotation(patch_model: type[Any]) -> type[Any]:
     return PatchBodyAnnotation
 
 
+# Error helpers
+
+
 def _patch_error_response_map(exc: PatchError) -> JSONResponse:
     """Map a PatchError to a JSONResponse for FastAPI exception handlers."""
     if isinstance(exc, PatchInternalError):
@@ -113,7 +117,13 @@ def _patch_error_response_map(exc: PatchError) -> JSONResponse:
 
 
 def install_jsonpatch_error_handlers(app: FastAPI) -> None:
-    """Register a single FastAPI exception handler for PatchError."""
+    """Register a single FastAPI exception handler for PatchError.
+
+    Example:
+
+        app = FastAPI()
+        install_jsonpatch_error_handlers(app)
+    """
 
     @app.exception_handler(PatchError)
     def _patch_error_handler(request: Request, exc: PatchError) -> JSONResponse:
@@ -121,7 +131,14 @@ def install_jsonpatch_error_handlers(app: FastAPI) -> None:
 
 
 def patch_error_openapi_responses() -> dict[int | str, dict[str, Any]]:
-    """Return OpenAPI response schema entries for JSON Patch errors."""
+    """Return OpenAPI response schema entries for JSON Patch errors.
+
+    Example:
+
+        @app.patch("/items/{item_id}", responses=patch_error_openapi_responses())
+        def patch_item(...):
+            ...
+    """
     schema = {
         "type": "object",
         "properties": {
@@ -167,6 +184,9 @@ def patch_error_openapi_responses() -> dict[int | str, dict[str, Any]]:
     }
 
 
+# Content type helpers
+
+
 def _enforce_json_patch_content_type(
     request: Request, *, media_type: str = JSON_PATCH_MEDIA_TYPE
 ) -> None:
@@ -183,7 +203,14 @@ def _enforce_json_patch_content_type(
 def patch_content_type_dependency(
     enabled: bool, *, media_type: str = JSON_PATCH_MEDIA_TYPE
 ) -> list[DependsParam]:
-    """Return a dependency list that enforces the JSON Patch media type."""
+    """Return a dependency list that enforces the JSON Patch media type.
+
+    Example:
+
+        @app.patch("/items/{item_id}", dependencies=patch_content_type_dependency(True))
+        def patch_item(...):
+            ...
+    """
     if not enabled:
         return []
 
@@ -191,6 +218,9 @@ def patch_content_type_dependency(
         _enforce_json_patch_content_type(request, media_type=media_type)
 
     return [Depends(_dep)]
+
+
+# OpenAPI helpers
 
 
 def patch_request_body(
@@ -202,7 +232,17 @@ def patch_request_body(
     media_type: str = JSON_PATCH_MEDIA_TYPE,
     request_body_overrides: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
-    """Build an OpenAPI requestBody for JSON Patch with optional examples."""
+    """Build an OpenAPI requestBody for JSON Patch with optional examples.
+
+    Example:
+
+        @app.patch(
+            "/configs/{config_id}",
+            openapi_extra=patch_request_body(ConfigPatch, examples={"set": {...}}),
+        )
+        def patch_config(...):
+            ...
+    """
     schema_ref = f"#/components/schemas/{patch_model.__name__}"
     if include_application_json is None:
         include_application_json = not strict
@@ -228,16 +268,32 @@ def patch_request_body(
     return {"requestBody": request_body}
 
 
+# Dependency helpers
+
+
 def PatchDependency(
     patch_model: type[PatchT],
     *,
     request_param: BodyParam,
     error_mapper: Callable[[PatchInputError, Any], Exception] | None = None,
 ) -> Callable[[Any], PatchT]:
-    """
-    Return a dependency function that validates a JSON Patch document with FastAPI-style errors.
+    """Return a dependency function that validates a JSON Patch document.
 
-    ``request_param`` must be a FastAPI Body parameter.
+    Example:
+        from typing import Annotated
+
+        PatchBody = JsonPatchFor[User, UserRegistry]
+        PatchDepends = PatchDependency(
+            PatchBody,
+            request_param=Body(..., media_type=JSON_PATCH_MEDIA_TYPE),
+        )
+
+        @app.patch("/users/{user_id}")
+        def patch_user(
+            user_id: int,
+            patch: Annotated[PatchBody, Depends(PatchDepends)],
+        ) -> User:
+            return patch.apply(load_user(user_id))
     """
 
     def _dep(patch: Any = request_param) -> PatchT:

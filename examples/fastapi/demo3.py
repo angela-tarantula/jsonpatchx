@@ -4,13 +4,14 @@ Demo 3: Non-pydantic JSON patching.
 
 from __future__ import annotations
 
-from typing import Literal
+from typing import Annotated, Literal
 
 from fastapi import Body, HTTPException, Path
 
 from examples.fastapi.shared import (
     JSON_PATCH_MEDIA_TYPE,
     AppendOp,
+    ConfigId,
     EnsureObjectOp,
     ExtendOp,
     IncrementOp,
@@ -56,11 +57,12 @@ app = create_app(
     description="Fetch a config by id.",
 )
 def get_config_endpoint(
-    config_id: str = Path(
-        ...,
-        description="Available configs: site, limits.",
-        examples=["site", "limits"],
-    ),
+    config_id: Annotated[
+        ConfigId,
+        Path(
+            ...,
+        ),
+    ],
 ) -> JSONValue:
     doc = get_config(config_id)
     if doc is None:
@@ -108,16 +110,20 @@ def get_config_endpoint(
     dependencies=patch_content_type_dependency(STRICT_JSON_PATCH),
 )
 def patch_config(
-    config_id: str = Path(
-        ...,
-        description="Available configs: site, limits.",
-        examples=["site", "limits"],
-    ),
-    patch: ConfigPatch = Body(
-        ...,
-        description="JSON Patch document. Prefer Content-Type: application/json-patch+json.",
-        media_type=JSON_PATCH_MEDIA_TYPE,
-    ),
+    config_id: Annotated[
+        ConfigId,
+        Path(
+            ...,
+        ),
+    ],
+    patch: Annotated[
+        ConfigPatch,
+        Body(
+            ...,
+            description="JSON Patch document. Prefer Content-Type: application/json-patch+json.",
+            media_type=JSON_PATCH_MEDIA_TYPE,
+        ),
+    ],
 ) -> JSONValue:
     doc = get_config(config_id)
     if doc is None:
