@@ -227,12 +227,16 @@ def patch_request_body(
     patch_model: type[JsonPatchFor[Any, Any]],
     examples: dict[str, Any] | None = None,
     *,
-    strict: bool = True,
-    include_application_json: bool | None = None,
+    allow_application_json: bool = False,
     media_type: str = JSON_PATCH_MEDIA_TYPE,
     request_body_overrides: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Build an OpenAPI requestBody for JSON Patch with optional examples.
+
+    Convention: JSON Patch requests should use ``application/json-patch+json``.
+    This opinionated library advertises only that media type by default.
+    Set ``allow_application_json=True`` to also document ``application/json`` for
+    compatibility when you choose to accept it.
 
     Example:
 
@@ -244,14 +248,12 @@ def patch_request_body(
             ...
     """
     schema_ref = f"#/components/schemas/{patch_model.__name__}"
-    if include_application_json is None:
-        include_application_json = not strict
     content: dict[str, Any] = {
         media_type: {"schema": {"$ref": schema_ref}},
     }
     if examples:
         content[media_type]["examples"] = examples
-    if include_application_json:
+    if allow_application_json:
         content["application/json"] = {"schema": {"$ref": schema_ref}}
     request_body: dict[str, Any] = {"required": True, "content": content}
     if request_body_overrides:
@@ -266,6 +268,42 @@ def patch_request_body(
             }
         )
     return {"requestBody": request_body}
+
+
+def patch_route_kwargs(
+    patch_model: type[JsonPatchFor[Any, Any]] | None = None,
+    examples: dict[str, Any] | None = None,
+    *,
+    allow_application_json: bool = False,
+    media_type: str = JSON_PATCH_MEDIA_TYPE,
+    request_body_overrides: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    """Return FastAPI decorator kwargs that keep docs and enforcement aligned.
+
+    This opinionated helper adds:
+    - ``responses`` for JSON Patch errors
+    - ``dependencies`` that enforce JSON Patch media type by default
+    - ``openapi_extra`` for the request body when ``patch_model`` is provided
+
+    If ``allow_application_json`` is True, ``application/json`` is documented
+    and enforcement is disabled to allow both.
+    """
+    kwargs: dict[str, Any] = {
+        "responses": patch_error_openapi_responses(),
+        "dependencies": patch_content_type_dependency(
+            not allow_application_json,
+            media_type=media_type,
+        ),
+    }
+    if patch_model is not None:
+        kwargs["openapi_extra"] = patch_request_body(
+            patch_model,
+            examples,
+            allow_application_json=allow_application_json,
+            media_type=media_type,
+            request_body_overrides=request_body_overrides,
+        )
+    return kwargs
 
 
 # Dependency helpers

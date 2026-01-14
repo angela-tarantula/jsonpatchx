@@ -23,11 +23,7 @@ from examples.fastapi.shared import (
     save_config,
 )
 from jsonpatchx import JSONValue, OperationRegistry
-from jsonpatchx.fastapi import (
-    patch_content_type_dependency,
-    patch_error_openapi_responses,
-    patch_request_body,
-)
+from jsonpatchx.fastapi import patch_route_kwargs
 from jsonpatchx.pydantic import JsonPatchFor
 
 STRICT_JSON_PATCH = True
@@ -76,8 +72,7 @@ def get_config_endpoint(
     tags=["configs"],
     summary="Patch a config",
     description="Apply standard RFC 6902 ops plus custom ops to a config.",
-    responses=patch_error_openapi_responses(),
-    openapi_extra=patch_request_body(
+    **patch_route_kwargs(
         ConfigPatch,
         examples={
             "increment-limit": {
@@ -105,9 +100,8 @@ def get_config_endpoint(
                 "value": [{"op": "remove_number", "path": "/title"}],
             },
         },
-        strict=STRICT_JSON_PATCH,
+        allow_application_json=not STRICT_JSON_PATCH,
     ),
-    dependencies=patch_content_type_dependency(STRICT_JSON_PATCH),
 )
 def patch_config(
     config_id: Annotated[

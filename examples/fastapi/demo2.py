@@ -24,11 +24,7 @@ from examples.fastapi.shared import (
     save_user,
 )
 from jsonpatchx import OperationRegistry, StandardRegistry
-from jsonpatchx.fastapi import (
-    patch_content_type_dependency,
-    patch_error_openapi_responses,
-    patch_request_body,
-)
+from jsonpatchx.fastapi import patch_route_kwargs
 from jsonpatchx.pydantic import JsonPatchFor
 
 STRICT_JSON_PATCH = True
@@ -70,8 +66,7 @@ def get_user_endpoint(
     tags=["users"],
     summary="Patch a user",
     description="Apply custom ops to a User model.",
-    responses=patch_error_openapi_responses(),
-    openapi_extra=patch_request_body(
+    **patch_route_kwargs(
         UserPatch,
         examples={
             "increase-quota": {
@@ -83,9 +78,8 @@ def get_user_endpoint(
                 "value": [{"op": "toggle", "path": "/trial"}],
             },
         },
-        strict=STRICT_JSON_PATCH,
+        allow_application_json=not STRICT_JSON_PATCH,
     ),
-    dependencies=patch_content_type_dependency(STRICT_JSON_PATCH),
 )
 def patch_user(
     user_id: Annotated[
@@ -134,8 +128,7 @@ def get_team_endpoint(
     tags=["teams"],
     summary="Patch a team",
     description="Apply custom ops to a Team model.",
-    responses=patch_error_openapi_responses(),
-    openapi_extra=patch_request_body(
+    **patch_route_kwargs(
         TeamPatch,
         examples={
             "append-tag": {
@@ -147,9 +140,8 @@ def get_team_endpoint(
                 "value": [{"op": "increment", "path": "/max_members", "value": 3}],
             },
         },
-        strict=STRICT_JSON_PATCH,
+        allow_application_json=not STRICT_JSON_PATCH,
     ),
-    dependencies=patch_content_type_dependency(STRICT_JSON_PATCH),
 )
 def patch_team(
     team_id: Annotated[

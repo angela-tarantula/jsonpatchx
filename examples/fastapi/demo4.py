@@ -21,11 +21,7 @@ from examples.fastapi.shared import (
     save_user,
 )
 from jsonpatchx import GenericOperationRegistry, JSONValue, StandardRegistry
-from jsonpatchx.fastapi import (
-    PatchDependency,
-    patch_content_type_dependency,
-    patch_error_openapi_responses,
-)
+from jsonpatchx.fastapi import PatchDependency, patch_route_kwargs
 from jsonpatchx.pydantic import JsonPatchFor
 
 STRICT_JSON_PATCH = True
@@ -70,8 +66,7 @@ def get_config_endpoint(
     tags=["configs"],
     summary="Patch a config (dot pointers)",
     description="Use dot-separated pointers like 'features.chat'.",
-    responses=patch_error_openapi_responses(),
-    dependencies=patch_content_type_dependency(STRICT_JSON_PATCH),
+    **patch_route_kwargs(allow_application_json=not STRICT_JSON_PATCH),
 )
 def patch_config(
     config_id: Annotated[
@@ -141,8 +136,7 @@ def get_user_endpoint(
     tags=["users"],
     summary="Patch a user (dot pointers)",
     description="Use dot-separated pointers like 'quota' or 'tags.0'.",
-    responses=patch_error_openapi_responses(),
-    dependencies=patch_content_type_dependency(STRICT_JSON_PATCH),
+    **patch_route_kwargs(allow_application_json=not STRICT_JSON_PATCH),
 )
 def patch_user(
     user_id: Annotated[
