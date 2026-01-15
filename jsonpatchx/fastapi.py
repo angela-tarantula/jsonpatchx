@@ -15,7 +15,7 @@ If your API treats "missing path / invalid index" as a client semantic error rat
 from __future__ import annotations
 
 from collections.abc import Callable
-from typing import Any, TypeVar
+from typing import Annotated, Any, TypeVar
 
 from fastapi import Depends, FastAPI, HTTPException, Request
 from fastapi.exceptions import RequestValidationError
@@ -312,10 +312,13 @@ def patch_route_kwargs(
 def PatchDependency(
     patch_model: type[PatchT],
     *,
-    request_param: BodyParam,
+    request_param: BodyParam | None = None,
     error_mapper: Callable[[PatchInputError, Any], Exception] | None = None,
 ) -> Callable[[Any], PatchT]:
     """Return a dependency function that validates a JSON Patch document.
+
+    ``request_param`` is optional; when provided, it is used to declare the
+    FastAPI Body parameter and its OpenAPI metadata.
 
     Example:
         from typing import Annotated
@@ -334,11 +337,8 @@ def PatchDependency(
             return patch.apply(load_user(user_id))
     """
 
-    def _dep(patch: Any = request_param) -> PatchT:
+    def _dep(patch: Any) -> PatchT:
         try:
-            if isinstance(patch, patch_model):
-                patch_payload = patch.model_dump(mode="json", by_alias=True)
-                return patch_model.model_validate(patch_payload)
             return patch_model.model_validate(patch)
         except PatchInputError as e:
             if error_mapper:
@@ -355,7 +355,11 @@ def PatchDependency(
                 body=patch,
             ) from e
 
-    _dep.__annotations__["patch"] = _patch_body_annotation(patch_model)
+    patch_annotation = _patch_body_annotation(patch_model)
+    if request_param is None:
+        _dep.__annotations__["patch"] = patch_annotation
+    else:
+        _dep.__annotations__["patch"] = Annotated[patch_annotation, request_param]
     _dep.__annotations__["return"] = patch_model
 
     return _dep

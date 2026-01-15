@@ -66,7 +66,22 @@ def get_config_endpoint(
     tags=["configs"],
     summary="Patch a config (dot pointers)",
     description="Use dot-separated pointers like 'features.chat'.",
-    **patch_route_kwargs(allow_application_json=not STRICT_JSON_PATCH),
+    **patch_route_kwargs(
+        DotPointerPatch,
+        examples={
+            "dot-pointer": {
+                "summary": "site: replace chat flag",
+                "value": [
+                    {
+                        "op": "replace",
+                        "path": "features.chat",
+                        "value": False,
+                    }
+                ],
+            }
+        },
+        allow_application_json=not STRICT_JSON_PATCH,
+    ),
 )
 def patch_config(
     config_id: Annotated[
@@ -82,20 +97,7 @@ def patch_config(
                 DotPointerPatch,
                 request_param=Body(
                     ...,
-                    description="JSON Patch document. Prefer Content-Type: application/json-patch+json.",
                     media_type=JSON_PATCH_MEDIA_TYPE,
-                    openapi_examples={
-                        "dot-pointer": {
-                            "summary": "site: replace chat flag",
-                            "value": [
-                                {
-                                    "op": "replace",
-                                    "path": "features.chat",
-                                    "value": False,
-                                }
-                            ],
-                        }
-                    },
                 ),
             )
         ),
@@ -136,7 +138,16 @@ def get_user_endpoint(
     tags=["users"],
     summary="Patch a user (dot pointers)",
     description="Use dot-separated pointers like 'quota' or 'tags.0'.",
-    **patch_route_kwargs(allow_application_json=not STRICT_JSON_PATCH),
+    **patch_route_kwargs(
+        UserPatch,
+        examples={
+            "set-quota": {
+                "summary": "set user quota",
+                "value": [{"op": "replace", "path": "quota", "value": 300}],
+            }
+        },
+        allow_application_json=not STRICT_JSON_PATCH,
+    ),
 )
 def patch_user(
     user_id: Annotated[
@@ -152,14 +163,7 @@ def patch_user(
                 UserPatch,
                 request_param=Body(
                     ...,
-                    description="JSON Patch document. Prefer Content-Type: application/json-patch+json.",
                     media_type=JSON_PATCH_MEDIA_TYPE,
-                    openapi_examples={
-                        "set-quota": {
-                            "summary": "set user quota",
-                            "value": [{"op": "replace", "path": "quota", "value": 300}],
-                        }
-                    },
                 ),
             )
         ),
