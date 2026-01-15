@@ -6,10 +6,9 @@ from __future__ import annotations
 
 from typing import Annotated, Literal
 
-from fastapi import Body, Depends, HTTPException, Path
+from fastapi import Depends, HTTPException, Path
 
 from examples.fastapi.shared import (
-    JSON_PATCH_MEDIA_TYPE,
     ConfigId,
     DotPointer,
     User,
@@ -21,7 +20,7 @@ from examples.fastapi.shared import (
     save_user,
 )
 from jsonpatchx import GenericOperationRegistry, JSONValue, StandardRegistry
-from jsonpatchx.fastapi import PatchDependency, patch_route_kwargs
+from jsonpatchx.fastapi import JsonPatchRoute
 from jsonpatchx.pydantic import JsonPatchFor
 
 STRICT_JSON_PATCH = True
@@ -30,13 +29,39 @@ app = create_app(
     title="Demo 4: Dot-pointer settings",
     description=(
         "Registry-scoped dot-pointer backends for config and user settings. "
-        "Uses `PatchDependency(...)` with explicit request body configuration."
+        "Uses `JsonPatchRoute` to align OpenAPI and runtime validation."
     ),
 )
 
 registry = GenericOperationRegistry[StandardRegistry, DotPointer]
 DotPointerPatch = JsonPatchFor[Literal["Config"], registry]
 UserPatch = JsonPatchFor[User, registry]
+config_patch = JsonPatchRoute(
+    DotPointerPatch,
+    examples={
+        "dot-pointer": {
+            "summary": "site: replace chat flag",
+            "value": [
+                {
+                    "op": "replace",
+                    "path": "features.chat",
+                    "value": False,
+                }
+            ],
+        }
+    },
+    strict_content_type=STRICT_JSON_PATCH,
+)
+user_patch = JsonPatchRoute(
+    UserPatch,
+    examples={
+        "set-quota": {
+            "summary": "set user quota",
+            "value": [{"op": "replace", "path": "quota", "value": 300}],
+        }
+    },
+    strict_content_type=STRICT_JSON_PATCH,
+)
 
 
 @app.get(
@@ -66,22 +91,7 @@ def get_config_endpoint(
     tags=["configs"],
     summary="Patch a config (dot pointers)",
     description="Use dot-separated pointers like 'features.chat'.",
-    **patch_route_kwargs(
-        DotPointerPatch,
-        examples={
-            "dot-pointer": {
-                "summary": "site: replace chat flag",
-                "value": [
-                    {
-                        "op": "replace",
-                        "path": "features.chat",
-                        "value": False,
-                    }
-                ],
-            }
-        },
-        allow_application_json=not STRICT_JSON_PATCH,
-    ),
+    **config_patch.route_kwargs(),
 )
 def patch_config(
     config_id: Annotated[
@@ -92,15 +102,7 @@ def patch_config(
     ],
     patch: Annotated[
         DotPointerPatch,
-        Depends(
-            PatchDependency(
-                DotPointerPatch,
-                request_param=Body(
-                    ...,
-                    media_type=JSON_PATCH_MEDIA_TYPE,
-                ),
-            )
-        ),
+        Depends(config_patch.dependency()),
     ],
 ) -> JSONValue:
     doc = get_config(config_id)
@@ -138,16 +140,7 @@ def get_user_endpoint(
     tags=["users"],
     summary="Patch a user (dot pointers)",
     description="Use dot-separated pointers like 'quota' or 'tags.0'.",
-    **patch_route_kwargs(
-        UserPatch,
-        examples={
-            "set-quota": {
-                "summary": "set user quota",
-                "value": [{"op": "replace", "path": "quota", "value": 300}],
-            }
-        },
-        allow_application_json=not STRICT_JSON_PATCH,
-    ),
+    **user_patch.route_kwargs(),
 )
 def patch_user(
     user_id: Annotated[
@@ -158,15 +151,7 @@ def patch_user(
     ],
     patch: Annotated[
         UserPatch,
-        Depends(
-            PatchDependency(
-                UserPatch,
-                request_param=Body(
-                    ...,
-                    media_type=JSON_PATCH_MEDIA_TYPE,
-                ),
-            )
-        ),
+        Depends(user_patch.dependency()),
     ],
 ) -> User:
     user = get_user(user_id)

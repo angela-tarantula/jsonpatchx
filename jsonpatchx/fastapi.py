@@ -15,9 +15,10 @@ If your API treats "missing path / invalid index" as a client semantic error rat
 from __future__ import annotations
 
 from collections.abc import Callable
-from typing import Annotated, Any, TypeVar
+from dataclasses import dataclass
+from typing import Annotated, Any, TypeVar, cast
 
-from fastapi import Depends, FastAPI, HTTPException, Request
+from fastapi import Body, Depends, FastAPI, HTTPException, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.params import Body as BodyParam
 from fastapi.params import Depends as DependsParam
@@ -48,72 +49,7 @@ class PatchErrorResponse(BaseModel):
     detail: str | PatchFailureDetailResponse
 
 
-# Internal schema helpers
-
-
-def _patch_body_annotation(patch_model: type[Any]) -> type[Any]:
-    class PatchBodyAnnotation:
-        __patch_model__ = patch_model
-        __patch_core_schema__: core_schema.CoreSchema | None = None
-
-        @classmethod
-        def __get_pydantic_core_schema__(
-            cls, source_type: Any, handler: GetCoreSchemaHandler
-        ) -> core_schema.CoreSchema:
-            original_schema = handler.generate_schema(cls.__patch_model__)
-            cls.__patch_core_schema__ = original_schema
-            metadata = {
-                "pydantic_js_annotation_functions": [lambda _c, h: h(original_schema)]
-            }
-            return core_schema.any_schema(
-                metadata=metadata,
-                serialization=core_schema.wrap_serializer_function_ser_schema(
-                    function=lambda v, h: h(v),
-                    schema=original_schema,
-                ),
-            )
-
-        @classmethod
-        def __get_pydantic_json_schema__(
-            cls, schema: core_schema.CoreSchema, handler: GetJsonSchemaHandler
-        ) -> dict[str, Any]:
-            core_schema_to_use = cls.__patch_core_schema__ or schema
-            return handler(core_schema_to_use)
-
-    PatchBodyAnnotation.__name__ = f"{patch_model.__name__}Body"
-    return PatchBodyAnnotation
-
-
-# Error helpers
-
-
-def _patch_error_response_map(exc: PatchError) -> JSONResponse:
-    """Map a PatchError to a JSONResponse for FastAPI exception handlers."""
-    if isinstance(exc, PatchInternalError):
-        detail = exc.detail
-        payload = PatchFailureDetailResponse(
-            index=detail.index,
-            op=detail.op.model_dump(mode="json", by_alias=True),
-            message=detail.message,
-            cause_type=detail.cause_type,
-        )
-        return JSONResponse(
-            status_code=500, content=PatchErrorResponse(detail=payload).model_dump()
-        )
-
-    if isinstance(exc, PatchInputError):
-        return JSONResponse(
-            status_code=422, content=PatchErrorResponse(detail=str(exc)).model_dump()
-        )
-
-    if isinstance(exc, PatchConflictError):
-        return JSONResponse(
-            status_code=409, content=PatchErrorResponse(detail=str(exc)).model_dump()
-        )
-
-    return JSONResponse(
-        status_code=500, content=PatchErrorResponse(detail=str(exc)).model_dump()
-    )
+# Public helpers
 
 
 def install_jsonpatch_error_handlers(app: FastAPI) -> None:
@@ -184,22 +120,6 @@ def patch_error_openapi_responses() -> dict[int | str, dict[str, Any]]:
     }
 
 
-# Content type helpers
-
-
-def _enforce_json_patch_content_type(
-    request: Request, *, media_type: str = JSON_PATCH_MEDIA_TYPE
-) -> None:
-    content_type = request.headers.get("content-type", "")
-    if not content_type.startswith(media_type):
-        raise HTTPException(
-            status_code=415,
-            detail=(
-                f"Unsupported Media Type. Use {media_type} for JSON Patch requests."
-            ),
-        )
-
-
 def patch_content_type_dependency(
     enabled: bool, *, media_type: str = JSON_PATCH_MEDIA_TYPE
 ) -> list[DependsParam]:
@@ -220,9 +140,6 @@ def patch_content_type_dependency(
     return [Depends(_dep)]
 
 
-# OpenAPI helpers
-
-
 def patch_request_body(
     patch_model: type[JsonPatchFor[Any, Any]],
     examples: dict[str, Any] | None = None,
@@ -238,6 +155,10 @@ def patch_request_body(
     Set ``allow_application_json=True`` to also document ``application/json`` for
     compatibility when you choose to accept it.
 
+    ``request_body_overrides`` lets you override top-level requestBody fields and
+    shallow-merge the ``content`` map. If you pass ``content``, its entries are
+    merged into the generated content; all other keys replace generated values.
+
     Example:
 
         @app.patch(
@@ -246,6 +167,15 @@ def patch_request_body(
         )
         def patch_config(...):
             ...
+
+        # Add an extra media type and override requestBody.required
+        openapi_extra=patch_request_body(
+            ConfigPatch,
+            request_body_overrides={
+                "required": False,
+                "content": {"application/merge-patch+json": {"schema": {"type": "object"}}},
+            },
+        )
     """
     schema_ref = f"#/components/schemas/{patch_model.__name__}"
     content: dict[str, Any] = {
@@ -306,7 +236,42 @@ def patch_route_kwargs(
     return kwargs
 
 
-# Dependency helpers
+@dataclass(frozen=True)
+class JsonPatchRoute:
+    """Configure JSON Patch routes with a single source of truth."""
+
+    patch_model: type[JsonPatchFor[Any, Any]]
+    examples: dict[str, Any] | None = None
+    strict_content_type: bool = True
+    media_type: str = JSON_PATCH_MEDIA_TYPE
+    request_body_overrides: dict[str, Any] | None = None
+    request_param_overrides: dict[str, Any] | None = None
+
+    def route_kwargs(self) -> dict[str, Any]:
+        return patch_route_kwargs(
+            self.patch_model,
+            examples=self.examples,
+            allow_application_json=not self.strict_content_type,
+            media_type=self.media_type,
+            request_body_overrides=self.request_body_overrides,
+        )
+
+    def Body(self) -> BodyParam:
+        body_kwargs = dict(self.request_param_overrides or {})
+        if self.strict_content_type:
+            body_kwargs.setdefault("media_type", self.media_type)
+        return cast(BodyParam, Body(..., **body_kwargs))
+
+    def dependency(
+        self,
+        *,
+        error_mapper: Callable[[PatchInputError, Any], Exception] | None = None,
+    ) -> Callable[[Any], JsonPatchFor[Any, Any]]:
+        return PatchDependency(
+            self.patch_model,
+            request_param=self.Body(),
+            error_mapper=error_mapper,
+        )
 
 
 def PatchDependency(
@@ -363,3 +328,81 @@ def PatchDependency(
     _dep.__annotations__["return"] = patch_model
 
     return _dep
+
+
+# Internal helpers
+
+
+def _patch_body_annotation(patch_model: type[Any]) -> type[Any]:
+    class PatchBodyAnnotation:
+        __patch_model__ = patch_model
+        __patch_core_schema__: core_schema.CoreSchema | None = None
+
+        @classmethod
+        def __get_pydantic_core_schema__(
+            cls, source_type: Any, handler: GetCoreSchemaHandler
+        ) -> core_schema.CoreSchema:
+            original_schema = handler.generate_schema(cls.__patch_model__)
+            cls.__patch_core_schema__ = original_schema
+            metadata = {
+                "pydantic_js_annotation_functions": [lambda _c, h: h(original_schema)]
+            }
+            return core_schema.any_schema(
+                metadata=metadata,
+                serialization=core_schema.wrap_serializer_function_ser_schema(
+                    function=lambda v, h: h(v),
+                    schema=original_schema,
+                ),
+            )
+
+        @classmethod
+        def __get_pydantic_json_schema__(
+            cls, schema: core_schema.CoreSchema, handler: GetJsonSchemaHandler
+        ) -> dict[str, Any]:
+            core_schema_to_use = cls.__patch_core_schema__ or schema
+            return handler(core_schema_to_use)
+
+    PatchBodyAnnotation.__name__ = f"{patch_model.__name__}Body"
+    return PatchBodyAnnotation
+
+
+def _patch_error_response_map(exc: PatchError) -> JSONResponse:
+    """Map a PatchError to a JSONResponse for FastAPI exception handlers."""
+    if isinstance(exc, PatchInternalError):
+        detail = exc.detail
+        payload = PatchFailureDetailResponse(
+            index=detail.index,
+            op=detail.op.model_dump(mode="json", by_alias=True),
+            message=detail.message,
+            cause_type=detail.cause_type,
+        )
+        return JSONResponse(
+            status_code=500, content=PatchErrorResponse(detail=payload).model_dump()
+        )
+
+    if isinstance(exc, PatchInputError):
+        return JSONResponse(
+            status_code=422, content=PatchErrorResponse(detail=str(exc)).model_dump()
+        )
+
+    if isinstance(exc, PatchConflictError):
+        return JSONResponse(
+            status_code=409, content=PatchErrorResponse(detail=str(exc)).model_dump()
+        )
+
+    return JSONResponse(
+        status_code=500, content=PatchErrorResponse(detail=str(exc)).model_dump()
+    )
+
+
+def _enforce_json_patch_content_type(
+    request: Request, *, media_type: str = JSON_PATCH_MEDIA_TYPE
+) -> None:
+    content_type = request.headers.get("content-type", "")
+    if not content_type.startswith(media_type):
+        raise HTTPException(
+            status_code=415,
+            detail=(
+                f"Unsupported Media Type. Use {media_type} for JSON Patch requests."
+            ),
+        )

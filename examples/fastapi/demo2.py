@@ -6,10 +6,9 @@ from __future__ import annotations
 
 from typing import Annotated
 
-from fastapi import Body, HTTPException, Path
+from fastapi import HTTPException, Path
 
 from examples.fastapi.shared import (
-    JSON_PATCH_MEDIA_TYPE,
     AppendOp,
     IncrementOp,
     Team,
@@ -24,7 +23,7 @@ from examples.fastapi.shared import (
     save_user,
 )
 from jsonpatchx import OperationRegistry, StandardRegistry
-from jsonpatchx.fastapi import patch_route_kwargs
+from jsonpatchx.fastapi import JsonPatchRoute
 from jsonpatchx.pydantic import JsonPatchFor
 
 STRICT_JSON_PATCH = True
@@ -34,6 +33,34 @@ TeamRegistry = OperationRegistry[StandardRegistry, AppendOp, IncrementOp]
 
 UserPatch = JsonPatchFor[User, UserRegistry]
 TeamPatch = JsonPatchFor[Team, TeamRegistry]
+user_patch = JsonPatchRoute(
+    UserPatch,
+    examples={
+        "increase-quota": {
+            "summary": "Increase user quota",
+            "value": [{"op": "increment", "path": "/quota", "value": 25}],
+        },
+        "toggle-trial": {
+            "summary": "Toggle trial status",
+            "value": [{"op": "toggle", "path": "/trial"}],
+        },
+    },
+    strict_content_type=STRICT_JSON_PATCH,
+)
+team_patch = JsonPatchRoute(
+    TeamPatch,
+    examples={
+        "append-tag": {
+            "summary": "Append a team tag",
+            "value": [{"op": "append", "path": "/tags", "value": "oncall"}],
+        },
+        "increment-max": {
+            "summary": "Increase max_members",
+            "value": [{"op": "increment", "path": "/max_members", "value": 3}],
+        },
+    },
+    strict_content_type=STRICT_JSON_PATCH,
+)
 
 app = create_app(
     title="Demo 2: Billing and team ops",
@@ -66,33 +93,14 @@ def get_user_endpoint(
     tags=["users"],
     summary="Patch a user",
     description="Apply custom ops to a User model.",
-    **patch_route_kwargs(
-        UserPatch,
-        examples={
-            "increase-quota": {
-                "summary": "Increase user quota",
-                "value": [{"op": "increment", "path": "/quota", "value": 25}],
-            },
-            "toggle-trial": {
-                "summary": "Toggle trial status",
-                "value": [{"op": "toggle", "path": "/trial"}],
-            },
-        },
-        allow_application_json=not STRICT_JSON_PATCH,
-    ),
+    **user_patch.route_kwargs(),
 )
 def patch_user(
     user_id: Annotated[
         UserId,
         Path(...),
     ],
-    patch: Annotated[
-        UserPatch,
-        Body(
-            ...,
-            media_type=JSON_PATCH_MEDIA_TYPE,
-        ),
-    ],
+    patch: Annotated[UserPatch, user_patch.Body()],
 ) -> User:
     user = get_user(user_id)
     if user is None:
@@ -127,33 +135,14 @@ def get_team_endpoint(
     tags=["teams"],
     summary="Patch a team",
     description="Apply custom ops to a Team model.",
-    **patch_route_kwargs(
-        TeamPatch,
-        examples={
-            "append-tag": {
-                "summary": "Append a team tag",
-                "value": [{"op": "append", "path": "/tags", "value": "oncall"}],
-            },
-            "increment-max": {
-                "summary": "Increase max_members",
-                "value": [{"op": "increment", "path": "/max_members", "value": 3}],
-            },
-        },
-        allow_application_json=not STRICT_JSON_PATCH,
-    ),
+    **team_patch.route_kwargs(),
 )
 def patch_team(
     team_id: Annotated[
         TeamId,
         Path(...),
     ],
-    patch: Annotated[
-        TeamPatch,
-        Body(
-            ...,
-            media_type=JSON_PATCH_MEDIA_TYPE,
-        ),
-    ],
+    patch: Annotated[TeamPatch, team_patch.Body()],
 ) -> Team:
     team = get_team(team_id)
     if team is None:

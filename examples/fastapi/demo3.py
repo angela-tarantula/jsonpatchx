@@ -6,10 +6,9 @@ from __future__ import annotations
 
 from typing import Annotated, Literal
 
-from fastapi import Body, HTTPException, Path
+from fastapi import HTTPException, Path
 
 from examples.fastapi.shared import (
-    JSON_PATCH_MEDIA_TYPE,
     AppendOp,
     ConfigId,
     EnsureObjectOp,
@@ -23,7 +22,7 @@ from examples.fastapi.shared import (
     save_config,
 )
 from jsonpatchx import JSONValue, OperationRegistry
-from jsonpatchx.fastapi import patch_route_kwargs
+from jsonpatchx.fastapi import JsonPatchRoute
 from jsonpatchx.pydantic import JsonPatchFor
 
 STRICT_JSON_PATCH = True
@@ -38,6 +37,36 @@ ConfigRegistry = OperationRegistry[
     RemoveNumberOp,
 ]
 ConfigPatch = JsonPatchFor[Literal["Config"], ConfigRegistry]
+config_patch = JsonPatchRoute(
+    ConfigPatch,
+    examples={
+        "increment-limit": {
+            "summary": "limits: increase max_users",
+            "value": [{"op": "increment", "path": "/max_users", "value": 50}],
+        },
+        "toggle-trial": {
+            "summary": "limits: toggle trial access",
+            "value": [{"op": "toggle", "path": "/trial"}],
+        },
+        "ensure-flags": {
+            "summary": "site: ensure /features is an object",
+            "value": [{"op": "ensure_object", "path": "/features"}],
+        },
+        "append-tag": {
+            "summary": "site: append a tag",
+            "value": [{"op": "append", "path": "/tags", "value": "beta"}],
+        },
+        "swap": {
+            "summary": "site: swap title and chat flag",
+            "value": [{"op": "swap", "a": "/title", "b": "/features/chat"}],
+        },
+        "type-gated-remove": {
+            "summary": "site: type-gated remove (expected failure)",
+            "value": [{"op": "remove_number", "path": "/title"}],
+        },
+    },
+    strict_content_type=STRICT_JSON_PATCH,
+)
 
 app = create_app(
     title="Demo 3: Feature flags and limits",
@@ -72,36 +101,7 @@ def get_config_endpoint(
     tags=["configs"],
     summary="Patch a config",
     description="Apply standard RFC 6902 ops plus custom ops to a config.",
-    **patch_route_kwargs(
-        ConfigPatch,
-        examples={
-            "increment-limit": {
-                "summary": "limits: increase max_users",
-                "value": [{"op": "increment", "path": "/max_users", "value": 50}],
-            },
-            "toggle-trial": {
-                "summary": "limits: toggle trial access",
-                "value": [{"op": "toggle", "path": "/trial"}],
-            },
-            "ensure-flags": {
-                "summary": "site: ensure /features is an object",
-                "value": [{"op": "ensure_object", "path": "/features"}],
-            },
-            "append-tag": {
-                "summary": "site: append a tag",
-                "value": [{"op": "append", "path": "/tags", "value": "beta"}],
-            },
-            "swap": {
-                "summary": "site: swap title and chat flag",
-                "value": [{"op": "swap", "a": "/title", "b": "/features/chat"}],
-            },
-            "type-gated-remove": {
-                "summary": "site: type-gated remove (expected failure)",
-                "value": [{"op": "remove_number", "path": "/title"}],
-            },
-        },
-        allow_application_json=not STRICT_JSON_PATCH,
-    ),
+    **config_patch.route_kwargs(),
 )
 def patch_config(
     config_id: Annotated[
@@ -110,13 +110,7 @@ def patch_config(
             ...,
         ),
     ],
-    patch: Annotated[
-        ConfigPatch,
-        Body(
-            ...,
-            media_type=JSON_PATCH_MEDIA_TYPE,
-        ),
-    ],
+    patch: Annotated[ConfigPatch, config_patch.Body()],
 ) -> JSONValue:
     doc = get_config(config_id)
     if doc is None:
