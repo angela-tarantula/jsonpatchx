@@ -19,11 +19,10 @@ from dataclasses import dataclass
 from typing import Annotated, Any, TypeVar, cast
 
 from fastapi import Body, Depends, FastAPI, HTTPException, Request
-from fastapi.exceptions import RequestValidationError
 from fastapi.params import Body as BodyParam
 from fastapi.params import Depends as DependsParam
 from fastapi.responses import JSONResponse
-from pydantic import BaseModel, GetCoreSchemaHandler, GetJsonSchemaHandler
+from pydantic import BaseModel, GetCoreSchemaHandler, GetJsonSchemaHandler, ValidationError
 from pydantic_core import core_schema
 
 from jsonpatchx.exceptions import (
@@ -305,20 +304,15 @@ def PatchDependency(
     def _dep(patch: Any) -> PatchT:
         try:
             return patch_model.model_validate(patch)
+        except ValidationError as e:
+            patch_error = PatchInputError(str(e))
+            if error_mapper:
+                raise error_mapper(patch_error, patch) from e
+            raise patch_error from e
         except PatchInputError as e:
             if error_mapper:
                 raise error_mapper(e, patch) from e
-            raise RequestValidationError(
-                [
-                    {
-                        "loc": ("body",),
-                        "msg": str(e),
-                        "type": "value_error.patch_input",
-                        "ctx": {"cause_type": type(e).__name__},
-                    }
-                ],
-                body=patch,
-            ) from e
+            raise
 
     patch_annotation = _patch_body_annotation(patch_model)
     if request_param is None:
