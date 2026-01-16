@@ -407,7 +407,7 @@ def _enforce_json_patch_content_type(
     request: Request, *, media_type: str = JSON_PATCH_MEDIA_TYPE
 ) -> None:
     content_type = request.headers.get("content-type", "")
-    if not content_type.startswith(media_type):
+    if not content_type.lower().startswith(media_type.lower()):
         raise HTTPException(
             status_code=415,
             detail=(
