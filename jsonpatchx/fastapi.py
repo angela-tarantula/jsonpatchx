@@ -19,10 +19,16 @@ from dataclasses import dataclass
 from typing import Annotated, Any, TypeVar, cast
 
 from fastapi import Body, Depends, FastAPI, HTTPException, Request
+from fastapi.exceptions import RequestValidationError
 from fastapi.params import Body as BodyParam
 from fastapi.params import Depends as DependsParam
 from fastapi.responses import JSONResponse
-from pydantic import BaseModel, GetCoreSchemaHandler, GetJsonSchemaHandler, ValidationError
+from pydantic import (
+    BaseModel,
+    GetCoreSchemaHandler,
+    GetJsonSchemaHandler,
+    ValidationError,
+)
 from pydantic_core import core_schema
 
 from jsonpatchx.exceptions import (
@@ -52,12 +58,13 @@ class PatchErrorResponse(BaseModel):
 
 
 def install_jsonpatch_error_handlers(app: FastAPI) -> None:
-    """Register a single FastAPI exception handler for PatchError.
+    """Register a FastAPI exception handler for PatchError.
 
     Example:
 
         app = FastAPI()
         install_jsonpatch_error_handlers(app)
+
     """
 
     @app.exception_handler(PatchError)
@@ -305,14 +312,21 @@ def PatchDependency(
         try:
             return patch_model.model_validate(patch)
         except ValidationError as e:
-            patch_error = PatchInputError(str(e))
-            if error_mapper:
-                raise error_mapper(patch_error, patch) from e
-            raise patch_error from e
+            raise RequestValidationError(e.errors(), body=patch) from e
         except PatchInputError as e:
             if error_mapper:
                 raise error_mapper(e, patch) from e
-            raise
+            raise RequestValidationError(
+                [
+                    {
+                        "loc": ("body",),
+                        "msg": str(e),
+                        "type": "value_error.patch_input",
+                        "ctx": {"cause_type": type(e).__name__},
+                    }
+                ],
+                body=patch,
+            ) from e
 
     patch_annotation = _patch_body_annotation(patch_model)
     if request_param is None:
