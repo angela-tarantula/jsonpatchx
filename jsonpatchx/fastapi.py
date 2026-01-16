@@ -3,13 +3,9 @@ FastAPI integration helpers for jsonpatch.
 
 Default error mapping:
 - 415: Wrong Content-Type for JSON Patch (application/json-patch+json)
-- 400: Malformed JSON (cannot parse request body)
-- 422: Patch input validation errors (invalid pointers, invalid operations, model revalidation)
+- 422: Request validation errors (malformed JSON, invalid operationns or pointers, model revalidation failure)
 - 409: Patch is valid but cannot be applied to current resource state
 - 500: Server misconfiguration or unexpected failures (e.g., invalid registry/op classes)
-
-If your API treats "missing path / invalid index" as a client semantic error rather than
- a state conflict, map PatchConflictError to 422 instead.
 """
 
 from __future__ import annotations
@@ -81,7 +77,7 @@ def patch_error_openapi_responses() -> dict[int | str, dict[str, Any]]:
         def patch_item(...):
             ...
     """
-    schema = {
+    patch_error_schema = {
         "type": "object",
         "properties": {
             "detail": {
@@ -102,26 +98,29 @@ def patch_error_openapi_responses() -> dict[int | str, dict[str, Any]]:
         },
         "required": ["detail"],
     }
+    validation_schema = {"$ref": "#/components/schemas/HTTPValidationError"}
+    validation_or_patch_schema = {
+        "oneOf": [
+            patch_error_schema,
+            validation_schema,
+        ]
+    }
     return {
-        400: {
-            "description": "Malformed JSON",
-            "content": {"application/json": {"schema": schema}},
-        },
         409: {
             "description": "Patch cannot be applied to current resource state",
-            "content": {"application/json": {"schema": schema}},
+            "content": {"application/json": {"schema": patch_error_schema}},
         },
         422: {
-            "description": "Patch document validation error",
-            "content": {"application/json": {"schema": schema}},
+            "description": "Request validation or patch document validation error",
+            "content": {"application/json": {"schema": validation_or_patch_schema}},
         },
         415: {
             "description": "Unsupported Media Type",
-            "content": {"application/json": {"schema": schema}},
+            "content": {"application/json": {"schema": patch_error_schema}},
         },
         500: {
             "description": "Patch execution error",
-            "content": {"application/json": {"schema": schema}},
+            "content": {"application/json": {"schema": patch_error_schema}},
         },
     }
 
