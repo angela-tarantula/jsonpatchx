@@ -397,7 +397,7 @@ class JSONPointer(str, Generic[T_co, P_co]):
         """Check whether this JSONPointer's target is the root."""
         return self == ""
 
-    def __new__(
+    def _hidden_init(
         cls,
         path: str,
         type_param: TypeForm[T_co],
@@ -405,14 +405,7 @@ class JSONPointer(str, Generic[T_co, P_co]):
         pointer_cls: type[P_co] = cast(type[P_co], PointerBackend),
         **kwargs: object,
     ) -> Self:
-        """Trying to instantiate JSONPointer directly will raise InvalidJSONPointer exception."""
-        # debuggable with "uv run python -i -m jsonpatchx.builtins"
-        if (
-            __name__ != "jsonpatchx.types"
-        ):  # NOTE: make a class-level private constructor instead
-            raise InvalidJSONPointer(
-                "JSONPointer values are created by Pydantic validation only."
-            )
+        """Private way to instantiate JSONPointer directly."""
         if pointer_cls is PointerBackend:
             pointer_cls = _DEFAULT_POINTER_CLS
         _, __ = cls._parse_pointer_type_args(type_param, pointer_cls)
