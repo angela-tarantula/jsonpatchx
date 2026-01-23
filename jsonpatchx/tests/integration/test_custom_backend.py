@@ -32,6 +32,10 @@ class DotPointer(PointerBackend):
     def __str__(self) -> str:
         return ".".join(self._parts)
 
+    @override
+    def __hash__(self) -> int:
+        return hash(tuple([self.__class__, *self._parts]))
+
 
 class DotRemoveOp(OperationSchema):
     op: Literal["dot-remove"] = "dot-remove"

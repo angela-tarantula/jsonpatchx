@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import re
+from abc import abstractmethod
 from collections.abc import Iterable, Sequence
 from functools import lru_cache, partial
 from inspect import isclass
@@ -198,8 +199,7 @@ class PointerBackend(Protocol):
           backend failures into library patch errors for a consistent user experience.
     """
 
-    # NOTE: with init defined, this protocol is counter-intuitively instantiable
-    # make the other methods abstract
+    # NOTE: with init defined, this protocol is counter-intuitively instantiable without the @abstractmethod later on __hash__
     def __init__(self, pointer: str) -> None:
         """
         Parse and construct an RFC 6901 JSON Pointer.
@@ -242,9 +242,8 @@ class PointerBackend(Protocol):
         ...
 
     @override
+    @abstractmethod  # NOTE: if mutable, unhashable backends are compelling, can loosen this requirement
     def __hash__(self) -> int: ...
-
-    # NOTE: if mutable, unhashable backends are compelling, can loosen this requirement
 
 
 @lru_cache(maxsize=512)

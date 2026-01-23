@@ -98,6 +98,10 @@ def test_jsonpointer_backend_mismatch_parent_check() -> None:
         def __str__(self) -> str:
             return ".".join(self._parts)
 
+        @override
+        def __hash__(self) -> int:
+            return hash(tuple([self.__class__, *self._parts]))
+
     class DotOp(OperationSchema):
         op: Literal["dot"] = "dot"
         path: JSONPointer[JSONValue, DotPointer]
