@@ -60,7 +60,11 @@ type JSONContainer[T] = JSONArray[T] | JSONObject[T]
 
 def _is_container(value: JSONValue) -> TypeGuard[JSONContainer[JSONValue]]:
     """Internal: runtime check for JSON containers (dict/list)."""
-    return isinstance(value, (dict, list))
+    if isinstance(value, list):
+        return True
+    if isinstance(value, dict):
+        return all(isinstance(k, str) for k in value)
+    return False
 
 
 type JSONValue = Annotated[
