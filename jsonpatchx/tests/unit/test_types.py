@@ -7,6 +7,7 @@ from pytest import Subtests
 
 from jsonpatchx.exceptions import InvalidJSONPointer, PatchConflictError
 from jsonpatchx.schema import OperationSchema
+from jsonpatchx.tests.unit.conftest import FullPointer, NotAFullPointer
 from jsonpatchx.types import (
     JSONArray,
     JSONBoolean,
@@ -113,38 +114,13 @@ def test_jsonvalue_strict_types(subtests: Subtests) -> None:
 
 
 def test_pointer_backend_protocol_check(subtests: Subtests) -> None:
-    class NotAFullPointer:
-        def __init__(self, pointer: str) -> None:
-            self._parts = [] if pointer == "" else pointer.split(".")
-
-        @property
-        def parts(self) -> list[str]:
-            return self._parts
-
-        @classmethod
-        def from_parts(cls, parts: Iterable[Any]) -> GoodPointer:
-            return cls(".".join(str(p) for p in parts))
-
-        def __str__(self) -> str:
-            return ".".join(self._parts)
-
-        def __hash__(self) -> int:
-            return hash(tuple(self._parts))
-
-    class GoodPointer(NotAFullPointer):
-        def resolve(self, doc: JSONValue) -> Any:
-            cur: Any = doc
-            for token in self._parts:
-                cur = cur[token]
-            return cur
-
-    class BadPointer(GoodPointer):
+    class BadPointer(FullPointer):
         def __init__(self, pointer: str) -> None:
             if not pointer:
                 raise ValueError("BadPointer does not accept the empty string")
 
     with subtests.test("valid backend"):
-        assert JSONPointer._implements_PointerBackend_protocol(GoodPointer) is True
+        assert JSONPointer._implements_PointerBackend_protocol(FullPointer) is True
 
     with subtests.test("must be a class"):
         with pytest.raises(InvalidJSONPointer):
@@ -159,38 +135,14 @@ def test_pointer_backend_protocol_check(subtests: Subtests) -> None:
 
     with subtests.test("must not be an instance"):
         with pytest.raises(InvalidJSONPointer):
-            JSONPointer._implements_PointerBackend_protocol(GoodPointer("a/b"))
+            JSONPointer._implements_PointerBackend_protocol(FullPointer("a/b"))
 
 
 def test_resolve_strictest_backend(subtests: Subtests) -> None:
-    class BasePointer(PointerBackend):
-        def __init__(self, pointer: str) -> None:
-            self._parts = [] if pointer == "" else pointer.split(".")
-
-        @property
-        def parts(self) -> list[str]:
-            return self._parts
-
-        @classmethod
-        def from_parts(cls, parts: Iterable[Any]) -> "BasePointer":
-            return cls(".".join(str(p) for p in parts))
-
-        def resolve(self, doc: JSONValue) -> Any:
-            cur: Any = doc
-            for token in self._parts:
-                cur = cur[token]
-            return cur
-
-        def __str__(self) -> str:
-            return ".".join(self._parts)
-
-        def __hash__(self) -> int:
-            return hash(tuple(self._parts))
-
-    class RegistryPointer(BasePointer):
+    class RegistryPointer(FullPointer):
         pass
 
-    class BoundPointer(BasePointer):
+    class BoundPointer(FullPointer):
         pass
 
     class ChildPointer(BoundPointer):
