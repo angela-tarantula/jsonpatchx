@@ -8,9 +8,12 @@ from pytest import Subtests
 from jsonpatchx.exceptions import InvalidJSONPointer, PatchConflictError
 from jsonpatchx.schema import OperationSchema
 from jsonpatchx.types import (
+    JSONArray,
     JSONBoolean,
+    JSONContainer,
     JSONNull,
     JSONNumber,
+    JSONObject,
     JSONPointer,
     JSONString,
     JSONValue,
@@ -49,6 +52,32 @@ def test_json_primitive_strict_types(subtests: Subtests) -> None:
         for invalid in ("null", 0, False):
             with pytest.raises(ValidationError):
                 null_adapter.validate_python(invalid)
+
+
+def test_json_container_strict_types(subtests: Subtests) -> None:
+    array_adapter = TypeAdapter(JSONArray[Any])
+    object_adapter = TypeAdapter(JSONObject[Any])
+    container_adapter = TypeAdapter(JSONContainer[Any])
+
+    with subtests.test("JSONArray"):
+        array_adapter.validate_python([1, {"a": 2}, "ok"])
+        array_adapter.validate_python([object()])
+        for invalid in ({"a": 1}, "nope", (1, 2)):
+            with pytest.raises(ValidationError):
+                array_adapter.validate_python(invalid)
+
+    with subtests.test("JSONObject"):
+        object_adapter.validate_python({"a": 1, "b": object()})
+        for invalid in (["nope"], "nope", {("k",): "nope"}):
+            with pytest.raises(ValidationError):
+                object_adapter.validate_python(invalid)
+
+    with subtests.test("JSONContainer"):
+        container_adapter.validate_python([object()])
+        container_adapter.validate_python({"a": object()})
+        for invalid in ("nope", (1, 2), {"a", "b"}):
+            with pytest.raises(ValidationError):
+                container_adapter.validate_python(invalid)
 
 
 def test_jsonvalue_accepts_json_types() -> None:
