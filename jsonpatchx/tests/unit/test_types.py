@@ -2,16 +2,53 @@ from collections.abc import Iterable
 from typing import Any, Literal, override
 
 import pytest
-from pydantic import ValidationError
+from pydantic import TypeAdapter, ValidationError
+from pytest import Subtests
 
 from jsonpatchx.exceptions import InvalidJSONPointer, PatchConflictError
 from jsonpatchx.schema import OperationSchema
 from jsonpatchx.types import (
     JSONBoolean,
+    JSONNull,
+    JSONNumber,
     JSONPointer,
+    JSONString,
     JSONValue,
     PointerBackend,
 )
+
+
+def test_json_primitive_strict_types(subtests: Subtests) -> None:
+    bool_adapter = TypeAdapter(JSONBoolean)
+    number_adapter = TypeAdapter(JSONNumber)
+    string_adapter = TypeAdapter(JSONString)
+    null_adapter = TypeAdapter(JSONNull)
+
+    with subtests.test("JSONBoolean"):
+        bool_adapter.validate_python(True)
+        bool_adapter.validate_python(False)
+        for invalid in (1, "true", "False", 0):
+            with pytest.raises(ValidationError):
+                bool_adapter.validate_python(invalid)
+
+    with subtests.test("JSONNumber"):
+        number_adapter.validate_python(1)
+        number_adapter.validate_python(1.5)
+        for invalid in ("2", True, None):
+            with pytest.raises(ValidationError):
+                number_adapter.validate_python(invalid)
+
+    with subtests.test("JSONString"):
+        string_adapter.validate_python("ok")
+        for invalid in (b"nope", 1, False):
+            with pytest.raises(ValidationError):
+                string_adapter.validate_python(invalid)
+
+    with subtests.test("JSONNull"):
+        null_adapter.validate_python(None)
+        for invalid in ("null", 0, False):
+            with pytest.raises(ValidationError):
+                null_adapter.validate_python(invalid)
 
 
 def test_jsonvalue_accepts_json_types() -> None:
