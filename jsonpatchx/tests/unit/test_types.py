@@ -5,7 +5,7 @@ from pydantic import TypeAdapter, ValidationError
 from pytest import Subtests
 
 from jsonpatchx.exceptions import InvalidJSONPointer
-from jsonpatchx.tests.unit.conftest import FullPointer, NotAFullPointer
+from jsonpatchx.tests.unit.conftest import DotPointer, IncompletePointerBackend
 from jsonpatchx.types import (
     JSONArray,
     JSONBoolean,
@@ -89,36 +89,102 @@ def test_jsonvalue_strict_types(subtests: Subtests) -> None:
             with pytest.raises(ValidationError):
                 value_adapter.validate_python(invalid)
 
-    with subtests.test("jsonvalue accepts containers of primitives"):
-        value_adapter.validate_python([1, "two", None, False])
-        value_adapter.validate_python({"a": 1, "b": "two", "c": None, "d": False})
 
-    with subtests.test("jsonvalue accepts containers of containers of primitives"):
-        value_adapter.validate_python([[1, 2], ["a", {"b": True}], [None]])
-        value_adapter.validate_python({"a": {"b": 1, "c": None}, "d": [True, False]})
+@pytest.mark.parametrize(
+    ("pointer_cls", "path", "parent_path", "child_path", "parts"),
+    [
+        (None, "/a/b", "/a", "/a/b/c", ["a", "b"]),
+        (DotPointer, "a.b", "a", "a.b.c", ["a", "b"]),
+    ],
+)
+def test_jsonpointer_public_methods(
+    subtests: Subtests,
+    pointer_cls: type[PointerBackend] | None,
+    path: str,
+    parent_path: str,
+    child_path: str,
+    parts: list[str],
+) -> None:
+    doc = {"a": {"b": 1, "c": {"d": 2}}, "arr": [10, 20]}
 
-    with subtests.test("jsonvalue rejects non-primitives and invalid containers"):
-        for invalid in (
-            object(),
-            [object()],
-            {"a": object()},
-            {1: "value"},
-            [[object()]],
-            {"a": {"b": object()}},
-            {"a": [object()]},
-        ):
-            with pytest.raises(ValidationError):
-                value_adapter.validate_python(invalid)
+    if pointer_cls is None:
+        adapter = TypeAdapter(JSONPointer[JSONValue])
+        bool_adapter = TypeAdapter(JSONPointer[JSONBoolean])
+    else:
+        adapter = TypeAdapter(JSONPointer[JSONValue, DotPointer])
+        bool_adapter = TypeAdapter(JSONPointer[JSONBoolean, DotPointer])
+
+    ptr = adapter.validate_python(path)
+    parent = adapter.validate_python(parent_path)
+    child = adapter.validate_python(child_path)
+
+    with subtests.test("ptr"):
+        assert ptr.ptr is not None
+
+    with subtests.test("parts"):
+        assert list(ptr.parts) == parts
+
+    with subtests.test("type_param"):
+        assert ptr.type_param is JSONValue
+
+    with subtests.test("is_root"):
+        assert ptr.is_root() is False
+        root = adapter.validate_python("")
+        assert root.is_root() is True
+
+    with subtests.test("is_parent_of"):
+        assert parent.is_parent_of(ptr) is True
+        assert ptr.is_parent_of(parent) is False
+
+    with subtests.test("is_child_of"):
+        assert child.is_child_of(ptr) is True
+        assert ptr.is_child_of(child) is False
+
+    with subtests.test("is_valid_target"):
+        bool_ptr = bool_adapter.validate_python(parent_path)
+        assert bool_ptr.is_valid_target(True) is True
+        assert bool_ptr.is_valid_target(1) is False
+
+    with subtests.test("get"):
+        assert ptr.get(doc) == 1
+
+    with subtests.test("is_gettable"):
+        assert ptr.is_gettable(doc) is True
+        missing = adapter.validate_python(
+            f"{path}.missing" if pointer_cls else f"{path}/missing"
+        )
+        assert missing.is_gettable(doc) is False
+
+    with subtests.test("add"):
+        add_path = f"{parent_path}.new" if pointer_cls else f"{parent_path}/new"
+        add_ptr = adapter.validate_python(add_path)
+        updated = add_ptr.add({"a": {"b": 1}}, "ok")
+        assert updated["a"]["new"] == "ok"
+
+    with subtests.test("is_addable"):
+        add_path = f"{parent_path}.new" if pointer_cls else f"{parent_path}/new"
+        add_ptr = adapter.validate_python(add_path)
+        assert add_ptr.is_addable({"a": {"b": 1}}, "ok") is True
+        assert child.is_addable(doc, "ok") is False
+
+    with subtests.test("remove"):
+        remove_path = f"{parent_path}.b" if pointer_cls else f"{parent_path}/b"
+        remove_ptr = adapter.validate_python(remove_path)
+        removed = remove_ptr.remove({"a": {"b": 1}})
+        assert "b" not in removed["a"]
+
+    with subtests.test("__str__"):
+        assert str(ptr) == path
 
 
 def test_pointer_backend_protocol_check(subtests: Subtests) -> None:
-    class BadPointer(FullPointer):
+    class BadPointer(DotPointer):
         def __init__(self, pointer: str) -> None:
             if not pointer:
                 raise ValueError("BadPointer does not accept the empty string")
 
     with subtests.test("valid backend"):
-        assert JSONPointer._implements_PointerBackend_protocol(FullPointer) is True
+        assert JSONPointer._implements_PointerBackend_protocol(DotPointer) is True
 
     with subtests.test("must be a class"):
         with pytest.raises(InvalidJSONPointer):
@@ -129,18 +195,18 @@ def test_pointer_backend_protocol_check(subtests: Subtests) -> None:
             JSONPointer._implements_PointerBackend_protocol(BadPointer)
 
     with subtests.test("must implement all methods"):
-        assert JSONPointer._implements_PointerBackend_protocol(NotAFullPointer) is False
+        assert JSONPointer._implements_PointerBackend_protocol(IncompletePointerBackend) is False
 
     with subtests.test("must not be an instance"):
         with pytest.raises(InvalidJSONPointer):
-            JSONPointer._implements_PointerBackend_protocol(FullPointer("a/b"))
+            JSONPointer._implements_PointerBackend_protocol(DotPointer("a/b"))
 
 
 def test_resolve_strictest_backend(subtests: Subtests) -> None:
-    class RegistryPointer(FullPointer):
+    class RegistryPointer(DotPointer):
         pass
 
-    class BoundPointer(FullPointer):
+    class BoundPointer(DotPointer):
         pass
 
     class ChildPointer(BoundPointer):

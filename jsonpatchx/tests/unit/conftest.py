@@ -4,7 +4,7 @@ from typing import Any, Self
 from jsonpatchx.types import JSONValue
 
 
-class NotAFullPointer:
+class IncompletePointerBackend:
     def __init__(self, pointer: str) -> None:
         self._parts = [] if pointer == "" else pointer.split(".")
 
@@ -23,7 +23,7 @@ class NotAFullPointer:
         return hash(tuple(self._parts))
 
 
-class FullPointer(NotAFullPointer):
+class DotPointer(IncompletePointerBackend):
     def resolve(self, doc: JSONValue) -> Any:
         cur: Any = doc
         for token in self._parts:
