@@ -91,10 +91,10 @@ def test_jsonvalue_strict_types(subtests: Subtests) -> None:
 
 
 @pytest.mark.parametrize(
-    ("pointer_cls", "path", "parent_path", "child_path", "parts"),
+    ("pointer_cls", "path", "parent_path", "child_path", "missing_path", "add_path", "parts"),
     [
-        (None, "/a/b", "/a", "/a/b/c", ["a", "b"]),
-        (DotPointer, "a.b", "a", "a.b.c", ["a", "b"]),
+        (None, "/a/b", "/a", "/a/b/c", "/a/b/missing", "/a/new", ["a", "b"]),
+        (DotPointer, "a.b", "a", "a.b.c", "a.b.missing", "a.new", ["a", "b"]),
     ],
 )
 def test_jsonpointer_public_methods(
@@ -103,6 +103,8 @@ def test_jsonpointer_public_methods(
     path: str,
     parent_path: str,
     child_path: str,
+    missing_path: str,
+    add_path: str,
     parts: list[str],
 ) -> None:
     doc = {"a": {"b": 1, "c": {"d": 2}}, "arr": [10, 20]}
@@ -150,26 +152,21 @@ def test_jsonpointer_public_methods(
 
     with subtests.test("is_gettable"):
         assert ptr.is_gettable(doc) is True
-        missing = adapter.validate_python(
-            f"{path}.missing" if pointer_cls else f"{path}/missing"
-        )
+        missing = adapter.validate_python(missing_path)
         assert missing.is_gettable(doc) is False
 
     with subtests.test("add"):
-        add_path = f"{parent_path}.new" if pointer_cls else f"{parent_path}/new"
         add_ptr = adapter.validate_python(add_path)
         updated = add_ptr.add({"a": {"b": 1}}, "ok")
         assert updated["a"]["new"] == "ok"
 
     with subtests.test("is_addable"):
-        add_path = f"{parent_path}.new" if pointer_cls else f"{parent_path}/new"
         add_ptr = adapter.validate_python(add_path)
         assert add_ptr.is_addable({"a": {"b": 1}}, "ok") is True
         assert child.is_addable(doc, "ok") is False
 
     with subtests.test("remove"):
-        remove_path = f"{parent_path}.b" if pointer_cls else f"{parent_path}/b"
-        remove_ptr = adapter.validate_python(remove_path)
+        remove_ptr = adapter.validate_python(path)
         removed = remove_ptr.remove({"a": {"b": 1}})
         assert "b" not in removed["a"]
 
