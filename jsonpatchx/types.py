@@ -164,7 +164,7 @@ def _type_adapter_for[T](expected: TypeForm[T]) -> TypeAdapter[T]:
             return TypeAdapter(expected)
     except Exception as e:
         raise InvalidJSONPointer(
-            f"invalid type parameter for JSON Pointer: {expected!r}; did you implement __get_pydantic_core_schema__?"
+            f"Invalid type parameter for JSON Pointer: {expected!r}. Cannot create TypeAdapter. Did you implement __get_pydantic_core_schema__?"
         ) from e
 
 

@@ -80,6 +80,38 @@ def test_json_container_strict_types(subtests: Subtests) -> None:
                 container_adapter.validate_python(invalid)
 
 
+def test_jsonvalue_strict_types(subtests: Subtests) -> None:
+    value_adapter = TypeAdapter(JSONValue)
+
+    with subtests.test("jsonvalue accepts primitives"):
+        for value in (True, 1, 1.5, "ok", None):
+            value_adapter.validate_python(value)
+        for invalid in (object(), b"bytes"):
+            with pytest.raises(ValidationError):
+                value_adapter.validate_python(invalid)
+
+    with subtests.test("jsonvalue accepts containers of primitives"):
+        value_adapter.validate_python([1, "two", None, False])
+        value_adapter.validate_python({"a": 1, "b": "two", "c": None, "d": False})
+
+    with subtests.test("jsonvalue accepts containers of containers of primitives"):
+        value_adapter.validate_python([[1, 2], ["a", {"b": True}], [None]])
+        value_adapter.validate_python({"a": {"b": 1, "c": None}, "d": [True, False]})
+
+    with subtests.test("jsonvalue rejects non-primitives and invalid containers"):
+        for invalid in (
+            object(),
+            [object()],
+            {"a": object()},
+            {1: "value"},
+            [[object()]],
+            {"a": {"b": object()}},
+            {"a": [object()]},
+        ):
+            with pytest.raises(ValidationError):
+                value_adapter.validate_python(invalid)
+
+
 def test_jsonvalue_accepts_json_types() -> None:
     class ValueOp(OperationSchema):
         op: Literal["value"] = "value"
