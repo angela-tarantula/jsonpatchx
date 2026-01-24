@@ -285,6 +285,7 @@ _Nothing = object()
 
 T_co = TypeVar("T_co", bound=JSONValue, covariant=True)
 P_co = TypeVar("P_co", bound=PointerBackend, covariant=True, default=PointerBackend)
+# NOTE: JSONPointer does not currently enforce that T_co is bound to JSONValue. I can't think of a way to do it.
 
 
 @final
