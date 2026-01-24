@@ -1,10 +1,9 @@
 from __future__ import annotations
 
 import re
-from abc import abstractmethod
 from collections.abc import Iterable, Sequence
 from functools import lru_cache, partial
-from inspect import isclass
+from inspect import isabstract, isclass
 from typing import (
     Annotated,
     Any,
@@ -203,7 +202,6 @@ class PointerBackend(Protocol):
           backend failures into library patch errors for a consistent user experience.
     """
 
-    # NOTE: with init defined, this protocol is counter-intuitively instantiable without the @abstractmethod later on __hash__
     def __init__(self, pointer: str) -> None:
         """
         Parse and construct an RFC 6901 JSON Pointer.
@@ -246,7 +244,6 @@ class PointerBackend(Protocol):
         ...
 
     @override
-    @abstractmethod  # NOTE: if mutable, unhashable backends are compelling, can loosen this requirement
     def __hash__(self) -> int: ...
 
 
@@ -545,15 +542,15 @@ class JSONPointer(str, Generic[T_co, P_co]):
         pointer_cls: type,
     ) -> TypeGuard[type[P_co]]:
         """Verifies a ``PointerBackend`` implementation using the empty string as a probe."""
-        try:
-            probe = _cached_json_pointer(path="", pointer_cls=pointer_cls)
-        except TypeError as e:
+        if not isclass(pointer_cls) or isabstract(pointer_cls):
             raise InvalidJSONPointer(
-                f"the pointer class {pointer_cls!r} must be hashable"
-            ) from e
+                f"the pointer class {pointer_cls!r} must be a concrete class"
+            )
+        try:
+            probe = _cached_json_pointer(path="", pointer_cls=pointer_cls)  # type: ignore[arg-type]
         except Exception as e:
             raise InvalidJSONPointer(
-                f"invalid pointer class: {pointer_cls!r}, fails to convert  to pointer"
+                f'invalid pointer class: {pointer_cls!r}, fails to convert "" to pointer'
             ) from e
 
         return isinstance(probe, PointerBackend)

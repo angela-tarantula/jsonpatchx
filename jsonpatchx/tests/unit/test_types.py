@@ -112,6 +112,56 @@ def test_jsonvalue_strict_types(subtests: Subtests) -> None:
                 value_adapter.validate_python(invalid)
 
 
+def test_pointer_backend_protocol_check(subtests: Subtests) -> None:
+    class NotAFullPointer:
+        def __init__(self, pointer: str) -> None:
+            self._parts = [] if pointer == "" else pointer.split(".")
+
+        @property
+        def parts(self) -> list[str]:
+            return self._parts
+
+        @classmethod
+        def from_parts(cls, parts: Iterable[Any]) -> GoodPointer:
+            return cls(".".join(str(p) for p in parts))
+
+        def __str__(self) -> str:
+            return ".".join(self._parts)
+
+        def __hash__(self) -> int:
+            return hash(tuple(self._parts))
+
+    class GoodPointer(NotAFullPointer):
+        def resolve(self, doc: JSONValue) -> Any:
+            cur: Any = doc
+            for token in self._parts:
+                cur = cur[token]
+            return cur
+
+    class BadPointer(GoodPointer):
+        def __init__(self, pointer: str) -> None:
+            if not pointer:
+                raise ValueError("BadPointer does not accept the empty string")
+
+    with subtests.test("valid backend"):
+        assert JSONPointer._implements_PointerBackend_protocol(GoodPointer) is True
+
+    with subtests.test("must be a class"):
+        with pytest.raises(InvalidJSONPointer):
+            JSONPointer._implements_PointerBackend_protocol(object())
+
+    with subtests.test("require empty string"):
+        with pytest.raises(InvalidJSONPointer):
+            JSONPointer._implements_PointerBackend_protocol(BadPointer)
+
+    with subtests.test("must implement all methods"):
+        assert JSONPointer._implements_PointerBackend_protocol(NotAFullPointer) is False
+
+    with subtests.test("must not be an instance"):
+        with pytest.raises(InvalidJSONPointer):
+            JSONPointer._implements_PointerBackend_protocol(GoodPointer("a/b"))
+
+
 def test_jsonvalue_accepts_json_types() -> None:
     class ValueOp(OperationSchema):
         op: Literal["value"] = "value"
