@@ -162,6 +162,71 @@ def test_pointer_backend_protocol_check(subtests: Subtests) -> None:
             JSONPointer._implements_PointerBackend_protocol(GoodPointer("a/b"))
 
 
+def test_resolve_strictest_backend(subtests: Subtests) -> None:
+    class BasePointer(PointerBackend):
+        def __init__(self, pointer: str) -> None:
+            self._parts = [] if pointer == "" else pointer.split(".")
+
+        @property
+        def parts(self) -> list[str]:
+            return self._parts
+
+        @classmethod
+        def from_parts(cls, parts: Iterable[Any]) -> "BasePointer":
+            return cls(".".join(str(p) for p in parts))
+
+        def resolve(self, doc: JSONValue) -> Any:
+            cur: Any = doc
+            for token in self._parts:
+                cur = cur[token]
+            return cur
+
+        def __str__(self) -> str:
+            return ".".join(self._parts)
+
+        def __hash__(self) -> int:
+            return hash(tuple(self._parts))
+
+    class RegistryPointer(BasePointer):
+        pass
+
+    class BoundPointer(BasePointer):
+        pass
+
+    class ChildPointer(BoundPointer):
+        pass
+
+    with subtests.test("no backends"):
+        assert JSONPointer._resolve_strictest_backend(None, None) is PointerBackend
+
+    with subtests.test("registry only"):
+        assert (
+            JSONPointer._resolve_strictest_backend(RegistryPointer, None)
+            is RegistryPointer
+        )
+
+    with subtests.test("bound only"):
+        assert (
+            JSONPointer._resolve_strictest_backend(None, BoundPointer) is BoundPointer
+        )
+
+    with subtests.test("same backend"):
+        assert (
+            JSONPointer._resolve_strictest_backend(BoundPointer, BoundPointer)
+            is BoundPointer
+        )
+
+    with subtests.test("registry is subclass of bound"):
+        assert (
+            JSONPointer._resolve_strictest_backend(ChildPointer, BoundPointer)
+            is ChildPointer
+        )
+
+    with subtests.test("mismatched backends"):
+        with pytest.raises(InvalidJSONPointer):
+            JSONPointer._resolve_strictest_backend(RegistryPointer, BoundPointer)
+
+
 def test_jsonvalue_accepts_json_types() -> None:
     class ValueOp(OperationSchema):
         op: Literal["value"] = "value"
