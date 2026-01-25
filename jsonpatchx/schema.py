@@ -61,6 +61,7 @@ class OperationSchema(BaseModel, ABC):
         strict=True,
         extra="forbid",
         revalidate_instances="always",  # necessary for converting custom PointerBackends
+        # NOTE: validators may run multiple times; guide users to write idempotent validators.
     )
 
     _op_literals: ClassVar[tuple[str, ...]]

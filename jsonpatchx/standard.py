@@ -165,19 +165,6 @@ class JsonPatch(Sequence[OperationSchema]):
         instance._ops = registry.parse_json_patch(text)
         return instance
 
-    @classmethod
-    def _from_operations(
-        cls,
-        ops: list[OperationSchema],
-        *,
-        registry: type[AnyRegistry] | None = None,
-    ) -> Self:
-        instance = cls.__new__(cls)
-        registry = registry or StandardRegistry
-        instance._registry = registry
-        instance._ops = ops
-        return instance
-
     @property
     def ops(self) -> Sequence[OperationSchema]:
         """The sequence of operations."""
@@ -250,7 +237,7 @@ class JsonPatch(Sequence[OperationSchema]):
             return NotImplemented
         if self._registry is not other._registry:
             raise TypeError("Cannot add JsonPatch instances with different registries")
-        return self._from_operations(self._ops + other._ops, registry=self._registry)
+        return self.__class__(self._ops + other._ops, registry=self._registry)
 
 
 def apply_patch(
