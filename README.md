@@ -264,7 +264,7 @@ Path parsing is pluggable. The default backend follows [RFC 6901](https://datatr
 
 Custom backends let you implement:
 
-- **Alternative Syntaxes:** `users.0.name` instead of `/users/0/name`, or [relative pointers](https://json-schema.org/draft/2020-12/relative-json-pointer).
+- **Alternative Syntaxes:** dot-separated paths, [relative pointers](https://json-schema.org/draft/2020-12/relative-json-pointer), or [JSONPath](https://www.rfc-editor.org/rfc/rfc9535)-style selectors.
 
 - **Specialized Escaping:** Domain-specific key encoding/decoding.
 

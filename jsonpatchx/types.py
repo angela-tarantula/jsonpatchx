@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import re
+from abc import abstractmethod
 from collections.abc import Iterable, Sequence
 from functools import lru_cache, partial
 from inspect import isabstract, isclass
@@ -202,6 +203,7 @@ class PointerBackend(Protocol):
           backend failures into library patch errors for a consistent user experience.
     """
 
+    @abstractmethod
     def __init__(self, pointer: str) -> None:
         """
         Parse and construct an RFC 6901 JSON Pointer.
@@ -211,11 +213,13 @@ class PointerBackend(Protocol):
         ...
 
     @property
+    @abstractmethod
     def parts(self) -> Sequence[str]:
         """Unescaped RFC 6901 tokens. The root pointer has an empty sequence of parts."""
         ...
 
     @classmethod
+    @abstractmethod
     def from_parts(cls, parts: Iterable[Any]) -> Self:
         """
         Construct a pointer from unescaped tokens.
@@ -225,6 +229,7 @@ class PointerBackend(Protocol):
         """
         ...
 
+    @abstractmethod
     def resolve(self, doc: Any) -> Any:
         """
         Resolve the pointer against a document using backend-defined traversal semantics.
@@ -235,6 +240,7 @@ class PointerBackend(Protocol):
         ...
 
     @override
+    @abstractmethod
     def __str__(self) -> str:
         """
         Return the RFC 6901 string form (escaped tokens).
@@ -244,6 +250,7 @@ class PointerBackend(Protocol):
         ...
 
     @override
+    @abstractmethod
     def __hash__(self) -> int: ...
 
 
@@ -546,12 +553,18 @@ class JSONPointer(str, Generic[T_co, P_co]):
         pointer_cls: type,
     ) -> TypeGuard[type[P_co]]:
         """Verifies a ``PointerBackend`` implementation using the empty string as a probe."""
-        if not isclass(pointer_cls) or isabstract(pointer_cls):
+        if not isclass(pointer_cls):
             raise InvalidJSONPointer(
-                f"the pointer class {pointer_cls!r} must be a concrete class"
+                f"the pointer class {pointer_cls!r} must be a class"
+            )
+        if isabstract(pointer_cls):
+            raise InvalidJSONPointer(
+                f"the pointer class {pointer_cls!r} is abstract and must implement the PointerBackend protocol"
             )
         try:
             probe = _cached_json_pointer(path="", pointer_cls=pointer_cls)  # type: ignore[arg-type]
+        except InvalidJSONPointer:
+            raise
         except Exception as e:
             raise InvalidJSONPointer(
                 f'invalid pointer class: {pointer_cls!r}, fails to convert "" to pointer'

@@ -10,6 +10,7 @@ from jsonpatchx.tests.unit.conftest import (
     BadPointer,
     DotPointer,
     IncompletePointerBackend,
+    AnotherIncompletePointerBackend
 )
 from jsonpatchx.types import (
     JSONArray,
@@ -402,6 +403,8 @@ def test_jsonpointer_type_args_validation(subtests: Subtests) -> None:
             TypeAdapter(JSONPointer[JSONValue, BadPointer])
         with pytest.raises(InvalidJSONPointer):
             TypeAdapter(JSONPointer[JSONValue, IncompletePointerBackend])
+        with pytest.raises(InvalidJSONPointer):
+            TypeAdapter(JSONPointer[JSONValue, AnotherIncompletePointerBackend])
         with pytest.raises(InvalidJSONPointer):
             TypeAdapter(JSONPointer[JSONValue, DotPointer("")])
 
