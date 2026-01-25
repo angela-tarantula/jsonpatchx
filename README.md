@@ -324,11 +324,11 @@ request-body validation workaround.
 
 ---
 
-# Limitations
+## Limitations
 
-## JSONValue Type System
+### JSONValue Type System
 
-### Short version (you just want to plug‑and‑play)
+#### Short version (you just want to plug‑and‑play)
 
 Python’s type system treats `list`/`dict` as invariant, so it can’t accept that
 `JSONArray[JSONNumber]` is a `JSONValue`, even though it is valid JSON. This can
@@ -342,7 +342,7 @@ path: JSONPointer[JSONArray[JSONNumber]]  # type: ignore[type-var]
 
 This keeps runtime behavior correct while acknowledging a typing limitation.
 
-### Long version (why this happens)
+#### Long version (why this happens)
 
 `JSONValue` is defined recursively:
 
@@ -369,7 +369,7 @@ incorrect API contract and would force casts or copies everywhere.
 on pointer annotations that need narrower array/object types. If anyone is interesting
 in mentoring me to submit a PEP to improve Python's type system, please reach out!
 
-## FastAPI Validation Context
+### FastAPI Validation Context
 
 FastAPI does not yet natively pass `validation_context` from
 the request body into Pydantic models, which is required to validate
@@ -403,13 +403,9 @@ See https://github.com/fastapi/fastapi/discussions/10864.
 
 ---
 
-# Contributing
+## Contributing
 
-Thank you for your interest in contributing!
-
-## Getting Started
-
-To get a local copy up and running follow these simple steps.
+Thank you for your interest in contributing! To get a local copy up and running follow these simple steps.
 
 ### Prerequisites
 
