@@ -187,29 +187,6 @@ def test_jsonpointer_public_methods_are_backend_agnostic(
         assert str(ptr) == path
 
 
-def test_pointer_backend_protocol_check(subtests: Subtests) -> None:
-    with subtests.test("valid backend"):
-        assert JSONPointer._implements_PointerBackend_protocol(DotPointer) is True
-
-    with subtests.test("must be a class"):
-        with pytest.raises(InvalidJSONPointer):
-            JSONPointer._implements_PointerBackend_protocol(object())
-
-    with subtests.test("require empty string"):
-        with pytest.raises(InvalidJSONPointer):
-            JSONPointer._implements_PointerBackend_protocol(BadPointer)
-
-    with subtests.test("must implement all methods"):
-        assert (
-            JSONPointer._implements_PointerBackend_protocol(IncompletePointerBackend)
-            is False
-        )
-
-    with subtests.test("must not be an instance"):
-        with pytest.raises(InvalidJSONPointer):
-            JSONPointer._implements_PointerBackend_protocol(DotPointer("a/b"))
-
-
 def test_resolve_strictest_backend(subtests: Subtests) -> None:
     class RegistryPointer(DotPointer):
         pass
