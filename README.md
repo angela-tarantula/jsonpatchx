@@ -1,4 +1,5 @@
 # json-patch-x
+
 [![CI](https://github.com/angela-tarantula/json-patch-x/actions/workflows/python-app.yml/badge.svg?branch=main)](https://github.com/marketplace/actions/super-linter)
 
 A typed, schema-driven patching framework for Python. It implements JSON Patch
@@ -9,14 +10,14 @@ extensible **language of intent**, featuring native FastAPI and OpenAPI support.
 
 **json-patch-x treats `PATCH` as a dialogue, not just a diff.**
 
-In modern distributed systems, a partial update is more than a document
-transformation: it’s a transition between states. Instead of describing updates
+In modern distributed systems, a partial update is more than just a document
+edit: it’s a transition between system states. Instead of describing updates
 only by their final effect, json-patch-x models each operation as a **typed,
-validated schema** with explicit semantics.
+validated schema** with explicit, checkable semantics.
 
 By shifting the focus from the *outcome* to the *operation*, json-patch-x allows
 systems to reason about how data is allowed to evolve, ensuring that every
-mutation is precise, explainable, and safe.
+mutation is specific, explainable, and safe.
 
 ---
 
@@ -34,11 +35,12 @@ mutation is precise, explainable, and safe.
 
 ## Why this exists
 
-Standard JSON Patch implementations are intentionally minimal. They apply
-operations mechanically, ignoring the underlying type contracts of your domain.
-This simplicity is a liability in systems that require:
+Standard JSON Patch implementations are intentionally minimal: they apply operations mechanically and largely ignore the underlying type contracts of your domain. This simplicity is a liability in systems that require:
+
 - **Strict Governance:** When `PATCH` is a public API contract that must protect complex typed models.
+
 - **Domain Semantics:** When you need to move beyond `add`/`remove` to custom operations like `toggle`, `increment`, or `replace_substring`.
+
 - **Automated Agency:** When patch operations are generated or reviewed by LLMs and automation, requiring validation at the operation boundary to prevent invalid mutations.
 
 json-patch-x bridges the gap between the raw flexibility of RFC 6902 and the
@@ -85,7 +87,7 @@ class ReplaceOp(OperationSchema):
 ### Typed JSON Pointers: The Contract Layer
 
 The most common failure in JSON Patch is a "Path Not Found" or a type mismatch
-at runtime. `JSONPointer[T]` solves this by enforcing **what** a path may point
+at runtime. `JSONPointer[T]` addresses this by enforcing **what** a path may point
 to, not just **where** it points.
 
 By binding a pointer to a type `T`, the operation gains a runtime contract.
@@ -104,17 +106,25 @@ class ToggleOp(OperationSchema):
 ```
 
 Why this matters for Architecture:
+
 - **Fail Fast:** Pointer resolution validates target types before mutation.
+
 - **Modular Code:** Operations can be composed of other Operations while preserving type contracts.
+
 - **Self-Documenting Code:** Your type hints tell other developers exactly what structure your patcher expects.
+
 - **Refinement over Time:** You can tighten pointer types in custom ops while keeping the engine unchanged.
 
 ### Supported Type Guards
 
 We provide a suite of helper types so you can reason about JSON rather than Python's types:
+
 - `JSONNumber` (`int` or `float`, but explicitly excludes `bool`)
+
 - `JSONString`, `JSONBoolean`, `JSONNull`
+
 - `JSONArray[T]`, `JSONObject[T]`
+
 - `JSONValue`
 
 ### Operation Registries
@@ -253,9 +263,13 @@ See [`examples/fastapi/README.md`](./examples/fastapi/README.md) for the FastAPI
 Path parsing is pluggable. The default backend follows [RFC 6901](https://datatracker.ietf.org/doc/html/rfc6901), but you can supply your own `PointerBackend` to change how pointers are interpreted.
 
 Custom backends let you implement:
+
 - **Alternative Syntaxes:** `users.0.name` instead of `/users/0/name`, or [relative pointers](https://json-schema.org/draft/2020-12/relative-json-pointer).
+
 - **Specialized Escaping:** Domain-specific key encoding/decoding.
+
 - **Contextual Resolution:** Resolving pointers against external state (e.g. database lookups).
+
 - **Path Materialization:** Creating missing segments during traversal instead of failing.
 
 ```py
