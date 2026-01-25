@@ -1,11 +1,16 @@
 from typing import Any
 
 import pytest
+from jsonpointer import JsonPointer as RFC6901JsonPointer
 from pydantic import TypeAdapter, ValidationError
 from pytest import Subtests
 
 from jsonpatchx.exceptions import InvalidJSONPointer, PatchConflictError
-from jsonpatchx.tests.unit.conftest import DotPointer, IncompletePointerBackend
+from jsonpatchx.tests.unit.conftest import (
+    BadPointer,
+    DotPointer,
+    IncompletePointerBackend,
+)
 from jsonpatchx.types import (
     JSONArray,
     JSONBoolean,
@@ -183,11 +188,6 @@ def test_jsonpointer_public_methods_are_backend_agnostic(
 
 
 def test_pointer_backend_protocol_check(subtests: Subtests) -> None:
-    class BadPointer(DotPointer):
-        def __init__(self, pointer: str) -> None:
-            if not pointer:
-                raise ValueError("BadPointer does not accept the empty string")
-
     with subtests.test("valid backend"):
         assert JSONPointer._implements_PointerBackend_protocol(DotPointer) is True
 
@@ -369,6 +369,10 @@ def test_jsonpointer_edge_cases(subtests: Subtests) -> None:
             adapter.validate_python("/arr/-").remove({"arr": [10]})
         with pytest.raises(PatchConflictError):
             adapter.validate_python("/arr/2").remove({"arr": [10, 20]})
+        with pytest.raises(PatchConflictError):
+            adapter.validate_python("/arr/-1").remove({"arr": [10, 20]})
+        with pytest.raises(PatchConflictError):
+            adapter.validate_python("/arr/nope").remove({"arr": [10, 20]})
 
     with subtests.test("container type errors"):
         ptr = adapter.validate_python("/a/b")
@@ -393,3 +397,38 @@ def test_jsonpointer_backend_reuse(subtests: Subtests) -> None:
 
     with subtests.test("reuses backend instance"):
         assert ptr2.ptr is ptr1.ptr
+
+
+def test_jsonpointer_type_args_validation(subtests: Subtests) -> None:
+    with subtests.test("invalid type param"):
+        with pytest.raises(InvalidJSONPointer):
+            TypeAdapter(JSONPointer[int()])
+
+    with subtests.test("not enough args"):
+        with pytest.raises(InvalidJSONPointer):
+            TypeAdapter(JSONPointer)
+
+    with subtests.test("too many args"):
+        with pytest.raises(TypeError):
+            TypeAdapter(JSONPointer[JSONValue, DotPointer, int])
+
+    with subtests.test("invalid backend"):
+        with pytest.raises(InvalidJSONPointer):
+            TypeAdapter(JSONPointer[JSONValue, object])
+        with pytest.raises(InvalidJSONPointer):
+            TypeAdapter(JSONPointer[JSONValue, object()])
+        with pytest.raises(InvalidJSONPointer):
+            TypeAdapter(JSONPointer[JSONValue, JSONValue])
+        with pytest.raises(InvalidJSONPointer):
+            TypeAdapter(JSONPointer[JSONValue, str])
+        with pytest.raises(InvalidJSONPointer):
+            TypeAdapter(JSONPointer[JSONValue, BadPointer])
+        with pytest.raises(InvalidJSONPointer):
+            TypeAdapter(JSONPointer[JSONValue, IncompletePointerBackend])
+        with pytest.raises(InvalidJSONPointer):
+            TypeAdapter(JSONPointer[JSONValue, DotPointer("")])
+
+    with subtests.test("valid backend"):
+        TypeAdapter(JSONPointer[JSONValue])  # default backend
+        TypeAdapter(JSONPointer[JSONValue, DotPointer])
+        TypeAdapter(JSONPointer[JSONValue, RFC6901JsonPointer])

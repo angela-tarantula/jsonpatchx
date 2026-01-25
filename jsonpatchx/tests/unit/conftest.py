@@ -29,3 +29,9 @@ class DotPointer(IncompletePointerBackend):
         for token in self._parts:
             cur = cur[token]
         return cur
+
+
+class BadPointer(DotPointer):
+    def __init__(self, pointer: str) -> None:
+        if not pointer:
+            raise ValueError("BadPointer does not accept the empty string")
