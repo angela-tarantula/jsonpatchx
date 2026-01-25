@@ -446,3 +446,17 @@ def test_jsonpointer_backend_cache_identity(subtests: Subtests) -> None:
         p1 = adapter.validate_python("a.b")
         p2 = adapter.validate_python("a.b")
         assert p1.ptr is p2.ptr
+
+
+def test_jsonpointer_covariance_validation(subtests: Subtests) -> None:
+    adapter_bool = TypeAdapter(JSONPointer[bool])
+    adapter_int = TypeAdapter(JSONPointer[int])
+
+    with subtests.test("narrow to wide passes"):
+        p_bool = adapter_bool.validate_python("/x")
+        assert adapter_int.validate_python(p_bool) == p_bool
+
+    with subtests.test("wide to narrow fails"):
+        p_int = adapter_int.validate_python("/x")
+        with pytest.raises(InvalidJSONPointer):
+            adapter_bool.validate_python(p_int)
