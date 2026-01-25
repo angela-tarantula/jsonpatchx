@@ -105,7 +105,7 @@ def test_jsonvalue_strict_types(subtests: Subtests) -> None:
         (DotPointer, "a.b", "a", "a.b.c", "a.b.missing", "a.new", ["a", "b"]),
     ],
 )
-def test_jsonpointer_public_methods(
+def test_jsonpointer_public_methods_are_backend_agnostic(
     subtests: Subtests,
     pointer_cls: type[PointerBackend] | None,
     path: str,
@@ -349,3 +349,38 @@ def test_jsonpointer_type_gating_methods(
     with subtests.test("remove"):
         removed = ptr.remove(doc.copy())
         assert valid_path.lstrip("/") not in removed
+
+
+def test_jsonpointer_edge_cases(subtests: Subtests) -> None:
+    adapter = TypeAdapter(JSONPointer[JSONValue])
+
+    with subtests.test("root semantics"):
+        root = adapter.validate_python("")
+        assert root.get({"a": 1}) == {"a": 1}
+        assert root.add({"a": 1}, {"b": 2}) == {"b": 2}
+        assert root.remove({"a": 1}) is None
+
+    with subtests.test("array index handling"):
+        item = adapter.validate_python("/arr/0")
+        assert item.get({"arr": [10, 20]}) == 10
+        appended = adapter.validate_python("/arr/-").add({"arr": [10]}, 30)
+        assert appended["arr"] == [10, 30]
+        with pytest.raises(PatchConflictError):
+            adapter.validate_python("/arr/-").remove({"arr": [10]})
+        with pytest.raises(PatchConflictError):
+            adapter.validate_python("/arr/2").remove({"arr": [10, 20]})
+
+    with subtests.test("container type errors"):
+        ptr = adapter.validate_python("/a/b")
+        with pytest.raises(PatchConflictError):
+            ptr.add({"a": 1}, "ok")
+        with pytest.raises(PatchConflictError):
+            ptr.remove({"a": 1})
+
+    with subtests.test("parent/child edge cases"):
+        parent = adapter.validate_python("/a")
+        child = adapter.validate_python("/a/b")
+        same = adapter.validate_python("/a")
+        assert parent.is_parent_of(child) is True
+        assert child.is_child_of(parent) is True
+        assert parent.is_parent_of(same) is False
