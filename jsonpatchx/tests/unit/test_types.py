@@ -432,3 +432,17 @@ def test_jsonpointer_type_args_validation(subtests: Subtests) -> None:
         TypeAdapter(JSONPointer[JSONValue])  # default backend
         TypeAdapter(JSONPointer[JSONValue, DotPointer])
         TypeAdapter(JSONPointer[JSONValue, RFC6901JsonPointer])
+
+
+def test_jsonpointer_backend_cache_identity(subtests: Subtests) -> None:
+    with subtests.test("default backend cache"):
+        adapter = TypeAdapter(JSONPointer[JSONValue])
+        p1 = adapter.validate_python("/a")
+        p2 = adapter.validate_python("/a")
+        assert p1.ptr is p2.ptr
+
+    with subtests.test("custom backend cache"):
+        adapter = TypeAdapter(JSONPointer[JSONValue, DotPointer])
+        p1 = adapter.validate_python("a.b")
+        p2 = adapter.validate_python("a.b")
+        assert p1.ptr is p2.ptr
