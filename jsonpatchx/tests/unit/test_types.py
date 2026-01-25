@@ -4,7 +4,7 @@ import pytest
 from pydantic import TypeAdapter, ValidationError
 from pytest import Subtests
 
-from jsonpatchx.exceptions import InvalidJSONPointer
+from jsonpatchx.exceptions import InvalidJSONPointer, PatchConflictError
 from jsonpatchx.tests.unit.conftest import DotPointer, IncompletePointerBackend
 from jsonpatchx.types import (
     JSONArray,
@@ -91,7 +91,15 @@ def test_jsonvalue_strict_types(subtests: Subtests) -> None:
 
 
 @pytest.mark.parametrize(
-    ("pointer_cls", "path", "parent_path", "child_path", "missing_path", "add_path", "parts"),
+    (
+        "pointer_cls",
+        "path",
+        "parent_path",
+        "child_path",
+        "missing_path",
+        "add_path",
+        "parts",
+    ),
     [
         (None, "/a/b", "/a", "/a/b/c", "/a/b/missing", "/a/new", ["a", "b"]),
         (DotPointer, "a.b", "a", "a.b.c", "a.b.missing", "a.new", ["a", "b"]),
@@ -192,7 +200,10 @@ def test_pointer_backend_protocol_check(subtests: Subtests) -> None:
             JSONPointer._implements_PointerBackend_protocol(BadPointer)
 
     with subtests.test("must implement all methods"):
-        assert JSONPointer._implements_PointerBackend_protocol(IncompletePointerBackend) is False
+        assert (
+            JSONPointer._implements_PointerBackend_protocol(IncompletePointerBackend)
+            is False
+        )
 
     with subtests.test("must not be an instance"):
         with pytest.raises(InvalidJSONPointer):
@@ -238,3 +249,101 @@ def test_resolve_strictest_backend(subtests: Subtests) -> None:
     with subtests.test("mismatched backends"):
         with pytest.raises(InvalidJSONPointer):
             JSONPointer._resolve_strictest_backend(RegistryPointer, BoundPointer)
+
+
+@pytest.mark.parametrize(
+    ("type_param", "valid_path", "valid_value", "wrong_values"),
+    [
+        (
+            JSONBoolean,
+            "/bool",
+            True,
+            [1, "ok", None, [1, 2], {"a": "b"}, [{"a": 1}, {"b": 2}]],
+        ),
+        (
+            JSONNumber,
+            "/num",
+            1,
+            [True, "ok", None, [1, 2], {"a": "b"}, [{"a": 1}, {"b": 2}]],
+        ),
+        (
+            JSONString,
+            "/str",
+            "ok",
+            [True, 1, None, [1, 2], {"a": "b"}, [{"a": 1}, {"b": 2}]],
+        ),
+        (
+            JSONNull,
+            "/null",
+            None,
+            [True, 1, "ok", [1, 2], {"a": "b"}, [{"a": 1}, {"b": 2}]],
+        ),
+        (
+            JSONArray[JSONNumber],
+            "/arr",
+            [1, 2],
+            [True, 1, "ok", None, {"a": "b"}, [{"a": 1}, {"b": 2}]],
+        ),
+        (
+            JSONObject[JSONString],
+            "/obj",
+            {"a": "b"},
+            [True, 1, "ok", None, [1, 2], [{"a": 1}, {"b": 2}]],
+        ),
+        (
+            JSONArray[JSONObject[JSONNumber]],
+            "/nested",
+            [{"a": 1}, {"b": 2}],
+            [True, 1, "ok", None, [1, 2], {"a": "b"}],
+        ),
+    ],
+)
+def test_jsonpointer_type_gating_methods(
+    subtests: Subtests,
+    type_param: Any,
+    valid_path: str,
+    valid_value: Any,
+    wrong_values: list[Any],
+) -> None:
+    # Shared document with mixed types; each case targets a specific path.
+    doc: JSONValue = {
+        "bool": True,
+        "num": 1,
+        "str": "ok",
+        "null": None,
+        "arr": [1, 2],
+        "obj": {"a": "b"},
+        "nested": [{"a": 1}, {"b": 2}],
+    }
+    adapter = TypeAdapter(JSONPointer[type_param])
+    ptr = adapter.validate_python(valid_path)
+
+    with subtests.test("get works"):
+        assert ptr.get(doc) == valid_value
+
+    with subtests.test("get rejects wrong-type targets"):
+        for key in doc.keys():
+            if f"/{key}" == valid_path:
+                continue
+            # Typed pointer parsing doesn't validate against the document until get().
+            other_ptr = adapter.validate_python(f"/{key}")
+            with pytest.raises(PatchConflictError):
+                other_ptr.get(doc)
+
+    with subtests.test("is_valid_target"):
+        assert ptr.is_valid_target(valid_value) is True
+        for v in wrong_values:
+            assert ptr.is_valid_target(v) is False
+
+    with subtests.test("add / is_addable"):
+        assert ptr.is_addable(doc, valid_value) is True
+        updated = ptr.add(doc.copy(), valid_value)
+        assert updated[valid_path.lstrip("/")] == valid_value
+        for v in wrong_values:
+            assert ptr.is_addable(doc, v) is False
+            with pytest.raises(PatchConflictError):
+                ptr.add(doc.copy(), v)
+
+    with subtests.test("remove"):
+        removed = ptr.remove(doc.copy())
+        assert valid_path.lstrip("/") not in removed
