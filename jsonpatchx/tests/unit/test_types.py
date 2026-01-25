@@ -453,7 +453,7 @@ def test_jsonpointer_covariance_wide_to_narrow(subtests: Subtests) -> None:
             adapter_bool.validate_python(p_int)
 
     # It is currently only possible to enforce covariance for classes, not all TypeForms.
-    # Hopefully in the future Pydantic can provide support for this.
+    # Hopefully in the future Pydantic can provide support for checking if a TypeForm is a subtype of another.
 
     with subtests.test("jsonvalue -> bool should fail (xfail: currently there's no way to enforce covariance for TypeForms that aren't classes)"):
         try:
