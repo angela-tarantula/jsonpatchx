@@ -318,10 +318,11 @@ def test_jsonpointer_type_gating_methods(
     adapter = TypeAdapter(JSONPointer[type_param])
     ptr = adapter.validate_python(valid_path)
 
-    with subtests.test("get works"):
+    with subtests.test("get / is_gettable"):
         assert ptr.get(doc) == valid_value
+        assert ptr.is_gettable(doc) is True
 
-    with subtests.test("get rejects wrong-type targets"):
+    with subtests.test("get / is_gettable rejects wrong-type targets"):
         for key in doc.keys():
             if f"/{key}" == valid_path:
                 continue
@@ -329,6 +330,7 @@ def test_jsonpointer_type_gating_methods(
             other_ptr = adapter.validate_python(f"/{key}")
             with pytest.raises(PatchConflictError):
                 other_ptr.get(doc)
+            assert other_ptr.is_gettable(doc) is False
 
     with subtests.test("is_valid_target"):
         assert ptr.is_valid_target(valid_value) is True
