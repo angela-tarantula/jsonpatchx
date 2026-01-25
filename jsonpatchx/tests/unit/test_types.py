@@ -384,3 +384,12 @@ def test_jsonpointer_edge_cases(subtests: Subtests) -> None:
         assert parent.is_parent_of(child) is True
         assert child.is_child_of(parent) is True
         assert parent.is_parent_of(same) is False
+
+
+def test_jsonpointer_backend_reuse(subtests: Subtests) -> None:
+    adapter = TypeAdapter(JSONPointer[JSONValue, DotPointer])
+    ptr1 = adapter.validate_python("a.b")
+    ptr2 = adapter.validate_python(ptr1)
+
+    with subtests.test("reuses backend instance"):
+        assert ptr2.ptr is ptr1.ptr
