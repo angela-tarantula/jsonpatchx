@@ -68,6 +68,8 @@ class _RegistryBoundPatchRoot(RootModel[Any]):
     @classmethod
     @override
     def model_validate(cls, obj: Any, **kwargs: Any) -> Self:
+        # Assumption: callers who do provide overriding context know what they're doing
+        #             (or else the PointerBackend context injection silently doesn't happen)
         if isinstance(cls.__registry__, PydanticUndefinedType):
             raise NotImplementedError(f"Missing registry in {cls!r}")
         if "context" not in kwargs:
@@ -87,7 +89,12 @@ class _RegistryBoundPatchRoot(RootModel[Any]):
         #             (or else the PointerBackend context injection silently doesn't happen)
         if isinstance(cls.__registry__, PydanticUndefinedType):
             raise NotImplementedError(f"Missing registry in {cls!r}")
-        kwargs.setdefault("context", cls.__registry__._ctx)
+        if "context" not in kwargs:
+            kwargs["context"] = cls.__registry__._ctx
+        elif not isinstance(kwargs["context"], dict):
+            raise NotImplementedError("Context must be dict")
+        else:
+            kwargs["context"].update(cls.__registry__._ctx)
         return super().model_validate_json(json_data, **kwargs)
 
 
