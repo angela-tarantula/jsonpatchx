@@ -276,7 +276,10 @@ def _cached_json_pointer[P](path: str, *, pointer_cls: Callable[..., P]) -> P:
 
 
 _POINTER_BACKEND_CTX_KEY: Final = "jsonpatch:pointer_backend"
-_DEFAULT_POINTER_CLS: Final = JsonPointer  # pure-Python default
+
+
+class _DEFAULT_POINTER_CLS(JsonPointer):  # type: ignore[misc]
+    pass  # pure-Python default
 
 
 _Nothing = object()

@@ -16,7 +16,7 @@ from jsonpatchx.schema import OperationSchema
 from jsonpatchx.types import JSONBoolean, JSONPointer, JSONValue, PointerBackend
 
 
-def test_invalid_operation_schema(subtests: Subtests) -> None:
+def test_invalid_operation_schema_class(subtests: Subtests) -> None:
     with subtests.test("OperationSchema requires op field"):
         with pytest.raises(InvalidOperationDefinition):
 
