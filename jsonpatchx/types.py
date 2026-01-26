@@ -210,7 +210,7 @@ class PointerBackend(Protocol):
 
     @property
     @abstractmethod
-    def parts(self) -> Sequence[str]:
+    def parts(self) -> Sequence[Any]:
         """Unescaped RFC 6901 tokens. The root pointer has an empty sequence of parts."""
         ...
 
@@ -383,7 +383,7 @@ class JSONPointer(str, Generic[T_co, P_co]):
         return self._ptr
 
     @property
-    def parts(self) -> Sequence[str]:
+    def parts(self) -> Sequence[Any]:
         """A sequence of RFC6901-unescaped pointer components."""
         return self._ptr.parts
 
