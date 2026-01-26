@@ -7,10 +7,10 @@ from pytest import Subtests
 
 from jsonpatchx.exceptions import InvalidJSONPointer, PatchConflictError
 from jsonpatchx.tests.unit.conftest import (
+    AnotherIncompletePointerBackend,
     BadPointer,
     DotPointer,
     IncompletePointerBackend,
-    AnotherIncompletePointerBackend
 )
 from jsonpatchx.types import (
     JSONArray,

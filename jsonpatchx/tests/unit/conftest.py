@@ -6,6 +6,7 @@ from jsonpatchx.types import JSONValue, PointerBackend
 
 class IncompletePointerBackend:
     """A PointerBackend missing required methods."""
+
     def __init__(self, pointer: str) -> None:
         self._parts = [] if pointer == "" else pointer.split(".")
 
@@ -34,6 +35,7 @@ class DotPointer(IncompletePointerBackend):
 
 class BadPointer(DotPointer):
     """A PointerBackend that refuses the empty string."""
+
     def __init__(self, pointer: str) -> None:
         if not pointer:
             raise ValueError("BadPointer does not accept the empty string")
@@ -41,6 +43,7 @@ class BadPointer(DotPointer):
 
 class AnotherIncompletePointerBackend(PointerBackend):
     """A PointerBackend that does not implement all abstract methods."""
+
     def __init__(self, pointer: str) -> None:
         self._parts = [] if pointer == "" else pointer.split(".")
 
