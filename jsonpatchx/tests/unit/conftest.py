@@ -33,14 +33,6 @@ class DotPointer(IncompletePointerBackend):
         return cur
 
 
-class BadPointer(DotPointer):
-    """A PointerBackend that refuses the empty string."""
-
-    def __init__(self, pointer: str) -> None:
-        if not pointer:
-            raise ValueError("BadPointer does not accept the empty string")
-
-
 class AnotherIncompletePointerBackend(PointerBackend):
     """A PointerBackend that does not implement all abstract methods."""
 

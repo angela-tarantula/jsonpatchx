@@ -4,7 +4,7 @@ import re
 from abc import abstractmethod
 from collections.abc import Iterable, Sequence
 from functools import lru_cache, partial
-from inspect import isabstract, isclass
+from inspect import isclass
 from typing import (
     Annotated,
     Any,
@@ -205,11 +205,7 @@ class PointerBackend(Protocol):
 
     @abstractmethod
     def __init__(self, pointer: str) -> None:
-        """
-        Parse and construct an RFC 6901 JSON Pointer.
-
-        The empty string ``""`` MUST be accepted and represents the root pointer.
-        """
+        """Parse and construct an RFC 6901 JSON Pointer."""
         ...
 
     @property
@@ -479,6 +475,10 @@ class JSONPointer(str, Generic[T_co, P_co]):
                 else _DEFAULT_POINTER_CLS
             )
             obj._ptr = _cached_json_pointer(path, pointer_cls=pointer_cls)
+            if not isinstance(obj._ptr, PointerBackend):
+                raise InvalidJSONPointer(
+                    f"pointer_cls {pointer_cls!r} instances must implement the PointerBackend Protocol"
+                )
 
         return obj
 
@@ -528,15 +528,10 @@ class JSONPointer(str, Generic[T_co, P_co]):
             bound_backend = None
 
         if not cls._is_valid_typeform(type_param):
+            # Catch invalid TypeForms eagerly
             raise InvalidJSONPointer(
                 f"JSONPointer type parameter {type_param!r} must be a valid TypeForm"
-            )
-        if bound_backend is not None and not cls._implements_PointerBackend_protocol(
-            bound_backend
-        ):
-            raise InvalidJSONPointer(
-                f"JSONPointer backend parameter {bound_backend!r} instances must implement the PointerBackend Protocol"
-            )
+            )  # Can't catch invalid PointerBackend until a path is provided because issubclass(bound_backend, PointerBackend) won't be able to check for non-method members like the 'parts' property (https://github.com/python/mypy/blob/0c6340170b2d0a9eb2e55eacd06709e8fd3d92b0/mypy/messages.py#L2052), so need to use isinstance check later
         return type_param, bound_backend
 
     @classmethod
@@ -547,30 +542,6 @@ class JSONPointer(str, Generic[T_co, P_co]):
         except Exception:
             return False
         return True
-
-    @staticmethod
-    def _implements_PointerBackend_protocol(
-        pointer_cls: type,
-    ) -> TypeGuard[type[P_co]]:
-        """Verifies a ``PointerBackend`` implementation using the empty string as a probe."""
-        if not isclass(pointer_cls):
-            raise InvalidJSONPointer(
-                f"the pointer class {pointer_cls!r} must be a class"
-            )
-        if isabstract(pointer_cls):
-            raise InvalidJSONPointer(
-                f"the pointer class {pointer_cls!r} is abstract and must implement the PointerBackend protocol"
-            )
-        try:
-            probe = _cached_json_pointer(path="", pointer_cls=pointer_cls)  # type: ignore[arg-type]
-        except InvalidJSONPointer:
-            raise
-        except Exception as e:
-            raise InvalidJSONPointer(
-                f'invalid pointer class: {pointer_cls!r}, fails to convert "" to pointer'
-            ) from e
-
-        return isinstance(probe, PointerBackend)
 
     @staticmethod
     def _resolve_strictest_backend(
@@ -812,6 +783,5 @@ class JSONPointer(str, Generic[T_co, P_co]):
         return f"{self.__class__.__name__}[{type_repr}]({str(self)!r})"
 
 
-assert JSONPointer._implements_PointerBackend_protocol(_DEFAULT_POINTER_CLS), (
-    "upstream regression: jsonpointer.JsonPointer no longer implements PointerBackend protocol"
-)
+_this_should_not_raise_a_mypy_error: PointerBackend = _DEFAULT_POINTER_CLS("")
+# sanity check: mypy should be able to verify that _DEFAULT_POINTER_CLS implements PointerBackend

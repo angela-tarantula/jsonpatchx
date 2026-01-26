@@ -8,7 +8,6 @@ from pytest import Subtests
 from jsonpatchx.exceptions import InvalidJSONPointer, PatchConflictError
 from jsonpatchx.tests.unit.conftest import (
     AnotherIncompletePointerBackend,
-    BadPointer,
     DotPointer,
     IncompletePointerBackend,
 )
@@ -391,22 +390,21 @@ def test_jsonpointer_type_args_validation(subtests: Subtests) -> None:
             TypeAdapter(JSONPointer[JSONValue, DotPointer, int])
 
     with subtests.test("invalid backend"):
-        with pytest.raises(InvalidJSONPointer):
-            TypeAdapter(JSONPointer[JSONValue, object])
-        with pytest.raises(InvalidJSONPointer):
-            TypeAdapter(JSONPointer[JSONValue, object()])
-        with pytest.raises(InvalidJSONPointer):
-            TypeAdapter(JSONPointer[JSONValue, JSONValue])
-        with pytest.raises(InvalidJSONPointer):
-            TypeAdapter(JSONPointer[JSONValue, str])
-        with pytest.raises(InvalidJSONPointer):
-            TypeAdapter(JSONPointer[JSONValue, BadPointer])
-        with pytest.raises(InvalidJSONPointer):
-            TypeAdapter(JSONPointer[JSONValue, IncompletePointerBackend])
-        with pytest.raises(InvalidJSONPointer):
-            TypeAdapter(JSONPointer[JSONValue, AnotherIncompletePointerBackend])
-        with pytest.raises(InvalidJSONPointer):
-            TypeAdapter(JSONPointer[JSONValue, DotPointer("")])
+        for invalid_backend in [
+            object,
+            object(),
+            JSONValue,
+            str,
+            IncompletePointerBackend,
+            AnotherIncompletePointerBackend,
+            DotPointer(""),
+            # "not a class",
+        ]:
+            adapter = TypeAdapter(JSONPointer[JSONValue, invalid_backend])
+            with pytest.raises(InvalidJSONPointer):
+                adapter.validate_python(
+                    ""
+                )  # backend validation is at instantiation time (still pre-apply)
 
     with subtests.test("valid backend"):
         TypeAdapter(JSONPointer[JSONValue])  # default backend

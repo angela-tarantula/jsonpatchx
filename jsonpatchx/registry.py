@@ -29,12 +29,11 @@ from jsonpatchx.builtins import (
     ReplaceOp,
     TestOp,
 )
-from jsonpatchx.exceptions import InvalidJSONPointer, InvalidOperationRegistry
+from jsonpatchx.exceptions import InvalidOperationRegistry
 from jsonpatchx.schema import OperationSchema
 from jsonpatchx.types import (
     _DEFAULT_POINTER_CLS,
     _POINTER_BACKEND_CTX_KEY,
-    JSONPointer,
     JSONValue,
     PointerBackend,
 )
@@ -159,12 +158,8 @@ class GenericOperationRegistry(Generic[*Ops, PBT], metaclass=_RegistryMeta):
         pointer_cls: type[PBT] | None
         if last_param is PointerBackend:
             pointer_cls = None
-        elif JSONPointer._implements_PointerBackend_protocol(last_param):
-            pointer_cls = cast(type[PBT], last_param)
         else:
-            raise InvalidJSONPointer(
-                f"pointer_cls {last_param!r} instances must implement the PointerBackend Protocol"
-            )
+            pointer_cls = cast(type[PBT], last_param)
 
         op_schemas, pointer_cls = cls._expand_op_params(variadic_params, pointer_cls)
         cls._validate_models(*op_schemas)
