@@ -326,49 +326,6 @@ request-body validation workaround.
 
 ## Limitations
 
-### JSONValue Type System
-
-#### Short version (you just want to plug‑and‑play)
-
-Python’s type system treats `list`/`dict` as invariant, so it can’t accept that
-`JSONArray[JSONNumber]` is a `JSONValue`, even though it is valid JSON. This can
-surface as **mypy errors** on `JSONPointer[JSONArray[JSONNumber]]` and similar types.
-
-**Workaround:** use a targeted ignore on the pointer annotation:
-
-```py
-path: JSONPointer[JSONArray[JSONNumber]]  # type: ignore[type-var]
-```
-
-This keeps runtime behavior correct while acknowledging a typing limitation.
-
-#### Long version (why this happens)
-
-`JSONValue` is defined recursively:
-
-```py
-type JSONValue = JSONPrimitive | JSONArray[JSONValue] | JSONObject[JSONValue]
-```
-
-Semantically, a list of numbers is a JSON value. But in Python typing,
-`list[T]` and `dict[K, V]` are **invariant**. That means:
-
-- `list[JSONNumber]` is **not** a subtype of `list[JSONValue]`
-- therefore `JSONArray[JSONNumber]` is **not** a subtype of `JSONArray[JSONValue]`
-- therefore `JSONPointer[JSONArray[JSONNumber]]` is rejected when the type
-  parameter is bounded to `JSONValue`
-
-There is not currently a way to define `JSONValue` such that `JSONArray[JSONValue]`
-and `JSONObject[JSONValue]` are understood **recursively**.
-
-**Why not use `Sequence`/`Mapping`?** Those are covariant but read‑only; JSON
-Patch mutates arrays/objects, so modeling arrays as read‑only would be an
-incorrect API contract and would force casts or copies everywhere.
-
-**Current guidance:** Keep the runtime model honest and use a targeted `# type: ignore`
-on pointer annotations that need narrower array/object types. If anyone is interesting
-in mentoring me to submit a PEP to improve Python's type system, please reach out!
-
 ### FastAPI Validation Context
 
 FastAPI does not yet natively pass `validation_context` from

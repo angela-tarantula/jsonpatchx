@@ -165,7 +165,7 @@ class RemoveWhereOp(OperationSchema):
 
     model_config = ConfigDict(title="Remove-where operation")
     op: Literal["remove_where"] = "remove_where"
-    path: JSONPointer[JSONArray[JSONObject[JSONValue]]]  # type: ignore[type-var]
+    path: JSONPointer[JSONArray[JSONObject[JSONValue]]]
     field: str
     equals: JSONValue
 
@@ -268,7 +268,7 @@ class SortNumbersOp(OperationSchema):
 
     model_config = ConfigDict(title="Sort numbers operation")
     op: Literal["sort_numbers"] = "sort_numbers"
-    path: JSONPointer[JSONArray[JSONNumber]]  # type: ignore[type-var]
+    path: JSONPointer[JSONArray[JSONNumber]]
     order: Literal["asc", "desc"] = "asc"
 
     @override

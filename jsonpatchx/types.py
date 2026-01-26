@@ -293,7 +293,7 @@ _Nothing = object()
 # NOTE: maybe add pydantic_core.MISSING to JSONPointer.get() on failure
 
 
-T_co = TypeVar("T_co", bound=JSONValue, covariant=True)
+T_co = TypeVar("T_co", covariant=True)
 P_co = TypeVar("P_co", bound=PointerBackend, covariant=True, default=PointerBackend)
 # NOTE: JSONPointer does not currently enforce that T_co is bound to JSONValue. I can't think of a way to do it.
 
@@ -691,7 +691,7 @@ class JSONPointer(str, Generic[T_co, P_co]):
         else:
             return True
 
-    def add(self, doc: JSONValue, value: JSONValue) -> JSONValue:
+    def add(self, doc: JSONValue, value: object) -> JSONValue:
         """
         RFC 6902 add (type-gated).
 
@@ -706,7 +706,8 @@ class JSONPointer(str, Generic[T_co, P_co]):
             PatchConflictError: If the target does not exist, or it is not type ``T``.
         """
         # Type errors first
-        target = self._validate_target(target=value)
+        value_T: T_co = self._validate_target(target=value)
+        target: JSONValue = _JSON_VALUE_ADAPTER.validate_python(value_T, strict=True)
 
         if self.is_root():
             return target
@@ -739,8 +740,15 @@ class JSONPointer(str, Generic[T_co, P_co]):
         If ``value`` is provided, it must conform to the pointer's type parameter ``T``.
         """
         try:
-            if value is not _Nothing and not self.is_valid_target(value):
-                return False
+            if value is not _Nothing:
+                if not self.is_valid_target(value):
+                    return False
+                try:
+                    _JSON_VALUE_ADAPTER.validate_python(
+                        value, strict=True
+                    )  # ensure JSONValue conformance
+                except Exception:
+                    return False
             if self.is_root():
                 return True
             container = self._parent_ptr.resolve(doc)
