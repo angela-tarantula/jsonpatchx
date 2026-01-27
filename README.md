@@ -326,9 +326,7 @@ request-body validation workaround.
 
 ---
 
-## Limitations
-
-### FastAPI Validation Context
+### Limitations
 
 FastAPI does not yet natively pass `validation_context` from
 the request body into Pydantic models, which is required to validate
