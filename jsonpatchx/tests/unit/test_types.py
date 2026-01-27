@@ -402,9 +402,8 @@ def test_jsonpointer_type_args_validation(subtests: Subtests) -> None:
         ]:
             adapter = TypeAdapter(JSONPointer[JSONValue, invalid_backend])
             with pytest.raises(InvalidJSONPointer):
-                adapter.validate_python(
-                    ""
-                )  # backend validation is at instantiation time (still pre-apply)
+                # backend validation is at instantiation time (still pre-apply)
+                adapter.validate_python("")
 
     with subtests.test("valid backend"):
         TypeAdapter(JSONPointer[JSONValue])  # default backend

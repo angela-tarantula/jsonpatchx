@@ -7,7 +7,7 @@
       "command": "bash",
       "args": [
         "-c",
-        "uv run ruff check && uv run mypy jsonpatchx"
+        "uv run ruff check && uv run mypy ."
       ],
       "group": "test",
       "problemMatcher": []

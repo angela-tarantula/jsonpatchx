@@ -189,7 +189,11 @@ class DeduplicateOp(OperationSchema):
     @override
     def apply(self, doc: JSONValue) -> JSONValue:
         current = self.path.get(doc)
-        encoded = set(json.dumps(item, sort_keys=True) for item in current)
+        encoded = dict.fromkeys(
+            # treat dict as ordered set
+            json.dumps(item, sort_keys=True)
+            for item in current
+        )
         current[:] = [json.loads(item) for item in encoded]
         return doc
 
