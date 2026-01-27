@@ -84,9 +84,7 @@ app = create_app(
 def get_config_endpoint(
     config_id: Annotated[
         ConfigId,
-        Path(
-            ...,
-        ),
+        Path(...),
     ],
 ) -> JSONValue:
     doc = get_config(config_id)
@@ -106,9 +104,7 @@ def get_config_endpoint(
 def patch_config(
     config_id: Annotated[
         ConfigId,
-        Path(
-            ...,
-        ),
+        Path(...),
     ],
     patch: Annotated[ConfigPatch, config_patch.Body()],
 ) -> JSONValue:

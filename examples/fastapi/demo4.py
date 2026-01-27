@@ -74,9 +74,7 @@ user_patch = JsonPatchRoute(
 def get_config_endpoint(
     config_id: Annotated[
         ConfigId,
-        Path(
-            ...,
-        ),
+        Path(...),
     ],
 ) -> JSONValue:
     doc = get_config(config_id)
@@ -96,9 +94,7 @@ def get_config_endpoint(
 def patch_config(
     config_id: Annotated[
         ConfigId,
-        Path(
-            ...,
-        ),
+        Path(...),
     ],
     patch: Annotated[
         DotPointerPatch,
@@ -123,9 +119,7 @@ def patch_config(
 def get_user_endpoint(
     user_id: Annotated[
         UserId,
-        Path(
-            ...,
-        ),
+        Path(...),
     ],
 ) -> User:
     user = get_user(user_id)
@@ -145,9 +139,7 @@ def get_user_endpoint(
 def patch_user(
     user_id: Annotated[
         UserId,
-        Path(
-            ...,
-        ),
+        Path(...),
     ],
     patch: Annotated[
         UserPatch,

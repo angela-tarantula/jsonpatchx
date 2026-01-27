@@ -181,6 +181,7 @@ schema.
 Use `JsonPatchFor[Model, Registry]` when targeting a Pydantic model with an OperationRegistry.
 
 ```py
+from typing import Annotated
 from fastapi import Body, FastAPI
 from jsonpatchx import JsonPatchFor, OperationRegistry, StandardRegistry
 
@@ -189,7 +190,7 @@ UserRegistry = OperationRegistry[StandardRegistry, ConcatenateOp]
 UserPatch = JsonPatchFor[User, UserRegistry] # Generates a schema bound to the User model
 
 @app.patch("/users/{user_id}")
-def patch_user(user_id: int, patch: UserPatch = Body(...)) -> User:
+def patch_user(user_id: int, patch: Annotated[UserPatch, Body(...)]) -> User:
     user = get_user(user_id)
     # The patched output is revalidated against User's schema
     return patch.apply(user)
@@ -200,6 +201,7 @@ def patch_user(user_id: int, patch: UserPatch = Body(...)) -> User:
 You can also use `JsonPatchFor[Literal["Name"], Registry]` when you're patching raw JSON (dicts/lists) but you still want that sweet OpenAPI.
 
 ```py
+from typing import Annotated, Literal
 from fastapi import Body, FastAPI
 from jsonpatchx import JsonPatchFor, OperationRegistry, StandardRegistry, JSONValue
 
@@ -208,7 +210,7 @@ ConfigRegistry = OperationRegistry[StandardRegistry, DeduplicateOp, IncrementOp]
 ConfigPatch = JsonPatchFor[Literal["Database Config"], ConfigRegistry]
 
 @app.patch("/configs/{config_id}")
-def patch_config(config_id: str, patch: ConfigPatch = Body(...)) -> JSONValue:
+def patch_config(config_id: str, patch: Annotated[ConfigPatch, Body(...)]) -> JSONValue:
     doc = load_config(config_id)
     return patch.apply(doc)
 ```
@@ -264,9 +266,9 @@ Path parsing is pluggable. The default backend follows [RFC 6901](https://datatr
 
 Custom backends let you implement:
 
-- **Alternative Syntaxes:** dot-separated paths, [relative pointers](https://json-schema.org/draft/2020-12/relative-json-pointer), or [JSONPath](https://www.rfc-editor.org/rfc/rfc9535)-style selectors.
+- **Alternative Syntaxes:** dot-separated paths, [JSONPath](https://www.rfc-editor.org/rfc/rfc9535)-style selectors, or [relative pointers](https://json-schema.org/draft/2020-12/relative-json-pointer).
 
-- **Specialized Escaping:** Domain-specific key encoding/decoding.
+- **Specialized Escaping:** Domain-specific key encoding or escaping.
 
 - **Contextual Resolution:** Resolving pointers against external state (e.g. database lookups).
 
