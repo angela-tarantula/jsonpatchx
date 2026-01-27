@@ -184,7 +184,7 @@ class PointerBackend(Protocol):
     but advanced users may plug in a custom backend (different parsing or escaping rules, richer
     pointer objects, alternative traversal semantics, and so on).
 
-    A backend only needs to provide a small RFC 6901-shaped surface area:
+    A backend only needs to provide a small pointer-shaped surface area:
 
     - Constructible from a pointer string.
     - Exposes unescaped path tokens via ``parts``.
@@ -193,8 +193,8 @@ class PointerBackend(Protocol):
     - Has a round-trippable string form via ``__str__``.
 
     Notes:
-        - ``PointerBackend("")`` must be valid return the root pointer.`
-        - Round-trip invariants should hold:
+        - The backend defines its own pointer syntax; there is no universal "root" string.
+        - Round-trip invariants should hold for the backend's canonical string form:
           ``PointerBackend(x)`` equals ``PointerBackend(str(PointerBackend(x)))`` and
           ``PointerBackend(x)`` equals ``PointerBackend.from_parts(PointerBackend(x).parts)``.
         - The library may cache backend instances; implementations should be immutable or otherwise
@@ -205,13 +205,13 @@ class PointerBackend(Protocol):
 
     @abstractmethod
     def __init__(self, pointer: str) -> None:
-        """Parse and construct an RFC 6901 JSON Pointer."""
+        """Parse and construct a backend-specific pointer."""
         ...
 
     @property
     @abstractmethod
     def parts(self) -> Sequence[Any]:
-        """Unescaped RFC 6901 tokens. The root pointer has an empty sequence of parts."""
+        """Unescaped backend-specific tokens."""
         ...
 
     @classmethod
@@ -230,8 +230,8 @@ class PointerBackend(Protocol):
         """
         Resolve the pointer against a document using backend-defined traversal semantics.
 
-        Implementations typically follow RFC 6901 traversal rules (dict keys / list indices),
-        but the library does not require a particular exception type on failure.
+        Implementations typically follow dict/list traversal rules, but the library
+        does not require a particular exception type on failure.
         """
         ...
 
@@ -239,7 +239,7 @@ class PointerBackend(Protocol):
     @abstractmethod
     def __str__(self) -> str:
         """
-        Return the RFC 6901 string form (escaped tokens).
+        Return the backend's canonical string form (escaped tokens, if applicable).
 
         Must round-trip such that ``PointerBackend(str(ptr))`` yields an equivalent pointer.
         """
