@@ -27,7 +27,7 @@ mutation is specific, explainable, and safe.
 - [When to use json-patch-x](#when-to-use-json-patch-x)
 - [When to use alternatives](#when-to-use-alternatives)
 - [Core Concepts](#core-concepts)
-- [Framework Integration (FastAPI/OpenAPI)](#framework-integration-fastapiopenapi)
+- [FastAPI Integration](#fastapi-integration)
 - [Demos](#demos)
 - [Advanced: Pointer Backends](#advanced-pointer-backends)
 - [Limitations](#limitations)
@@ -105,7 +105,7 @@ class ToggleOp(OperationSchema):
         return ReplaceOp(path=self.path, value=not current).apply(doc)
 ```
 
-Why this matters for Architecture:
+Why this matters architecturally:
 
 - **Fail Fast:** Pointer resolution validates target types before mutation.
 
@@ -137,11 +137,11 @@ in your domain.
 from jsonpatchx import AddOp, MoveOp, OperationRegistry, StandardRegistry
 
 # Create a restricted vocabulary for high-security endpoints
-admin_registry = StandardRegistry
-user_registry = OperationRegistry[AddOp, MoveOp]
+AdminRegistry = StandardRegistry
+UserRegistry = OperationRegistry[AddOp, MoveOp]
 
 # Extend the language with domain-specific verbs
-dev_registry = OperationRegistry[StandardRegistry, ToggleOp, SwapOp]
+DevRegistry = OperationRegistry[StandardRegistry, ToggleOp, SwapOp]
 ```
 
 The registry ensures that your API doesn't just "apply patches"; it speaks your
@@ -165,59 +165,130 @@ patch_ops = [{"op": "replace", "path": "/title", "value": "Updated"}]
 # 3. From a JSON string
 # patch = JsonPatch.from_string('[{"op": "toggle", "path": "/active"}]')
 
-patch = JsonPatch(patch_ops, registry=custom_registry)
+patch = JsonPatch(patch_ops, registry=DevRegistry)
 updated = patch.apply(doc)
 ```
 
-## Framework Integration (FastAPI/OpenAPI)
+## FastAPI Integration
 
-Most frameworks treat the `PATCH` body as a generic `dict`. This forces clients
-to guess which paths and operations are valid. json-patch-x integrates with
-FastAPI to export your registry's type constraints directly into your OpenAPI
-schema.
+FastAPI integration in json-patch-x is built around a simple idea:
 
-### Model-Aware Patching
+> First, define what a patch means. Then, decide how much help you want wiring it into a route.
 
-Use `JsonPatchFor[Model, Registry]` when targeting a Pydantic model with an OperationRegistry.
+At the center of this is `JsonPatchFor`, which turns an operation registry into a
+**concrete request-body schema** that FastAPI and OpenAPI understand.
+
+### Step 1: Define a Patch Schema with JsonPatchFor
+
+`JsonPatchFor[Target, Registry]` binds three things together:
+
+1. the shape of the document being patched (usually a Pydantic model)
+2. the allowed operation vocabulary (an `OperationRegistry`)
+3. the JSON Patch execution engine
+
+The result is a Pydantic model that represents a valid PATCH request body.
 
 ```py
-from typing import Annotated
-from fastapi import Body, FastAPI
 from jsonpatchx import JsonPatchFor, OperationRegistry, StandardRegistry
 
+UserRegistry = OperationRegistry[StandardRegistry, ToggleOp]
+UserPatch = JsonPatchFor[User, UserRegistry]
+```
+
+`UserPatch` is a Pydantic model representing a validated list of operations.
+It can now be used anywhere FastAPI expects a request body.
+
+### Step 2: Use the Patch Schema in a FastAPI Route
+
+At its simplest, you can plug the patch schema directly into a route:
+
+```py
+from fastapi import FastAPI
+
 app = FastAPI()
-UserRegistry = OperationRegistry[StandardRegistry, ConcatenateOp]
-UserPatch = JsonPatchFor[User, UserRegistry] # Generates a schema bound to the User model
 
 @app.patch("/users/{user_id}")
-def patch_user(user_id: int, patch: Annotated[UserPatch, Body(...)]) -> User:
-    user = get_user(user_id)
-    # The patched output is revalidated against User's schema
+def patch_user(user_id: str, patch: UserPatch) -> User:
+    user = load_user(user_id)
     return patch.apply(user)
 ```
 
-### Plain JSON Patching
+With just this:
 
-You can also use `JsonPatchFor[Literal["Name"], Registry]` when you're patching raw JSON (dicts/lists) but you still want that sweet OpenAPI.
+- FastAPI validates incoming patches against your registry.
+- OpenAPI documents exactly which operations are allowed.
+- Pointer targets are type-checked at runtime.
+- Invalid operations fail *before* any mutation occurs.
+
+No helpers required.
+
+### Step 3: Improving OpenAPI and Content-Type Handling with JsonPatchRoute
+
+`JsonPatchRoute` is an optional helper that keeps your route signature clean
+while adding a few niceties:
+
+- `application/json-patch+json` content-type enforcement
+- reusable request-body metadata
+- examples that stay aligned with your registry
 
 ```py
 from typing import Annotated, Literal
-from fastapi import Body, FastAPI
+from fastapi import FastAPI
 from jsonpatchx import JsonPatchFor, OperationRegistry, StandardRegistry, JSONValue
+from jsonpatchx.fastapi import JsonPatchRoute
 
 app = FastAPI()
 ConfigRegistry = OperationRegistry[StandardRegistry, DeduplicateOp, IncrementOp]
 ConfigPatch = JsonPatchFor[Literal["Database Config"], ConfigRegistry]
 
-@app.patch("/configs/{config_id}")
-def patch_config(config_id: str, patch: Annotated[ConfigPatch, Body(...)]) -> JSONValue:
+config_patch = JsonPatchRoute(
+    ConfigPatch,
+    examples={
+        "increment-retries": {
+            "summary": "Increase retry count",
+            "value": [{"op": "increment", "path": "/retries", "value": 1}],
+        },
+    },
+    strict_content_type=True,
+)
+
+@app.patch(
+    "/configs/{config_id}",
+    **config_patch.route_kwargs(),
+)
+def patch_config(
+    config_id: str,
+    patch: Annotated[ConfigPatch, config_patch.Body()],
+) -> JSONValue:
     doc = load_config(config_id)
     return patch.apply(doc)
 ```
 
+Use `JsonPatchRoute` when you want tighter control over request metadata and
+documentation. Skip it if you prefer minimalism.
+
+### Binding Patches to Pydantic Models vs. Plain JSON
+
+When patching a Pydantic model, use the model type directly:
+
+```py
+UserPatch = JsonPatchFor[User, UserRegistry]
+```
+
+If you are patching plain JSON documents instead, bind the schema to a named
+target using `Literal[...]`:
+
+```py
+ConfigPatch = JsonPatchFor[Literal["Database Config"], ConfigRegistry]
+```
+
+This name appears in OpenAPI docs and error messages, even though no concrete
+model is enforced.
+
 ### OpenAPI Customization
 
-Leverage `ConfigDict` and `model_validator` to create sophisticated, well-documented operations.
+Because every operation is a Pydantic model, you can customize titles,
+descriptions, and validation logic using standard Pydantic features.
 
 ```py
 from typing import Literal, Self
@@ -229,6 +300,7 @@ class SwapOp(OperationSchema):
         title="Swap operation",
         json_schema_extra={"description": "Swaps values at paths a and b."}
     )
+
     op: Literal["swap"] = "swap"
     a: JSONPointer[JSONValue]
     b: JSONPointer[JSONValue]
@@ -244,6 +316,8 @@ class SwapOp(OperationSchema):
         doc = AddOp(path=self.a, value=val_b).apply(doc)
         return AddOp(path=self.b, value=val_a).apply(doc)
 ```
+
+These details flow automatically into your OpenAPI schema.
 
 ---
 
@@ -328,35 +402,35 @@ request-body validation workaround.
 
 ### Limitations
 
-FastAPI does not yet natively pass `validation_context` from
-the request body into Pydantic models, which is required to validate
-requests against your custom backend.
+#### FastAPI Validation Context
 
-As a workaround, json-patch-x provides a `PatchDependency`.
+FastAPI does not yet natively pass `validation_context` from the request body
+into Pydantic models, which is required to validate requests against custom
+pointer backends.
+
+As a workaround, json-patch-x provides `JsonPatchRoute.dependency()` so
+validation runs with the registry context.
 
 ```py
-from typing import Annotated
+from typing import Annotated, Literal
 
-from fastapi import Body, Depends
-from jsonpatchx.fastapi import PatchDependency
+from fastapi import Depends
+from jsonpatchx.fastapi import JsonPatchRoute
 
-PatchBody = JsonPatchFor["DotPointerPatch", registry]
-PatchDepends = PatchDependency(
-    PatchBody,
-    request_param=Body(..., media_type="application/json-patch+json"),
-)
+PatchBody = JsonPatchFor[Literal["DotPointerPatch"], registry]
+patch_route = JsonPatchRoute(PatchBody, strict_content_type=True)
 
 @app.patch("/configs/{id}")
 def patch_config(
     id: str,
-    patch: Annotated[PatchBody, Depends(PatchDepends)],
+    patch: Annotated[PatchBody, Depends(patch_route.dependency())],
 ) -> JSONValue:
     # 'patch' is now fully validated using your DotPointer backend
     return patch.apply(load_config(id))
 ```
 
 Limitation reference: FastAPI does not expose a request-body validation context today.
-See https://github.com/fastapi/fastapi/discussions/10864.
+See [FastAPI discussion #10864](https://github.com/fastapi/fastapi/discussions/10864).
 
 ---
 
