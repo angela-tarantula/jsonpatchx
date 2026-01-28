@@ -426,31 +426,14 @@ class JSONPointer(str, Generic[T_co, P_co]):
         """Check whether this JSONPointer's target is the root."""
         return self == ""
 
-    def _hidden_init(
-        cls,
-        path: str,
-        type_param: TypeForm[T_co],
-        *args: object,
-        pointer_cls: type[P_co] = cast(type[P_co], PointerBackend),
-        **kwargs: object,
-    ) -> Self:
-        """Private way to instantiate JSONPointer directly."""
-        if pointer_cls is PointerBackend:
-            pointer_cls = _DEFAULT_POINTER_CLS
-        _, __ = cls._parse_pointer_type_args(type_param, pointer_cls)
-
-        return cls._validator(
-            path, registry_info=None, type_param=type_param, bound_backend=pointer_cls
-        )
-
     @classmethod
     def _validator(
         cls,
         path: str,
         registry_info: ValidationInfo | None,
-        *,
+        *,  # covariant params ok here, it's just for pydantic validation
         type_param: TypeForm[T_co],
-        bound_backend: type[P_co] | None,
+        bound_backend: type[P_co],
     ) -> Self:
         """
         Validator function for JSONPointer.
@@ -460,7 +443,7 @@ class JSONPointer(str, Generic[T_co, P_co]):
         # Fetch PointerBackend from the registry's validation context, if present
         ctx = registry_info.context or {} if registry_info is not None else {}
         registry_backend = cast(
-            type[PointerBackend] | None, ctx.get(_POINTER_BACKEND_CTX_KEY)
+            type[PointerBackend], ctx.get(_POINTER_BACKEND_CTX_KEY, PointerBackend)
         )
 
         # Enforce registry_backend ⊆ bound_backend ⊂ PointerBackend and get the strictest one
@@ -534,9 +517,7 @@ class JSONPointer(str, Generic[T_co, P_co]):
         return json_schema
 
     @classmethod
-    def _parse_pointer_type_args(
-        cls, *args: Any
-    ) -> tuple[TypeForm[T_co], type[P_co] | None]:
+    def _parse_pointer_type_args(cls, *args: Any) -> tuple[TypeForm[T_co], type[P_co]]:
         """Validate the JSONPointer's parameter tuple, e.g. ``(JSONValue, DotPointer)`` for ``JSONPointer[JSONValue, DotPointer]``."""
         if not (1 <= len(args) <= 2):
             raise InvalidJSONPointer(
@@ -557,16 +538,14 @@ class JSONPointer(str, Generic[T_co, P_co]):
             raise InvalidJSONPointer(
                 f"JSONPointer backend parameter {bound_backend!r} must implement the PointerBackend Protocol"
             )
-        elif bound_backend is PointerBackend:
-            # Protocol itself doesn't count
-            bound_backend = None
 
         if not cls._is_valid_typeform(type_param):
             # Catch invalid TypeForms eagerly
             raise InvalidJSONPointer(
                 f"JSONPointer type parameter {type_param!r} must be a valid TypeForm"
             )  # Can't catch invalid PointerBackend until a path is provided because issubclass(bound_backend, PointerBackend) won't be able to check for non-method members like the 'parts' property (https://github.com/python/mypy/blob/0c6340170b2d0a9eb2e55eacd06709e8fd3d92b0/mypy/messages.py#L2052), so need to use isinstance check later
-        return type_param, cast(type[P_co] | None, bound_backend)
+
+        return type_param, cast(type[P_co], bound_backend)
 
     @classmethod
     def _is_valid_typeform(cls, expected: object) -> TypeGuard[TypeForm[T_co]]:
@@ -579,11 +558,16 @@ class JSONPointer(str, Generic[T_co, P_co]):
 
     @staticmethod
     def _resolve_strictest_backend(
-        registry_backend: type[PointerBackend] | None,
-        bound_backend: type[PointerBackend] | None,
+        registry_backend: type[PointerBackend],
+        bound_backend: type[PointerBackend],
     ) -> type[PointerBackend]:
         """Determine the strictest PointerBackend class, given optional ``registry_backend`` and ``bound_backend``."""
-        if registry_backend is not None and bound_backend is not None:
+        if registry_backend is bound_backend:
+            return registry_backend
+        if (
+            registry_backend is not PointerBackend
+            and bound_backend is not PointerBackend
+        ):
             if not issubclass(registry_backend, bound_backend):
                 raise InvalidJSONPointer(
                     "JSONPointer backend mismatch: "
@@ -591,11 +575,9 @@ class JSONPointer(str, Generic[T_co, P_co]):
                     f"{bound_backend.__name__}"
                 )
             return registry_backend
-        if registry_backend is not None:
+        if registry_backend is not PointerBackend:
             return registry_backend
-        if bound_backend is not None:
-            return bound_backend
-        return PointerBackend
+        return bound_backend
 
     def _validate_target(self, target: object) -> T_co:
         """Strictly validate the ``target`` with this JSONPointer's TypeAdapter."""

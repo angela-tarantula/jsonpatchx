@@ -198,17 +198,21 @@ def test_resolve_strictest_backend(subtests: Subtests) -> None:
         pass
 
     with subtests.test("no backends"):
-        assert JSONPointer._resolve_strictest_backend(None, None) is PointerBackend
+        assert (
+            JSONPointer._resolve_strictest_backend(PointerBackend, PointerBackend)
+            is PointerBackend
+        )
 
     with subtests.test("registry only"):
         assert (
-            JSONPointer._resolve_strictest_backend(RegistryPointer, None)
+            JSONPointer._resolve_strictest_backend(RegistryPointer, PointerBackend)
             is RegistryPointer
         )
 
     with subtests.test("bound only"):
         assert (
-            JSONPointer._resolve_strictest_backend(None, BoundPointer) is BoundPointer
+            JSONPointer._resolve_strictest_backend(PointerBackend, BoundPointer)
+            is BoundPointer
         )
 
     with subtests.test("same backend"):
