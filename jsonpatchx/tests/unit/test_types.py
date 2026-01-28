@@ -398,7 +398,7 @@ def test_jsonpointer_type_args_validation(subtests: Subtests) -> None:
             IncompletePointerBackend,
             AnotherIncompletePointerBackend,
             DotPointer(""),
-            # "not a class",
+            "invalidForwardReference",
         ]:
             adapter = TypeAdapter(JSONPointer[JSONValue, invalid_backend])
             with pytest.raises(InvalidJSONPointer):
@@ -406,9 +406,14 @@ def test_jsonpointer_type_args_validation(subtests: Subtests) -> None:
                 adapter.validate_python("")
 
     with subtests.test("valid backend"):
-        TypeAdapter(JSONPointer[JSONValue])  # default backend
-        TypeAdapter(JSONPointer[JSONValue, DotPointer])
-        TypeAdapter(JSONPointer[JSONValue, RFC6901JsonPointer])
+        for valid_backend in [
+            PointerBackend, # default backend
+            DotPointer,
+            RFC6901JsonPointer,
+            # 'DotPointer',  # forward reference
+        ]:
+            adapter = TypeAdapter(JSONPointer[JSONValue, valid_backend])
+            adapter.validate_python("")
 
 
 def test_jsonpointer_backend_cache_identity(subtests: Subtests) -> None:
