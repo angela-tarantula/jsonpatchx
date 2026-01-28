@@ -176,63 +176,11 @@ _JSON_VALUE_ADAPTER: TypeAdapter[JSONValue] = _type_adapter_for(JSONValue)
 
 
 @runtime_checkable
-class _PointerBackend_SuperType(Protocol):
-    @abstractmethod
-    def __init__(self, pointer: str) -> None: ...
-
-    @classmethod
-    @abstractmethod
-    def from_parts(cls, parts: Iterable[Any]) -> Self: ...
-
-    @abstractmethod
-    def resolve(self, doc: Any) -> Any: ...
-
-    @override
-    @abstractmethod
-    def __str__(self) -> str: ...
-
-    @override
-    @abstractmethod
-    def __hash__(self) -> int: ...
-
-
-@runtime_checkable
-class PointerBackend(Protocol):
-    """
-    Protocol for custom JSON Pointer backends.
-
-    This library is pointer-backend agnostic. By default it uses ``jsonpointer.JsonPointer``,
-    but advanced users may plug in a custom backend (different parsing or escaping rules, richer
-    pointer objects, alternative traversal semantics, and so on).
-
-    A backend only needs to provide a small pointer-shaped surface area:
-
-    - Constructible from a pointer string.
-    - Exposes unescaped path tokens via ``parts``.
-    - Can be reconstructed from tokens via ``from_parts``.
-    - Can resolve a pointer against a document via ``resolve``.
-    - Has a round-trippable string form via ``__str__``.
-
-    Notes:
-        - The backend defines its own pointer syntax; there is no universal "root" string.
-        - Round-trip invariants should hold for the backend's canonical string form:
-          ``PointerBackend(x)`` equals ``PointerBackend(str(PointerBackend(x)))`` and
-          ``PointerBackend(x)`` equals ``PointerBackend.from_parts(PointerBackend(x).parts)``.
-        - The library may cache backend instances; implementations should be immutable or otherwise
-          safe to reuse across calls.
-        - Backends may raise whatever exceptions are natural for them. Higher-level APIs normalize
-          backend failures into library patch errors for a consistent user experience.
-    """
+class _PointerClassProtocol(Protocol):
 
     @abstractmethod
     def __init__(self, pointer: str) -> None:
         """Parse and construct a backend-specific pointer."""
-        ...
-
-    @property
-    @abstractmethod
-    def parts(self) -> Sequence[Any]:
-        """Unescaped backend-specific tokens."""
         ...
 
     @classmethod
@@ -269,6 +217,41 @@ class PointerBackend(Protocol):
     @override
     @abstractmethod
     def __hash__(self) -> int: ...
+
+
+@runtime_checkable
+class PointerBackend(_PointerClassProtocol, Protocol):
+    """
+    Protocol for custom JSON Pointer backends.
+
+    This library is pointer-backend agnostic. By default it uses ``jsonpointer.JsonPointer``,
+    but advanced users may plug in a custom backend (different parsing or escaping rules, richer
+    pointer objects, alternative traversal semantics, and so on).
+
+    A backend only needs to provide a small pointer-shaped surface area:
+
+    - Constructible from a pointer string.
+    - Exposes unescaped path tokens via ``parts``.
+    - Can be reconstructed from tokens via ``from_parts``.
+    - Can resolve a pointer against a document via ``resolve``.
+    - Has a round-trippable string form via ``__str__``.
+
+    Notes:
+        - The backend defines its own pointer syntax; there is no universal "root" string.
+        - Round-trip invariants should hold for the backend's canonical string form:
+          ``PointerBackend(x)`` equals ``PointerBackend(str(PointerBackend(x)))`` and
+          ``PointerBackend(x)`` equals ``PointerBackend.from_parts(PointerBackend(x).parts)``.
+        - The library may cache backend instances; implementations should be immutable or otherwise
+          safe to reuse across calls.
+        - Backends may raise whatever exceptions are natural for them. Higher-level APIs normalize
+          backend failures into library patch errors for a consistent user experience.
+    """
+
+    @property
+    @abstractmethod
+    def parts(self) -> Sequence[Any]:
+        """Unescaped backend-specific tokens."""
+        ...
 
 
 @lru_cache(maxsize=512)
@@ -533,7 +516,7 @@ class JSONPointer(str, Generic[T_co, P_co]):
         elif not issubclass(
             # eagerly catch invalid PointerBackends, but won't catch all cases (due to the Protocol having a @property)
             bound_backend,
-            _PointerBackend_SuperType,
+            _PointerClassProtocol,
         ):
             raise InvalidJSONPointer(
                 f"JSONPointer backend parameter {bound_backend!r} must implement the PointerBackend Protocol"

@@ -188,6 +188,7 @@ def test_jsonpointer_public_methods_are_backend_agnostic(
 
 
 def test_resolve_strictest_backend(subtests: Subtests) -> None:
+    # NOTE: replace with test of validator instead
     class RegistryPointer(DotPointer):
         pass
 
