@@ -402,7 +402,7 @@ def test_jsonpointer_type_args_validation(subtests: Subtests) -> None:
             TypeAdapter(JSONPointer[int()])
 
     with subtests.test("not enough args"):
-        with pytest.raises(InvalidJSONPointer):
+        with pytest.raises(TypeError):
             TypeAdapter(JSONPointer)
 
     with subtests.test("too many args"):

@@ -502,12 +502,10 @@ class JSONPointer(str, Generic[T_co, P_co]):
     @classmethod
     def _parse_pointer_type_args(cls, *args: Any) -> tuple[TypeForm[T_co], type[P_co]]:
         """Validate the JSONPointer's parameter tuple, e.g. ``(JSONValue, DotPointer)`` for ``JSONPointer[JSONValue, DotPointer]``."""
-        if not (1 <= len(args) <= 2):
-            raise InvalidJSONPointer(
-                f"JSONPointer requires 1 or 2 parameters, e.g. JSONPointer[JSONValue], got {len(args)!r}: {args}"
-            )
+        if not args:
+            raise TypeError(f"{cls} requires at least one type parameter")
         type_param = cast(object, args[0])
-        bound_backend = cast(object, args[1]) if len(args) == 2 else PointerBackend
+        bound_backend = cast(object, args[1]) if len(args) > 1 else PointerBackend
 
         if not isclass(bound_backend):
             raise InvalidJSONPointer(
