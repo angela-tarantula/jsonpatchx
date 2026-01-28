@@ -215,6 +215,10 @@ def test_pointer_backend_binding_with_context(subtests: Subtests) -> None:
         ptr = _validate(JSONPointer[JSONValue], "/a", None)
         assert isinstance(ptr.ptr, RFC6901JsonPointer)
 
+    with subtests.test("context PointerBackend treated as default"):
+        ptr = _validate(JSONPointer[JSONValue], "/a", PointerBackend)
+        assert isinstance(ptr.ptr, RFC6901JsonPointer)
+
     with subtests.test("registry only"):
         ptr = _validate(JSONPointer[JSONValue], "a.b", RegistryPointer)
         assert isinstance(ptr.ptr, RegistryPointer)
@@ -222,6 +226,14 @@ def test_pointer_backend_binding_with_context(subtests: Subtests) -> None:
     with subtests.test("bound only"):
         ptr = _validate(JSONPointer[JSONValue, BoundPointer], "a.b", None)
         assert isinstance(ptr.ptr, BoundPointer)
+
+    with subtests.test("bound PointerBackend treated as default"):
+        ptr = _validate(JSONPointer[JSONValue, PointerBackend], "/a", None)
+        assert isinstance(ptr.ptr, RFC6901JsonPointer)
+
+    with subtests.test("both PointerBackend treated as default"):
+        ptr = _validate(JSONPointer[JSONValue, PointerBackend], "/a", PointerBackend)
+        assert isinstance(ptr.ptr, RFC6901JsonPointer)
 
     with subtests.test("same backend"):
         ptr = _validate(JSONPointer[JSONValue, BoundPointer], "a.b", BoundPointer)
