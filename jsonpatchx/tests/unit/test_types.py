@@ -398,17 +398,15 @@ def test_jsonpointer_type_args_validation(subtests: Subtests) -> None:
             IncompletePointerBackend,
             AnotherIncompletePointerBackend,
             DotPointer(""),
-            "DotPointer", # forward references disallowed for predictability
+            "DotPointer",  # forward references disallowed for predictability
         ]:
-            adapter = TypeAdapter(JSONPointer[JSONValue, invalid_backend])
             with pytest.raises(InvalidJSONPointer):
-                # backend validation is at instantiation time (still pre-apply)
-                # because issubclass(..., PointerBackend) earlier would be insufficient anyway
+                adapter = TypeAdapter(JSONPointer[JSONValue, invalid_backend])
                 adapter.validate_python("")
 
     with subtests.test("valid backend"):
         for valid_backend in [
-            PointerBackend, # default backend
+            PointerBackend,  # default backend
             DotPointer,
             RFC6901JsonPointer,
         ]:

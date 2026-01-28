@@ -176,6 +176,27 @@ _JSON_VALUE_ADAPTER: TypeAdapter[JSONValue] = _type_adapter_for(JSONValue)
 
 
 @runtime_checkable
+class _PointerBackend_SuperType(Protocol):
+    @abstractmethod
+    def __init__(self, pointer: str) -> None: ...
+
+    @classmethod
+    @abstractmethod
+    def from_parts(cls, parts: Iterable[Any]) -> Self: ...
+
+    @abstractmethod
+    def resolve(self, doc: Any) -> Any: ...
+
+    @override
+    @abstractmethod
+    def __str__(self) -> str: ...
+
+    @override
+    @abstractmethod
+    def __hash__(self) -> int: ...
+
+
+@runtime_checkable
 class PointerBackend(Protocol):
     """
     Protocol for custom JSON Pointer backends.
@@ -522,10 +543,22 @@ class JSONPointer(str, Generic[T_co, P_co]):
                 f"JSONPointer requires 1 or 2 parameters, e.g. JSONPointer[JSONValue], got {len(args)!r}: {args}"
             )
         type_param = cast(object, args[0])
-        bound_backend: type | None = cast(type, args[1]) if len(args) == 2 else None
+        bound_backend = cast(object, args[1]) if len(args) == 2 else PointerBackend
 
-        # Protocol itself doesn't count
-        if bound_backend is PointerBackend:
+        if not isclass(bound_backend):
+            raise InvalidJSONPointer(
+                f"JSONPointer backend parameter {bound_backend!r} must be a PointerBackend class"
+            )
+        elif not issubclass(
+            # eagerly catch invalid PointerBackends, but won't catch all cases (due to the Protocol having a @property)
+            bound_backend,
+            _PointerBackend_SuperType,
+        ):
+            raise InvalidJSONPointer(
+                f"JSONPointer backend parameter {bound_backend!r} must implement the PointerBackend Protocol"
+            )
+        elif bound_backend is PointerBackend:
+            # Protocol itself doesn't count
             bound_backend = None
 
         if not cls._is_valid_typeform(type_param):
@@ -533,7 +566,7 @@ class JSONPointer(str, Generic[T_co, P_co]):
             raise InvalidJSONPointer(
                 f"JSONPointer type parameter {type_param!r} must be a valid TypeForm"
             )  # Can't catch invalid PointerBackend until a path is provided because issubclass(bound_backend, PointerBackend) won't be able to check for non-method members like the 'parts' property (https://github.com/python/mypy/blob/0c6340170b2d0a9eb2e55eacd06709e8fd3d92b0/mypy/messages.py#L2052), so need to use isinstance check later
-        return type_param, bound_backend
+        return type_param, cast(type[P_co] | None, bound_backend)
 
     @classmethod
     def _is_valid_typeform(cls, expected: object) -> TypeGuard[TypeForm[T_co]]:
