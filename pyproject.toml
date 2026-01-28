@@ -19,6 +19,7 @@ fastapi = [
 dev = [
     "mypy>=1.19.1",
     "pytest>=9.0.1",
+    "pytest-cov>=7.0.0",
     "ruff>=0.14.7",
     "typing-extensions>=4.15.0",
 ]
@@ -73,3 +74,20 @@ enable_error_code = [
 
 [tool.pytest.ini_options]
 pythonpath = ["."]
+addopts = "--cov=jsonpatchx --cov=tests --cov-report=term-missing --cov-config=pyproject.toml"
+
+[tool.coverage.run]
+branch = true
+parallel = true
+source = ["jsonpatchx", "tests"]
+omit = [
+  "*/__init__.py",
+  "*temp*.py",
+]
+
+[tool.coverage.report]
+exclude_lines = [
+  "no cov",
+  "if __name__ == .__main__.:",
+  "if TYPE_CHECKING:",
+]

@@ -26,7 +26,7 @@ jobs:
         run: python -m pip install --upgrade pip uv
 
       - name: Install project dependencies
-        run: uv sync --group dev --extra fastapi
+        run: uv sync --group dev --all-extras
 
       - name: Lint with ruff
         run: uv run ruff check
