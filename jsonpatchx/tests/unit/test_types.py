@@ -73,7 +73,7 @@ def test_json_container_strict_types(subtests: Subtests) -> None:
 
     with subtests.test("JSONObject"):
         object_adapter.validate_python({"a": 1, "b": object()})
-        for invalid in (["nope"], "nope", {("k",): "nope"}):
+        for invalid in (["nope"], "nope", {("k",): "nope"}, {"a", "b"}):
             with pytest.raises(ValidationError):
                 object_adapter.validate_python(invalid)
 
@@ -92,6 +92,29 @@ def test_jsonvalue_strict_types(subtests: Subtests) -> None:
         for value in (True, 1, 1.5, "ok", None):
             value_adapter.validate_python(value)
         for invalid in (object(), b"bytes"):
+            with pytest.raises(ValidationError):
+                value_adapter.validate_python(invalid)
+
+    with subtests.test("jsonvalue accepts containers"):
+        value_adapter.validate_python([])
+        value_adapter.validate_python([1, "ok", None, True, 2.5])
+        value_adapter.validate_python({"a": 1, "b": "ok", "c": None, "d": True})
+
+    with subtests.test("jsonvalue accepts nested containers"):
+        value_adapter.validate_python(
+            {"a": [1, {"b": [True, None, 3.5]}], "c": {"d": "ok"}}
+        )
+
+    with subtests.test("jsonvalue rejects invalid containers"):
+        for invalid in (
+            {"a": object()},
+            {"a": b"bytes"},
+            {1: "nope"},
+            {"a", "b"},
+            (1, 2),
+            [object()],
+            [b"bytes"],
+        ):
             with pytest.raises(ValidationError):
                 value_adapter.validate_python(invalid)
 
