@@ -1,5 +1,5 @@
 """
-Demo 4: registry-scoped pointer backend with FastAPI dependency injection.
+Demo 4: spellbook dot-runes pointer backend with FastAPI dependency injection.
 """
 
 from __future__ import annotations
@@ -9,15 +9,17 @@ from typing import Annotated, Literal
 from fastapi import Depends, HTTPException, Path
 
 from examples.fastapi.shared import (
-    ConfigId,
-    DotPointer,
-    User,
-    UserId,
+    AppendOp,
+    Apprentice,
+    ApprenticeId,
+    IncrementOp,
+    RunePointer,
+    SpellbookId,
     create_app,
-    get_config,
-    get_user,
-    save_config,
-    save_user,
+    get_apprentice,
+    get_spellbook,
+    save_apprentice,
+    save_spellbook,
 )
 from jsonpatchx import GenericOperationRegistry, JSONValue, StandardRegistry
 from jsonpatchx.fastapi import JsonPatchRoute
@@ -26,129 +28,138 @@ from jsonpatchx.pydantic import JsonPatchFor
 STRICT_JSON_PATCH = True
 
 app = create_app(
-    title="Demo 4: Dot-pointer settings",
+    title="Demo 4: Spellbook rune pointers",
     description=(
-        "Registry-scoped dot-pointer backends for config and user settings. "
+        "Registry-scoped rune pointer backends for spellbook and apprentice settings. "
         "Uses `JsonPatchRoute` to align OpenAPI and runtime validation."
     ),
 )
 
-registry = GenericOperationRegistry[StandardRegistry, DotPointer]
-DotPointerPatch = JsonPatchFor[Literal["Config"], registry]
-UserPatch = JsonPatchFor[User, registry]
-config_patch = JsonPatchRoute(
-    DotPointerPatch,
+registry = GenericOperationRegistry[
+    StandardRegistry, IncrementOp, AppendOp, RunePointer
+]
+SpellbookPatch = JsonPatchFor[Literal["Spellbook"], registry]
+ApprenticePatch = JsonPatchFor[Apprentice, registry]
+spellbook_patch = JsonPatchRoute(
+    SpellbookPatch,
     examples={
-        "dot-pointer": {
-            "summary": "site: replace chat flag",
+        "midnight-runes": {
+            "summary": "toggle ritual and restock ingredients",
             "value": [
-                {
-                    "op": "replace",
-                    "path": "features.chat",
-                    "value": False,
-                }
+                {"op": "replace", "path": "rituals.summon.enabled", "value": True},
+                {"op": "increment", "path": "ingredients.moon_salt", "value": 5},
             ],
         }
     },
     strict_content_type=STRICT_JSON_PATCH,
 )
-user_patch = JsonPatchRoute(
-    UserPatch,
+apprentice_patch = JsonPatchRoute(
+    ApprenticePatch,
     examples={
-        "set-quota": {
-            "summary": "set user quota",
-            "value": [{"op": "replace", "path": "quota", "value": 300}],
-        }
+        "sparkle-sprint": {
+            "summary": "boost mana and add a sigil",
+            "value": [
+                {"op": "increment", "path": "mana", "value": 20},
+                {"op": "append", "path": "sigils", "value": "aurora"},
+            ],
+        },
+        "lantern-lesson": {
+            "summary": "rename and add a sigil",
+            "value": [
+                {"op": "replace", "path": "name", "value": "Nova"},
+                {"op": "append", "path": "sigils", "value": "ember"},
+            ],
+        },
     },
     strict_content_type=STRICT_JSON_PATCH,
 )
 
 
 @app.get(
-    "/configs/{config_id}",
+    "/spellbooks/{spellbook_id}",
     response_model=JSONValue,
-    tags=["configs"],
-    summary="Get a config",
-    description="Fetch a config by id.",
+    tags=["spellbooks"],
+    summary="Get a spellbook",
+    description="Fetch a spellbook by id.",
 )
-def get_config_endpoint(
-    config_id: Annotated[
-        ConfigId,
+def get_spellbook_endpoint(
+    spellbook_id: Annotated[
+        SpellbookId,
         Path(...),
     ],
 ) -> JSONValue:
-    doc = get_config(config_id)
+    doc = get_spellbook(spellbook_id)
     if doc is None:
-        raise HTTPException(status_code=404, detail="config not found")
+        raise HTTPException(status_code=404, detail="spellbook not found")
     return doc
 
 
 @app.patch(
-    "/configs/{config_id}",
+    "/spellbooks/{spellbook_id}",
     response_model=JSONValue,
-    tags=["configs"],
-    summary="Patch a config (dot pointers)",
-    description="Use dot-separated pointers like 'features.chat'.",
-    **config_patch.route_kwargs(),
+    tags=["spellbooks"],
+    summary="Patch a spellbook (rune pointers)",
+    description="Use rune pointers like 'rituals.summon.enabled'.",
+    **spellbook_patch.route_kwargs(),
 )
-def patch_config(
-    config_id: Annotated[
-        ConfigId,
+def patch_spellbook(
+    spellbook_id: Annotated[
+        SpellbookId,
         Path(...),
     ],
     patch: Annotated[
-        DotPointerPatch,
-        Depends(config_patch.dependency()),
+        SpellbookPatch,
+        Depends(spellbook_patch.dependency()),
     ],
 ) -> JSONValue:
-    doc = get_config(config_id)
+    doc = get_spellbook(spellbook_id)
     if doc is None:
-        raise HTTPException(status_code=404, detail="config not found")
+        raise HTTPException(status_code=404, detail="spellbook not found")
     updated = patch.apply(doc)
-    save_config(config_id, updated)
+    save_spellbook(spellbook_id, updated)
     return updated
 
 
 @app.get(
-    "/users/{user_id}",
-    response_model=User,
-    tags=["users"],
-    summary="Get a user",
-    description="Fetch a user by id.",
+    "/apprentices/{apprentice_id}",
+    response_model=Apprentice,
+    tags=["apprentices"],
+    summary="Get an apprentice",
+    description="Fetch an apprentice by id.",
 )
-def get_user_endpoint(
-    user_id: Annotated[
-        UserId,
+def get_apprentice_endpoint(
+    apprentice_id: Annotated[
+        ApprenticeId,
         Path(...),
     ],
-) -> User:
-    user = get_user(user_id)
-    if user is None:
-        raise HTTPException(status_code=404, detail="user not found")
-    return user
+) -> Apprentice:
+    apprentice = get_apprentice(apprentice_id)
+    if apprentice is None:
+        raise HTTPException(status_code=404, detail="apprentice not found")
+    return apprentice
 
 
 @app.patch(
-    "/users/{user_id}",
-    response_model=User,
-    tags=["users"],
-    summary="Patch a user (dot pointers)",
-    description="Use dot-separated pointers like 'quota' or 'tags.0'.",
-    **user_patch.route_kwargs(),
+    "/apprentices/{apprentice_id}",
+    response_model=Apprentice,
+    tags=["apprentices"],
+    summary="Patch an apprentice (rune pointers)",
+    description="Use rune pointers like 'mana' or 'sigils.0'.",
+    **apprentice_patch.route_kwargs(),
 )
-def patch_user(
-    user_id: Annotated[
-        UserId,
+def patch_apprentice(
+    apprentice_id: Annotated[
+        ApprenticeId,
         Path(...),
     ],
     patch: Annotated[
-        UserPatch,
-        Depends(user_patch.dependency()),
+        ApprenticePatch,
+        Depends(apprentice_patch.dependency()),
     ],
-) -> User:
-    user = get_user(user_id)
-    if user is None:
-        raise HTTPException(status_code=404, detail="user not found")
-    updated = patch.apply(user)
-    save_user(user_id, updated)
+) -> Apprentice:
+    apprentice = get_apprentice(apprentice_id)
+    if apprentice is None:
+        raise HTTPException(status_code=404, detail="apprentice not found")
+    updated = patch.apply(apprentice)
+    save_apprentice(apprentice_id, updated)
     return updated

@@ -1,5 +1,5 @@
 """
-Demo 2: Custom registries bound to different Pydantic models using `JsonPatchFor[Model, CustomRegistry]`.
+Demo 2: Player and guild progression using custom registries per model.
 """
 
 from __future__ import annotations
@@ -10,17 +10,21 @@ from fastapi import HTTPException, Path
 
 from examples.fastapi.shared import (
     AppendOp,
+    AppendUniqueOp,
+    EnforceMaxLenOp,
+    Guild,
+    GuildId,
     IncrementOp,
-    Team,
-    TeamId,
+    Player,
+    PlayerId,
+    RemoveValueOp,
+    RequireMinimumOp,
     ToggleBoolOp,
-    User,
-    UserId,
     create_app,
-    get_team,
-    get_user,
-    save_team,
-    save_user,
+    get_guild,
+    get_player,
+    save_guild,
+    save_player,
 )
 from jsonpatchx import OperationRegistry, StandardRegistry
 from jsonpatchx.fastapi import JsonPatchRoute
@@ -28,125 +32,171 @@ from jsonpatchx.pydantic import JsonPatchFor
 
 STRICT_JSON_PATCH = True
 
-UserRegistry = OperationRegistry[StandardRegistry, IncrementOp, ToggleBoolOp]
-TeamRegistry = OperationRegistry[StandardRegistry, AppendOp, IncrementOp]
+PlayerRegistry = OperationRegistry[
+    StandardRegistry,
+    IncrementOp,
+    ToggleBoolOp,
+    RequireMinimumOp,
+    AppendUniqueOp,
+    RemoveValueOp,
+]
+GuildRegistry = OperationRegistry[
+    StandardRegistry,
+    AppendOp,
+    IncrementOp,
+    EnforceMaxLenOp,
+]
 
-UserPatch = JsonPatchFor[User, UserRegistry]
-TeamPatch = JsonPatchFor[Team, TeamRegistry]
-user_patch = JsonPatchRoute(
-    UserPatch,
+PlayerPatch = JsonPatchFor[Player, PlayerRegistry]
+GuildPatch = JsonPatchFor[Guild, GuildRegistry]
+player_patch = JsonPatchRoute(
+    PlayerPatch,
     examples={
-        "increase-quota": {
-            "summary": "Increase user quota",
-            "value": [{"op": "increment", "path": "/quota", "value": 25}],
+        "glitter-boost": {
+            "summary": "Bump XP and toggle premium",
+            "value": [
+                {"op": "increment", "path": "/xp", "value": 50},
+                {"op": "toggle", "path": "/premium"},
+            ],
         },
-        "toggle-trial": {
-            "summary": "Toggle trial status",
-            "value": [{"op": "toggle", "path": "/trial"}],
+        "sparkle-unlock": {
+            "summary": "Require level, then add a perk",
+            "value": [
+                {"op": "require_min", "path": "/level", "min_value": 5},
+                {"op": "append_unique", "path": "/perks", "value": "storm-dash"},
+            ],
+        },
+        "snack-quest": {
+            "summary": "Consume an item and earn XP",
+            "value": [
+                {"op": "remove_value", "path": "/inventory", "value": "healing_potion"},
+                {"op": "increment", "path": "/xp", "value": 25},
+            ],
         },
     },
     strict_content_type=STRICT_JSON_PATCH,
 )
-team_patch = JsonPatchRoute(
-    TeamPatch,
+guild_patch = JsonPatchRoute(
+    GuildPatch,
     examples={
-        "append-tag": {
-            "summary": "Append a team tag",
-            "value": [{"op": "append", "path": "/tags", "value": "oncall"}],
+        "owl-parade": {
+            "summary": "Add badge and raise cap",
+            "value": [
+                {"op": "append", "path": "/badges", "value": "raid-ready"},
+                {"op": "increment", "path": "/max_members", "value": 1},
+            ],
         },
-        "increment-max": {
-            "summary": "Increase max_members",
-            "value": [{"op": "increment", "path": "/max_members", "value": 3}],
+        "cozy-welcome": {
+            "summary": "Trim members to cap and add a badge",
+            "value": [
+                {
+                    "op": "enforce_max_len",
+                    "path": "/members",
+                    "max_path": "/max_members",
+                },
+                {"op": "append", "path": "/badges", "value": "candle-lit"},
+            ],
+        },
+        "snug-fit": {
+            "summary": "Add a member, then trim to max size",
+            "value": [
+                {"op": "append_unique", "path": "/members", "value": "Nova"},
+                {
+                    "op": "enforce_max_len",
+                    "path": "/members",
+                    "max_path": "/max_members",
+                },
+            ],
         },
     },
     strict_content_type=STRICT_JSON_PATCH,
 )
 
 app = create_app(
-    title="Demo 2: Billing and team ops",
-    description="Custom registries for billing-style ops on users and teams using `JsonPatchFor[Model, CustomRegistry]`.",
+    title="Demo 2: Player and guild progression",
+    description="Custom registries per model (players vs guilds) using `JsonPatchFor[Model, CustomRegistry]`.",
 )
 
 
 @app.get(
-    "/users/{user_id}",
-    response_model=User,
-    tags=["users"],
-    summary="Get a user",
-    description="Fetch a user by id.",
+    "/players/{player_id}",
+    response_model=Player,
+    tags=["players"],
+    summary="Get a player",
+    description="Fetch a player by id.",
 )
-def get_user_endpoint(
-    user_id: Annotated[
-        UserId,
+def get_player_endpoint(
+    player_id: Annotated[
+        PlayerId,
         Path(...),
     ],
-) -> User:
-    user = get_user(user_id)
-    if user is None:
-        raise HTTPException(status_code=404, detail="user not found")
-    return user
+) -> Player:
+    player = get_player(player_id)
+    if player is None:
+        raise HTTPException(status_code=404, detail="player not found")
+    return player
 
 
 @app.patch(
-    "/users/{user_id}",
-    response_model=User,
-    tags=["users"],
-    summary="Patch a user",
-    description="Apply custom ops to a User model.",
-    **user_patch.route_kwargs(),
+    "/players/{player_id}",
+    response_model=Player,
+    tags=["players"],
+    summary="Patch a player",
+    description="Apply custom ops to a Player model.",
+    **player_patch.route_kwargs(),
 )
-def patch_user(
-    user_id: Annotated[
-        UserId,
+def patch_player(
+    player_id: Annotated[
+        PlayerId,
         Path(...),
     ],
-    patch: Annotated[UserPatch, user_patch.Body()],
-) -> User:
-    user = get_user(user_id)
-    if user is None:
-        raise HTTPException(status_code=404, detail="user not found")
-    updated = patch.apply(user)
-    save_user(user_id, updated)
+    patch: Annotated[PlayerPatch, player_patch.Body()],
+) -> Player:
+    player = get_player(player_id)
+    if player is None:
+        raise HTTPException(status_code=404, detail="player not found")
+    updated = patch.apply(player)
+    save_player(player_id, updated)
     return updated
 
 
 @app.get(
-    "/teams/{team_id}",
-    response_model=Team,
-    tags=["teams"],
-    summary="Get a team",
-    description="Fetch a team by id.",
+    "/guilds/{guild_id}",
+    response_model=Guild,
+    tags=["guilds"],
+    summary="Get a guild",
+    description="Fetch a guild by id.",
 )
-def get_team_endpoint(
-    team_id: Annotated[
-        TeamId,
+def get_guild_endpoint(
+    guild_id: Annotated[
+        GuildId,
         Path(...),
     ],
-) -> Team:
-    team = get_team(team_id)
-    if team is None:
-        raise HTTPException(status_code=404, detail="team not found")
-    return team
+) -> Guild:
+    guild = get_guild(guild_id)
+    if guild is None:
+        raise HTTPException(status_code=404, detail="guild not found")
+    return guild
 
 
 @app.patch(
-    "/teams/{team_id}",
-    response_model=Team,
-    tags=["teams"],
-    summary="Patch a team",
-    description="Apply custom ops to a Team model.",
-    **team_patch.route_kwargs(),
+    "/guilds/{guild_id}",
+    response_model=Guild,
+    tags=["guilds"],
+    summary="Patch a guild",
+    description="Apply custom ops to a Guild model.",
+    **guild_patch.route_kwargs(),
 )
-def patch_team(
-    team_id: Annotated[
-        TeamId,
+def patch_guild(
+    guild_id: Annotated[
+        GuildId,
         Path(...),
     ],
-    patch: Annotated[TeamPatch, team_patch.Body()],
-) -> Team:
-    team = get_team(team_id)
-    if team is None:
-        raise HTTPException(status_code=404, detail="team not found")
-    updated = patch.apply(team)
-    save_team(team_id, updated)
+    patch: Annotated[GuildPatch, guild_patch.Body()],
+) -> Guild:
+    guild = get_guild(guild_id)
+    if guild is None:
+        raise HTTPException(status_code=404, detail="guild not found")
+    updated = patch.apply(guild)
+    save_guild(guild_id, updated)
     return updated

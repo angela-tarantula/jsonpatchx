@@ -1,5 +1,5 @@
 """
-Demo 3: Non-pydantic JSON patching.
+Demo 3: SRE control plane configs (plain JSON patching).
 """
 
 from __future__ import annotations
@@ -36,41 +36,45 @@ ConfigRegistry = OperationRegistry[
     EnsureObjectOp,
     RemoveNumberOp,
 ]
-ConfigPatch = JsonPatchFor[Literal["Config"], ConfigRegistry]
+ConfigPatch = JsonPatchFor[Literal["ServiceConfig"], ConfigRegistry]
 config_patch = JsonPatchRoute(
     ConfigPatch,
     examples={
-        "increment-limit": {
-            "summary": "limits: increase max_users",
-            "value": [{"op": "increment", "path": "/max_users", "value": 50}],
+        "rocket-boost": {
+            "summary": "bump max_users and toggle chat",
+            "value": [
+                {"op": "increment", "path": "/limits/max_users", "value": 50},
+                {"op": "toggle", "path": "/features/chat"},
+            ],
         },
-        "toggle-trial": {
-            "summary": "limits: toggle trial access",
-            "value": [{"op": "toggle", "path": "/trial"}],
+        "tag-and-seal": {
+            "summary": "ensure features and append a tag",
+            "value": [
+                {"op": "ensure_object", "path": "/features"},
+                {"op": "append", "path": "/tags", "value": "beta"},
+            ],
         },
-        "ensure-flags": {
-            "summary": "site: ensure /features is an object",
-            "value": [{"op": "ensure_object", "path": "/features"}],
+        "shuffle-switch": {
+            "summary": "swap and then toggle",
+            "value": [
+                {"op": "swap", "a": "/service_name", "b": "/features/chat"},
+                {"op": "toggle", "path": "/features/chat"},
+            ],
         },
-        "append-tag": {
-            "summary": "site: append a tag",
-            "value": [{"op": "append", "path": "/tags", "value": "beta"}],
-        },
-        "swap": {
-            "summary": "site: swap title and chat flag",
-            "value": [{"op": "swap", "a": "/title", "b": "/features/chat"}],
-        },
-        "type-gated-remove": {
-            "summary": "site: type-gated remove (expected failure)",
-            "value": [{"op": "remove_number", "path": "/title"}],
+        "oops-expected": {
+            "summary": "type-gated remove (expected failure)",
+            "value": [
+                {"op": "ensure_object", "path": "/features"},
+                {"op": "remove_number", "path": "/service_name"},
+            ],
         },
     },
     strict_content_type=STRICT_JSON_PATCH,
 )
 
 app = create_app(
-    title="Demo 3: Feature flags and limits",
-    description="Non-pydantic JSON patching for config docs using `JsonPatchFor[Name, Registry]`.",
+    title="Demo 3: Control plane configs",
+    description="Plain JSON patching for service configs using `JsonPatchFor[Name, Registry]`.",
 )
 
 
@@ -78,8 +82,8 @@ app = create_app(
     "/configs/{config_id}",
     response_model=JSONValue,
     tags=["configs"],
-    summary="Get a config",
-    description="Fetch a config by id.",
+    summary="Get a service config",
+    description="Fetch a service config by id.",
 )
 def get_config_endpoint(
     config_id: Annotated[
@@ -97,8 +101,8 @@ def get_config_endpoint(
     "/configs/{config_id}",
     response_model=JSONValue,
     tags=["configs"],
-    summary="Patch a config",
-    description="Apply standard RFC 6902 ops plus custom ops to a config.",
+    summary="Patch a service config",
+    description="Apply standard RFC 6902 ops plus custom ops to a service config.",
     **config_patch.route_kwargs(),
 )
 def patch_config(

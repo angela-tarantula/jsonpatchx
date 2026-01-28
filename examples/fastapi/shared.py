@@ -49,121 +49,241 @@ def create_app(*, title: str, description: str, version: str = "0.1.0") -> FastA
     return app
 
 
-class UserId(IntEnum):
+class CustomerId(IntEnum):
     one = 1
     two = 2
 
 
-class TeamId(IntEnum):
+class PlayerId(IntEnum):
+    one = 1
+    two = 2
+
+
+class GuildId(IntEnum):
+    one = 1
+    two = 2
+
+
+class ApprenticeId(IntEnum):
     one = 1
     two = 2
 
 
 class ConfigId(str, Enum):
-    site = "site"
-    limits = "limits"
+    service = "service"
 
 
-class User(BaseModel):
+class SpellbookId(str, Enum):
+    grimoire = "grimoire"
+    coven = "coven"
+
+
+class Customer(BaseModel):
     id: int
     name: str
     email: str
+    phone: str
+    address: str
     tags: list[str] = Field(default_factory=list)
-    role: str = "member"
+    marketing_opt_in: bool = False
     status: str = "active"
-    trial: bool = False
-    quota: int = 0
 
 
-class Team(BaseModel):
+class Player(BaseModel):
     id: int
     name: str
-    slug: str
-    tags: list[str] = Field(default_factory=list)
-    plan: str = "pro"
-    region: str = "us-east"
+    xp: int = 0
+    level: int = 1
+    inventory: list[str] = Field(default_factory=list)
+    perks: list[str] = Field(default_factory=list)
+    premium: bool = False
+
+
+class Guild(BaseModel):
+    id: int
+    name: str
+    motto: str
+    badges: list[str] = Field(default_factory=list)
+    members: list[str] = Field(default_factory=list)
     max_members: int = 0
 
 
-_SEED_USERS: dict[int, User] = {
-    1: User(
+class Apprentice(BaseModel):
+    id: int
+    name: str
+    mana: int = 0
+    sigils: list[str] = Field(default_factory=list)
+    rank: str = "novice"
+
+
+_SEED_CUSTOMERS: dict[int, Customer] = {
+    1: Customer(
         id=1,
         name="Morgan Lee",
         email="morgan@example.com",
-        tags=["beta", "newsletter"],
-        role="owner",
-        trial=False,
-        quota=250,
+        phone="+1-555-0101",
+        address="123 Maple St, Portland, OR",
+        tags=["vip", "newsletter"],
+        marketing_opt_in=True,
     ),
-    2: User(
+    2: Customer(
         id=2,
         name="Jules Park",
         email="jules@example.com",
-        tags=["growth", "internal"],
-        role="member",
-        trial=True,
-        quota=75,
+        phone="+1-555-0189",
+        address="58 Cedar Ave, Austin, TX",
+        tags=["new", "trial"],
+        marketing_opt_in=False,
     ),
 }
 
-_SEED_TEAMS: dict[int, Team] = {
-    1: Team(
+_SEED_PLAYERS: dict[int, Player] = {
+    1: Player(
         id=1,
-        name="Core Platform",
-        slug="core-platform",
-        tags=["backend", "infra"],
-        plan="enterprise",
-        region="us-west",
-        max_members=12,
+        name="Avery",
+        xp=1200,
+        level=8,
+        inventory=["iron_sword", "healing_potion"],
+        perks=["double_xp"],
+        premium=True,
     ),
-    2: Team(
+    2: Player(
         id=2,
-        name="Docs Studio",
-        slug="docs-studio",
-        tags=["writers", "design"],
-        plan="pro",
-        region="eu-central",
-        max_members=6,
+        name="Jules",
+        xp=350,
+        level=3,
+        inventory=["wooden_shield"],
+        perks=[],
+        premium=False,
+    ),
+}
+
+_SEED_GUILDS: dict[int, Guild] = {
+    1: Guild(
+        id=1,
+        name="Moonlit Owls",
+        motto="Leave no quest behind.",
+        badges=["founders", "raid-ready"],
+        members=["Avery", "Rowan", "Juniper"],
+        max_members=5,
+    ),
+    2: Guild(
+        id=2,
+        name="Pixel Bears",
+        motto="Cozy but unstoppable.",
+        badges=["crafting", "casual"],
+        members=["Jules", "Morgan"],
+        max_members=4,
+    ),
+}
+
+_SEED_APPRENTICES: dict[int, Apprentice] = {
+    1: Apprentice(
+        id=1,
+        name="Rowan",
+        mana=120,
+        sigils=["ember", "ward"],
+        rank="adept",
+    ),
+    2: Apprentice(
+        id=2,
+        name="Juniper",
+        mana=45,
+        sigils=["mist"],
+        rank="novice",
     ),
 }
 
 _SEED_CONFIGS: MutableMapping[str, JSONValue] = {
-    "site": {
-        "title": "Atlas",
-        "features": {"chat": True, "list": ["beta", "dark-launch"]},
+    "service": {
+        "service_name": "Atlas",
+        "features": {"chat": True, "beta": False},
+        "limits": {"max_users": 250, "retry_budget": 3},
         "tags": ["internal", "staff"],
     },
-    "limits": {"max_users": 250, "trial": True},
 }
 
-_USERS: dict[int, User] = copy.deepcopy(_SEED_USERS)
-_TEAMS: dict[int, Team] = copy.deepcopy(_SEED_TEAMS)
+_CUSTOMERS: dict[int, Customer] = copy.deepcopy(_SEED_CUSTOMERS)
+_PLAYERS: dict[int, Player] = copy.deepcopy(_SEED_PLAYERS)
+_GUILDS: dict[int, Guild] = copy.deepcopy(_SEED_GUILDS)
+_APPRENTICES: dict[int, Apprentice] = copy.deepcopy(_SEED_APPRENTICES)
 _CONFIGS: MutableMapping[str, JSONValue] = copy.deepcopy(_SEED_CONFIGS)
+_SPELLBOOKS: MutableMapping[str, JSONValue] = {
+    "grimoire": {
+        "wards": {"protection": {"level": 2}},
+        "rituals": {"summon": {"enabled": False}},
+        "familiars": ["owl", "cat"],
+        "ingredients": {"moon_salt": 3},
+    },
+    "coven": {
+        "wards": {"protection": {"level": 1}},
+        "rituals": {"harvest": {"enabled": True}},
+        "familiars": ["raven"],
+        "ingredients": {"lavender": 5},
+    },
+}
 
 
 def reset_store() -> None:
-    _USERS.clear()
-    _USERS.update(copy.deepcopy(_SEED_USERS))
-    _TEAMS.clear()
-    _TEAMS.update(copy.deepcopy(_SEED_TEAMS))
+    _CUSTOMERS.clear()
+    _CUSTOMERS.update(copy.deepcopy(_SEED_CUSTOMERS))
+    _PLAYERS.clear()
+    _PLAYERS.update(copy.deepcopy(_SEED_PLAYERS))
+    _GUILDS.clear()
+    _GUILDS.update(copy.deepcopy(_SEED_GUILDS))
+    _APPRENTICES.clear()
+    _APPRENTICES.update(copy.deepcopy(_SEED_APPRENTICES))
     _CONFIGS.clear()
     _CONFIGS.update(copy.deepcopy(_SEED_CONFIGS))
+    _SPELLBOOKS.clear()
+    _SPELLBOOKS.update(
+        {
+            "grimoire": {
+                "wards": {"protection": {"level": 2}},
+                "rituals": {"summon": {"enabled": False}},
+                "familiars": ["owl", "cat"],
+                "ingredients": {"moon_salt": 3},
+            },
+            "coven": {
+                "wards": {"protection": {"level": 1}},
+                "rituals": {"harvest": {"enabled": True}},
+                "familiars": ["raven"],
+                "ingredients": {"lavender": 5},
+            },
+        }
+    )
 
 
-def get_user(user_id: int) -> User | None:
-    return _USERS.get(user_id)
+def get_customer(customer_id: int) -> Customer | None:
+    return _CUSTOMERS.get(customer_id)
 
 
-def save_user(user_id: int, user: User) -> None:
-    _USERS[user_id] = user
+def save_customer(customer_id: int, customer: Customer) -> None:
+    _CUSTOMERS[customer_id] = customer
 
 
-def get_team(team_id: int) -> Team | None:
-    return _TEAMS.get(team_id)
+def get_player(player_id: int) -> Player | None:
+    return _PLAYERS.get(player_id)
 
 
-def save_team(team_id: int, team: Team) -> None:
-    _TEAMS[team_id] = team
+def save_player(player_id: int, player: Player) -> None:
+    _PLAYERS[player_id] = player
+
+
+def get_guild(guild_id: int) -> Guild | None:
+    return _GUILDS.get(guild_id)
+
+
+def save_guild(guild_id: int, guild: Guild) -> None:
+    _GUILDS[guild_id] = guild
+
+
+def get_apprentice(apprentice_id: int) -> Apprentice | None:
+    return _APPRENTICES.get(apprentice_id)
+
+
+def save_apprentice(apprentice_id: int, apprentice: Apprentice) -> None:
+    _APPRENTICES[apprentice_id] = apprentice
 
 
 def get_config(config_id: str) -> JSONValue | None:
@@ -172,6 +292,14 @@ def get_config(config_id: str) -> JSONValue | None:
 
 def save_config(config_id: str, doc: JSONValue) -> None:
     _CONFIGS[config_id] = doc
+
+
+def get_spellbook(spellbook_id: str) -> JSONValue | None:
+    return _SPELLBOOKS.get(spellbook_id)
+
+
+def save_spellbook(spellbook_id: str, doc: JSONValue) -> None:
+    _SPELLBOOKS[spellbook_id] = doc
 
 
 class IncrementOp(OperationSchema):
@@ -236,6 +364,95 @@ class ToggleBoolOp(OperationSchema):
     def apply(self, doc: JSONValue) -> JSONValue:
         current = self.path.get(doc)
         return ReplaceOp(path=self.path, value=not current).apply(doc)
+
+
+class RequireMinimumOp(OperationSchema):
+    model_config = ConfigDict(
+        title="Require minimum operation",
+        json_schema_extra={"description": "Ensures a numeric value meets a minimum."},
+    )
+
+    op: Literal["require_min"] = "require_min"
+    path: JSONPointer[JSONNumber]
+    min_value: JSONNumber = Field(gt=0)
+
+    @override
+    def apply(self, doc: JSONValue) -> JSONValue:
+        current = self.path.get(doc)
+        if current < self.min_value:
+            raise PatchConflictError(
+                f"value {current} is below required minimum {self.min_value}"
+            )
+        return doc
+
+
+class AppendUniqueOp(OperationSchema):
+    model_config = ConfigDict(
+        title="Append unique operation",
+        json_schema_extra={
+            "description": "Appends a value if it is not already present."
+        },
+    )
+
+    op: Literal["append_unique"] = "append_unique"
+    path: JSONPointer[JSONArray[JSONValue]]
+    value: JSONValue
+
+    @override
+    def apply(self, doc: JSONValue) -> JSONValue:
+        current = self.path.get(doc)
+        if self.value in current:
+            return doc
+        return AddOp(path=self.path, value=[*current, self.value]).apply(doc)
+
+
+class RemoveValueOp(OperationSchema):
+    model_config = ConfigDict(
+        title="Remove value operation",
+        json_schema_extra={"description": "Removes a value from an array."},
+    )
+
+    op: Literal["remove_value"] = "remove_value"
+    path: JSONPointer[JSONArray[JSONValue]]
+    value: JSONValue
+
+    @override
+    def apply(self, doc: JSONValue) -> JSONValue:
+        current = self.path.get(doc)
+        if self.value not in current:
+            raise PatchConflictError(f"value {self.value!r} not found")
+        remaining = []
+        removed = False
+        for item in current:
+            if not removed and item == self.value:
+                removed = True
+                continue
+            remaining.append(item)
+        return AddOp(path=self.path, value=remaining).apply(doc)
+
+
+class EnforceMaxLenOp(OperationSchema):
+    model_config = ConfigDict(
+        title="Enforce max length operation",
+        json_schema_extra={
+            "description": "Trims a list from the front until it fits a max size."
+        },
+    )
+
+    op: Literal["enforce_max_len"] = "enforce_max_len"
+    path: JSONPointer[JSONArray[JSONValue]]
+    max_path: JSONPointer[JSONNumber]
+
+    @override
+    def apply(self, doc: JSONValue) -> JSONValue:
+        current = list(self.path.get(doc))
+        max_size_raw = self.max_path.get(doc)
+        max_size = int(max_size_raw)
+        if max_size <= 0:
+            return doc
+        while len(current) > max_size:
+            current.pop(0)
+        return AddOp(path=self.path, value=current).apply(doc)
 
 
 class EnsureObjectOp(OperationSchema):
@@ -313,9 +530,9 @@ class RemoveNumberOp(OperationSchema):
         return RemoveOp(path=self.path).apply(doc)
 
 
-class DotPointer(PointerBackend):
+class RunePointer(PointerBackend):
     """
-    Demonstrative pointer backend using dot-separated paths ("a.b.c").
+    Demonstrative pointer backend using dot-separated rune paths ("a.b.c").
 
     Notes:
     - Root pointer is the empty string.
@@ -375,21 +592,33 @@ class DotPointer(PointerBackend):
 __all__ = [
     "AddOp",
     "AppendOp",
+    "AppendUniqueOp",
     "EnsureObjectOp",
+    "EnforceMaxLenOp",
     "ExtendOp",
     "IncrementOp",
     "JSON_PATCH_MEDIA_TYPE",
     "RemoveNumberOp",
+    "RemoveValueOp",
+    "RequireMinimumOp",
     "SwapOp",
     "ToggleBoolOp",
     "create_app",
     "get_config",
-    "get_team",
-    "get_user",
+    "get_customer",
+    "get_player",
+    "get_guild",
+    "get_apprentice",
+    "get_spellbook",
     "save_config",
-    "save_team",
-    "save_user",
-    "DotPointer",
-    "Team",
-    "User",
+    "save_customer",
+    "save_player",
+    "save_guild",
+    "save_apprentice",
+    "save_spellbook",
+    "RunePointer",
+    "Apprentice",
+    "Customer",
+    "Guild",
+    "Player",
 ]

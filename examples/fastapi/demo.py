@@ -7,10 +7,10 @@ import sys
 import time
 
 DEMOS: dict[str, tuple[str, str, int]] = {
-    "1": ("Typed model patching", "examples.fastapi.demo1:app", 8000),
-    "2": ("Model-bound custom ops", "examples.fastapi.demo2:app", 8001),
-    "3": ("Custom ops on JSON documents", "examples.fastapi.demo3:app", 8002),
-    "4": ("Dot-pointer settings", "examples.fastapi.demo4:app", 8003),
+    "1": ("Support desk corrections", "examples.fastapi.demo1:app", 8000),
+    "2": ("Player and guild progression", "examples.fastapi.demo2:app", 8001),
+    "3": ("Control plane configs", "examples.fastapi.demo3:app", 8002),
+    "4": ("Spellbook rune pointers", "examples.fastapi.demo4:app", 8003),
 }
 
 

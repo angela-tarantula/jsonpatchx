@@ -21,46 +21,46 @@ uv run python -m examples.fastapi.demo
 
 FastAPI docs already include example requests and payloads.
 
-## Demo 1: Customer profile patching
+## Demo 1: Support desk corrections
 
 Standard JSON Patch on customer profiles using `JsonPatchFor[Model, StandardRegistry]`.
 
-**File:** `examples/demo1.py`
+**File:** `examples/fastapi/demo1.py`
 
 **Run**
 
 - `uv run uvicorn examples.fastapi.demo1:app --reload --port 8000`
 
-## Demo 2: Billing and team ops
+## Demo 2: Player and guild progression
 
-Custom registries for billing-style ops on users and teams using `JsonPatchFor[Model, CustomRegistry]`.
+Custom registries per model (players vs guilds) using `JsonPatchFor[Model, CustomRegistry]`.
 
-**File:** `examples/demo2.py`
+**File:** `examples/fastapi/demo2.py`
 
 **Run**
 
 - `uv run uvicorn examples.fastapi.demo2:app --reload --port 8001`
 
-## Demo 3: Feature flags and limits
+## Demo 3: Control plane configs
 
-Non-pydantic JSON patching for config docs using `JsonPatchFor[Name, Registry]`.
+Plain JSON patching for service configs using `JsonPatchFor[Name, Registry]`.
 
-**File:** `examples/demo3.py`
+**File:** `examples/fastapi/demo3.py`
 
 **Run**
 
 - `uv run uvicorn examples.fastapi.demo3:app --reload --port 8002`
 
-## Demo 4: Dot-pointer settings
+## Demo 4: Spellbook rune pointers
 
-Registry-scoped dot-pointer backends for config and user settings.
-Uses `PatchDependency(...)` with explicit request body configuration.
+Registry-scoped rune-pointer backends for spellbook and apprentice settings.
+Uses `JsonPatchRoute.dependency()` to inject the validation context.
 
-**File:** `examples/demo4.py`
+**File:** `examples/fastapi/demo4.py`
 
 **Run**
 
 - `uv run uvicorn examples.fastapi.demo4:app --reload --port 8003`
 
-This demo uses `PatchDependency(...)` to inject Pydantic validation context, which FastAPI
-does not currently provide for request bodies.
+This demo uses `JsonPatchRoute.dependency()` to inject Pydantic validation context, which
+FastAPI does not currently provide for request bodies.
