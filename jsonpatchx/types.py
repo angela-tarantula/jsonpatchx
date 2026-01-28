@@ -31,6 +31,7 @@ from pydantic import (
     TypeAdapter,
     ValidationInfo,
 )
+from pydantic.json_schema import JsonSchemaValue
 from pydantic_core import core_schema as cs
 from typing_extensions import TypeForm
 
@@ -472,7 +473,7 @@ class JSONPointer(str, Generic[T_co, P_co]):
 
     @classmethod
     def __get_pydantic_core_schema__(
-        cls, source_type: Any, handler: GetCoreSchemaHandler
+        cls, source_type: type[Self], handler: GetCoreSchemaHandler
     ) -> cs.CoreSchema:
         type_param, bound_backend = cls._parse_pointer_type_args(*get_args(source_type))
         validator_function = partial(
@@ -488,7 +489,7 @@ class JSONPointer(str, Generic[T_co, P_co]):
     @classmethod
     def __get_pydantic_json_schema__(
         cls, schema: cs.CoreSchema, handler: GetJsonSchemaHandler
-    ) -> dict[str, object]:
+    ) -> JsonSchemaValue:
         json_schema = handler(schema)
         json_schema.update(
             {

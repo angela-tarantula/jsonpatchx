@@ -12,7 +12,7 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Annotated, Any, TypeVar, cast
+from typing import Annotated, Any, Self, TypeVar, cast
 
 from fastapi import Body, Depends, FastAPI, HTTPException, Request
 from fastapi.exceptions import RequestValidationError
@@ -25,6 +25,7 @@ from pydantic import (
     GetJsonSchemaHandler,
     ValidationError,
 )
+from pydantic.json_schema import JsonSchemaValue
 from pydantic_core import core_schema
 
 from jsonpatchx.exceptions import (
@@ -347,7 +348,7 @@ def _patch_body_annotation(patch_model: type[Any]) -> type[Any]:
 
         @classmethod
         def __get_pydantic_core_schema__(
-            cls, source_type: Any, handler: GetCoreSchemaHandler
+            cls, source_type: type[Self], handler: GetCoreSchemaHandler
         ) -> core_schema.CoreSchema:
             original_schema = handler.generate_schema(cls.__patch_model__)
             cls.__patch_core_schema__ = original_schema
@@ -365,7 +366,7 @@ def _patch_body_annotation(patch_model: type[Any]) -> type[Any]:
         @classmethod
         def __get_pydantic_json_schema__(
             cls, schema: core_schema.CoreSchema, handler: GetJsonSchemaHandler
-        ) -> dict[str, Any]:
+        ) -> JsonSchemaValue:
             core_schema_to_use = cls.__patch_core_schema__ or schema
             return handler(core_schema_to_use)
 

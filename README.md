@@ -238,29 +238,29 @@ from jsonpatchx import JsonPatchFor, OperationRegistry, StandardRegistry, JSONVa
 from jsonpatchx.fastapi import JsonPatchRoute
 
 app = FastAPI()
-ConfigRegistry = OperationRegistry[StandardRegistry, DeduplicateOp, IncrementOp]
-ConfigPatch = JsonPatchFor[Literal["Database Config"], ConfigRegistry]
+UserRegistry = OperationRegistry[StandardRegistry, DeduplicateOp, IncrementOp]
+UserPatch = JsonPatchFor[User, UserRegistry]
 
-config_patch = JsonPatchRoute(
-    ConfigPatch,
+user_patch = JsonPatchRoute(
+    UserPatch,
     examples={
-        "increment-retries": {
-            "summary": "Increase retry count",
-            "value": [{"op": "increment", "path": "/retries", "value": 1}],
+        "increment-balance": {
+            "summary": "Increase savings account balance",
+            "value": [{"op": "increment", "path": "/accounts/savings/balance", "value": 100}],
         },
     },
     strict_content_type=True,
 )
 
 @app.patch(
-    "/configs/{config_id}",
-    **config_patch.route_kwargs(),
+    "/users/{user_id}",
+    **user_patch.route_kwargs(),
 )
-def patch_config(
-    config_id: str,
-    patch: Annotated[ConfigPatch, config_patch.Body()],
-) -> JSONValue:
-    doc = load_config(config_id)
+def patch_user(
+    user_id: str,
+    patch: Annotated[UserPatch, user_patch.Body()],
+) -> User:
+    doc = load_user(user_id)
     return patch.apply(doc)
 ```
 

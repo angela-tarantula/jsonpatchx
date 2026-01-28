@@ -12,6 +12,7 @@ from typing import (
 )
 
 from pydantic import BaseModel, ConfigDict, GetJsonSchemaHandler
+from pydantic.json_schema import JsonSchemaValue
 from pydantic_core import core_schema as cs
 
 from jsonpatchx.exceptions import InvalidOperationDefinition
@@ -146,7 +147,7 @@ class OperationSchema(BaseModel, ABC):
     @override
     def __get_pydantic_json_schema__(
         cls, schema: cs.CoreSchema, handler: GetJsonSchemaHandler
-    ) -> dict[str, object]:
+    ) -> JsonSchemaValue:
         json_schema = handler(schema)
         # 1. allow users to set "op" defaults, but tell OpenAPI it's required
         # 2. tell OpenAPI that additionalProperties are forbidden
