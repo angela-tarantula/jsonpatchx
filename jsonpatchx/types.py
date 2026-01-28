@@ -177,7 +177,6 @@ _JSON_VALUE_ADAPTER: TypeAdapter[JSONValue] = _type_adapter_for(JSONValue)
 
 @runtime_checkable
 class _PointerClassProtocol(Protocol):
-
     @abstractmethod
     def __init__(self, pointer: str) -> None:
         """Parse and construct a backend-specific pointer."""
@@ -282,6 +281,7 @@ def _cached_json_pointer[P](path: str, *, pointer_cls: Callable[..., P]) -> P:
             ) from e
 
 
+type _CTX_KEY_LITERALS = Literal["jsonpatch:pointer_backend"]
 _POINTER_BACKEND_CTX_KEY: Final = "jsonpatch:pointer_backend"
 
 

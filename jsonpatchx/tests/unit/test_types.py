@@ -12,6 +12,7 @@ from jsonpatchx.tests.unit.conftest import (
     IncompletePointerBackend,
 )
 from jsonpatchx.types import (
+    _POINTER_BACKEND_CTX_KEY,
     JSONArray,
     JSONBoolean,
     JSONContainer,
@@ -187,8 +188,7 @@ def test_jsonpointer_public_methods_are_backend_agnostic(
         assert str(ptr) == path
 
 
-def test_resolve_strictest_backend(subtests: Subtests) -> None:
-    # NOTE: replace with test of validator instead
+def test_pointer_backend_binding_with_context(subtests: Subtests) -> None:
     class RegistryPointer(DotPointer):
         pass
 
@@ -198,39 +198,42 @@ def test_resolve_strictest_backend(subtests: Subtests) -> None:
     class ChildPointer(BoundPointer):
         pass
 
-    with subtests.test("no backends"):
-        assert (
-            JSONPointer._resolve_strictest_backend(PointerBackend, PointerBackend)
-            is PointerBackend
+    def _validate(
+        pointer_type: type[JSONPointer],
+        path: str,
+        registry_backend: type[PointerBackend] | None,
+    ) -> JSONPointer:
+        adapter = TypeAdapter(pointer_type)
+        context = (
+            None
+            if registry_backend is None
+            else {_POINTER_BACKEND_CTX_KEY: registry_backend}
         )
+        return adapter.validate_python(path, context=context)
+
+    with subtests.test("no backends"):
+        ptr = _validate(JSONPointer[JSONValue], "/a", None)
+        assert isinstance(ptr.ptr, RFC6901JsonPointer)
 
     with subtests.test("registry only"):
-        assert (
-            JSONPointer._resolve_strictest_backend(RegistryPointer, PointerBackend)
-            is RegistryPointer
-        )
+        ptr = _validate(JSONPointer[JSONValue], "a.b", RegistryPointer)
+        assert isinstance(ptr.ptr, RegistryPointer)
 
     with subtests.test("bound only"):
-        assert (
-            JSONPointer._resolve_strictest_backend(PointerBackend, BoundPointer)
-            is BoundPointer
-        )
+        ptr = _validate(JSONPointer[JSONValue, BoundPointer], "a.b", None)
+        assert isinstance(ptr.ptr, BoundPointer)
 
     with subtests.test("same backend"):
-        assert (
-            JSONPointer._resolve_strictest_backend(BoundPointer, BoundPointer)
-            is BoundPointer
-        )
+        ptr = _validate(JSONPointer[JSONValue, BoundPointer], "a.b", BoundPointer)
+        assert isinstance(ptr.ptr, BoundPointer)
 
     with subtests.test("registry is subclass of bound"):
-        assert (
-            JSONPointer._resolve_strictest_backend(ChildPointer, BoundPointer)
-            is ChildPointer
-        )
+        ptr = _validate(JSONPointer[JSONValue, BoundPointer], "a.b", ChildPointer)
+        assert isinstance(ptr.ptr, ChildPointer)
 
     with subtests.test("mismatched backends"):
         with pytest.raises(InvalidJSONPointer):
-            JSONPointer._resolve_strictest_backend(RegistryPointer, BoundPointer)
+            _validate(JSONPointer[JSONValue, BoundPointer], "a.b", RegistryPointer)
 
 
 @pytest.mark.parametrize(
