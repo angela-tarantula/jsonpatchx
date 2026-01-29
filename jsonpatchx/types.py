@@ -652,7 +652,7 @@ class JSONPointer(str, Generic[T_co, P_co]):
             return True
 
     def add(self, doc: JSONValue, value: object) -> JSONValue:
-        """
+        """ # NOTE: ensure existing target type matters
         RFC 6902 add (type-gated).
 
         Args:
@@ -689,7 +689,7 @@ class JSONPointer(str, Generic[T_co, P_co]):
             container.insert(key, target)
         return doc
 
-    def is_addable(
+    def is_addable( # NOTE: ensure existing target type matters
         self,
         doc: JSONValue,
         value: object = _Nothing,
