@@ -85,6 +85,17 @@ def test_json_type_validations(subtests: Subtests, json_type: Any) -> None:
                     adapter.validate_python(value)
 
 
+def test_json_nested_container_validation(subtests: Subtests) -> None:
+    nested_adapter = TypeAdapter(JSONArray[JSONObject[JSONNumber | JSONNull]])
+    with subtests.test("accepts valid nested value"):
+        nested_adapter.validate_python([{"a": 1}, {"b": -2.5}, {"c": None}])
+    with subtests.test("rejects invalid nested value"):
+        with pytest.raises(ValidationError):
+            nested_adapter.validate_python([1, 2, 3])
+        with pytest.raises(ValidationError):
+            nested_adapter.validate_python([{"a": True}])
+
+
 @pytest.mark.parametrize(
     (
         "pointer_cls",
