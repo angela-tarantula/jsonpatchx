@@ -181,7 +181,6 @@ class _PointerClassProtocol(Protocol):
     @abstractmethod
     def __init__(self, pointer: str) -> None:
         """Parse and construct a backend-specific pointer."""
-        ...
 
     @classmethod
     @abstractmethod
@@ -192,7 +191,6 @@ class _PointerClassProtocol(Protocol):
         Implementations may accept tokens beyond strings (e.g. ints) and stringify them,
         but must preserve the invariant that ``from_parts(ptr.parts)`` round-trips.
         """
-        ...
 
     @abstractmethod
     def resolve(self, doc: Any) -> Any:
@@ -202,7 +200,6 @@ class _PointerClassProtocol(Protocol):
         Implementations typically follow dict/list traversal rules, but the library
         does not require a particular exception type on failure.
         """
-        ...
 
     @override
     @abstractmethod
@@ -212,11 +209,6 @@ class _PointerClassProtocol(Protocol):
 
         Must round-trip such that ``PointerBackend(str(ptr))`` yields an equivalent pointer.
         """
-        ...
-
-    @override
-    @abstractmethod
-    def __hash__(self) -> int: ...
 
 
 @runtime_checkable
@@ -251,7 +243,6 @@ class PointerBackend(_PointerClassProtocol, Protocol):
     @abstractmethod
     def parts(self) -> Sequence[Any]:
         """Unescaped backend-specific tokens."""
-        ...
 
 
 @lru_cache(maxsize=512)

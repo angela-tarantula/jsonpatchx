@@ -6,11 +6,6 @@ from pydantic import TypeAdapter, ValidationError
 from pytest import Subtests
 
 from jsonpatchx.exceptions import InvalidJSONPointer, PatchConflictError
-from tests.unit.conftest import (
-    AnotherIncompletePointerBackend,
-    DotPointer,
-    IncompletePointerBackend,
-)
 from jsonpatchx.types import (
     _POINTER_BACKEND_CTX_KEY,
     JSONArray,
@@ -23,6 +18,11 @@ from jsonpatchx.types import (
     JSONString,
     JSONValue,
     PointerBackend,
+)
+from tests.unit.conftest import (
+    AnotherIncompletePointerBackend,
+    DotPointer,
+    IncompletePointerBackend,
 )
 
 
