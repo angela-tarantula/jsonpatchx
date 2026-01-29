@@ -25,98 +25,67 @@ from tests.unit.conftest import (
     IncompletePointerBackend,
 )
 
-
-def test_json_primitive_strict_types(subtests: Subtests) -> None:
-    bool_adapter = TypeAdapter(JSONBoolean)
-    number_adapter = TypeAdapter(JSONNumber)
-    string_adapter = TypeAdapter(JSONString)
-    null_adapter = TypeAdapter(JSONNull)
-
-    with subtests.test("JSONBoolean"):
-        bool_adapter.validate_python(True)
-        bool_adapter.validate_python(False)
-        for invalid in (1, "true", "False", 0):
-            with pytest.raises(ValidationError):
-                bool_adapter.validate_python(invalid)
-
-    with subtests.test("JSONNumber"):
-        number_adapter.validate_python(1)
-        number_adapter.validate_python(1.5)
-        for invalid in ("2", True, None):
-            with pytest.raises(ValidationError):
-                number_adapter.validate_python(invalid)
-
-    with subtests.test("JSONString"):
-        string_adapter.validate_python("ok")
-        for invalid in (b"nope", 1, False):
-            with pytest.raises(ValidationError):
-                string_adapter.validate_python(invalid)
-
-    with subtests.test("JSONNull"):
-        null_adapter.validate_python(None)
-        for invalid in ("null", 0, False):
-            with pytest.raises(ValidationError):
-                null_adapter.validate_python(invalid)
-
-
-def test_json_container_strict_types(subtests: Subtests) -> None:
-    array_adapter = TypeAdapter(JSONArray[Any])
-    object_adapter = TypeAdapter(JSONObject[Any])
-    container_adapter = TypeAdapter(JSONContainer[Any])
-
-    with subtests.test("JSONArray"):
-        array_adapter.validate_python([1, {"a": 2}, "ok"])
-        array_adapter.validate_python([object()])
-        for invalid in ({"a": 1}, "nope", (1, 2)):
-            with pytest.raises(ValidationError):
-                array_adapter.validate_python(invalid)
-
-    with subtests.test("JSONObject"):
-        object_adapter.validate_python({"a": 1, "b": object()})
-        for invalid in (["nope"], "nope", {("k",): "nope"}, {"a", "b"}):
-            with pytest.raises(ValidationError):
-                object_adapter.validate_python(invalid)
-
-    with subtests.test("JSONContainer"):
-        container_adapter.validate_python([object()])
-        container_adapter.validate_python({"a": object()})
-        for invalid in ("nope", (1, 2), {"a", "b"}):
-            with pytest.raises(ValidationError):
-                container_adapter.validate_python(invalid)
+_JSON_VALUE_CASES: list[tuple[str, object, set[str]]] = [
+    ("bool-true", True, {"JSONBoolean", "JSONValue"}),
+    ("bool-false", False, {"JSONBoolean", "JSONValue"}),
+    ("int", 1, {"JSONNumber", "JSONValue"}),
+    ("float", 1.5, {"JSONNumber", "JSONValue"}),
+    ("string", "ok", {"JSONString", "JSONValue"}),
+    ("null", None, {"JSONNull", "JSONValue"}),
+    (
+        "array-simple",
+        [1, {"a": 2}, "ok"],
+        {"JSONArray", "JSONContainer", "JSONValue"},
+    ),
+    ("array-object-item", [object()], {"JSONArray", "JSONContainer"}),
+    ("array-bytes-item", [b"bytes"], {"JSONArray", "JSONContainer"}),
+    (
+        "object-simple",
+        {"a": 1, "b": "ok", "c": None, "d": True},
+        {"JSONObject", "JSONContainer", "JSONValue"},
+    ),
+    ("object-any", {"a": 1, "b": object()}, {"JSONObject", "JSONContainer"}),
+    (
+        "nested",
+        {"a": [1, {"b": [True, None, 3.5]}], "c": {"d": "ok"}},
+        {"JSONObject", "JSONContainer", "JSONValue"},
+    ),
+    ("bytes", b"bytes", set()),
+    ("object", object(), set()),
+    ("tuple", (1, 2), set()),
+    ("set", {"a", "b"}, set()),
+    ("dict-non-str-key", {1: "nope"}, set()),
+]
 
 
-def test_jsonvalue_strict_types(subtests: Subtests) -> None:
-    value_adapter = TypeAdapter(JSONValue)
+def _assert_jsonvalue_cases(
+    subtests: Subtests, adapter_name: str, adapter: TypeAdapter[Any]
+) -> None:
+    for label, value, allowed in _JSON_VALUE_CASES:
+        if adapter_name in allowed:
+            with subtests.test(f"{adapter_name} accepts {label}"):
+                adapter.validate_python(value)
+        else:
+            with subtests.test(f"{adapter_name} rejects {label}"):
+                with pytest.raises(ValidationError):
+                    adapter.validate_python(value)
 
-    with subtests.test("jsonvalue accepts primitives"):
-        for value in (True, 1, 1.5, "ok", None):
-            value_adapter.validate_python(value)
-        for invalid in (object(), b"bytes"):
-            with pytest.raises(ValidationError):
-                value_adapter.validate_python(invalid)
 
-    with subtests.test("jsonvalue accepts containers"):
-        value_adapter.validate_python([])
-        value_adapter.validate_python([1, "ok", None, True, 2.5])
-        value_adapter.validate_python({"a": 1, "b": "ok", "c": None, "d": True})
-
-    with subtests.test("jsonvalue accepts nested containers"):
-        value_adapter.validate_python(
-            {"a": [1, {"b": [True, None, 3.5]}], "c": {"d": "ok"}}
-        )
-
-    with subtests.test("jsonvalue rejects invalid containers"):
-        for invalid in (
-            {"a": object()},
-            {"a": b"bytes"},
-            {1: "nope"},
-            {"a", "b"},
-            (1, 2),
-            [object()],
-            [b"bytes"],
-        ):
-            with pytest.raises(ValidationError):
-                value_adapter.validate_python(invalid)
+def test_json_type_validations(subtests: Subtests) -> None:
+    json_types = [
+        JSONBoolean,
+        JSONNumber,
+        JSONString,
+        JSONNull,
+        JSONArray[Any],
+        JSONObject[Any],
+        JSONContainer[Any],
+        JSONValue,
+    ]
+    for json_type in json_types:
+        name = json_type.__name__
+        adapter = TypeAdapter(json_type)
+        _assert_jsonvalue_cases(subtests, name, adapter)
 
 
 @pytest.mark.parametrize(
