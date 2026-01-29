@@ -1,4 +1,4 @@
-from typing import Any
+from typing import Any, Final
 
 import pytest
 from jsonpointer import JsonPointer as RFC6901JsonPointer
@@ -25,7 +25,8 @@ from tests.unit.conftest import (
     IncompletePointerBackend,
 )
 
-_JSON_VALUE_CASES: list[tuple[str, object, set[str]]] = [
+JSON_TYPE_VALIDATION_TEST_CASES: Final[list[tuple[str, object, set[str]]]] = [
+    # (label, value, allowed adapter names)
     ("bool-true", True, {"JSONBoolean", "JSONValue"}),
     ("bool-false", False, {"JSONBoolean", "JSONValue"}),
     ("int", 1, {"JSONNumber", "JSONValue"}),
@@ -58,21 +59,9 @@ _JSON_VALUE_CASES: list[tuple[str, object, set[str]]] = [
 ]
 
 
-def _assert_jsonvalue_cases(
-    subtests: Subtests, adapter_name: str, adapter: TypeAdapter[Any]
-) -> None:
-    for label, value, allowed in _JSON_VALUE_CASES:
-        if adapter_name in allowed:
-            with subtests.test(f"{adapter_name} accepts {label}"):
-                adapter.validate_python(value)
-        else:
-            with subtests.test(f"{adapter_name} rejects {label}"):
-                with pytest.raises(ValidationError):
-                    adapter.validate_python(value)
-
-
-def test_json_type_validations(subtests: Subtests) -> None:
-    json_types = [
+@pytest.mark.parametrize(
+    "json_type",
+    [
         JSONBoolean,
         JSONNumber,
         JSONString,
@@ -81,11 +70,19 @@ def test_json_type_validations(subtests: Subtests) -> None:
         JSONObject[Any],
         JSONContainer[Any],
         JSONValue,
-    ]
-    for json_type in json_types:
-        name = json_type.__name__
-        adapter = TypeAdapter(json_type)
-        _assert_jsonvalue_cases(subtests, name, adapter)
+    ],
+)
+def test_json_type_validations(subtests: Subtests, json_type: Any) -> None:
+    name = json_type.__name__
+    adapter = TypeAdapter(json_type)
+    for label, value, allowed in JSON_TYPE_VALIDATION_TEST_CASES:
+        if name in allowed:
+            with subtests.test(f"{name} accepts {label}"):
+                adapter.validate_python(value)
+        else:
+            with subtests.test(f"{name} rejects {label}"):
+                with pytest.raises(ValidationError):
+                    adapter.validate_python(value)
 
 
 @pytest.mark.parametrize(
