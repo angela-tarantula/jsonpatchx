@@ -40,6 +40,21 @@ JSON_TYPE_VALIDATION_TYPES: Final[list[type]] = [
     JSONArray[JSONObject[JSONNumber | JSONNull]],
 ]
 
+JSON_TYPE_VALIDATION_REPRESENTATIVE_VALUES: Final[dict[Any, object]] = {
+    JSONBoolean: True,
+    JSONNumber: 1,
+    JSONString: "ok",
+    JSONNull: None,
+    JSONArray[Any]: [1],
+    JSONObject[Any]: {"a": 1},
+    JSONContainer[Any]: {"a": 1},
+    JSONValue: {"a": 1},
+    JSONArray[JSONNumber]: [1],
+    JSONObject[JSONString]: {"a": "ok"},
+    JSONArray[JSONObject[JSONNumber]]: [{"a": 1}],
+    JSONArray[JSONObject[JSONNumber | JSONNull]]: [{"a": None}],
+}
+
 JSON_TYPE_VALIDATION_TEST_CASES: Final[list[tuple[str, object, set[Any]]]] = [
     # (label, value, allowed adapter types)
     ("bool-true", True, {JSONBoolean, JSONValue}),
@@ -122,15 +137,13 @@ JSON_TYPE_VALIDATION_TEST_CASES: Final[list[tuple[str, object, set[Any]]]] = [
 
 @pytest.mark.parametrize("json_type", JSON_TYPE_VALIDATION_TYPES)
 def test_json_type_validations(subtests: Subtests, json_type: type) -> None:
-    name = repr(json_type)
     adapter = TypeAdapter(json_type)
-    for label, value, allowed in JSON_TYPE_VALIDATION_TEST_CASES:
-        allowed_names = {repr(t) for t in allowed}
-        if name in allowed_names:
-            with subtests.test(f"{name} accepts {label}"):
+    for label, value, allowed_json_types in JSON_TYPE_VALIDATION_TEST_CASES:
+        if json_type in allowed_json_types:
+            with subtests.test(f"{json_type!r} accepts {label}"):
                 adapter.validate_python(value)
         else:
-            with subtests.test(f"{name} rejects {label}"):
+            with subtests.test(f"{json_type!r} rejects {label}"):
                 with pytest.raises(ValidationError):
                     adapter.validate_python(value)
 
@@ -141,11 +154,12 @@ def test_jsonpointer_type_gating_methods(
     type_param: type,
 ) -> None:
     adapter = TypeAdapter(JSONPointer[type_param])
+    valid_value = JSON_TYPE_VALIDATION_REPRESENTATIVE_VALUES[type_param]
     for label, value, _allowed in JSON_TYPE_VALIDATION_TEST_CASES:
         doc = {label: value}
         path = f"/{label}"
         ptr = adapter.validate_python(path)
-        expected_valid = repr(type_param) in {repr(t) for t in _allowed}
+        expected_valid = type_param in _allowed
 
         with subtests.test(f"{path} get / is_gettable"):
             if expected_valid:
@@ -165,8 +179,14 @@ def test_jsonpointer_type_gating_methods(
                 assert updated[label] == value
             else:
                 assert ptr.is_addable(doc, value) is False
-                with pytest.raises((PatchConflictError, ValidationError)):  # NOTE: fix!
+                with pytest.raises((PatchConflictError, ValidationError)):
                     ptr.add(doc.copy(), value)
+
+        if not expected_valid and valid_value is not None:
+            with subtests.test(f"{path} overwrite"):
+                assert ptr.is_addable(doc, valid_value) is False
+                with pytest.raises(PatchConflictError):
+                    ptr.add(doc.copy(), valid_value)
 
         with subtests.test(f"{path} remove"):
             if expected_valid:
