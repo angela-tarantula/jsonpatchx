@@ -22,6 +22,7 @@ from typing import (
     override,
     runtime_checkable,
 )
+from enum import Enum
 
 from jsonpointer import JsonPointer  # type: ignore[import-untyped]
 from pydantic import (
@@ -738,6 +739,50 @@ class JSONPointer(str, Generic[T_co, P_co]):
             return False
         else:
             return True
+
+    class TargetStatus(Enum):
+        PARENT_NOT_CONTAINER = "parent_not_container"
+        MISSING_VALUE = "missing_value"
+        ARRAY_APPEND = "array_append"
+        ARRAY_TYPE_MISMATCH = "array_type_mismatch"
+        OBJECT_TYPE_MISMATCH = "object_type_mismatch"
+        VALID = "valid"
+
+    def _classify_target(self, doc: JSONValue) -> JSONPointer.TargetStatus:
+        if self.is_root():
+            return (
+                JSONPointer.TargetStatus.VALID
+                if self.is_valid_target(doc)
+                else JSONPointer.TargetStatus.OBJECT_TYPE_MISMATCH
+            )
+
+        try:
+            container = self._parent_ptr.resolve(doc)
+        except Exception:
+            return JSONPointer.TargetStatus.MISSING_VALUE
+        if not _is_container(container):
+            return JSONPointer.TargetStatus.PARENT_NOT_CONTAINER
+
+        try:
+            key = _parse_JSONContainer_key(container, self.parts[-1])
+        except Exception:
+            return JSONPointer.TargetStatus.MISSING_VALUE
+
+        if isinstance(container, dict):
+            if key not in container:
+                return JSONPointer.TargetStatus.MISSING_VALUE
+            if not self.is_valid_target(container[key]):
+                return JSONPointer.TargetStatus.OBJECT_TYPE_MISMATCH
+            return JSONPointer.TargetStatus.VALID
+
+        if key == "-":
+            return JSONPointer.TargetStatus.ARRAY_APPEND
+        assert isinstance(key, int), "internal error: array key should be int or '-'"
+        if not (0 <= key < len(container)):
+            return JSONPointer.TargetStatus.MISSING_VALUE
+        if not self.is_valid_target(container[key]):
+            return JSONPointer.TargetStatus.ARRAY_TYPE_MISMATCH
+        return JSONPointer.TargetStatus.VALID
 
     def remove(self, doc: JSONValue) -> JSONValue:
         """
