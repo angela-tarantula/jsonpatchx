@@ -668,7 +668,14 @@ class JSONPointer(str, Generic[T_co, P_co]):
         """
         # Type errors first
         value_T: T_co = self._validate_target(target=value)
-        target: JSONValue = _JSON_VALUE_ADAPTER.validate_python(value_T, strict=True)
+        try:
+            target: JSONValue = _JSON_VALUE_ADAPTER.validate_python(
+                value_T, strict=True
+            )
+        except Exception as e:
+            raise PatchConflictError(
+                f"value {value!r} is not valid a valid JSONValue"
+            ) from e
 
         if self.is_root():
             self._validate_target(doc)  # existing root must be of type T

@@ -179,7 +179,7 @@ def test_jsonpointer_type_gating_methods(
                 assert updated[label] == value
             else:
                 assert ptr.is_addable(doc, value) is False
-                with pytest.raises((PatchConflictError, ValidationError)):
+                with pytest.raises(PatchConflictError):
                     ptr.add(doc.copy(), value)
 
         if not expected_valid and valid_value is not None:
