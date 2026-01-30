@@ -652,7 +652,7 @@ class JSONPointer(str, Generic[T_co, P_co]):
             return True
 
     def add(self, doc: JSONValue, value: object) -> JSONValue:
-        """# NOTE: ensure existing target type matters
+        """
         RFC 6902 add (type-gated).
 
         Args:
@@ -663,13 +663,15 @@ class JSONPointer(str, Generic[T_co, P_co]):
             The updated document.
 
         Raises:
-            PatchConflictError: If the target does not exist, or it is not type ``T``.
+            PatchConflictError: If the target does not exist, if the target is not type ``T``,
+                or if the value being added is not type ``T``.
         """
         # Type errors first
         value_T: T_co = self._validate_target(target=value)
         target: JSONValue = _JSON_VALUE_ADAPTER.validate_python(value_T, strict=True)
 
         if self.is_root():
+            self._validate_target(doc)  # existing root must be of type T
             return target
         try:
             container = self._parent_ptr.resolve(doc)
@@ -681,6 +683,10 @@ class JSONPointer(str, Generic[T_co, P_co]):
             )
         key = _parse_JSONContainer_key(container, self.parts[-1])
         if isinstance(container, dict):
+            if key in container:
+                self._validate_target(
+                    container[key]
+                )  # existing value must be of type T
             container[key] = target
         elif key == "-":
             container.append(target)
@@ -689,14 +695,13 @@ class JSONPointer(str, Generic[T_co, P_co]):
             container.insert(key, target)
         return doc
 
-    def is_addable(  # NOTE: ensure existing target type matters
+    def is_addable(
         self,
         doc: JSONValue,
         value: object = _Nothing,
     ) -> bool:
         """
-        Return True if ``add`` would succeed for this document (and optional value), else False.
-
+        Return True if ``add`` would succeed for this document, else False.
         If ``value`` is provided, it must conform to the pointer's type parameter ``T``.
         """
         try:
@@ -710,11 +715,18 @@ class JSONPointer(str, Generic[T_co, P_co]):
                 except Exception:
                     return False
             if self.is_root():
-                return True
+                return self.is_valid_target(doc)
             container = self._parent_ptr.resolve(doc)
             if not _is_container(container):
                 return False
-            _parse_JSONContainer_key(container, self.parts[-1])
+            key = _parse_JSONContainer_key(container, self.parts[-1])
+            if isinstance(container, dict):
+                if key in container:
+                    return self.is_valid_target(container[key])
+            elif isinstance(key, int):
+                return 0 <= key < len(container)
+            else:
+                return key == "-"
         except Exception:
             return False
         else:
