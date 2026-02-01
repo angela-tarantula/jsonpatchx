@@ -2,6 +2,7 @@ from typing import Any, Final
 
 import pytest
 from jsonpointer import JsonPointer as RFC6901JsonPointer
+from jsonpath import JSONPointer as ExtendedJsonPointer
 from pydantic import TypeAdapter, ValidationError
 from pytest import Subtests
 
@@ -18,6 +19,7 @@ from jsonpatchx.types import (
     JSONString,
     JSONValue,
     PointerBackend,
+    _PointerClassProtocol,
 )
 from tests.unit.conftest import (
     AnotherIncompletePointerBackend,
@@ -146,6 +148,15 @@ def test_json_type_validations(subtests: Subtests, json_type: type) -> None:
             with subtests.test(f"{json_type!r} rejects {label}"):
                 with pytest.raises(ValidationError):
                     adapter.validate_python(value)
+
+
+def test_pointer_backend(subtests: Subtests) -> None:
+    with subtests.test("RFC6901JsonPointer backend"):
+        assert issubclass(RFC6901JsonPointer, _PointerClassProtocol)
+        assert isinstance(RFC6901JsonPointer(""), PointerBackend)
+    with subtests.test("ExtendedJsonPointer backend"):
+        assert issubclass(ExtendedJsonPointer, _PointerClassProtocol)
+        assert isinstance(ExtendedJsonPointer(""), PointerBackend)
 
 
 @pytest.mark.parametrize("type_param", JSON_TYPE_VALIDATION_TYPES)
