@@ -3,10 +3,11 @@ from typing import Literal, override
 import pytest
 from pydantic import BaseModel, ConfigDict
 
+from jsonpatchx.pointer import JSONPointer
 from jsonpatchx.pydantic import JsonPatchFor
 from jsonpatchx.registry import OperationRegistry, StandardRegistry
 from jsonpatchx.schema import OperationSchema
-from jsonpatchx.types import JSONPointer, JSONValue
+from jsonpatchx.types import JSONValue
 
 
 class User(BaseModel):

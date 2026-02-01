@@ -29,11 +29,10 @@ from jsonpatchx.builtins import (
     TestOp,
 )
 from jsonpatchx.exceptions import InvalidOperationRegistry
+from jsonpatchx.pointer import _CTX_KEY_LITERALS, _POINTER_BACKEND_CTX_KEY
 from jsonpatchx.schema import OperationSchema
 from jsonpatchx.types import (
-    _CTX_KEY_LITERALS,
     _DEFAULT_POINTER_CLS,
-    _POINTER_BACKEND_CTX_KEY,
     JSONValue,
     PointerBackend,
 )

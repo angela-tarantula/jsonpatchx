@@ -22,6 +22,7 @@ from jsonpatchx.exceptions import (
     PatchValidationError,
     TestOpFailed,
 )
+from jsonpatchx.pointer import JSONPointer
 from jsonpatchx.pydantic import JsonPatchFor
 from jsonpatchx.registry import (
     GenericOperationRegistry,
@@ -30,7 +31,7 @@ from jsonpatchx.registry import (
 )
 from jsonpatchx.schema import OperationSchema
 from jsonpatchx.standard import JsonPatch, apply_patch
-from jsonpatchx.types import JSONPointer, JSONValue
+from jsonpatchx.types import JSONValue
 
 __all__ = [
     # exceptions

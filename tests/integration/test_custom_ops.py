@@ -3,10 +3,11 @@ from typing import Literal, override
 import pytest
 
 from jsonpatchx.exceptions import PatchInternalError
+from jsonpatchx.pointer import JSONPointer
 from jsonpatchx.registry import OperationRegistry
 from jsonpatchx.schema import OperationSchema
 from jsonpatchx.standard import JsonPatch
-from jsonpatchx.types import JSONNumber, JSONPointer, JSONValue
+from jsonpatchx.types import JSONNumber, JSONValue
 
 
 class IncrementOp(OperationSchema):

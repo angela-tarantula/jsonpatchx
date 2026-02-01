@@ -7,15 +7,14 @@ from pydantic import TypeAdapter, ValidationError
 from pytest import Subtests
 
 from jsonpatchx.exceptions import InvalidJSONPointer, PatchConflictError
+from jsonpatchx.pointer import _POINTER_BACKEND_CTX_KEY, JSONPointer
 from jsonpatchx.types import (
-    _POINTER_BACKEND_CTX_KEY,
     JSONArray,
     JSONBoolean,
     JSONContainer,
     JSONNull,
     JSONNumber,
     JSONObject,
-    JSONPointer,
     JSONString,
     JSONValue,
     PointerBackend,

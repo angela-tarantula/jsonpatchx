@@ -11,9 +11,10 @@ from jsonpatchx.exceptions import (
     InvalidOperationRegistry,
     PatchConflictError,
 )
+from jsonpatchx.pointer import JSONPointer
 from jsonpatchx.registry import GenericOperationRegistry, OperationRegistry
 from jsonpatchx.schema import OperationSchema
-from jsonpatchx.types import JSONBoolean, JSONPointer, JSONValue, PointerBackend
+from jsonpatchx.types import JSONBoolean, JSONValue, PointerBackend
 
 
 def test_invalid_operation_schema_class(subtests: Subtests) -> None:

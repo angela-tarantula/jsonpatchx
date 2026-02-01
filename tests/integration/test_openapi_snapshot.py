@@ -10,9 +10,10 @@ from pydantic import BaseModel, ConfigDict
 
 from jsonpatchx import JsonPatchFor
 from jsonpatchx.fastapi import JSON_PATCH_MEDIA_TYPE, PatchDependency
+from jsonpatchx.pointer import JSONPointer
 from jsonpatchx.registry import OperationRegistry, StandardRegistry
 from jsonpatchx.schema import OperationSchema
-from jsonpatchx.types import JSONBoolean, JSONPointer, JSONValue
+from jsonpatchx.types import JSONBoolean, JSONValue
 
 SNAPSHOT_PATH = Path(__file__).resolve().parents[1] / "snapshots" / "openapi.json"
 

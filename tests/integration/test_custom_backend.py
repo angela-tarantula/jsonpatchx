@@ -1,10 +1,11 @@
 from collections.abc import Iterable
 from typing import Any, Literal, override
 
+from jsonpatchx.pointer import JSONPointer
 from jsonpatchx.registry import GenericOperationRegistry
 from jsonpatchx.schema import OperationSchema
 from jsonpatchx.standard import JsonPatch
-from jsonpatchx.types import JSONPointer, JSONValue, PointerBackend
+from jsonpatchx.types import JSONValue, PointerBackend
 
 
 def test_custom_backend_with_registry() -> None:
