@@ -185,7 +185,7 @@ class _PointerClassProtocol(Protocol):
 
     @classmethod
     @abstractmethod
-    def from_parts(cls, parts: Iterable[Any]) -> Self:
+    def from_parts(cls, parts: Iterable[str]) -> Self:
         """
         Construct a pointer from unescaped tokens.
 
@@ -194,7 +194,7 @@ class _PointerClassProtocol(Protocol):
         """
 
     @abstractmethod
-    def resolve(self, doc: Any) -> Any:
+    def resolve(self, data: Any) -> Any:
         """
         Resolve the pointer against a document using backend-defined traversal semantics.
 
@@ -242,7 +242,7 @@ class PointerBackend(_PointerClassProtocol, Protocol):
 
     @property
     @abstractmethod
-    def parts(self) -> Sequence[Any]:
+    def parts(self) -> Sequence[str]:
         """Unescaped backend-specific tokens."""
 
 
