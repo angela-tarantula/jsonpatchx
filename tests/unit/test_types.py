@@ -331,6 +331,11 @@ def test_jsonpointer_public_methods_are_backend_agnostic(
         missing = adapter.validate_python(missing_path)
         assert missing.is_gettable(doc) is False
 
+    with subtests.test("is_removable"):
+        assert ptr.is_removable(doc) is True
+        missing = adapter.validate_python(missing_path)
+        assert missing.is_removable(doc) is False
+
     with subtests.test("add"):
         add_ptr = adapter.validate_python(add_path)
         updated = add_ptr.add({"a": {"b": 1}}, "ok")
