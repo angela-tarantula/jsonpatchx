@@ -457,11 +457,25 @@ def test_jsonpointer_type_args_validation(subtests: Subtests) -> None:
             adapter.validate_python("")
 
 
-def test_jsonpointer_rejects_pointerbackend_instance() -> None:
-    # NOTE: should not pass!
+def test_jsonpointer_path_validation(subtests: Subtests) -> None:
     adapter = TypeAdapter(JSONPointer[JSONValue, DotPointer])
-    with pytest.raises(ValidationError):
+    with subtests.test("accept strings"):
+        adapter.validate_python("a.b")
+    with subtests.test("accept compatible PointerBackend instances"):
         adapter.validate_python(DotPointer("a.b"))
+    with subtests.test("accept other JSONPointers"):
+        ptr = adapter.validate_python("a.b")
+        adapter.validate_python(ptr)
+    with subtests.test("reject incompatible PointerBackends"):
+        with pytest.raises(InvalidJSONPointer):
+            adapter.validate_python(RFC6901JsonPointer("/hello"))
+            adapter.validate_python(ExtendedJsonPointer("/hello"))
+    with subtests.test("accepts narrower PointerBackends"):
+
+        class DotPointerSubclass(DotPointer):
+            pass
+
+        adapter.validate_python(DotPointerSubclass("a.b"))
 
 
 def test_jsonpointer_covariance_narrow_to_wide(subtests: Subtests) -> None:

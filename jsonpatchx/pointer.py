@@ -175,7 +175,7 @@ class JSONPointer(str, Generic[T_co, P_co]):
     @classmethod
     def _validator(
         cls,
-        path: str,
+        path: str | PointerBackend,
         registry_info: ValidationInfo | None,
         *,  # covariant params ok here, it's just for pydantic validation
         type_param: TypeForm[T_co],
@@ -198,28 +198,46 @@ class JSONPointer(str, Generic[T_co, P_co]):
             registry_backend, bound_backend
         )
 
+        if isinstance(path, str):
+            path_str: str = path
+        elif isinstance(path, PointerBackend):
+            if isinstance(path, strictest_protocol):
+                path_str = str(path)
+            else:
+                raise InvalidJSONPointer(
+                    "JSONPointer backend mismatch: "
+                    f"required backend is {strictest_protocol.__name__} but field uses "
+                    f"{path.__class__.__name__}"
+                )
+        else:  # pragma: no cover
+            assert_never(path)
+
         # Build it
-        obj: Self = str.__new__(cls, path)
+        obj: Self = str.__new__(cls, path_str)
 
         # Try to reuse the type parameters (type checkers already enforce covariance)
-        if isinstance(path, JSONPointer):
+        if isinstance(path_str, JSONPointer):
             if (
-                isclass(path._type)
+                isclass(path_str._type)
                 and isclass(type_param)
-                and not issubclass(path._type, type_param)
+                and not issubclass(path_str._type, type_param)
             ):
                 # Ideally, compare TypeAdapters to cover all TypeForm covariance, but Pydantic doesn't expose subtype relation.
                 # NOTE: consider dropping partial covariance enforcement for consistency
                 raise InvalidJSONPointer(
-                    f"Expected {type_param}, got: {path._type}. JSONPointer[T] is covariant in type T."
+                    f"Expected {type_param}, got: {path_str._type}. JSONPointer[T] is covariant in type T."
                 )
-            obj._type = path._type
+            obj._type = path_str._type
         else:
             obj._type = type_param
 
-        # If path is a JSONPointer with a compatible backend, reuse the backend
-        if isinstance(path, JSONPointer) and isinstance(path._ptr, strictest_protocol):
-            obj._ptr = cast(P_co, path._ptr)
+        # Reuse pointer backends when provided directly or via JSONPointer
+        if isinstance(path_str, JSONPointer) and isinstance(
+            path_str._ptr, strictest_protocol
+        ):
+            obj._ptr = cast(P_co, path_str._ptr)
+        elif isinstance(path, strictest_protocol):
+            obj._ptr = cast(P_co, path)
         else:
             pointer_cls = cast(
                 type[P_co],
@@ -227,7 +245,7 @@ class JSONPointer(str, Generic[T_co, P_co]):
                 if strictest_protocol is not PointerBackend
                 else _DEFAULT_POINTER_CLS,
             )
-            obj._ptr = _pointer_backend_instance(path, pointer_cls=pointer_cls)
+            obj._ptr = _pointer_backend_instance(path_str, pointer_cls=pointer_cls)
 
         return obj
 
@@ -242,7 +260,11 @@ class JSONPointer(str, Generic[T_co, P_co]):
         return cs.with_info_after_validator_function(
             function=validator_function,
             schema=cs.union_schema(
-                [cs.is_instance_schema(JSONPointer), cs.str_schema(strict=True)]
+                [
+                    cs.is_instance_schema(JSONPointer),
+                    cs.str_schema(strict=True),
+                    cs.is_instance_schema(PointerBackend),
+                ]
             ),
         )
 
