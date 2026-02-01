@@ -181,8 +181,8 @@ def test_jsonpointer_type_gating_methods(
                     ptr.get(doc)
                 assert ptr.is_gettable(doc) is False
 
-        with subtests.test(f"{path} is_valid_target"):
-            assert ptr.is_valid_target(value) is expected_valid
+        with subtests.test(f"{path} is_valid_type"):
+            assert ptr.is_valid_type(value) is expected_valid
 
         with subtests.test(f"{path} add / is_addable"):
             if expected_valid and ptr.is_addable(doc, value):
@@ -321,10 +321,10 @@ def test_jsonpointer_public_methods_are_backend_agnostic(
         assert child.is_child_of(ptr) is True
         assert ptr.is_child_of(child) is False
 
-    with subtests.test("is_valid_target"):
+    with subtests.test("is_valid_type"):
         bool_ptr = bool_adapter.validate_python(parent_path)
-        assert bool_ptr.is_valid_target(True) is True
-        assert bool_ptr.is_valid_target(1) is False
+        assert bool_ptr.is_valid_type(True) is True
+        assert bool_ptr.is_valid_type(1) is False
 
     with subtests.test("get"):
         assert ptr.get(doc) == 1

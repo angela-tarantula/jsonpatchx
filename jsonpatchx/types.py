@@ -639,7 +639,7 @@ class JSONPointer(str, Generic[T_co, P_co]):
 
     # Runtime helpers
 
-    def is_valid_target(self, target: object) -> bool:
+    def is_valid_type(self, target: object) -> bool:
         """Validate whether a target conforms to this pointer's type."""
         try:
             self._adapter.validate_python(target, strict=True)
@@ -739,7 +739,7 @@ class JSONPointer(str, Generic[T_co, P_co]):
         """
         try:
             if value is not _Nothing:
-                if not self.is_valid_target(value):
+                if not self.is_valid_type(value):
                     return False
                 try:
                     _JSON_VALUE_ADAPTER.validate_python(
@@ -748,14 +748,14 @@ class JSONPointer(str, Generic[T_co, P_co]):
                 except Exception:
                     return False
             if self.is_root():
-                return self.is_valid_target(doc)
+                return self.is_valid_type(doc)
             container = self._parent_ptr.resolve(doc)
             if not _is_container(container):
                 return False
             key = _parse_JSONContainer_key(container, self.parts[-1])
             if isinstance(container, dict):
                 if key in container:
-                    return self.is_valid_target(container[key])
+                    return self.is_valid_type(container[key])
             elif isinstance(key, int):
                 return 0 <= key < len(container)
             else:
