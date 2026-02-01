@@ -482,6 +482,16 @@ def test_jsonpointer_type_args_validation(subtests: Subtests) -> None:
             adapter = TypeAdapter(JSONPointer[JSONValue, valid_backend])
             adapter.validate_python("")
 
+    with subtests.test("reject invalid default backend string syntax"):
+        adapter = TypeAdapter(JSONPointer[JSONValue])
+        with pytest.raises(InvalidJSONPointer):
+            adapter.validate_python("a.b")
+
+    with subtests.test("reject invalid custom backend string syntax"):
+        adapter = TypeAdapter(JSONPointer[JSONValue, DotPointer])
+        with pytest.raises(InvalidJSONPointer):
+            adapter.validate_python("a..b")
+
 
 def test_jsonpointer_path_validation(subtests: Subtests) -> None:
     adapter = TypeAdapter(JSONPointer[JSONValue, DotPointer])

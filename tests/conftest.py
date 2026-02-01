@@ -27,6 +27,11 @@ class IncompletePointerBackend:
 
 
 class DotPointer(IncompletePointerBackend):
+    def __init__(self, pointer: str) -> None:
+        if ".." in pointer:
+            raise ValueError("invalid dot pointer")
+        super().__init__(pointer)
+
     def resolve(self, data: JSONValue) -> Any:
         cur: Any = data
         for token in self._parts:
