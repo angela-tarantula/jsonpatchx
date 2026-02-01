@@ -770,6 +770,7 @@ class JSONPointer(str, Generic[T_co, P_co]):
 
         Only use when subclassing JSONPointer for custom stateful behaviors.
         """
+
         ROOT = auto()
         PARENT_NOT_FOUND = auto()
         PARENT_NOT_CONTAINER = auto()
@@ -781,42 +782,42 @@ class JSONPointer(str, Generic[T_co, P_co]):
         VALUE_PRESENT = auto()
         VALUE_PRESENT_AT_NEGATIVE_ARRAY_INDEX = auto()
 
-    def classify_target(self, doc: JSONValue) -> JSONPointer.TargetState:
+    def classify_target(self, doc: JSONValue) -> TargetState:
         """
         Internal: Classify the state of a JSONPointer resolution against a document.
 
         Only use when subclassing JSONPointer for custom stateful behaviors.
         """
         if self.is_root():
-            return JSONPointer.TargetState.ROOT
+            return self.TargetState.ROOT
 
         try:
             container = self._parent_ptr.resolve(doc)
         except Exception:
-            return JSONPointer.TargetState.PARENT_NOT_FOUND
+            return self.TargetState.PARENT_NOT_FOUND
         if not _is_container(container):
-            return JSONPointer.TargetState.PARENT_NOT_CONTAINER
+            return self.TargetState.PARENT_NOT_CONTAINER
 
         token = self.parts[-1]
         if isinstance(container, dict):
             key = token
             if key not in container:
-                return JSONPointer.TargetState.OBJECT_KEY_MISSING
-            return JSONPointer.TargetState.VALUE_PRESENT
+                return self.TargetState.OBJECT_KEY_MISSING
+            return self.TargetState.VALUE_PRESENT
 
         # list container
         if token == "-":
-            return JSONPointer.TargetState.ARRAY_INDEX_APPEND
+            return self.TargetState.ARRAY_INDEX_APPEND
         if _VALID_ARRAY_INDEX_PATTERN.fullmatch(token):
             index = int(token)
             if index > len(container) or index < -len(container):
-                return JSONPointer.TargetState.ARRAY_INDEX_OUT_OF_RANGE
+                return self.TargetState.ARRAY_INDEX_OUT_OF_RANGE
             if index == len(container):
-                return JSONPointer.TargetState.ARRAY_INDEX_AT_END
+                return self.TargetState.ARRAY_INDEX_AT_END
             if index < 0:
-                return JSONPointer.TargetState.VALUE_PRESENT_AT_NEGATIVE_ARRAY_INDEX
-            return JSONPointer.TargetState.VALUE_PRESENT
-        return JSONPointer.TargetState.ARRAY_KEY_INVALID
+                return self.TargetState.VALUE_PRESENT_AT_NEGATIVE_ARRAY_INDEX
+            return self.TargetState.VALUE_PRESENT
+        return self.TargetState.ARRAY_KEY_INVALID
 
     def remove(self, doc: JSONValue) -> JSONValue:
         """
