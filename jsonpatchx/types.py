@@ -3,6 +3,7 @@ from __future__ import annotations
 import re
 from abc import abstractmethod
 from collections.abc import Iterable, Sequence
+from enum import Enum, auto
 from functools import lru_cache, partial
 from inspect import isclass
 from typing import (
@@ -22,7 +23,6 @@ from typing import (
     override,
     runtime_checkable,
 )
-from enum import Enum
 
 from jsonpointer import JsonPointer  # type: ignore[import-untyped]
 from pydantic import (
@@ -740,49 +740,72 @@ class JSONPointer(str, Generic[T_co, P_co]):
         else:
             return True
 
-    class TargetStatus(Enum):
-        PARENT_NOT_CONTAINER = "parent_not_container"
-        MISSING_VALUE = "missing_value"
-        ARRAY_APPEND = "array_append"
-        ARRAY_TYPE_MISMATCH = "array_type_mismatch"
-        OBJECT_TYPE_MISMATCH = "object_type_mismatch"
-        VALID = "valid"
+    class TargetState(Enum):
+        ROOT_VALID = auto()
+        ROOT_TYPE_MISMATCH = auto()
+        PARENT_NOT_FOUND = auto()
+        PARENT_NOT_CONTAINER = auto()
+        KEY_INVALID = auto()
+        OBJECT_KEY_MISSING = auto()
+        ARRAY_INDEX_OUT_OF_RANGE = auto()
+        ARRAY_INDEX_AT_END = auto()
+        ARRAY_INDEX_APPEND = auto()
+        ARRAY_INDEX_NEGATIVE = auto()
+        VALUE_PRESENT_TYPE_MISMATCH = auto()
+        VALUE_PRESENT_TYPE_OK = auto()
 
-    def _classify_target(self, doc: JSONValue) -> JSONPointer.TargetStatus:
+    def _classify_target(self, doc: JSONValue) -> JSONPointer.TargetState:
         if self.is_root():
             return (
-                JSONPointer.TargetStatus.VALID
+                JSONPointer.TargetState.ROOT_VALID
                 if self.is_valid_target(doc)
-                else JSONPointer.TargetStatus.OBJECT_TYPE_MISMATCH
+                else JSONPointer.TargetState.ROOT_TYPE_MISMATCH
             )
 
         try:
             container = self._parent_ptr.resolve(doc)
         except Exception:
-            return JSONPointer.TargetStatus.MISSING_VALUE
+            return JSONPointer.TargetState.PARENT_NOT_FOUND
         if not _is_container(container):
-            return JSONPointer.TargetStatus.PARENT_NOT_CONTAINER
+            return JSONPointer.TargetState.PARENT_NOT_CONTAINER
 
-        try:
-            key = _parse_JSONContainer_key(container, self.parts[-1])
-        except Exception:
-            return JSONPointer.TargetStatus.MISSING_VALUE
-
+        token = self.parts[-1]
         if isinstance(container, dict):
+            key = token
             if key not in container:
-                return JSONPointer.TargetStatus.MISSING_VALUE
+                return JSONPointer.TargetState.OBJECT_KEY_MISSING
             if not self.is_valid_target(container[key]):
-                return JSONPointer.TargetStatus.OBJECT_TYPE_MISMATCH
-            return JSONPointer.TargetStatus.VALID
+                return JSONPointer.TargetState.VALUE_PRESENT_TYPE_MISMATCH
+            return JSONPointer.TargetState.VALUE_PRESENT_TYPE_OK
 
-        if key == "-":
-            return JSONPointer.TargetStatus.ARRAY_APPEND
-        assert isinstance(key, int), "internal error: array key should be int or '-'"
-        if not (0 <= key < len(container)):
-            return JSONPointer.TargetStatus.MISSING_VALUE
-        if not self.is_valid_target(container[key]):
-            return JSONPointer.TargetStatus.ARRAY_TYPE_MISMATCH
-        return JSONPointer.TargetStatus.VALID
+        # list container
+        if token == "-":
+            return JSONPointer.TargetState.ARRAY_INDEX_APPEND
+        if isinstance(token, int):
+            if token < 0:
+                return JSONPointer.TargetState.ARRAY_INDEX_NEGATIVE
+            if token == len(container):
+                return JSONPointer.TargetState.ARRAY_INDEX_AT_END
+            if token > len(container):
+                return JSONPointer.TargetState.ARRAY_INDEX_OUT_OF_RANGE
+            if not self.is_valid_target(container[token]):
+                return JSONPointer.TargetState.VALUE_PRESENT_TYPE_MISMATCH
+            return JSONPointer.TargetState.VALUE_PRESENT_TYPE_OK
+        if isinstance(token, str):
+            if token.startswith("-") and token[1:].isdigit():
+                return JSONPointer.TargetState.ARRAY_INDEX_NEGATIVE
+            if _ARRAY_INDEX_PATTERN.fullmatch(token):
+                index = int(token)
+                if index == len(container):
+                    return JSONPointer.TargetState.ARRAY_INDEX_AT_END
+                if index > len(container):
+                    return JSONPointer.TargetState.ARRAY_INDEX_OUT_OF_RANGE
+                if not self.is_valid_target(container[index]):
+                    return JSONPointer.TargetState.VALUE_PRESENT_TYPE_MISMATCH
+                return JSONPointer.TargetState.VALUE_PRESENT_TYPE_OK
+            return JSONPointer.TargetState.KEY_INVALID
+
+        return JSONPointer.TargetState.KEY_INVALID
 
     def remove(self, doc: JSONValue) -> JSONValue:
         """

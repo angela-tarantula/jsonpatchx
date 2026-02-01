@@ -228,7 +228,9 @@ def test_jsonpointer_edge_cases(subtests: Subtests) -> None:
         assert adapter.validate_python("/arr/0").is_addable({"arr": [10]}, 5) is True
         assert adapter.validate_python("/arr/1").is_addable({"arr": [10]}, 5) is False
         assert adapter.validate_python("/arr/-").is_addable({"arr": [10]}, 5) is True
-        assert adapter.validate_python("/arr/nope").is_addable({"arr": [10]}, 5) is False
+        assert (
+            adapter.validate_python("/arr/nope").is_addable({"arr": [10]}, 5) is False
+        )
 
         assert adapter.validate_python("/a/b").is_addable({"a": 1}, 5) is False
 
