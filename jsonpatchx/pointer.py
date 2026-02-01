@@ -1,3 +1,4 @@
+import re
 from collections.abc import Sequence
 from enum import Enum, auto
 from functools import partial
@@ -30,7 +31,6 @@ from typing_extensions import TypeForm
 from jsonpatchx.exceptions import InvalidJSONPointer, PatchConflictError
 from jsonpatchx.types import (
     _DEFAULT_POINTER_CLS,
-    _INTEGER_ARRAY_INDEX_PATTERN,
     _JSON_VALUE_ADAPTER,
     JSONValue,
     PointerBackend,
@@ -39,6 +39,10 @@ from jsonpatchx.types import (
     _PointerClassProtocol,
     _type_adapter_for,
 )
+
+# integer array index (negative allowed)
+_INTEGER_ARRAY_INDEX_PATTERN = re.compile(r"^-?(0|[1-9][0-9]*)$")
+
 
 type _JSONPOINTER_VALIDATION_CTX_LITERALS = Literal["jsonpatch:pointer_backend"]
 _JSONPOINTER_POINTER_BACKEND_CTX_KEY: Final = "jsonpatch:pointer_backend"

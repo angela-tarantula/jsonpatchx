@@ -79,8 +79,6 @@ type _JSONKey = _JSONArrayKey | _JSONObjectKey
 
 # strict RFC 6901 array index
 _NONNEGATIVE_ARRAY_INDEX_PATTERN = re.compile(r"^(0|[1-9][0-9]*)$")
-# integer array index (negative allowed)
-_INTEGER_ARRAY_INDEX_PATTERN = re.compile(r"^-?(0|[1-9][0-9]*)$")
 
 
 # TypeAdapter helpers
