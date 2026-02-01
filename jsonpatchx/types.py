@@ -9,7 +9,6 @@ from typing import (
     Annotated,
     Any,
     Callable,
-    Literal,
     Protocol,
     Self,
     TypeGuard,
@@ -72,10 +71,6 @@ Notes:
     - Numeric values are restricted to ``int`` or finite ``float`` (no NaN/Infinity).
     - Pydantic validation is strict (no implicit coercions).
 """
-
-type _JSONArrayKey = Annotated[int, Field(ge=0)] | Literal["-"]
-type _JSONObjectKey = str
-type _JSONKey = _JSONArrayKey | _JSONObjectKey
 
 # strict RFC 6901 array index
 _NONNEGATIVE_ARRAY_INDEX_PATTERN = re.compile(r"^(0|[1-9][0-9]*)$")
