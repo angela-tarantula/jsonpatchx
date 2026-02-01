@@ -32,10 +32,15 @@ from jsonpatchx.exceptions import InvalidJSONPointer, PatchConflictError
 from jsonpatchx.types import (
     _DEFAULT_POINTER_CLS,
     _JSON_VALUE_ADAPTER,
+    JSONArray,
+    JSONContainer,
+    JSONObject,
     JSONValue,
     PointerBackend,
     _cached_json_pointer,
+    _is_array,
     _is_container,
+    _is_object,
     _PointerClassProtocol,
     _type_adapter_for,
 )
@@ -164,9 +169,13 @@ class JSONPointer(str, Generic[T_co, P_co]):
         # NOTE: Cache this outside too?
         return self._ptr.from_parts(self.parts[:-1])
 
-    def is_root(self) -> bool:
+    def is_root(self, doc: JSONValue) -> bool:
         """Check whether this JSONPointer's target is the root."""
-        return self == ""
+        try:
+            target = cast(JSONValue, self._ptr.resolve(doc))
+        except Exception:
+            return False
+        return doc == target
 
     @classmethod
     def _validator(
@@ -403,7 +412,7 @@ class JSONPointer(str, Generic[T_co, P_co]):
 
         Only use when subclassing JSONPointer for custom stateful behaviors.
         """
-        if self.is_root():
+        if self.is_root(doc):
             return self.TargetState.ROOT
 
         try:
@@ -414,7 +423,7 @@ class JSONPointer(str, Generic[T_co, P_co]):
             return self.TargetState.PARENT_NOT_CONTAINER
 
         token = self.parts[-1]
-        if isinstance(container, dict):
+        if _is_object(container):
             key = token
             if key not in container:
                 return self.TargetState.OBJECT_KEY_MISSING
@@ -517,21 +526,17 @@ class JSONPointer(str, Generic[T_co, P_co]):
                 self.TargetState.ARRAY_INDEX_APPEND
                 | self.TargetState.ARRAY_INDEX_AT_END
             ):
-                container = self._parent_ptr.resolve(doc)
-                assert isinstance(container, list), "internal error: add array append"
-                container.append(target)
+                array = cast(JSONArray[JSONValue], self._parent_ptr.resolve(doc))
+                array.append(target)
                 return doc
             case self.TargetState.ARRAY_INDEX_OUT_OF_RANGE:
                 raise PatchConflictError(
                     f"cannot add value at {str(self)!r} because array index {self.parts[-1]!r} is out of range"
                 )
             case self.TargetState.OBJECT_KEY_MISSING:
-                container = self._parent_ptr.resolve(doc)
-                assert isinstance(container, dict), (
-                    "internal error: add object missing key"
-                )
+                object = cast(JSONObject[JSONValue], self._parent_ptr.resolve(doc))
                 key = self.parts[-1]
-                container[key] = target
+                object[key] = target
                 return doc
             case (
                 self.TargetState.ARRAY_KEY_INVALID
@@ -541,15 +546,17 @@ class JSONPointer(str, Generic[T_co, P_co]):
                     f"cannot add value at {str(self)!r} because key {self.parts[-1]!r} is an invalid array index"
                 )
             case self.TargetState.VALUE_PRESENT:
-                container = self._parent_ptr.resolve(doc)
+                container = cast(
+                    JSONContainer[JSONValue], self._parent_ptr.resolve(doc)
+                )
                 token = self.parts[-1]
-                if isinstance(container, dict):
+                if _is_object(container):
                     self._validate_target(container[token])
                     container[token] = target
                     return doc
-                assert isinstance(container, list), "internal error: add value present"
-                container.insert(int(token), target)
-                return doc
+                else:
+                    container.insert(int(token), target)
+                    return doc
             case _ as unreachable:
                 assert_never(unreachable)
 
@@ -575,7 +582,7 @@ class JSONPointer(str, Generic[T_co, P_co]):
             case self.TargetState.VALUE_PRESENT:
                 container = self._parent_ptr.resolve(doc)
                 token = self.parts[-1]
-                if isinstance(container, dict):
+                if _is_object(container):
                     return self.is_valid_type(container[token])
                 return True  # list insert always valid
             case (
@@ -641,7 +648,7 @@ class JSONPointer(str, Generic[T_co, P_co]):
             case self.TargetState.VALUE_PRESENT:
                 container = self._parent_ptr.resolve(doc)
                 token = self.parts[-1]
-                key = int(token) if isinstance(container, list) else token
+                key = int(token) if _is_array(container) else token
                 self._validate_target(container[key])
                 del container[key]
                 return doc

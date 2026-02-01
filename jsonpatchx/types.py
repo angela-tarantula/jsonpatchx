@@ -11,7 +11,7 @@ from typing import (
     Callable,
     Protocol,
     Self,
-    TypeGuard,
+    TypeIs,
     override,
     runtime_checkable,
 )
@@ -42,13 +42,17 @@ type JSONObject[T] = Annotated[dict[str, T], Field(strict=True, title="JSON obje
 type JSONContainer[T] = JSONArray[T] | JSONObject[T]
 
 
-def _is_container(value: JSONValue) -> TypeGuard[JSONContainer[JSONValue]]:
+def _is_container(value: JSONValue) -> TypeIs[JSONContainer[JSONValue]]:
     """Internal: runtime check for JSON containers (dict/list)."""
-    if isinstance(value, list):
-        return True
-    if isinstance(value, dict):
-        return all(isinstance(k, str) for k in value)
-    return False
+    return isinstance(value, (list, dict))
+
+
+def _is_object(value: JSONValue) -> TypeIs[JSONObject[JSONValue]]:
+    return isinstance(value, dict)
+
+
+def _is_array(value: JSONValue) -> TypeIs[JSONArray[JSONValue]]:
+    return isinstance(value, list)
 
 
 type JSONValue = Annotated[
