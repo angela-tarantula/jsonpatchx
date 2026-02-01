@@ -765,8 +765,11 @@ class JSONPointer(str, Generic[T_co, P_co]):
             return True
 
     class TargetState(Enum):
-        """Classify the state of a JSONPointer resolution against a document."""
+        """
+        Internal: classification of JSONPointer target resolution states.
 
+        Only use when subclassing JSONPointer for custom stateful behaviors.
+        """
         ROOT = auto()
         PARENT_NOT_FOUND = auto()
         PARENT_NOT_CONTAINER = auto()
@@ -778,7 +781,12 @@ class JSONPointer(str, Generic[T_co, P_co]):
         VALUE_PRESENT = auto()
         VALUE_PRESENT_AT_NEGATIVE_ARRAY_INDEX = auto()
 
-    def _classify_target(self, doc: JSONValue) -> JSONPointer.TargetState:
+    def classify_target(self, doc: JSONValue) -> JSONPointer.TargetState:
+        """
+        Internal: Classify the state of a JSONPointer resolution against a document.
+
+        Only use when subclassing JSONPointer for custom stateful behaviors.
+        """
         if self.is_root():
             return JSONPointer.TargetState.ROOT
 
