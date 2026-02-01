@@ -1,15 +1,22 @@
 import re
 from abc import abstractmethod
 from collections.abc import Callable, Iterable, Sequence
+from enum import Enum, auto
 from typing import TYPE_CHECKING, Any, Protocol, Self, override, runtime_checkable
 
 from jsonpointer import JsonPointer  # type: ignore[import-untyped]
 from jsonpointer import JsonPointerException as JPException
 
 from jsonpatchx.exceptions import InvalidJSONPointer
+from jsonpatchx.types import JSONValue, _is_container, _is_object
+
+if TYPE_CHECKING:
+    from jsonpatchx.pointer import JSONPointer
 
 # strict RFC 6901 array index
 _NONNEGATIVE_ARRAY_INDEX_PATTERN = re.compile(r"^(0|[1-9][0-9]*)$")
+# integer array index (negative allowed)
+_INTEGER_ARRAY_INDEX_PATTERN = re.compile(r"^-?(0|[1-9][0-9]*)$")
 
 
 # You may be wondering, why does `_PointerClassProtocol` exist? Here's context.
@@ -171,3 +178,63 @@ def _pointer_backend_instance[P](path: str, *, pointer_cls: Callable[..., P]) ->
 
 
 # NOTE: move methods that raise InvalidJSONPointer below
+
+
+# Backend resolution helpers
+
+
+class TargetState(Enum):
+    """
+    Internal: classification of JSONPointer target resolution states.
+
+    Only use when subclassing JSONPointer for custom stateful behaviors.
+    """
+
+    ROOT = auto()
+    PARENT_NOT_FOUND = auto()
+    PARENT_NOT_CONTAINER = auto()
+    OBJECT_KEY_MISSING = auto()
+    ARRAY_KEY_INVALID = auto()
+    ARRAY_INDEX_OUT_OF_RANGE = auto()
+    ARRAY_INDEX_AT_END = auto()
+    ARRAY_INDEX_APPEND = auto()
+    VALUE_PRESENT = auto()
+    VALUE_PRESENT_AT_NEGATIVE_ARRAY_INDEX = auto()
+
+
+def classify_state(ptr: JSONPointer[Any], doc: JSONValue) -> TargetState:
+    """
+    Internal: Classify the state of a JSONPointer resolution against a document.
+
+    Only use when subclassing JSONPointer for custom stateful behaviors.
+    """
+    if ptr.is_root(doc):
+        return TargetState.ROOT
+
+    try:
+        container = ptr._parent_ptr.resolve(doc)  # NOTE: should be cached
+    except Exception:
+        return TargetState.PARENT_NOT_FOUND
+    if not _is_container(container):
+        return TargetState.PARENT_NOT_CONTAINER
+
+    token = ptr.parts[-1]
+    if _is_object(container):
+        key = token
+        if key not in container:
+            return TargetState.OBJECT_KEY_MISSING
+        return TargetState.VALUE_PRESENT
+
+    # list container
+    if token == "-":
+        return TargetState.ARRAY_INDEX_APPEND
+    if _INTEGER_ARRAY_INDEX_PATTERN.fullmatch(token):
+        index = int(token)
+        if index > len(container) or index < -len(container):
+            return TargetState.ARRAY_INDEX_OUT_OF_RANGE
+        if index == len(container):
+            return TargetState.ARRAY_INDEX_AT_END
+        if index < 0:
+            return TargetState.VALUE_PRESENT_AT_NEGATIVE_ARRAY_INDEX
+        return TargetState.VALUE_PRESENT
+    return TargetState.ARRAY_KEY_INVALID

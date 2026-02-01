@@ -1,6 +1,4 @@
-import re
 from collections.abc import Sequence
-from enum import Enum, auto
 from functools import partial
 from inspect import isclass
 from typing import (
@@ -31,8 +29,10 @@ from typing_extensions import TypeForm
 from jsonpatchx.backend import (
     _DEFAULT_POINTER_CLS,
     PointerBackend,
+    TargetState,
     _pointer_backend_instance,
     _PointerClassProtocol,
+    classify_state,
 )
 from jsonpatchx.exceptions import InvalidJSONPointer, PatchConflictError
 from jsonpatchx.types import (
@@ -42,14 +42,9 @@ from jsonpatchx.types import (
     JSONObject,
     JSONValue,
     _is_array,
-    _is_container,
     _is_object,
     _type_adapter_for,
 )
-
-# integer array index (negative allowed)
-_INTEGER_ARRAY_INDEX_PATTERN = re.compile(r"^-?(0|[1-9][0-9]*)$")
-
 
 type _JSONPOINTER_VALIDATION_CTX_LITERALS = Literal["jsonpatch:pointer_backend"]
 _JSONPOINTER_POINTER_BACKEND_CTX_KEY: Final = "jsonpatch:pointer_backend"
@@ -391,61 +386,6 @@ class JSONPointer(str, Generic[T_co, P_co]):
 
         return self.parts[: len(other_ptr.parts)] == other_ptr.parts
 
-    class TargetState(Enum):
-        """
-        Internal: classification of JSONPointer target resolution states.
-
-        Only use when subclassing JSONPointer for custom stateful behaviors.
-        """
-
-        ROOT = auto()
-        PARENT_NOT_FOUND = auto()
-        PARENT_NOT_CONTAINER = auto()
-        OBJECT_KEY_MISSING = auto()
-        ARRAY_KEY_INVALID = auto()
-        ARRAY_INDEX_OUT_OF_RANGE = auto()
-        ARRAY_INDEX_AT_END = auto()
-        ARRAY_INDEX_APPEND = auto()
-        VALUE_PRESENT = auto()
-        VALUE_PRESENT_AT_NEGATIVE_ARRAY_INDEX = auto()
-
-    def classify_state(self, doc: JSONValue) -> TargetState:
-        """
-        Internal: Classify the state of a JSONPointer resolution against a document.
-
-        Only use when subclassing JSONPointer for custom stateful behaviors.
-        """
-        if self.is_root(doc):
-            return self.TargetState.ROOT
-
-        try:
-            container = self._parent_ptr.resolve(doc)
-        except Exception:
-            return self.TargetState.PARENT_NOT_FOUND
-        if not _is_container(container):
-            return self.TargetState.PARENT_NOT_CONTAINER
-
-        token = self.parts[-1]
-        if _is_object(container):
-            key = token
-            if key not in container:
-                return self.TargetState.OBJECT_KEY_MISSING
-            return self.TargetState.VALUE_PRESENT
-
-        # list container
-        if token == "-":
-            return self.TargetState.ARRAY_INDEX_APPEND
-        if _INTEGER_ARRAY_INDEX_PATTERN.fullmatch(token):
-            index = int(token)
-            if index > len(container) or index < -len(container):
-                return self.TargetState.ARRAY_INDEX_OUT_OF_RANGE
-            if index == len(container):
-                return self.TargetState.ARRAY_INDEX_AT_END
-            if index < 0:
-                return self.TargetState.VALUE_PRESENT_AT_NEGATIVE_ARRAY_INDEX
-            return self.TargetState.VALUE_PRESENT
-        return self.TargetState.ARRAY_KEY_INVALID
-
     # Runtime helpers
 
     def is_valid_type(self, target: object) -> bool:
@@ -512,43 +452,39 @@ class JSONPointer(str, Generic[T_co, P_co]):
                 f"value {value!r} is not valid a valid JSONValue"
             ) from e
 
-        state = self.classify_state(doc)
-        match state:
-            case self.TargetState.ROOT:
+        match classify_state(self, doc):
+            case TargetState.ROOT:
                 self._validate_target(doc)
                 return target
-            case self.TargetState.PARENT_NOT_FOUND:
+            case TargetState.PARENT_NOT_FOUND:
                 raise PatchConflictError(
                     f"cannot add value at {str(self)!r} because parent does not exist"
                 )
-            case self.TargetState.PARENT_NOT_CONTAINER:
+            case TargetState.PARENT_NOT_CONTAINER:
                 raise PatchConflictError(
                     f"cannot add value at {str(self)!r} because parent is not a container"
                 )
-            case (
-                self.TargetState.ARRAY_INDEX_APPEND
-                | self.TargetState.ARRAY_INDEX_AT_END
-            ):
+            case TargetState.ARRAY_INDEX_APPEND | TargetState.ARRAY_INDEX_AT_END:
                 array = cast(JSONArray[JSONValue], self._parent_ptr.resolve(doc))
                 array.append(target)
                 return doc
-            case self.TargetState.ARRAY_INDEX_OUT_OF_RANGE:
+            case TargetState.ARRAY_INDEX_OUT_OF_RANGE:
                 raise PatchConflictError(
                     f"cannot add value at {str(self)!r} because array index {self.parts[-1]!r} is out of range"
                 )
-            case self.TargetState.OBJECT_KEY_MISSING:
+            case TargetState.OBJECT_KEY_MISSING:
                 object = cast(JSONObject[JSONValue], self._parent_ptr.resolve(doc))
                 key = self.parts[-1]
                 object[key] = target
                 return doc
             case (
-                self.TargetState.ARRAY_KEY_INVALID
-                | self.TargetState.VALUE_PRESENT_AT_NEGATIVE_ARRAY_INDEX
+                TargetState.ARRAY_KEY_INVALID
+                | TargetState.VALUE_PRESENT_AT_NEGATIVE_ARRAY_INDEX
             ):
                 raise PatchConflictError(
                     f"cannot add value at {str(self)!r} because key {self.parts[-1]!r} is an invalid array index"
                 )
-            case self.TargetState.VALUE_PRESENT:
+            case TargetState.VALUE_PRESENT:
                 container = cast(
                     JSONContainer[JSONValue], self._parent_ptr.resolve(doc)
                 )
@@ -578,20 +514,20 @@ class JSONPointer(str, Generic[T_co, P_co]):
                 _JSON_VALUE_ADAPTER.validate_python(value, strict=True)
             except Exception:
                 return False
-        state = self.classify_state(doc)
-        match state:
-            case self.TargetState.ROOT:
+
+        match classify_state(self, doc):
+            case TargetState.ROOT:
                 return self.is_valid_type(doc)
-            case self.TargetState.VALUE_PRESENT:
+            case TargetState.VALUE_PRESENT:
                 container = self._parent_ptr.resolve(doc)
                 token = self.parts[-1]
                 if _is_object(container):
                     return self.is_valid_type(container[token])
                 return True  # list insert always valid
             case (
-                self.TargetState.ARRAY_INDEX_APPEND
-                | self.TargetState.ARRAY_INDEX_AT_END
-                | self.TargetState.OBJECT_KEY_MISSING
+                TargetState.ARRAY_INDEX_APPEND
+                | TargetState.ARRAY_INDEX_AT_END
+                | TargetState.OBJECT_KEY_MISSING
             ):
                 return True
             case _:
@@ -610,45 +546,41 @@ class JSONPointer(str, Generic[T_co, P_co]):
         Raises:
             PatchConflictError: If the target does not exist, or it is not type ``T``.
         """
-        state = self.classify_state(doc)
-        match state:
-            case self.TargetState.ROOT:
+        match classify_state(self, doc):
+            case TargetState.ROOT:
                 # Choice: Removal of root sets root to null.
                 # Why: Keeps all operations closed over JSONValue. Remove is also more composable this way.
                 #      It affects few users, who themselves can circumvent with custom ops.
                 self._validate_target(doc)
                 return None
-            case self.TargetState.PARENT_NOT_FOUND:
+            case TargetState.PARENT_NOT_FOUND:
                 raise PatchConflictError(
                     f"cannot remove value at {str(self)!r} because parent does not exist"
                 )
-            case self.TargetState.PARENT_NOT_CONTAINER:
+            case TargetState.PARENT_NOT_CONTAINER:
                 raise PatchConflictError(
                     f"cannot remove value at {str(self)!r} because parent is not a container"
                 )
-            case self.TargetState.ARRAY_INDEX_APPEND:
+            case TargetState.ARRAY_INDEX_APPEND:
                 raise PatchConflictError(
                     f"cannot remove value at {str(self)!r} because '-' indicates append position"
                 )
-            case (
-                self.TargetState.ARRAY_INDEX_OUT_OF_RANGE
-                | self.TargetState.ARRAY_INDEX_AT_END
-            ):
+            case TargetState.ARRAY_INDEX_OUT_OF_RANGE | TargetState.ARRAY_INDEX_AT_END:
                 raise PatchConflictError(
                     f"cannot remove value at {str(self)!r} because array index {self.parts[-1]!r} is out of range"
                 )
-            case self.TargetState.OBJECT_KEY_MISSING:
+            case TargetState.OBJECT_KEY_MISSING:
                 raise PatchConflictError(
                     f"cannot remove value at {str(self)!r} because key {self.parts[-1]!r} is missing from object"
                 )
             case (
-                self.TargetState.ARRAY_KEY_INVALID
-                | self.TargetState.VALUE_PRESENT_AT_NEGATIVE_ARRAY_INDEX
+                TargetState.ARRAY_KEY_INVALID
+                | TargetState.VALUE_PRESENT_AT_NEGATIVE_ARRAY_INDEX
             ):
                 raise PatchConflictError(
                     f"cannot remove value at {str(self)!r} because key {self.parts[-1]!r} is an invalid array index"
                 )
-            case self.TargetState.VALUE_PRESENT:
+            case TargetState.VALUE_PRESENT:
                 container = self._parent_ptr.resolve(doc)
                 token = self.parts[-1]
                 key = int(token) if _is_array(container) else token
