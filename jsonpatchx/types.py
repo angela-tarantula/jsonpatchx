@@ -765,33 +765,30 @@ class JSONPointer(str, Generic[T_co, P_co]):
         Return True if ``add`` would succeed for this document, else False.
         If ``value`` is provided, it must conform to the pointer's type parameter ``T``.
         """
-        try:
-            if value is not _Nothing:
-                if not self.is_valid_type(value):
-                    return False
-                try:
-                    _JSON_VALUE_ADAPTER.validate_python(
-                        value, strict=True
-                    )  # ensure JSONValue conformance
-                except Exception:
-                    return False
-            if self.is_root():
-                return self.is_valid_type(doc)
-            container = self._parent_ptr.resolve(doc)
-            if not _is_container(container):
+        if value is not _Nothing:
+            try:
+                self._validate_target(target=value)
+                _JSON_VALUE_ADAPTER.validate_python(value, strict=True)
+            except Exception:
                 return False
-            key = _parse_JSONContainer_key(container, self.parts[-1])
-            if isinstance(container, dict):
-                if key in container:
-                    return self.is_valid_type(container[key])
-            elif isinstance(key, int):
-                return 0 <= key < len(container)
-            else:
-                return key == "-"
-        except Exception:
-            return False
-        else:
-            return True
+        state = self.classify_state(doc)
+        match state:
+            case self.TargetState.ROOT:
+                return self.is_valid_type(doc)
+            case self.TargetState.VALUE_PRESENT:
+                container = self._parent_ptr.resolve(doc)
+                token = self.parts[-1]
+                if isinstance(container, dict):
+                    return self.is_valid_type(container[token])
+                return True  # list insert always valid
+            case (
+                self.TargetState.ARRAY_INDEX_APPEND
+                | self.TargetState.ARRAY_INDEX_AT_END
+                | self.TargetState.OBJECT_KEY_MISSING
+            ):
+                return True
+            case _:
+                return False
 
     class TargetState(Enum):
         """
