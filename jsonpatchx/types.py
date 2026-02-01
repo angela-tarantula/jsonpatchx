@@ -26,6 +26,7 @@ from typing import (
 )
 
 from jsonpointer import JsonPointer  # type: ignore[import-untyped]
+from jsonpointer import JsonPointerException as JPException
 from pydantic import (
     Field,
     GetCoreSchemaHandler,
@@ -280,7 +281,28 @@ _POINTER_BACKEND_CTX_KEY: Final = "jsonpatch:pointer_backend"
 
 
 class _DEFAULT_POINTER_CLS(JsonPointer):  # type: ignore[misc]
-    pass  # pure-Python default
+    # fixes https://github.com/stefankoegl/python-json-pointer/issues/63
+    @override
+    @classmethod
+    def get_part(cls, doc, part):  # type: ignore[no-untyped-def]
+        key = super().get_part(doc, part)
+        if isinstance(key, int) and not _ARRAY_INDEX_PATTERN.fullmatch(str(part)):
+            raise JPException("'%s' is not a valid sequence index" % part)
+        return key
+
+    @override
+    def to_last(self, doc):  # type: ignore[no-untyped-def]
+        doc, key = super().to_last(doc)
+        if isinstance(key, int) and not _ARRAY_INDEX_PATTERN.fullmatch(
+            str(self.parts[-1])
+        ):
+            raise JPException("'%s' is not a valid sequence index" % self.parts[-1])
+        return doc, key
+
+    @override
+    def walk(self, doc, part):  # type: ignore[no-untyped-def]
+        part = self.get_part(doc, part)  # type: ignore[no-untyped-call]
+        return super().walk(doc, part)
 
 
 _Nothing = object()
@@ -381,7 +403,7 @@ class JSONPointer(str, Generic[T_co, P_co]):
         return self._ptr
 
     @property
-    def parts(self) -> Sequence[Any]:
+    def parts(self) -> Sequence[str]:
         """A sequence of RFC6901-unescaped pointer components."""
         return self._ptr.parts
 
