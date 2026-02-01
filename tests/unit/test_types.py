@@ -416,12 +416,33 @@ def test_pointer_backend_binding_with_context(subtests: Subtests) -> None:
 
 
 def test_jsonpointer_backend_reuse(subtests: Subtests) -> None:
-    adapter = TypeAdapter(JSONPointer[JSONValue, DotPointer])
-    ptr1 = adapter.validate_python("a.b")
-    ptr2 = adapter.validate_python(ptr1)
+    dot_ptr_adapter = TypeAdapter(JSONPointer[JSONValue, DotPointer])
+    ptr1a = dot_ptr_adapter.validate_python("a.b")
+    ptr1b = dot_ptr_adapter.validate_python(ptr1a)
+    ptr2a = dot_ptr_adapter.validate_python(DotPointer("a.b"))
+    ptr2b = dot_ptr_adapter.validate_python(ptr2a)
 
-    with subtests.test("reuses backend instance"):
-        assert ptr2.ptr is ptr1.ptr
+    class DotPointerSubclass(DotPointer):
+            pass
+
+    ptr3a = dot_ptr_adapter.validate_python(DotPointerSubclass("c.d"))
+    ptr3b = dot_ptr_adapter.validate_python(ptr3a)
+
+
+    with subtests.test("reuse compatible backend instances"):
+        assert ptr1a.ptr is ptr1b.ptr
+        assert ptr2a.ptr is ptr2b.ptr
+        assert ptr3a.ptr is ptr3b.ptr
+
+    narrower_dot_ptr_adapter = TypeAdapter(JSONPointer[JSONValue, DotPointerSubclass])
+
+    with subtests.test("don't coerce backend superclass instances"):
+        with pytest.raises(InvalidJSONPointer):
+            narrower_dot_ptr_adapter.validate_python(DotPointer("e.f"))
+
+    with subtests.test("reject incompatible backend instances"):
+        with pytest.raises(InvalidJSONPointer):
+            dot_ptr_adapter.validate_python(RFC6901JsonPointer("/hello"))
 
 
 def test_jsonpointer_type_args_validation(subtests: Subtests) -> None:
