@@ -97,48 +97,10 @@ type _JSONArrayKey = Annotated[int, Field(ge=0)] | Literal["-"]
 type _JSONObjectKey = str
 type _JSONKey = _JSONArrayKey | _JSONObjectKey
 
-_ARRAY_INDEX_PATTERN: re.Pattern[str] = re.compile(r"^(0|[1-9][0-9]*)$")
-_VALID_ARRAY_INDEX_PATTERN: re.Pattern[str] = re.compile(r"^-?(0|[1-9][0-9]*)$")
-
-
-def _parse_JSONArray_key(array: JSONArray[JSONValue], key: str) -> _JSONArrayKey:
-    """# NOTE document that it follows add semantics (key==len(array) allowed) and remove must tighten restrictions
-    Internal: parse a JSON Pointer token as a list index or '-' append marker.
-
-    This helper implements the JSON Patch array-index semantics used by the patch engine:
-    - '-' indicates append
-    - otherwise the token must be a base-10 non-negative integer
-    - index may equal len(array) for append-like behavior (RFC 6902 add semantics)
-    """
-    assert isinstance(array, list), "internal error: _parse_JSONArray_key"
-    if key == "-":
-        return "-"
-    if not _ARRAY_INDEX_PATTERN.fullmatch(key):
-        raise PatchConflictError(f"invalid array index: {key!r}")
-    idx = int(key)
-    if idx > len(array):
-        raise PatchConflictError(f"index out of range: {key!r}")
-    return idx
-
-
-def _parse_JSONContainer_key(
-    container: JSONContainer[JSONValue], token: str
-) -> _JSONKey:
-    """
-    Internal: interpret a JSON Pointer token as either a dict key or list index.
-
-    - dict -> token is used as-is
-    - list -> token is parsed as an array key (int or '-')
-    """
-    assert isinstance(container, (dict, list)), (
-        "internal error: _parse_JSONContainer_key"
-    )
-    # NOTE: when type-checker type narrowing improves, refactor this method to return
-    # tuple[JSONArray[JSONValue], _JSONArrayKey] | tuple[JSONObject[JSONValue], _JSONObjectKey].
-    # Currently, type-checkers miss that specificity and coerce to tuple[JSONContainer[JSONValue], _JSONKey]
-    if isinstance(container, dict):
-        return token
-    return _parse_JSONArray_key(container, token)
+# strict RFC 6901 array index
+_NONNEGATIVE_ARRAY_INDEX_PATTERN = re.compile(r"^(0|[1-9][0-9]*)$")
+# integer array index (negative allowed)
+_INTEGER_ARRAY_INDEX_PATTERN = re.compile(r"^-?(0|[1-9][0-9]*)$")
 
 
 # TypeAdapter helpers
@@ -288,14 +250,16 @@ class _DEFAULT_POINTER_CLS(JsonPointer):  # type: ignore[misc]
     @classmethod
     def get_part(cls, doc, part):  # type: ignore[no-untyped-def]
         key = super().get_part(doc, part)
-        if isinstance(key, int) and not _ARRAY_INDEX_PATTERN.fullmatch(str(part)):
+        if isinstance(key, int) and not _NONNEGATIVE_ARRAY_INDEX_PATTERN.fullmatch(
+            str(part)
+        ):
             raise JPException("'%s' is not a valid sequence index" % part)
         return key
 
     @override
     def to_last(self, doc):  # type: ignore[no-untyped-def]
         doc, key = super().to_last(doc)
-        if isinstance(key, int) and not _ARRAY_INDEX_PATTERN.fullmatch(
+        if isinstance(key, int) and not _NONNEGATIVE_ARRAY_INDEX_PATTERN.fullmatch(
             str(self.parts[-1])
         ):
             raise JPException("'%s' is not a valid sequence index" % self.parts[-1])
@@ -681,7 +645,7 @@ class JSONPointer(str, Generic[T_co, P_co]):
         # list container
         if token == "-":
             return self.TargetState.ARRAY_INDEX_APPEND
-        if _VALID_ARRAY_INDEX_PATTERN.fullmatch(token):
+        if _INTEGER_ARRAY_INDEX_PATTERN.fullmatch(token):
             index = int(token)
             if index > len(container) or index < -len(container):
                 return self.TargetState.ARRAY_INDEX_OUT_OF_RANGE
