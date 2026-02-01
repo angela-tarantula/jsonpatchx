@@ -5,6 +5,7 @@ import pytest
 from pydantic import ValidationError
 from pytest import Subtests
 
+from jsonpatchx.backend import PointerBackend
 from jsonpatchx.exceptions import (
     InvalidJSONPointer,
     InvalidOperationDefinition,
@@ -14,7 +15,7 @@ from jsonpatchx.exceptions import (
 from jsonpatchx.pointer import JSONPointer
 from jsonpatchx.registry import GenericOperationRegistry, OperationRegistry
 from jsonpatchx.schema import OperationSchema
-from jsonpatchx.types import JSONBoolean, JSONValue, PointerBackend
+from jsonpatchx.types import JSONBoolean, JSONValue
 
 
 def test_invalid_operation_schema_class(subtests: Subtests) -> None:

@@ -351,7 +351,7 @@ Custom backends let you implement:
 ```py
 from typing import Any
 from jsonpatchx import GenericOperationRegistry, StandardRegistry
-from jsonpatchx.types import PointerBackend
+from jsonpatchx.backend import PointerBackend
 
 class DotPointer(PointerBackend):
     """A backend for dot-separated paths (e.g., 'metadata.tags.0')."""

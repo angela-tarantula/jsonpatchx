@@ -19,6 +19,7 @@ from typing import (
 
 from pydantic import Field, TypeAdapter
 
+from jsonpatchx.backend import _DEFAULT_POINTER_CLS, PointerBackend
 from jsonpatchx.builtins import (
     STANDARD_OPS,
     AddOp,
@@ -34,11 +35,7 @@ from jsonpatchx.pointer import (
     _JSONPOINTER_VALIDATION_CTX_LITERALS,
 )
 from jsonpatchx.schema import OperationSchema
-from jsonpatchx.types import (
-    _DEFAULT_POINTER_CLS,
-    JSONValue,
-    PointerBackend,
-)
+from jsonpatchx.types import JSONValue
 
 type AnyRegistry = GenericOperationRegistry[*tuple[Any, ...]]
 Ops = TypeVarTuple("Ops")  # bound=type[OperationSchema] | type[AnyRegistry]

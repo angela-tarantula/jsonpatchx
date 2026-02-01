@@ -6,6 +6,7 @@ from jsonpointer import JsonPointer as RFC6901JsonPointer
 from pydantic import TypeAdapter, ValidationError
 from pytest import Subtests
 
+from jsonpatchx.backend import PointerBackend, _PointerClassProtocol
 from jsonpatchx.exceptions import InvalidJSONPointer, PatchConflictError
 from jsonpatchx.pointer import _JSONPOINTER_POINTER_BACKEND_CTX_KEY, JSONPointer
 from jsonpatchx.types import (
@@ -17,8 +18,6 @@ from jsonpatchx.types import (
     JSONObject,
     JSONString,
     JSONValue,
-    PointerBackend,
-    _PointerClassProtocol,
 )
 from tests.unit.conftest import (
     AnotherIncompletePointerBackend,

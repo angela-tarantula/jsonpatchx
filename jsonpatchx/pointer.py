@@ -28,20 +28,22 @@ from pydantic.json_schema import JsonSchemaValue
 from pydantic_core import core_schema as cs
 from typing_extensions import TypeForm
 
+from jsonpatchx.backend import (
+    _DEFAULT_POINTER_CLS,
+    PointerBackend,
+    _pointer_backend_instance,
+    _PointerClassProtocol,
+)
 from jsonpatchx.exceptions import InvalidJSONPointer, PatchConflictError
 from jsonpatchx.types import (
-    _DEFAULT_POINTER_CLS,
     _JSON_VALUE_ADAPTER,
     JSONArray,
     JSONContainer,
     JSONObject,
     JSONValue,
-    PointerBackend,
     _is_array,
     _is_container,
     _is_object,
-    _pointer_backend_instance,
-    _PointerClassProtocol,
     _type_adapter_for,
 )
 

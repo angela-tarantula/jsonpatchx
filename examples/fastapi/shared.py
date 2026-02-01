@@ -19,6 +19,7 @@ from jsonpatchx import (
     RemoveOp,
     ReplaceOp,
 )
+from jsonpatchx.backend import PointerBackend
 from jsonpatchx.exceptions import InvalidJSONPointer
 from jsonpatchx.fastapi import JSON_PATCH_MEDIA_TYPE, install_jsonpatch_error_handlers
 from jsonpatchx.pointer import JSONPointer
@@ -27,7 +28,6 @@ from jsonpatchx.types import (
     JSONBoolean,
     JSONNumber,
     JSONObject,
-    PointerBackend,
 )
 
 DEMO_UNEXPECTED_ERRORS = os.getenv("JSONPATCH_DEMO_UNEXPECTED_ERRORS", "1") != "0"

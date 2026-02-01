@@ -1,7 +1,8 @@
 from collections.abc import Iterable
 from typing import Any, Self
 
-from jsonpatchx.types import JSONValue, PointerBackend
+from jsonpatchx.backend import PointerBackend
+from jsonpatchx.types import JSONValue
 
 
 class IncompletePointerBackend:
