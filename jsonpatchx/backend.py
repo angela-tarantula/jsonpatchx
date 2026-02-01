@@ -81,7 +81,7 @@ class _PointerClassProtocol(Protocol):
 @runtime_checkable
 class PointerBackend(_PointerClassProtocol, Protocol):
     """
-    NOTE: also require that parent pointers are constructable from parts[:-1]
+    NOTE: also require that parent pointers are constructable from parts[:-1] OR require that in certain methods!
     Protocol for custom JSON Pointer backends.
 
     This library is pointer-backend agnostic. By default it uses ``jsonpointer.JsonPointer``,

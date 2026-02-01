@@ -1,11 +1,9 @@
-from collections.abc import Iterable
-from typing import Any, Literal, cast, override
+from typing import Literal, cast, override
 
 import pytest
 from pydantic import ValidationError
 from pytest import Subtests
 
-from jsonpatchx.backend import PointerBackend
 from jsonpatchx.exceptions import (
     InvalidJSONPointer,
     InvalidOperationDefinition,
@@ -16,6 +14,7 @@ from jsonpatchx.pointer import JSONPointer
 from jsonpatchx.registry import GenericOperationRegistry, OperationRegistry
 from jsonpatchx.schema import OperationSchema
 from jsonpatchx.types import JSONBoolean, JSONValue
+from tests.unit.conftest import DotPointer
 
 
 def test_invalid_operation_schema_class(subtests: Subtests) -> None:
@@ -191,35 +190,6 @@ def test_patch_schema_parse_happy_path(subtests: Subtests) -> None:
 
 
 def test_pointer_backend_binding(subtests: Subtests) -> None:
-    class DotPointer(PointerBackend):
-        def __init__(self, pointer: str) -> None:
-            self._parts = [] if pointer == "" else pointer.split(".")
-
-        @property
-        @override
-        def parts(self) -> list[str]:
-            return self._parts
-
-        @classmethod
-        @override
-        def from_parts(cls, parts: Iterable[Any]) -> "DotPointer":
-            return cls(".".join(parts))
-
-        @override
-        def resolve(self, doc: JSONValue) -> Any:
-            cur: Any = doc
-            for token in self._parts:
-                cur = cur[token]
-            return cur
-
-        @override
-        def __str__(self) -> str:
-            return ".".join(self._parts)
-
-        @override
-        def __hash__(self) -> int:
-            return hash(tuple([self.__class__, *self._parts]))
-
     class DotRemoveOp(OperationSchema):
         op: Literal["dot-remove"] = "dot-remove"
         path: JSONPointer[JSONValue, DotPointer]
@@ -304,35 +274,6 @@ def test_jsonpointer_type_gating() -> None:
 
 
 def test_jsonpointer_backend_mismatch_parent_check() -> None:
-    class DotPointer(PointerBackend):
-        def __init__(self, pointer: str) -> None:
-            self._parts = [] if pointer == "" else pointer.split(".")
-
-        @property
-        @override
-        def parts(self) -> list[str]:
-            return self._parts
-
-        @classmethod
-        @override
-        def from_parts(cls, parts: Iterable[Any]) -> "DotPointer":
-            return cls(".".join(parts))
-
-        @override
-        def resolve(self, doc: JSONValue) -> Any:
-            cur: Any = doc
-            for token in self._parts:
-                cur = cur[token]
-            return cur
-
-        @override
-        def __str__(self) -> str:
-            return ".".join(self._parts)
-
-        @override
-        def __hash__(self) -> int:
-            return hash(tuple([self.__class__, *self._parts]))
-
     class DotOp(OperationSchema):
         op: Literal["dot"] = "dot"
         path: JSONPointer[JSONValue, DotPointer]
