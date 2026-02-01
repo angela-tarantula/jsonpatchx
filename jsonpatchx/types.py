@@ -637,6 +637,61 @@ class JSONPointer(str, Generic[T_co, P_co]):
 
         return self.parts[: len(other_ptr.parts)] == other_ptr.parts
 
+    class TargetState(Enum):
+        """
+        Internal: classification of JSONPointer target resolution states.
+
+        Only use when subclassing JSONPointer for custom stateful behaviors.
+        """
+
+        ROOT = auto()
+        PARENT_NOT_FOUND = auto()
+        PARENT_NOT_CONTAINER = auto()
+        OBJECT_KEY_MISSING = auto()
+        ARRAY_KEY_INVALID = auto()
+        ARRAY_INDEX_OUT_OF_RANGE = auto()
+        ARRAY_INDEX_AT_END = auto()
+        ARRAY_INDEX_APPEND = auto()
+        VALUE_PRESENT = auto()
+        VALUE_PRESENT_AT_NEGATIVE_ARRAY_INDEX = auto()
+
+    def classify_state(self, doc: JSONValue) -> TargetState:
+        """
+        Internal: Classify the state of a JSONPointer resolution against a document.
+
+        Only use when subclassing JSONPointer for custom stateful behaviors.
+        """
+        if self.is_root():
+            return self.TargetState.ROOT
+
+        try:
+            container = self._parent_ptr.resolve(doc)
+        except Exception:
+            return self.TargetState.PARENT_NOT_FOUND
+        if not _is_container(container):
+            return self.TargetState.PARENT_NOT_CONTAINER
+
+        token = self.parts[-1]
+        if isinstance(container, dict):
+            key = token
+            if key not in container:
+                return self.TargetState.OBJECT_KEY_MISSING
+            return self.TargetState.VALUE_PRESENT
+
+        # list container
+        if token == "-":
+            return self.TargetState.ARRAY_INDEX_APPEND
+        if _VALID_ARRAY_INDEX_PATTERN.fullmatch(token):
+            index = int(token)
+            if index > len(container) or index < -len(container):
+                return self.TargetState.ARRAY_INDEX_OUT_OF_RANGE
+            if index == len(container):
+                return self.TargetState.ARRAY_INDEX_AT_END
+            if index < 0:
+                return self.TargetState.VALUE_PRESENT_AT_NEGATIVE_ARRAY_INDEX
+            return self.TargetState.VALUE_PRESENT
+        return self.TargetState.ARRAY_KEY_INVALID
+
     # Runtime helpers
 
     def is_valid_type(self, target: object) -> bool:
@@ -790,61 +845,6 @@ class JSONPointer(str, Generic[T_co, P_co]):
             case _:
                 return False
 
-    class TargetState(Enum):
-        """
-        Internal: classification of JSONPointer target resolution states.
-
-        Only use when subclassing JSONPointer for custom stateful behaviors.
-        """
-
-        ROOT = auto()
-        PARENT_NOT_FOUND = auto()
-        PARENT_NOT_CONTAINER = auto()
-        OBJECT_KEY_MISSING = auto()
-        ARRAY_KEY_INVALID = auto()
-        ARRAY_INDEX_OUT_OF_RANGE = auto()
-        ARRAY_INDEX_AT_END = auto()
-        ARRAY_INDEX_APPEND = auto()
-        VALUE_PRESENT = auto()
-        VALUE_PRESENT_AT_NEGATIVE_ARRAY_INDEX = auto()
-
-    def classify_state(self, doc: JSONValue) -> TargetState:
-        """
-        Internal: Classify the state of a JSONPointer resolution against a document.
-
-        Only use when subclassing JSONPointer for custom stateful behaviors.
-        """
-        if self.is_root():
-            return self.TargetState.ROOT
-
-        try:
-            container = self._parent_ptr.resolve(doc)
-        except Exception:
-            return self.TargetState.PARENT_NOT_FOUND
-        if not _is_container(container):
-            return self.TargetState.PARENT_NOT_CONTAINER
-
-        token = self.parts[-1]
-        if isinstance(container, dict):
-            key = token
-            if key not in container:
-                return self.TargetState.OBJECT_KEY_MISSING
-            return self.TargetState.VALUE_PRESENT
-
-        # list container
-        if token == "-":
-            return self.TargetState.ARRAY_INDEX_APPEND
-        if _VALID_ARRAY_INDEX_PATTERN.fullmatch(token):
-            index = int(token)
-            if index > len(container) or index < -len(container):
-                return self.TargetState.ARRAY_INDEX_OUT_OF_RANGE
-            if index == len(container):
-                return self.TargetState.ARRAY_INDEX_AT_END
-            if index < 0:
-                return self.TargetState.VALUE_PRESENT_AT_NEGATIVE_ARRAY_INDEX
-            return self.TargetState.VALUE_PRESENT
-        return self.TargetState.ARRAY_KEY_INVALID
-
     def remove(self, doc: JSONValue) -> JSONValue:
         """
         RFC 6902 remove (type-gated). Removal of the root sets it to null.
@@ -905,6 +905,8 @@ class JSONPointer(str, Generic[T_co, P_co]):
                 return doc
             case _ as unreachable:
                 assert_never(unreachable)
+
+    is_removable = is_gettable  # same logic applies
 
     @override
     def __repr__(self) -> str:
