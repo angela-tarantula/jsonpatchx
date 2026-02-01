@@ -164,7 +164,7 @@ class JSONPointer(str, Generic[T_co, P_co]):
         return _type_adapter_for(self._type)
 
     @property
-    def _parent_ptr(self) -> P_co:
+    def parent_ptr(self) -> P_co:
         # NOTE: make this public
         return _parent_ptr_of(self._ptr)
 
@@ -486,7 +486,7 @@ class JSONPointer(str, Generic[T_co, P_co]):
                     f"cannot add value at {str(self)!r} because parent is not a container"
                 )
             case TargetState.ARRAY_INDEX_APPEND | TargetState.ARRAY_INDEX_AT_END:
-                array = cast(JSONArray[JSONValue], self._parent_ptr.resolve(doc))
+                array = cast(JSONArray[JSONValue], self.parent_ptr.resolve(doc))
                 array.append(target)
                 return doc
             case TargetState.ARRAY_INDEX_OUT_OF_RANGE:
@@ -494,7 +494,7 @@ class JSONPointer(str, Generic[T_co, P_co]):
                     f"cannot add value at {str(self)!r} because array index {self.parts[-1]!r} is out of range"
                 )
             case TargetState.OBJECT_KEY_MISSING:
-                object = cast(JSONObject[JSONValue], self._parent_ptr.resolve(doc))
+                object = cast(JSONObject[JSONValue], self.parent_ptr.resolve(doc))
                 key = self.parts[-1]
                 object[key] = target
                 return doc
@@ -506,9 +506,7 @@ class JSONPointer(str, Generic[T_co, P_co]):
                     f"cannot add value at {str(self)!r} because key {self.parts[-1]!r} is an invalid array index"
                 )
             case TargetState.VALUE_PRESENT:
-                container = cast(
-                    JSONContainer[JSONValue], self._parent_ptr.resolve(doc)
-                )
+                container = cast(JSONContainer[JSONValue], self.parent_ptr.resolve(doc))
                 token = self.parts[-1]
                 if _is_object(container):
                     self._validate_target(container[token])
@@ -540,7 +538,7 @@ class JSONPointer(str, Generic[T_co, P_co]):
             case TargetState.ROOT:
                 return self.is_valid_type(doc)
             case TargetState.VALUE_PRESENT:
-                container = self._parent_ptr.resolve(doc)
+                container = self.parent_ptr.resolve(doc)
                 token = self.parts[-1]
                 if _is_object(container):
                     return self.is_valid_type(container[token])
@@ -602,7 +600,7 @@ class JSONPointer(str, Generic[T_co, P_co]):
                     f"cannot remove value at {str(self)!r} because key {self.parts[-1]!r} is an invalid array index"
                 )
             case TargetState.VALUE_PRESENT:
-                container = self._parent_ptr.resolve(doc)
+                container = self.parent_ptr.resolve(doc)
                 token = self.parts[-1]
                 key = int(token) if _is_array(container) else token
                 self._validate_target(container[key])
