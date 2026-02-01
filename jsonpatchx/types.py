@@ -7,6 +7,7 @@ from enum import Enum, auto
 from functools import lru_cache, partial
 from inspect import isclass
 from typing import (
+    TYPE_CHECKING,
     Annotated,
     Any,
     Callable,
@@ -859,5 +860,8 @@ class JSONPointer(str, Generic[T_co, P_co]):
         return f"{self.__class__.__name__}[{type_repr}]({str(self)!r})"
 
 
-_this_should_not_raise_a_mypy_error: PointerBackend = _DEFAULT_POINTER_CLS("")
-# sanity check: mypy should be able to verify that _DEFAULT_POINTER_CLS implements PointerBackend
+if TYPE_CHECKING:
+    _dont_raise_mypy_error_1: PointerBackend = _DEFAULT_POINTER_CLS("")
+    from jsonpath import JSONPointer as ExtendedJsonPointer
+
+    _dont_raise_mypy_error_2: PointerBackend = ExtendedJsonPointer("")

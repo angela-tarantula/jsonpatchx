@@ -1,8 +1,8 @@
 from typing import Any, Final
 
 import pytest
-from jsonpointer import JsonPointer as RFC6901JsonPointer
 from jsonpath import JSONPointer as ExtendedJsonPointer
+from jsonpointer import JsonPointer as RFC6901JsonPointer
 from pydantic import TypeAdapter, ValidationError
 from pytest import Subtests
 

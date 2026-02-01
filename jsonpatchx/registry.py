@@ -350,3 +350,10 @@ else:
 
 
 StandardRegistry = OperationRegistry[AddOp, CopyOp, MoveOp, RemoveOp, ReplaceOp, TestOp]
+
+if TYPE_CHECKING:
+    _dont_raise_mypy_error_1 = GenericOperationRegistry[AddOp, _DEFAULT_POINTER_CLS]
+
+    from jsonpath import JSONPointer as ExtendedJsonPointer
+
+    _dont_raise_mypy_error_2 = GenericOperationRegistry[AddOp, ExtendedJsonPointer]
