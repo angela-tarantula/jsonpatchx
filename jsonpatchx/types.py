@@ -242,6 +242,7 @@ class _DEFAULT_POINTER_CLS(JsonPointer):  # type: ignore[misc]
 
 if TYPE_CHECKING:
     _dont_raise_mypy_error_1: PointerBackend = _DEFAULT_POINTER_CLS("")
+
     from jsonpath import JSONPointer as ExtendedJsonPointer
 
     _dont_raise_mypy_error_2: PointerBackend = ExtendedJsonPointer("")

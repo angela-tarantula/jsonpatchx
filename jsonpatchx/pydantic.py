@@ -138,13 +138,17 @@ class _BasePatchBody(_RegistryBoundPatchRoot):
 
     Notes:
         - ``apply(doc, inplace=...)`` delegates to ``_apply_ops`` (engine defines copy and mutation semantics).
-        - Optional ``validate_doc=True`` validates that ``doc`` is a strict JSON value before patching.
+        - Optional ``validate_mutability=True`` validates that ``doc`` is a mutable ``JSONValue`` before patching.
     """
 
     def apply(
-        self, doc: JSONValue, *, validate_doc: bool = False, inplace: bool = False
+        self,
+        doc: JSONValue,
+        *,
+        validate_mutability: bool = False,
+        inplace: bool = False,
     ) -> JSONValue:
-        if validate_doc:
+        if validate_mutability:
             _JSON_VALUE_ADAPTER.validate_python(doc, strict=True)
         return _apply_ops(self.ops, doc, inplace=inplace)
 
@@ -211,7 +215,7 @@ class JsonPatchFor(_RegistryBoundPatchRoot, Generic[TargetT, RegistryT]):
             self: JsonPatchFor[TargetNameN, RegistryT],
             doc: JSONValue,
             *,
-            validate_doc: bool = False,
+            validate_mutability: bool = False,
             inplace: bool = False,
         ) -> JSONValue:
             """
@@ -219,14 +223,14 @@ class JsonPatchFor(_RegistryBoundPatchRoot, Generic[TargetT, RegistryT]):
 
             Args:
                 doc: The target JSON document.
-                validate_doc: If True, validate that ``doc`` is a strict ``JSONValue`` before applying.
+                validate_mutability: If True, validate that ``doc`` is a mutable ``JSONValue`` before applying.
                 inplace: Controls whether ``doc`` is deep-copied before application.
 
             Return:
                 patched: The patched JSON document.
 
             Raises:
-                ValidationError: ``validate_doc=True`` and the input is not a strict JSON value.
+                ValidationError: ``validate_mutability=True`` and the input is not a mutable ``JSONValue``.
                 PatchError: Any patch-domain error raised by operations, including conflicts.
                     ``PatchInternalError`` is a ``PatchError`` raised for unexpected failures.
             """
@@ -238,7 +242,7 @@ class JsonPatchFor(_RegistryBoundPatchRoot, Generic[TargetT, RegistryT]):
 
             Raises:
                 TypeError: Model variant expects a Pydantic BaseModel instance.
-                ValidationError: ``validate_doc=True`` and the input is not a strict JSON value.
+                ValidationError: ``validate_mutability=True`` and the input is not a mutable ``JSONValue``.
                 PatchValidationError: Patched data fails validation for the target model.
                 PatchError: Any patch-domain error raised by operations, including conflicts.
                     ``PatchInternalError`` is a ``PatchError`` raised for unexpected failures.

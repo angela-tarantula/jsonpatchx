@@ -176,25 +176,29 @@ class JsonPatch(Sequence[OperationSchema]):
         return json.dumps(payload)
 
     def apply(
-        self, doc: JSONValue, *, validate_doc: bool = False, inplace: bool = False
+        self,
+        doc: JSONValue,
+        *,
+        validate_mutability: bool = False,
+        inplace: bool = False,
     ) -> JSONValue:
         """
         Apply this patch to ``doc`` and return the patched document.
 
         Args:
             doc: The target JSON document.
-            validate_doc: If True, validate that ``doc`` is a strict ``JSONValue`` before applying.
+            validate_mutability: If True, validate that ``doc`` is a mutable ``JSONValue`` before applying.
             inplace: Controls whether ``doc`` is deep-copied before application.
 
         Return:
             patched: The patched JSON document.
 
         Raises:
-            ValidationError: ``validate_doc=True`` and the input is not a strict JSON value.
+            ValidationError: ``validate_mutability=True`` and the input is not a mutable ``JSONValue``.
             PatchError: Any patch-domain error raised by operations, including conflicts.
                 ``PatchInternalError`` is a ``PatchError`` raised for unexpected failures.
         """
-        if validate_doc:
+        if validate_mutability:
             _JSON_VALUE_ADAPTER.validate_python(doc, strict=True)
         return _apply_ops(self._ops, doc, inplace=inplace)
 
@@ -244,7 +248,7 @@ def apply_patch(
     doc: JSONValue,
     patch: Sequence[Mapping[str, JSONValue]],
     *,
-    validate_doc: bool = False,
+    validate_mutability: bool = False,
     inplace: bool = False,
 ) -> JSONValue:
     """
@@ -255,14 +259,16 @@ def apply_patch(
     Args:
         doc: Target JSON document.
         patch: Patch document as a sequence of operation mappings.
-        validate_doc: If True, validate that ``doc`` is a strict ``JSONValue`` before applying.
+        validate_mutability: If True, validate that ``doc`` is a mutable ``JSONValue`` before applying.
         inplace: Controls copy and mutation behavior. See ``_apply_ops(..., inplace=...)`` for
             full semantics.
 
     Returns:
         The patched document.
     """
-    return JsonPatch(patch).apply(doc, validate_doc=validate_doc, inplace=inplace)
+    return JsonPatch(patch).apply(
+        doc, validate_mutability=validate_mutability, inplace=inplace
+    )
 
 
 if __name__ == "__main__":
