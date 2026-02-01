@@ -18,6 +18,7 @@ from typing import (
     Self,
     TypeGuard,
     TypeVar,
+    assert_never,
     cast,
     final,
     get_args,
@@ -832,35 +833,51 @@ class JSONPointer(str, Generic[T_co, P_co]):
         Raises:
             PatchConflictError: If the target does not exist, or it is not type ``T``.
         """
-        if self.is_root():
-            # Choice: Removal of root sets root to null.
-            # Why: Keeps all operations closed over JSONValue. Remove is also more composable this way.
-            #      It affects few users, who themselves can circumvent with custom ops.
-            return None
-        try:
-            container = self._parent_ptr.resolve(doc)
-        except Exception as e:
-            raise PatchConflictError(f"path {str(self)!r} not found: {e}") from e
-        if not _is_container(container):
-            raise PatchConflictError(
-                f"path {str(self._parent_ptr)!r} resolves to a JSON primitive"
-            )
-        key = _parse_JSONContainer_key(container, self.parts[-1])
-        if isinstance(container, list):
-            if key == "-":
+        state = self.classify_target(doc)
+        match state:
+            case self.TargetState.ROOT:
+                # Choice: Removal of root sets root to null.
+                # Why: Keeps all operations closed over JSONValue. Remove is also more composable this way.
+                #      It affects few users, who themselves can circumvent with custom ops.
+                self._validate_target(doc)
+                return None
+            case self.TargetState.PARENT_NOT_FOUND:
+                raise PatchConflictError(
+                    f"cannot remove value at {str(self)!r} because parent does not exist"
+                )
+            case self.TargetState.PARENT_NOT_CONTAINER:
+                raise PatchConflictError(
+                    f"cannot remove value at {str(self)!r} because parent is not a container"
+                )
+            case self.TargetState.ARRAY_INDEX_APPEND:
                 raise PatchConflictError(
                     f"cannot remove value at {str(self)!r} with key '-'"
                 )
-            elif key == len(container):
-                raise PatchConflictError(f"index out of range: {key!r}")
-        elif isinstance(container, dict):
-            if key not in container:
+            case self.TargetState.ARRAY_INDEX_OUT_OF_RANGE:
                 raise PatchConflictError(
-                    f"target {key!r} does not exist in object at path {str(self._parent_ptr)!r}"
+                    f"cannot remove value at {str(self)!r} because array index is out of range: {self.parts[-1]!r}"
                 )
-        self._validate_target(container[key])
-        del container[key]
-        return doc
+            case self.TargetState.ARRAY_INDEX_AT_END:
+                raise PatchConflictError(
+                    f"cannot remove value at {str(self)!r} because array index is at end: {self.parts[-1]!r}"
+                )
+            case self.TargetState.OBJECT_KEY_MISSING:
+                raise PatchConflictError(
+                    f"key {self.parts[-1]!r} does not exist at {str(self._parent_ptr)!r}"
+                )
+            case self.TargetState.ARRAY_KEY_INVALID:
+                raise PatchConflictError(f"invalid array index: {self.parts[-1]!r}")
+            case self.TargetState.VALUE_PRESENT_AT_NEGATIVE_ARRAY_INDEX:
+                raise PatchConflictError(f"invalid array index: {self.parts[-1]!r}")
+            case self.TargetState.VALUE_PRESENT:
+                container = self._parent_ptr.resolve(doc)
+                token = self.parts[-1]
+                key = int(token) if isinstance(container, list) else token
+                self._validate_target(container[key])
+                del container[key]
+                return doc
+            case _ as unreachable:
+                assert_never(unreachable)
 
     @override
     def __repr__(self) -> str:

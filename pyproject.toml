@@ -91,4 +91,5 @@ exclude_lines = [
   "no cov",
   "if __name__ == .__main__.:",
   "if TYPE_CHECKING:",
+  "case _ as unreachable:"
 ]
