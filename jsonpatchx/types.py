@@ -96,7 +96,7 @@ type _JSONArrayKey = Annotated[int, Field(ge=0)] | Literal["-"]
 type _JSONObjectKey = str
 type _JSONKey = _JSONArrayKey | _JSONObjectKey
 
-_ARRAY_INDEX_PATTERN: re.Pattern[str] = re.compile(r"^(0|[1-9][0-9]*)$")
+_ARRAY_INDEX_PATTERN: re.Pattern[str] = re.compile(r"^-?(0|[1-9][0-9]*)$")
 
 
 def _parse_JSONArray_key(array: JSONArray[JSONValue], key: str) -> _JSONArrayKey:
@@ -773,7 +773,7 @@ class JSONPointer(str, Generic[T_co, P_co]):
         ARRAY_INDEX_OUT_OF_RANGE = auto()
         ARRAY_INDEX_AT_END = auto()
         ARRAY_INDEX_APPEND = auto()
-        ARRAY_INDEX_NEGATIVE = auto()
+        VALUE_PRESENT_AT_NEGATIVE_ARRAY_INDEX = auto()
         VALUE_PRESENT_TYPE_MISMATCH = auto()
         VALUE_PRESENT_TYPE_OK = auto()
 
@@ -804,31 +804,19 @@ class JSONPointer(str, Generic[T_co, P_co]):
         # list container
         if token == "-":
             return JSONPointer.TargetState.ARRAY_INDEX_APPEND
-        if isinstance(token, int):
-            if token < 0:
-                return JSONPointer.TargetState.ARRAY_INDEX_NEGATIVE
-            if token == len(container):
-                return JSONPointer.TargetState.ARRAY_INDEX_AT_END
-            if token > len(container):
+        if _ARRAY_INDEX_PATTERN.fullmatch(token):
+            index = int(token)
+            if index > len(container) or index < -len(container):
                 return JSONPointer.TargetState.ARRAY_INDEX_OUT_OF_RANGE
-            if not self.is_valid_target(container[token]):
+            if index == len(container):
+                return JSONPointer.TargetState.ARRAY_INDEX_AT_END
+            if index < 0:
+                return JSONPointer.TargetState.VALUE_PRESENT_AT_NEGATIVE_ARRAY_INDEX
+            if not self.is_valid_target(container[index]):
                 return JSONPointer.TargetState.VALUE_PRESENT_TYPE_MISMATCH
             return JSONPointer.TargetState.VALUE_PRESENT_TYPE_OK
-        if isinstance(token, str):
-            if token.startswith("-") and token[1:].isdigit():
-                return JSONPointer.TargetState.ARRAY_INDEX_NEGATIVE
-            if _ARRAY_INDEX_PATTERN.fullmatch(token):
-                index = int(token)
-                if index == len(container):
-                    return JSONPointer.TargetState.ARRAY_INDEX_AT_END
-                if index > len(container):
-                    return JSONPointer.TargetState.ARRAY_INDEX_OUT_OF_RANGE
-                if not self.is_valid_target(container[index]):
-                    return JSONPointer.TargetState.VALUE_PRESENT_TYPE_MISMATCH
-                return JSONPointer.TargetState.VALUE_PRESENT_TYPE_OK
-            return JSONPointer.TargetState.KEY_INVALID
-
         return JSONPointer.TargetState.KEY_INVALID
+
 
     def remove(self, doc: JSONValue) -> JSONValue:
         """
