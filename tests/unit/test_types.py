@@ -235,13 +235,12 @@ def test_jsonpointer_edge_cases(subtests: Subtests) -> None:
         root_number = TypeAdapter(JSONPointer[JSONNumber]).validate_python("")
         assert root_number.is_addable(1) is True
         assert root_number.is_addable("nope") is False
-
-        assert adapter.validate_python("/arr/0").is_addable({"arr": [10]}, 5) is True
-        assert adapter.validate_python("/arr/1").is_addable({"arr": [10]}, 5) is False
-        assert adapter.validate_python("/arr/-").is_addable({"arr": [10]}, 5) is True
-        assert (
-            adapter.validate_python("/arr/nope").is_addable({"arr": [10]}, 5) is False
-        )
+        doc = {"arr": [10]}
+        assert adapter.validate_python("/arr/0").is_addable(doc, 5) is True
+        assert adapter.validate_python("/arr/1").is_addable(doc, 5) is True
+        assert adapter.validate_python("/arr/2").is_addable(doc, 5) is False
+        assert adapter.validate_python("/arr/-").is_addable(doc, 5) is True
+        assert adapter.validate_python("/arr/nope").is_addable(doc, 5) is False
 
         assert adapter.validate_python("/a/b").is_addable({"a": 1}, 5) is False
 
