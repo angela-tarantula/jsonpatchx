@@ -27,8 +27,8 @@ class IncompletePointerBackend:
 
 
 class DotPointer(IncompletePointerBackend):
-    def resolve(self, doc: JSONValue) -> Any:
-        cur: Any = doc
+    def resolve(self, data: JSONValue) -> Any:
+        cur: Any = data
         for token in self._parts:
             cur = cur[token]
         return cur

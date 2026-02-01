@@ -14,7 +14,7 @@ from jsonpatchx.pointer import JSONPointer
 from jsonpatchx.registry import GenericOperationRegistry, OperationRegistry
 from jsonpatchx.schema import OperationSchema
 from jsonpatchx.types import JSONBoolean, JSONValue
-from tests.unit.conftest import DotPointer
+from tests.conftest import DotPointer
 
 
 def test_invalid_operation_schema_class(subtests: Subtests) -> None:

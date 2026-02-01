@@ -566,8 +566,8 @@ class RunePointer(PointerBackend):
         return cls(".".join(tokens))
 
     @override
-    def resolve(self, doc: Any) -> Any:
-        cur = doc
+    def resolve(self, data: Any) -> Any:
+        cur = data
         for part in self._parts:
             if isinstance(cur, dict):
                 cur = cur[part]

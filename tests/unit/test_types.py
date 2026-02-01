@@ -19,7 +19,7 @@ from jsonpatchx.types import (
     JSONString,
     JSONValue,
 )
-from tests.unit.conftest import (
+from tests.conftest import (
     AnotherIncompletePointerBackend,
     DotPointer,
     IncompletePointerBackend,
@@ -455,6 +455,13 @@ def test_jsonpointer_type_args_validation(subtests: Subtests) -> None:
         ]:
             adapter = TypeAdapter(JSONPointer[JSONValue, valid_backend])
             adapter.validate_python("")
+
+
+def test_jsonpointer_rejects_pointerbackend_instance() -> None:
+    # NOTE: should not pass!
+    adapter = TypeAdapter(JSONPointer[JSONValue, DotPointer])
+    with pytest.raises(ValidationError):
+        adapter.validate_python(DotPointer("a.b"))
 
 
 def test_jsonpointer_covariance_narrow_to_wide(subtests: Subtests) -> None:
