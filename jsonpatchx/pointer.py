@@ -37,10 +37,10 @@ from jsonpatchx.types import (
     JSONObject,
     JSONValue,
     PointerBackend,
-    _cached_json_pointer,
     _is_array,
     _is_container,
     _is_object,
+    _pointer_backend_instance,
     _PointerClassProtocol,
     _type_adapter_for,
 )
@@ -226,12 +226,13 @@ class JSONPointer(str, Generic[T_co, P_co]):
         if isinstance(path, JSONPointer) and isinstance(path._ptr, strictest_protocol):
             obj._ptr = cast(P_co, path._ptr)
         else:
-            pointer_cls = (
+            pointer_cls = cast(
+                type[P_co],
                 strictest_protocol
                 if strictest_protocol is not PointerBackend
-                else _DEFAULT_POINTER_CLS
+                else _DEFAULT_POINTER_CLS,
             )
-            obj._ptr = _cached_json_pointer(path, pointer_cls=pointer_cls)
+            obj._ptr = _pointer_backend_instance(path, pointer_cls=pointer_cls)
             if not isinstance(obj._ptr, PointerBackend):
                 raise InvalidJSONPointer(
                     f"pointer_cls {pointer_cls!r} instances must implement the PointerBackend Protocol"
@@ -356,7 +357,7 @@ class JSONPointer(str, Generic[T_co, P_co]):
             raise InvalidJSONPointer(
                 f"other pointer {other._ptr!r} has incompatible syntax with {self!r}"
             )
-        other_ptr: P_co = _cached_json_pointer(other, pointer_cls=type(self._ptr))
+        other_ptr: P_co = _pointer_backend_instance(other, pointer_cls=type(self._ptr))
 
         # Strict parentage only
         if self == str(other_ptr):
@@ -380,7 +381,7 @@ class JSONPointer(str, Generic[T_co, P_co]):
             raise InvalidJSONPointer(
                 f"other pointer {other._ptr!r} has incompatible syntax with {self!r}"
             )
-        other_ptr: P_co = _cached_json_pointer(other, pointer_cls=type(self._ptr))
+        other_ptr: P_co = _pointer_backend_instance(other, pointer_cls=type(self._ptr))
 
         # Strict parentage only
         if self == str(other_ptr):

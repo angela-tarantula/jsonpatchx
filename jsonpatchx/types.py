@@ -117,8 +117,6 @@ _JSON_VALUE_ADAPTER: TypeAdapter[JSONValue] = _type_adapter_for(JSONValue)
 # NOTE: not a huge fan of the pydantic error messages for simple cases like _JSON_VALUE_ADAPTER.python_validate({1:2})
 
 
-# PointerBackend helpers
-
 # You may be wondering, why does `_PointerClassProtocol` exist? Here's context.
 #
 # TL;DR: This library aims to surface user erros as eagerly as possible. It's not
@@ -215,34 +213,6 @@ class PointerBackend(_PointerClassProtocol, Protocol):
         """Unescaped backend-specific tokens."""
 
 
-@lru_cache(maxsize=512)
-def _cached_json_pointer[P](path: str, *, pointer_cls: Callable[..., P]) -> P:
-    """
-    Internal: construct (and cache) a PointerBackend instance for a path string.
-
-    Args:
-        path: Pointer string to parse.
-        pointer_cls: Backend class used to parse the pointer.
-
-    Returns:
-        A backend instance for ``path``.
-
-    Raises:
-        InvalidJSONPointer: If construction fails.
-    """
-    try:
-        return pointer_cls(path)
-    except Exception as e:
-        if (
-            pointer_cls is _DEFAULT_POINTER_CLS
-        ):  # the string is not valid jsonpointer syntax
-            raise InvalidJSONPointer(f"invalid JSON Pointer: {path!r}") from e
-        else:  # the string and class are incompatible
-            raise InvalidJSONPointer(
-                f"invalid JSON Pointer for {pointer_cls!r}: {path!r}"
-            ) from e
-
-
 class _DEFAULT_POINTER_CLS(JsonPointer):  # type: ignore[misc]
     # fixes https://github.com/stefankoegl/python-json-pointer/issues/63
     @override
@@ -275,3 +245,30 @@ if TYPE_CHECKING:
     from jsonpath import JSONPointer as ExtendedJsonPointer
 
     _dont_raise_mypy_error_2: PointerBackend = ExtendedJsonPointer("")
+
+
+def _pointer_backend_instance[P](path: str, *, pointer_cls: Callable[..., P]) -> P:
+    """
+    Internal: construct (and cache) a PointerBackend instance for a path string.
+
+    Args:
+        path: Pointer string to parse.
+        pointer_cls: Backend class used to parse the pointer.
+
+    Returns:
+        A backend instance for ``path``.
+
+    Raises:
+        InvalidJSONPointer: If construction fails.
+    """
+    try:
+        return pointer_cls(path)
+    except Exception as e:
+        if (
+            pointer_cls is _DEFAULT_POINTER_CLS
+        ):  # the string is not valid jsonpointer syntax
+            raise InvalidJSONPointer(f"invalid RFC6901 JSON Pointer: {path!r}") from e
+        else:  # the string and class are incompatible
+            raise InvalidJSONPointer(
+                f"invalid JSON Pointer for {pointer_cls!r}: {path!r}"
+            ) from e
