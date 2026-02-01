@@ -7,7 +7,7 @@ from pydantic import TypeAdapter, ValidationError
 from pytest import Subtests
 
 from jsonpatchx.exceptions import InvalidJSONPointer, PatchConflictError
-from jsonpatchx.pointer import _POINTER_BACKEND_CTX_KEY, JSONPointer
+from jsonpatchx.pointer import _JSONPOINTER_POINTER_BACKEND_CTX_KEY, JSONPointer
 from jsonpatchx.types import (
     JSONArray,
     JSONBoolean,
@@ -370,7 +370,7 @@ def test_pointer_backend_binding_with_context(subtests: Subtests) -> None:
         context = (
             None
             if registry_backend is None
-            else {_POINTER_BACKEND_CTX_KEY: registry_backend}
+            else {_JSONPOINTER_POINTER_BACKEND_CTX_KEY: registry_backend}
         )
         return adapter.validate_python(path, context=context)
 

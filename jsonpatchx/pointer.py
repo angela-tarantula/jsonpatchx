@@ -40,8 +40,8 @@ from jsonpatchx.types import (
     _type_adapter_for,
 )
 
-type _CTX_KEY_LITERALS = Literal["jsonpatch:pointer_backend"]
-_POINTER_BACKEND_CTX_KEY: Final = "jsonpatch:pointer_backend"
+type _JSONPOINTER_VALIDATION_CTX_LITERALS = Literal["jsonpatch:pointer_backend"]
+_JSONPOINTER_POINTER_BACKEND_CTX_KEY: Final = "jsonpatch:pointer_backend"
 
 
 _Nothing = object()
@@ -181,7 +181,8 @@ class JSONPointer(str, Generic[T_co, P_co]):
         # Fetch PointerBackend from the registry's validation context, if present
         ctx = registry_info.context or {} if registry_info is not None else {}
         registry_backend = cast(
-            type[PointerBackend], ctx.get(_POINTER_BACKEND_CTX_KEY, PointerBackend)
+            type[PointerBackend],
+            ctx.get(_JSONPOINTER_POINTER_BACKEND_CTX_KEY, PointerBackend),
         )
 
         # Enforce registry_backend ⊆ bound_backend ⊂ PointerBackend and get the strictest one

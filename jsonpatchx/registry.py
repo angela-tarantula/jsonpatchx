@@ -29,7 +29,10 @@ from jsonpatchx.builtins import (
     TestOp,
 )
 from jsonpatchx.exceptions import InvalidOperationRegistry
-from jsonpatchx.pointer import _CTX_KEY_LITERALS, _POINTER_BACKEND_CTX_KEY
+from jsonpatchx.pointer import (
+    _JSONPOINTER_POINTER_BACKEND_CTX_KEY,
+    _JSONPOINTER_VALIDATION_CTX_LITERALS,
+)
 from jsonpatchx.schema import OperationSchema
 from jsonpatchx.types import (
     _DEFAULT_POINTER_CLS,
@@ -105,7 +108,7 @@ class GenericOperationRegistry(Generic[*Ops, PBT], metaclass=_RegistryMeta):
     _model_map: ClassVar[Mapping[str, type[OperationSchema]]]
     _op_adapter: ClassVar[TypeAdapter[OperationSchema]]
     _patch_adapter: ClassVar[TypeAdapter[list[OperationSchema]]]
-    _ctx: ClassVar[dict[_CTX_KEY_LITERALS, type[PBT] | None]]
+    _ctx: ClassVar[dict[_JSONPOINTER_VALIDATION_CTX_LITERALS, type[PBT] | None]]
 
     @overload
     def __class_getitem__(cls, params: tuple[Unpack[Ops]]) -> type[AnyRegistry]: ...
@@ -126,8 +129,8 @@ class GenericOperationRegistry(Generic[*Ops, PBT], metaclass=_RegistryMeta):
         model_map = cls._build_model_map(*ordered_ops)
         union_type, op_adapter, patch_adapter = cls._build_adapters(*ordered_ops)
         ctx_backend = _DEFAULT_POINTER_CLS if pointer_cls is None else pointer_cls
-        ctx: dict[_CTX_KEY_LITERALS, type[PBT] | None] = {
-            _POINTER_BACKEND_CTX_KEY: ctx_backend
+        ctx: dict[_JSONPOINTER_VALIDATION_CTX_LITERALS, type[PBT] | None] = {
+            _JSONPOINTER_POINTER_BACKEND_CTX_KEY: ctx_backend
         }
 
         name = cls._registry_type_name(ordered_ops, pointer_cls)
