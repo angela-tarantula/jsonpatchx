@@ -142,6 +142,32 @@ _JSON_VALUE_ADAPTER: TypeAdapter[JSONValue] = _type_adapter_for(JSONValue)
 
 # PointerBackend helpers
 
+# You may be wondering, why does `_PointerClassProtocol` exist? Here's context.
+#
+# TL;DR: This library aims to surface user erros as eagerly as possible. It's not
+#        possible to validate a custom pointer backend until it's instantiated. As
+#        a workaround, `_PointerClassProtocol` exists internally to raise errors
+#        at JSONPointer definition time, and `PointerBackend` exists inernally to
+#        raise errors at JSONPointer instantiation time. Only `PointerBackend`
+#        needs to be publicly exposed to communicate pointer backend requirements.
+#
+# `PointerBackend` is the public protocol for injecting custom pointer classes.
+# `PointerBackend` is `@runtime_checkable` so that `OperationSchmea` can eagerly
+# validate custom pointer classes. Unfortunately, though, it's invalid to do
+# `issubclass(X, PointerBackend)` because of the following error:
+#
+#   TypeError: Protocols with non-method members don't support issubclass(). Non-method members: 'parts'.
+#
+# A workaround would be to use `isinstance` instead of `issubclass`, but that
+# requires having a PointerBackend instance like `X("/foo/bar")`. The problem is
+# that custom pointer backends are not required to use any particular syntax.
+# This means it's not possible to know what strings are supposed to be valid
+# for any given custom pointer backend. I considered requiring that all custom
+# pointer backends accept the empty string, `""`, but it's not necessary.
+# Instead, `_PointerClassProtocol` exists as an internal-only protocol just to
+# be comptaible with `issubclass`. `PointerBackend` simply subclasses it and adds
+# the instance-level requirements.
+
 
 @runtime_checkable
 class _PointerClassProtocol(Protocol):
