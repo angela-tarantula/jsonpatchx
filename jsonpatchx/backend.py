@@ -2,16 +2,13 @@ import re
 from abc import abstractmethod
 from collections.abc import Callable, Iterable, Sequence
 from enum import Enum, auto
-from typing import TYPE_CHECKING, Any, Protocol, Self, override, runtime_checkable
+from typing import TYPE_CHECKING, Any, Protocol, Self, cast, override, runtime_checkable
 
 from jsonpointer import JsonPointer  # type: ignore[import-untyped]
 from jsonpointer import JsonPointerException as JPException
 
 from jsonpatchx.exceptions import InvalidJSONPointer
 from jsonpatchx.types import JSONValue, _is_container, _is_object
-
-if TYPE_CHECKING:
-    from jsonpatchx.pointer import JSONPointer
 
 # strict RFC 6901 array index
 _NONNEGATIVE_ARRAY_INDEX_PATTERN = re.compile(r"^(0|[1-9][0-9]*)$")
@@ -63,7 +60,7 @@ class _PointerClassProtocol(Protocol):
         """
 
     @abstractmethod
-    def resolve(self, data: Any) -> Any:
+    def resolve(self, data: Any) -> Any:  # NOTE: JSONValue
         """
         Resolve the pointer against a document using backend-defined traversal semantics.
 
@@ -84,6 +81,7 @@ class _PointerClassProtocol(Protocol):
 @runtime_checkable
 class PointerBackend(_PointerClassProtocol, Protocol):
     """
+    NOTE: also require that parent pointers are constructable from parts[:-1]
     Protocol for custom JSON Pointer backends.
 
     This library is pointer-backend agnostic. By default it uses ``jsonpointer.JsonPointer``,
@@ -150,9 +148,31 @@ if TYPE_CHECKING:
     _dont_raise_mypy_error_2: PointerBackend = ExtendedJsonPointer("")
 
 
-def _pointer_backend_instance[P](path: str, *, pointer_cls: Callable[..., P]) -> P:
+def _is_root_ptr(ptr: PointerBackend, doc: JSONValue) -> bool:
     """
-    Internal: construct (and cache) a PointerBackend instance for a path string.
+    Check whether this pointer backend's target is the root.
+
+    Custom backends are not required to accept `""` as the root,
+    nor are they required to have exclusively one reference to the root.
+    """
+    try:
+        target = cast(JSONValue, ptr.resolve(doc))
+    except Exception:
+        return False
+    return doc == target
+
+
+def _parent_ptr_of[PB: PointerBackend](ptr: PB) -> PB:
+    """Get the parent pointer."""
+    # NOTE: potentially check if ptr.parent property exists, if they want to cache it for example
+    return ptr.from_parts(ptr.parts[:-1])
+
+
+def _pointer_backend_instance[PB: PointerBackend](
+    path: str, *, pointer_cls: Callable[..., PB]
+) -> PB:
+    """
+    Internal: construct a PointerBackend instance for a path string.
 
     Args:
         path: Pointer string to parse.
@@ -165,7 +185,7 @@ def _pointer_backend_instance[P](path: str, *, pointer_cls: Callable[..., P]) ->
         InvalidJSONPointer: If construction fails.
     """
     try:
-        return pointer_cls(path)
+        ptr = pointer_cls(path)
     except Exception as e:
         if (
             pointer_cls is _DEFAULT_POINTER_CLS
@@ -175,6 +195,12 @@ def _pointer_backend_instance[P](path: str, *, pointer_cls: Callable[..., P]) ->
             raise InvalidJSONPointer(
                 f"invalid JSON Pointer for {pointer_cls!r}: {path!r}"
             ) from e
+
+    if not isinstance(ptr, PointerBackend):
+        raise InvalidJSONPointer(
+            f"pointer_cls {pointer_cls!r} instances must implement the PointerBackend Protocol"
+        )
+    return ptr
 
 
 # NOTE: move methods that raise InvalidJSONPointer below
@@ -202,17 +228,18 @@ class TargetState(Enum):
     VALUE_PRESENT_AT_NEGATIVE_ARRAY_INDEX = auto()
 
 
-def classify_state(ptr: JSONPointer[Any], doc: JSONValue) -> TargetState:
+def classify_state(ptr: PointerBackend, doc: JSONValue) -> TargetState:
     """
     Internal: Classify the state of a JSONPointer resolution against a document.
 
     Only use when subclassing JSONPointer for custom stateful behaviors.
     """
-    if ptr.is_root(doc):
+    if _is_root_ptr(ptr, doc):
         return TargetState.ROOT
 
     try:
-        container = ptr._parent_ptr.resolve(doc)  # NOTE: should be cached
+        parent_ptr = _parent_ptr_of(ptr)
+        container = parent_ptr.resolve(doc)
     except Exception:
         return TargetState.PARENT_NOT_FOUND
     if not _is_container(container):

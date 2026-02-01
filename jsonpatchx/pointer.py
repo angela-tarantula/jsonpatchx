@@ -30,6 +30,8 @@ from jsonpatchx.backend import (
     _DEFAULT_POINTER_CLS,
     PointerBackend,
     TargetState,
+    _is_root_ptr,
+    _parent_ptr_of,
     _pointer_backend_instance,
     _PointerClassProtocol,
     classify_state,
@@ -163,16 +165,12 @@ class JSONPointer(str, Generic[T_co, P_co]):
 
     @property
     def _parent_ptr(self) -> P_co:
-        # NOTE: Cache this outside too?
-        return self._ptr.from_parts(self.parts[:-1])
+        # NOTE: make this public
+        return _parent_ptr_of(self._ptr)
 
     def is_root(self, doc: JSONValue) -> bool:
         """Check whether this JSONPointer's target is the root."""
-        try:
-            target = cast(JSONValue, self._ptr.resolve(doc))
-        except Exception:
-            return False
-        return doc == target
+        return _is_root_ptr(self._ptr, doc)
 
     @classmethod
     def _validator(
@@ -230,10 +228,6 @@ class JSONPointer(str, Generic[T_co, P_co]):
                 else _DEFAULT_POINTER_CLS,
             )
             obj._ptr = _pointer_backend_instance(path, pointer_cls=pointer_cls)
-            if not isinstance(obj._ptr, PointerBackend):
-                raise InvalidJSONPointer(
-                    f"pointer_cls {pointer_cls!r} instances must implement the PointerBackend Protocol"
-                )
 
         return obj
 
@@ -354,7 +348,9 @@ class JSONPointer(str, Generic[T_co, P_co]):
             raise InvalidJSONPointer(
                 f"other pointer {other._ptr!r} has incompatible syntax with {self!r}"
             )
-        other_ptr: P_co = _pointer_backend_instance(other, pointer_cls=type(self._ptr))
+        other_ptr: P_co = _pointer_backend_instance(
+            other, pointer_cls=self._ptr.__class__
+        )
 
         # Strict parentage only
         if self == str(other_ptr):
@@ -370,15 +366,18 @@ class JSONPointer(str, Generic[T_co, P_co]):
 
         Root is treated as a parent of all paths.
 
-        Raises InvalidJSONPointer if comparison is called with an `other` pointer with different or invalid syntax.
+        Raises PatchConflictError if comparison is called with an `other` pointer with different or invalid syntax.
         """
+        # NOTE: Document which of these public helper methods work only with RFC6901
         if isinstance(other, JSONPointer) and not isinstance(
             other._ptr, type(self._ptr)
         ):
-            raise InvalidJSONPointer(
-                f"other pointer {other._ptr!r} has incompatible syntax with {self!r}"
+            raise PatchConflictError(
+                f"JSONPointer.is_child_of() error: other pointer {other._ptr!r} has incompatible syntax with {self!r}"
             )
-        other_ptr: P_co = _pointer_backend_instance(other, pointer_cls=type(self._ptr))
+        other_ptr: P_co = _pointer_backend_instance(
+            other, pointer_cls=self._ptr.__class__
+        )
 
         # Strict parentage only
         if self == str(other_ptr):
@@ -452,7 +451,7 @@ class JSONPointer(str, Generic[T_co, P_co]):
                 f"value {value!r} is not valid a valid JSONValue"
             ) from e
 
-        match classify_state(self, doc):
+        match classify_state(self._ptr, doc):
             case TargetState.ROOT:
                 self._validate_target(doc)
                 return target
@@ -515,7 +514,7 @@ class JSONPointer(str, Generic[T_co, P_co]):
             except Exception:
                 return False
 
-        match classify_state(self, doc):
+        match classify_state(self._ptr, doc):
             case TargetState.ROOT:
                 return self.is_valid_type(doc)
             case TargetState.VALUE_PRESENT:
@@ -546,7 +545,7 @@ class JSONPointer(str, Generic[T_co, P_co]):
         Raises:
             PatchConflictError: If the target does not exist, or it is not type ``T``.
         """
-        match classify_state(self, doc):
+        match classify_state(self._ptr, doc):
             case TargetState.ROOT:
                 # Choice: Removal of root sets root to null.
                 # Why: Keeps all operations closed over JSONValue. Remove is also more composable this way.
