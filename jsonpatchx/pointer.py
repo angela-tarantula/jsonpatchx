@@ -217,16 +217,6 @@ class JSONPointer(str, Generic[T_co, P_co]):
 
         # Try to reuse the type parameters (type checkers already enforce covariance)
         if isinstance(path_str, JSONPointer):
-            if (
-                isclass(path_str._type)
-                and isclass(type_param)
-                and not issubclass(path_str._type, type_param)
-            ):
-                # Ideally, compare TypeAdapters to cover all TypeForm covariance, but Pydantic doesn't expose subtype relation.
-                # NOTE: consider dropping partial covariance enforcement for consistency
-                raise InvalidJSONPointer(
-                    f"Expected {type_param}, got: {path_str._type}. JSONPointer[T] is covariant in type T."
-                )
             obj._type = path_str._type
         else:
             obj._type = type_param

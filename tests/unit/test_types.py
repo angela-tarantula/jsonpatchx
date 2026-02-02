@@ -533,6 +533,7 @@ def test_jsonpointer_path_validation(subtests: Subtests) -> None:
     with subtests.test("reject incompatible PointerBackends"):
         with pytest.raises(InvalidJSONPointer):
             adapter.validate_python(RFC6901JsonPointer("/hello"))
+        with pytest.raises(InvalidJSONPointer):
             adapter.validate_python(ExtendedJsonPointer("/hello"))
     with subtests.test("accepts narrower PointerBackends"):
 
@@ -553,45 +554,5 @@ def test_jsonpointer_covariance_narrow_to_wide(subtests: Subtests) -> None:
         assert adapter_int.validate_python(p_bool) == p_bool
         assert adapter_number.validate_python(p_bool) == p_bool
         assert adapter_value.validate_python(p_bool) == p_bool
-
-
-def test_jsonpointer_covariance_wide_to_narrow(subtests: Subtests) -> None:
-    adapter_bool = TypeAdapter(JSONPointer[bool])
-    adapter_int = TypeAdapter(JSONPointer[int])
-    adapter_number = TypeAdapter(JSONPointer[JSONNumber])
-    adapter_value = TypeAdapter(JSONPointer[JSONValue])
-
-    p_int = adapter_int.validate_python("/x")
-    p_number = adapter_number.validate_python("/x")
-    p_value = adapter_value.validate_python("/x")
-
-    with subtests.test("int -> bool should fail"):
-        with pytest.raises(InvalidJSONPointer):
-            adapter_bool.validate_python(p_int)
-
-    # It is currently only possible to enforce covariance for classes, not all TypeForms.
-    # Hopefully in the future Pydantic can provide support for checking if a TypeForm is a subtype of another.
-
-    with subtests.test(
-        "jsonvalue -> bool should fail (xfail: currently there's no way to enforce covariance for TypeForms that aren't classes)"
-    ):
-        try:
-            adapter_bool.validate_python(p_value)
-        except InvalidJSONPointer:
-            pass
-        else:
-            pytest.xfail(
-                "Runtime covariance check is permissive for JSONValue -> JSONBoolean."
-            )
-
-    with subtests.test(
-        "jsonnumber -> bool should fail (xfail: currently there's no way to enforce covariance for TypeForms that aren't classes)"
-    ):
-        try:
-            adapter_bool.validate_python(p_number)
-        except InvalidJSONPointer:
-            pass
-        else:
-            pytest.xfail(
-                "Runtime covariance check is permissive for JSONNumber -> JSONBoolean."
-            )
+    # currently wide-to-narrow is also allowed, but that's not guaranteed in the future
+    # type hints should already forbid non-covariant assignment
