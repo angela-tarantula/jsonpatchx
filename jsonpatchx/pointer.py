@@ -177,9 +177,9 @@ class JSONPointer(str, Generic[T_co, P_co]):
         cls,
         path: str | PointerBackend,
         registry_info: ValidationInfo | None,
-        *,  # covariant params ok here, it's just for pydantic validation
-        type_param: TypeForm[T_co],
-        bound_backend: type[P_co],
+        *,
+        type_param: TypeForm[Any],
+        bound_backend: type[_PointerClassProtocol],
     ) -> Self:
         """
         Validator function for JSONPointer.
@@ -189,7 +189,7 @@ class JSONPointer(str, Generic[T_co, P_co]):
         # Fetch PointerBackend from the registry's validation context, if present
         ctx = registry_info.context or {} if registry_info is not None else {}
         registry_backend = cast(
-            type[PointerBackend],
+            type[_PointerClassProtocol],
             ctx.get(_JSONPOINTER_POINTER_BACKEND_CTX_KEY, PointerBackend),
         )
 
@@ -229,13 +229,12 @@ class JSONPointer(str, Generic[T_co, P_co]):
         elif isinstance(path, strictest_protocol):
             obj._ptr = cast(P_co, path)
         else:
-            pointer_cls = cast(
-                type[P_co],
+            pointer_cls = (
                 strictest_protocol
                 if strictest_protocol is not PointerBackend
-                else _DEFAULT_POINTER_CLS,
+                else _DEFAULT_POINTER_CLS
             )
-            obj._ptr = _pointer_backend_instance(path_str, pointer_cls=pointer_cls)
+            obj._ptr = cast(P_co, _pointer_backend_instance(path_str, pointer_cls=pointer_cls))
 
         return obj
 
@@ -273,7 +272,9 @@ class JSONPointer(str, Generic[T_co, P_co]):
         return json_schema
 
     @classmethod
-    def _parse_pointer_type_args(cls, *args: Any) -> tuple[TypeForm[T_co], type[P_co]]:
+    def _parse_pointer_type_args(
+        cls, *args: Any
+    ) -> tuple[TypeForm[Any], type[_PointerClassProtocol]]:
         """Validate the JSONPointer's parameter tuple, e.g. ``(JSONValue, DotPointer)`` for ``JSONPointer[JSONValue, DotPointer]``."""
         if not args:
             raise TypeError(f"{cls} requires at least one type parameter")
@@ -284,15 +285,10 @@ class JSONPointer(str, Generic[T_co, P_co]):
             raise InvalidJSONPointer(
                 f"JSONPointer backend parameter {bound_backend!r} must be a PointerBackend class"
             )
-        elif not issubclass(
-            # eagerly catch invalid PointerBackends, but won't catch all cases (due to the Protocol having a @property)
-            bound_backend,
-            _PointerClassProtocol,
-        ):
+        if not issubclass(bound_backend, _PointerClassProtocol):
             raise InvalidJSONPointer(
                 f"JSONPointer backend parameter {bound_backend!r} must implement the PointerBackend Protocol"
             )
-
         if not _is_valid_typeform(type_param):
             raise InvalidJSONPointer(
                 f"JSONPointer type parameter {type_param!r} must be a valid TypeForm"
@@ -302,9 +298,9 @@ class JSONPointer(str, Generic[T_co, P_co]):
 
     @staticmethod
     def _resolve_strictest_backend(
-        registry_backend: type[PointerBackend],
-        bound_backend: type[PointerBackend],
-    ) -> type[PointerBackend]:
+        registry_backend: type[_PointerClassProtocol],
+        bound_backend: type[_PointerClassProtocol],
+    ) -> type[_PointerClassProtocol]:
         """Determine the strictest PointerBackend class, given optional ``registry_backend`` and ``bound_backend``."""
         if registry_backend is bound_backend:
             return registry_backend
@@ -350,9 +346,7 @@ class JSONPointer(str, Generic[T_co, P_co]):
             raise InvalidJSONPointer(
                 f"Other pointer {other._ptr!r} has incompatible syntax with {self!r}"
             )
-        other_ptr: P_co = _pointer_backend_instance(
-            other, pointer_cls=self._ptr.__class__
-        )
+        other_ptr = _pointer_backend_instance(other, pointer_cls=self._ptr.__class__)
 
         # Strict parentage only
         if self == str(other_ptr):
@@ -377,9 +371,7 @@ class JSONPointer(str, Generic[T_co, P_co]):
             raise InvalidJSONPointer(
                 f"Other pointer {other._ptr!r} has incompatible syntax with {self!r}"
             )
-        other_ptr: P_co = _pointer_backend_instance(
-            other, pointer_cls=self._ptr.__class__
-        )
+        other_ptr = _pointer_backend_instance(other, pointer_cls=self._ptr.__class__)
 
         # Strict parentage only
         if self == str(other_ptr):

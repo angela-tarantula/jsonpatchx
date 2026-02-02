@@ -1,6 +1,6 @@
 import re
 from abc import abstractmethod
-from collections.abc import Callable, Iterable, Sequence
+from collections.abc import Iterable, Sequence
 from enum import Enum, auto
 from typing import TYPE_CHECKING, Any, Protocol, Self, cast, override, runtime_checkable
 
@@ -169,9 +169,9 @@ def _parent_ptr_of[PB: PointerBackend](ptr: PB) -> PB:
     return ptr.from_parts(ptr.parts[:-1])
 
 
-def _pointer_backend_instance[PB: PointerBackend](
-    path: str, *, pointer_cls: Callable[..., PB]
-) -> PB:
+def _pointer_backend_instance(
+    path: str, *, pointer_cls: type[_PointerClassProtocol]
+) -> PointerBackend:
     """
     Internal: construct a PointerBackend instance for a path string.
 
