@@ -7,7 +7,6 @@ from typing import (
     Generic,
     Literal,
     Self,
-    TypeGuard,
     TypeVar,
     assert_never,
     cast,
@@ -45,6 +44,7 @@ from jsonpatchx.types import (
     JSONValue,
     _is_array,
     _is_object,
+    _is_valid_typeform,
     _type_adapter_for,
 )
 
@@ -293,22 +293,12 @@ class JSONPointer(str, Generic[T_co, P_co]):
                 f"JSONPointer backend parameter {bound_backend!r} must implement the PointerBackend Protocol"
             )
 
-        if not cls._is_valid_typeform(type_param):
-            # Catch invalid TypeForms eagerly
+        if not _is_valid_typeform(type_param):
             raise InvalidJSONPointer(
                 f"JSONPointer type parameter {type_param!r} must be a valid TypeForm"
-            )  # Can't catch invalid PointerBackend until a path is provided because issubclass(bound_backend, PointerBackend) won't be able to check for non-method members like the 'parts' property (https://github.com/python/mypy/blob/0c6340170b2d0a9eb2e55eacd06709e8fd3d92b0/mypy/messages.py#L2052), so need to use isinstance check later
+            )
 
         return type_param, cast(type[P_co], bound_backend)
-
-    @classmethod
-    def _is_valid_typeform(cls, expected: object) -> TypeGuard[TypeForm[T_co]]:
-        """Validate the TypeForm parameter."""
-        try:
-            _type_adapter_for(expected)  # type: ignore[arg-type]
-        except Exception:
-            return False
-        return True
 
     @staticmethod
     def _resolve_strictest_backend(

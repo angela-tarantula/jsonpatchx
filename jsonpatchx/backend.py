@@ -31,6 +31,7 @@ _INTEGER_ARRAY_INDEX_PATTERN = re.compile(r"^-?(0|[1-9][0-9]*)$")
 # `issubclass(X, PointerBackend)` because of the following error:
 #
 #   TypeError: Protocols with non-method members don't support issubclass(). Non-method members: 'parts'.
+#   https://github.com/python/mypy/blob/0c6340170b2d0a9eb2e55eacd06709e8fd3d92b0/mypy/messages.py#L2052
 #
 # A workaround would be to use `isinstance` instead of `issubclass`, but that
 # requires having a PointerBackend instance like `X("/foo/bar")`. The problem is
