@@ -228,6 +228,8 @@ def test_jsonpointer_edge_cases(subtests: Subtests) -> None:
             adapter.validate_python("/arr/-1").remove({"arr": [10, 20]})
         with pytest.raises(PatchConflictError):
             adapter.validate_python("/arr/nope").remove({"arr": [10, 20]})
+        with pytest.raises(PatchConflictError):
+            adapter.validate_python("/arr/01").remove({"arr": [10, 20]})
 
     with subtests.test("is_addable edge cases"):
         root_number = TypeAdapter(JSONPointer[JSONNumber]).validate_python("")
@@ -325,6 +327,7 @@ def test_jsonpointer_public_methods_are_backend_agnostic(
     with subtests.test("is_child_of"):
         assert child.is_child_of(ptr) is True
         assert ptr.is_child_of(child) is False
+        assert ptr.is_child_of(ptr) is False
         if pointer_cls is None:
             with pytest.raises(InvalidJSONPointer):
                 ptr.is_child_of(DotPointer("a.b"))
