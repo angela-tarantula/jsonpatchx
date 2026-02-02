@@ -23,6 +23,7 @@ from tests.conftest import (
     AnotherIncompletePointerBackend,
     DotPointer,
     IncompletePointerBackend,
+    PointerMissingParts,
 )
 
 JSON_TYPE_VALIDATION_TYPES: Final[list[type]] = [
@@ -483,6 +484,7 @@ def test_jsonpointer_type_args_validation(subtests: Subtests) -> None:
             str,
             IncompletePointerBackend,
             AnotherIncompletePointerBackend,
+            PointerMissingParts,
             DotPointer(""),
             "DotPointer",  # forward references disallowed for predictability
         ]:

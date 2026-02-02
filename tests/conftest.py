@@ -26,6 +26,11 @@ class IncompletePointerBackend:
         return hash(tuple(self._parts))
 
 
+class AnotherIncompletePointerBackend(IncompletePointerBackend, PointerBackend):
+    """IncompletePointerBackend but it technically inherits from PointerBackend."""
+    pass
+
+
 class DotPointer(IncompletePointerBackend):
     def __init__(self, pointer: str) -> None:
         if ".." in pointer:
@@ -39,22 +44,13 @@ class DotPointer(IncompletePointerBackend):
         return cur
 
 
-class AnotherIncompletePointerBackend(PointerBackend):
-    """A PointerBackend that does not implement all abstract methods."""
-
-    def __init__(self, pointer: str) -> None:
-        self._parts = [] if pointer == "" else pointer.split(".")
-
-    @property
-    def parts(self) -> list[str]:
-        return self._parts
+class PointerMissingParts(PointerBackend):
+    __init__ = DotPointer.__init__
 
     @classmethod
     def from_parts(cls, parts: Iterable[Any]) -> Self:
         return cls(".".join(str(p) for p in parts))
 
-    def __str__(self) -> str:
-        return ".".join(self._parts)
+    __str__ = DotPointer.__str__
 
-    def __hash__(self) -> int:
-        return hash(tuple(self._parts))
+    __hash__ = DotPointer.__hash__

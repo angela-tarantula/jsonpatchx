@@ -126,7 +126,7 @@ class _DEFAULT_POINTER_CLS(JsonPointer):  # type: ignore[misc]
         return key
 
     @override
-    def to_last(self, doc):  # type: ignore[no-untyped-def]
+    def to_last(self, doc):  # type: ignore[no-untyped-def]  # pragma: no cover
         doc, key = super().to_last(doc)
         if isinstance(key, int) and not _NONNEGATIVE_ARRAY_INDEX_PATTERN.fullmatch(
             str(self.parts[-1])
