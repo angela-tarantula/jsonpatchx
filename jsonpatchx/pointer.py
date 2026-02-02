@@ -513,7 +513,7 @@ class JSONPointer(str, Generic[T_co, P_co]):
                     container[token] = target
                     return doc
                 else:
-                    container.insert(int(token), target)  # type: ignore[union-attr] # drop for Py3.14+
+                    container.insert(int(token), target)
                     return doc
             case _ as unreachable:
                 assert_never(unreachable)

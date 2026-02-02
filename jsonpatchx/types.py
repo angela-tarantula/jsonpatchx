@@ -2,10 +2,9 @@ from __future__ import annotations
 
 from functools import lru_cache
 from typing import Annotated
-from typing import TypeGuard as TypeIs  # Use TypeIs directly for Py3.14+
 
 from pydantic import Field, TypeAdapter
-from typing_extensions import TypeForm
+from typing_extensions import TypeForm, TypeIs
 
 from jsonpatchx.exceptions import InvalidJSONPointer
 
