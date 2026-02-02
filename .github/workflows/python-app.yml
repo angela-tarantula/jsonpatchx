@@ -44,7 +44,7 @@ jobs:
           uv run pytest -o addopts="" \
             --junitxml=pytest.xml \
             --cov=jsonpatchx \
-            --cov-report=term-missing \
+            --cov-report=term-missing:skip-covered \
             -vv | tee pytest-coverage.txt
 
       - name: Pytest coverage comment
