@@ -1,8 +1,6 @@
 # json-patch-x
 
 [![CI](https://github.com/angela-tarantula/json-patch-x/actions/workflows/python-app.yml/badge.svg?branch=main)](https://github.com/marketplace/actions/super-linter)
-<!-- Pytest Coverage Comment:Begin -->
-<!-- Pytest Coverage Comment:End -->
 
 A typed, schema-driven patching framework for Python. It implements JSON Patch
 ([RFC 6902](https://datatracker.ietf.org/doc/html/rfc6902)) as a first-class,
