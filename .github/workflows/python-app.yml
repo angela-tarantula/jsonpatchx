@@ -15,7 +15,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: [3.14]
+        python-version: ["3.13", "3.14"]
 
     steps:
       - name: Checkout repository
@@ -52,3 +52,5 @@ jobs:
         with:
           pytest-coverage-path: ./pytest-coverage.txt
           junitxml-path: ./pytest.xml
+          unique-id-for-comment: ${{ matrix.python-version }}-ubuntu
+          title: Coverage for Python ${{ matrix.python-version }} on ubuntu-latest
