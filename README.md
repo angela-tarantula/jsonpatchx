@@ -16,8 +16,8 @@ only by their final effect, json-patch-x models each operation as a **typed,
 validated schema** with explicit, checkable semantics.
 
 By shifting the focus from the *outcome* to the *operation*, json-patch-x allows
-systems to reason about how data is allowed to evolve, ensuring that every
-mutation is specific, explainable, and safe.
+systems to reason about how data is allowed to mutate, ensuring that every
+PATCH is safe, explainable, and evolvable.
 
 ---
 
@@ -180,7 +180,7 @@ At the center of this is `JsonPatchFor`, which turns an operation registry into 
 
 ### Step 1: Define a Patch Schema with JsonPatchFor
 
-`JsonPatchFor[Target, Registry]` binds three things together:
+`JsonPatchFor[Model, Registry]` binds three things together:
 
 1. the shape of the document being patched (usually a Pydantic model)
 2. the allowed operation vocabulary (an `OperationRegistry`)
@@ -291,7 +291,7 @@ Because every operation is a Pydantic model, you can customize titles,
 descriptions, and validation logic using standard Pydantic features.
 
 ```py
-from typing import Literal, Self
+from typing import Literal, Self, override
 from pydantic import ConfigDict, model_validator
 from jsonpatchx import AddOp, JSONPointer, JSONValue, OperationSchema, OperationValidationError
 
@@ -311,6 +311,7 @@ class SwapOp(OperationSchema):
             raise OperationValidationError("Paths cannot be prefixes of each other.")
         return self
 
+    @override
     def apply(self, doc: JSONValue) -> JSONValue:
         val_a, val_b = self.a.get(doc), self.b.get(doc)
         doc = AddOp(path=self.a, value=val_b).apply(doc)
