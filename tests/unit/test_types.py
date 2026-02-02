@@ -260,6 +260,14 @@ def test_jsonpointer_edge_cases(subtests: Subtests) -> None:
         assert parent.is_parent_of(child) is True
         assert child.is_child_of(parent) is True
         assert parent.is_parent_of(same) is False
+        assert parent.is_child_of(child) is False
+
+        dot_adapter = TypeAdapter(JSONPointer[JSONValue, DotPointer])
+        dot_ptr = dot_adapter.validate_python("a.b")
+        with pytest.raises(InvalidJSONPointer):
+            parent.is_parent_of(dot_ptr)
+        with pytest.raises(InvalidJSONPointer):
+            parent.is_child_of(dot_ptr)
 
 
 @pytest.mark.parametrize(
@@ -442,11 +450,10 @@ def test_jsonpointer_backend_reuse(subtests: Subtests) -> None:
     ptr2b = dot_ptr_adapter.validate_python(ptr2a)
 
     class DotPointerSubclass(DotPointer):
-            pass
+        pass
 
     ptr3a = dot_ptr_adapter.validate_python(DotPointerSubclass("c.d"))
     ptr3b = dot_ptr_adapter.validate_python(ptr3a)
-
 
     with subtests.test("reuse compatible backend instances"):
         assert ptr1a.ptr is ptr1b.ptr

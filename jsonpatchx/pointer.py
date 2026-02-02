@@ -368,7 +368,7 @@ class JSONPointer(str, Generic[T_co, P_co]):
             other._ptr, type(self._ptr)
         ):
             raise InvalidJSONPointer(
-                f"other pointer {other._ptr!r} has incompatible syntax with {self!r}"
+                f"Other pointer {other._ptr!r} has incompatible syntax with {self!r}"
             )
         other_ptr: P_co = _pointer_backend_instance(
             other, pointer_cls=self._ptr.__class__
@@ -388,14 +388,14 @@ class JSONPointer(str, Generic[T_co, P_co]):
 
         Root is treated as a parent of all paths.
 
-        Raises PatchConflictError if comparison is called with an `other` pointer with different or invalid syntax.
+        Raises InvalidJSONPointer if comparison is called with an `other` pointer with different or invalid syntax.
         """
         # NOTE: Document which of these public helper methods work only with RFC6901
         if isinstance(other, JSONPointer) and not isinstance(
             other._ptr, type(self._ptr)
         ):
-            raise PatchConflictError(
-                f"JSONPointer.is_child_of() error: other pointer {other._ptr!r} has incompatible syntax with {self!r}"
+            raise InvalidJSONPointer(
+                f"Other pointer {other._ptr!r} has incompatible syntax with {self!r}"
             )
         other_ptr: P_co = _pointer_backend_instance(
             other, pointer_cls=self._ptr.__class__
@@ -609,12 +609,13 @@ class JSONPointer(str, Generic[T_co, P_co]):
             case _ as unreachable:
                 assert_never(unreachable)
 
-    is_removable = is_gettable  # same logic applies
+    def is_removable(self, doc: JSONValue) -> bool:
+        """Return True if ``remove`` would succeed for this document, else False."""
+        return self.is_gettable(doc)
 
     @override
     def __repr__(self) -> str:
-        if isinstance(self._type, type):
-            type_repr = self._type.__name__
-        else:
-            type_repr = repr(self._type)
+        type_repr = (
+            self._type.__name__ if isinstance(self._type, type) else repr(self._type)
+        )
         return f"{self.__class__.__name__}[{type_repr}]({str(self)!r})"

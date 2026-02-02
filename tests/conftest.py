@@ -28,6 +28,7 @@ class IncompletePointerBackend:
 
 class AnotherIncompletePointerBackend(IncompletePointerBackend, PointerBackend):
     """IncompletePointerBackend but it technically inherits from PointerBackend."""
+
     pass
 
 
@@ -46,8 +47,10 @@ class DotPointer(IncompletePointerBackend):
 
 class BadDotPointer(DotPointer):
     """Looks like a valid DotPointer until runtime."""
+
     def __new__(cls, pointer: str) -> str:
         return "nope"
+
 
 class PointerMissingParts(PointerBackend):
     __init__ = DotPointer.__init__
