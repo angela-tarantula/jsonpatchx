@@ -21,6 +21,7 @@ from jsonpatchx.types import (
 )
 from tests.conftest import (
     AnotherIncompletePointerBackend,
+    BadDotPointer,
     DotPointer,
     IncompletePointerBackend,
     PointerMissingParts,
@@ -485,6 +486,7 @@ def test_jsonpointer_type_args_validation(subtests: Subtests) -> None:
             IncompletePointerBackend,
             AnotherIncompletePointerBackend,
             PointerMissingParts,
+            BadDotPointer,
             DotPointer(""),
             "DotPointer",  # forward references disallowed for predictability
         ]:
