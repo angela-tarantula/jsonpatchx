@@ -7,7 +7,7 @@ from typing import (
     cast,
     get_args,
     get_origin,
-    get_type_hints,
+    get_type_hints,  # NOTE: For Py3.14+, this is enhanced for deferred annotations
     override,
 )
 
