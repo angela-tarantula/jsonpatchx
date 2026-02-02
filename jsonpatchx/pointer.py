@@ -1,6 +1,5 @@
 from collections.abc import Sequence
 from functools import partial
-from inspect import isclass
 from typing import (
     Any,
     Final,
@@ -33,6 +32,7 @@ from jsonpatchx.backend import (
     _parent_ptr_of,
     _pointer_backend_instance,
     _PointerClassProtocol,
+    _validate_backend_class,
     classify_state,
 )
 from jsonpatchx.exceptions import InvalidJSONPointer, PatchConflictError
@@ -44,8 +44,8 @@ from jsonpatchx.types import (
     JSONValue,
     _is_array,
     _is_object,
-    _is_valid_typeform,
     _type_adapter_for,
+    _validate_typeform,
 )
 
 type _JSONPOINTER_VALIDATION_CTX_LITERALS = Literal["jsonpatch:pointer_backend"]
@@ -234,7 +234,9 @@ class JSONPointer(str, Generic[T_co, P_co]):
                 if strictest_protocol is not PointerBackend
                 else _DEFAULT_POINTER_CLS
             )
-            obj._ptr = cast(P_co, _pointer_backend_instance(path_str, pointer_cls=pointer_cls))
+            obj._ptr = cast(
+                P_co, _pointer_backend_instance(path_str, pointer_cls=pointer_cls)
+            )
 
         return obj
 
@@ -278,23 +280,15 @@ class JSONPointer(str, Generic[T_co, P_co]):
         """Validate the JSONPointer's parameter tuple, e.g. ``(JSONValue, DotPointer)`` for ``JSONPointer[JSONValue, DotPointer]``."""
         if not args:
             raise TypeError(f"{cls} requires at least one type parameter")
-        type_param = cast(object, args[0])
-        bound_backend = cast(object, args[1]) if len(args) > 1 else PointerBackend
+        unverified_typeform = cast(object, args[0])
+        unverified_bound_backend = (
+            cast(object, args[1]) if len(args) > 1 else PointerBackend
+        )
 
-        if not isclass(bound_backend):
-            raise InvalidJSONPointer(
-                f"JSONPointer backend parameter {bound_backend!r} must be a PointerBackend class"
-            )
-        if not issubclass(bound_backend, _PointerClassProtocol):
-            raise InvalidJSONPointer(
-                f"JSONPointer backend parameter {bound_backend!r} must implement the PointerBackend Protocol"
-            )
-        if not _is_valid_typeform(type_param):
-            raise InvalidJSONPointer(
-                f"JSONPointer type parameter {type_param!r} must be a valid TypeForm"
-            )
+        backend_param = _validate_backend_class(unverified_bound_backend)
+        type_param = _validate_typeform(unverified_typeform)
 
-        return type_param, cast(type[P_co], bound_backend)
+        return type_param, backend_param
 
     @staticmethod
     def _resolve_strictest_backend(

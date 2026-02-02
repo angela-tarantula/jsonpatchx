@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from functools import lru_cache
-from typing import Annotated, Any
+from typing import Annotated, Any, cast
 
 from pydantic import Field, TypeAdapter
 from typing_extensions import TypeForm, TypeIs
@@ -102,10 +102,12 @@ _JSON_VALUE_ADAPTER: TypeAdapter[JSONValue] = _type_adapter_for(JSONValue)
 # NOTE: not a huge fan of the pydantic error messages for simple cases like _JSON_VALUE_ADAPTER.python_validate({1:2})
 
 
-def _is_valid_typeform(expected: object) -> TypeIs[TypeForm[Any]]:
-    """Validate the TypeForm parameter."""
+def _validate_typeform(unverified: object) -> TypeForm[Any]:
+    """Validate a TypeForm parameter."""
     try:
-        _type_adapter_for(expected)  # type: ignore[arg-type]
-    except Exception:
-        return False
-    return True
+        _type_adapter_for(unverified)  # type: ignore[arg-type]
+    except Exception as e:
+        raise InvalidJSONPointer(
+            f"JSONPointer type parameter {unverified!r} must be a valid TypeForm"
+        ) from e
+    return cast(TypeForm[Any], unverified)
