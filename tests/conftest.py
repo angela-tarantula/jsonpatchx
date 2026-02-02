@@ -55,9 +55,7 @@ class BadDotPointer(DotPointer):
 class PointerMissingParts(PointerBackend):
     __init__ = DotPointer.__init__
 
-    @classmethod
-    def from_parts(cls, parts: Iterable[Any]) -> Self:
-        return cls(".".join(str(p) for p in parts))
+    from_parts = DotPointer.from_parts
 
     __str__ = DotPointer.__str__
 
