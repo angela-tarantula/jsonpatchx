@@ -313,6 +313,12 @@ def test_jsonpointer_public_methods_are_backend_agnostic(
     with subtests.test("is_parent_of"):
         assert parent.is_parent_of(ptr) is True
         assert ptr.is_parent_of(parent) is False
+        if pointer_cls is None:
+            with pytest.raises(InvalidJSONPointer):
+                ptr.is_parent_of(DotPointer("a.b"))
+        else:
+            with pytest.raises(InvalidJSONPointer):
+                ptr.is_parent_of(RFC6901JsonPointer("/a/b"))
 
     with subtests.test("is_child_of"):
         assert child.is_child_of(ptr) is True
