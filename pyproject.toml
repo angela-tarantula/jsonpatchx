@@ -3,7 +3,7 @@ name = "jsonpatch"
 version = "0.1.0"
 description = "Add your description here"
 readme = "README.md"
-requires-python = ">=3.14"
+requires-python = ">=3.12"
 dependencies = [
     "jsonpointer>=3.0.0",
     "pydantic>=2.12.5",
@@ -27,7 +27,7 @@ dev = [
 
 [tool.mypy]
 plugins = ["pydantic.mypy"]
-python_version = "3.14"
+python_version = "3.12"
 strict = true
 enable_incomplete_feature = ["TypeForm"]
 exclude = ["temp.py", "tests"]
