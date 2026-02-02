@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from functools import lru_cache
-from typing import Annotated, TypeIs
+from typing import Annotated, TypeGuard as TypeIs
 
 from pydantic import Field, TypeAdapter
 from typing_extensions import TypeForm
