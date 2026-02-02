@@ -6,6 +6,10 @@ on:
   pull_request:
     branches: [ "main" ]
 
+permissions:
+  contents: read
+  pull-requests: write
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -34,5 +38,17 @@ jobs:
       - name: Type check with mypy
         run: uv run mypy .
 
-      - name: Run tests
-        run: uv run pytest -vv
+      - name: Run tests (generate files for PR comment)
+        run: |
+          uv run pytest -o addopts="" \
+            --junitxml=pytest.xml \
+            --cov=jsonpatchx \
+            --cov-report=term-missing:skip-covered \
+            -vv | tee pytest-coverage.txt
+
+      - name: Pytest coverage comment
+        if: github.event_name == 'pull_request'
+        uses: MishaKav/pytest-coverage-comment@v1.2.0
+        with:
+          pytest-coverage-path: ./pytest-coverage.txt
+          junitxml-path: ./pytest.xml
