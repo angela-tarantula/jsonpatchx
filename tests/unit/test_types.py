@@ -309,6 +309,8 @@ def test_jsonpointer_public_methods_are_backend_agnostic(
         assert ptr.is_root({"anything": "here"}) is False
         root = adapter.validate_python("")
         assert root.is_root({"anything": "here"}) is True
+        missing = adapter.validate_python(missing_path)
+        assert missing.is_root({"anything": "here"}) is False
 
     with subtests.test("is_parent_of"):
         assert parent.is_parent_of(ptr) is True
