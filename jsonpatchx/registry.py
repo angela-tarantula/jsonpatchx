@@ -1,3 +1,4 @@
+from collections import Counter
 from collections.abc import Mapping, Sequence
 from inspect import isabstract, isclass
 from types import MappingProxyType
@@ -19,7 +20,12 @@ from typing import (
 
 from pydantic import Field, TypeAdapter
 
-from jsonpatchx.backend import _DEFAULT_POINTER_CLS, PointerBackend
+from jsonpatchx.backend import (
+    _DEFAULT_POINTER_CLS,
+    PointerBackend,
+    _PointerClassProtocol,
+    _validate_backend_class,
+)
 from jsonpatchx.builtins import (
     STANDARD_OPS,
     AddOp,
@@ -42,7 +48,7 @@ Ops = TypeVarTuple("Ops")  # bound=type[OperationSchema] | type[AnyRegistry]
 PBT = TypeVar("PBT", bound=PointerBackend)
 
 _REGISTRY_CACHE: dict[
-    tuple[tuple[type[OperationSchema], ...], type[PointerBackend] | None],
+    tuple[tuple[type[OperationSchema], ...], type[_PointerClassProtocol]],
     type[AnyRegistry],
 ] = {}
 
@@ -58,25 +64,25 @@ class _RegistryMeta(type):
     @staticmethod
     def _registry_type_name(
         ops: tuple[type[OperationSchema], ...],
-        pointer_cls: type[PointerBackend] | None,
+        pointer_cls: type[_PointerClassProtocol],
     ) -> str:
         if (
             ops == GenericOperationRegistry._deterministic_sort(*STANDARD_OPS)
-            and pointer_cls is None
+            and pointer_cls is PointerBackend
         ):
             return "StandardRegistry"
         op_names = "_".join(op.__name__ for op in ops)
-        if pointer_cls is None:
+        if pointer_cls is PointerBackend:
             return f"OperationRegistry_{op_names}"
         return f"GenericOperationRegistry_{op_names}__{pointer_cls.__name__}"
 
     @staticmethod
     def _registry_display_name(
         ops: tuple[type[OperationSchema], ...],
-        pointer_cls: type[PointerBackend] | None,
+        pointer_cls: type[_PointerClassProtocol],
     ) -> str:
         op_names = ", ".join(op.__name__ for op in ops)
-        if pointer_cls is None:
+        if pointer_cls is PointerBackend:
             return f"OperationRegistry[{op_names}]"
         return f"GenericOperationRegistry[{op_names}, {pointer_cls.__name__}]"
 
@@ -85,8 +91,8 @@ class _RegistryMeta(type):
         if cls is GenericOperationRegistry or cls is OperationRegistry:
             return cls.__name__
         assert hasattr(cls, "ops"), "internal error: OperationRegistry"
-        assert hasattr(cls, "pointer_cls"), "internal error: OperationRegistry"
-        return _RegistryMeta._registry_display_name(cls.ops, cls.pointer_cls)
+        assert hasattr(cls, "_pointer_cls"), "internal error: OperationRegistry"
+        return _RegistryMeta._registry_display_name(cls.ops, cls._pointer_cls)
 
 
 class GenericOperationRegistry(Generic[*Ops, PBT], metaclass=_RegistryMeta):
@@ -100,12 +106,14 @@ class GenericOperationRegistry(Generic[*Ops, PBT], metaclass=_RegistryMeta):
     # Normally, ClassVars can't be generic (https://github.com/python/typing/discussions/1424#discussioncomment-7989934)
     # But in this case, GenericOperationRegistry[A] and GenericOperationRegistry[B] are different runtime objects.
     ops: ClassVar[tuple[type[OperationSchema], ...]]
-    pointer_cls: ClassVar[type[PBT] | None]
+    _pointer_cls: ClassVar[type[_PointerClassProtocol]]
     union: ClassVar[TypeAliasType]
     _model_map: ClassVar[Mapping[str, type[OperationSchema]]]
     _op_adapter: ClassVar[TypeAdapter[OperationSchema]]
     _patch_adapter: ClassVar[TypeAdapter[list[OperationSchema]]]
-    _ctx: ClassVar[dict[_JSONPOINTER_VALIDATION_CTX_LITERALS, type[PBT] | None]]
+    _ctx: ClassVar[
+        dict[_JSONPOINTER_VALIDATION_CTX_LITERALS, type[_PointerClassProtocol]]
+    ]
 
     @overload
     def __class_getitem__(cls, params: tuple[Unpack[Ops]]) -> type[AnyRegistry]: ...
@@ -125,15 +133,17 @@ class GenericOperationRegistry(Generic[*Ops, PBT], metaclass=_RegistryMeta):
 
         model_map = cls._build_model_map(*ordered_ops)
         union_type, op_adapter, patch_adapter = cls._build_adapters(*ordered_ops)
-        ctx_backend = _DEFAULT_POINTER_CLS if pointer_cls is None else pointer_cls
-        ctx: dict[_JSONPOINTER_VALIDATION_CTX_LITERALS, type[PBT] | None] = {
+        ctx_backend = (
+            _DEFAULT_POINTER_CLS if pointer_cls is PointerBackend else pointer_cls
+        )
+        ctx: dict[_JSONPOINTER_VALIDATION_CTX_LITERALS, type[_PointerClassProtocol]] = {
             _JSONPOINTER_POINTER_BACKEND_CTX_KEY: ctx_backend
         }
 
         name = cls._registry_type_name(ordered_ops, pointer_cls)
         namespace = {
             "ops": ordered_ops,
-            "pointer_cls": pointer_cls,
+            "_pointer_cls": pointer_cls,
             "union": union_type,
             "_model_map": model_map,
             "_op_adapter": op_adapter,
@@ -148,77 +158,77 @@ class GenericOperationRegistry(Generic[*Ops, PBT], metaclass=_RegistryMeta):
     def _split_ops_and_pointer(
         cls,
         params: object,
-    ) -> tuple[tuple[type[OperationSchema], ...], type[PBT] | None]:
+    ) -> tuple[tuple[type[OperationSchema], ...], type[_PointerClassProtocol]]:
         if not params or not isinstance(params, tuple):
             raise InvalidOperationRegistry(f"Invalid registry params: {params!r}")
-        variadic_params = params[:-1]
-        last_param = params[-1]
+        variadic_params = cast(tuple[object], params[:-1])
+        last_param = cast(object, params[-1])
 
-        pointer_cls: type[PBT] | None
-        if last_param is PointerBackend:
-            pointer_cls = None
-        else:
-            pointer_cls = cast(type[PBT], last_param)
+        pointer_cls = _validate_backend_class(last_param)
 
-        op_schemas, pointer_cls = cls._expand_op_params(variadic_params, pointer_cls)
-        cls._validate_models(*op_schemas)
-        return op_schemas, pointer_cls
+        op_schemas, pointer_cls = cls._validate_variadic_params(
+            variadic_params, pointer_cls
+        )
+        cls._validate_op_name_uniqueness(
+            *op_schemas
+        )  # NOTE TO SELF: put this in schemas.py?
+        return op_schemas, pointer_cls  # NOTE TO SELF: changed None -> PointerBackend
 
     @staticmethod
-    def _expand_op_params(
+    def _validate_variadic_params(
         variadic_params: tuple[object, ...],
-        pointer_cls: type[PBT] | None,
-    ) -> tuple[tuple[type[OperationSchema], ...], type[PBT] | None]:
-        ops: list[type[OperationSchema]] = []
-        registry_pointer_classes: set[type[PointerBackend] | None] = set()
+        pointer_cls: type[_PointerClassProtocol],
+    ) -> tuple[tuple[type[OperationSchema], ...], type[_PointerClassProtocol]]:
+        op_models: list[type[OperationSchema]] = []
+        registry_pointer_classes: set[type[_PointerClassProtocol]] = (
+            set()
+        )  # NOTE TO SELF: used to be type[PBT] |none
 
         for param in variadic_params:
             if not isclass(param):
                 raise InvalidOperationRegistry(f"{param!r} is not a class")
 
             if issubclass(param, GenericOperationRegistry):
-                ops.extend(param.ops)
-                registry_pointer_classes.add(param.pointer_cls)
+                registry = param
+                op_models.extend(registry.ops)
+                registry_pointer_classes.add(registry._pointer_cls)
                 continue
 
             if not issubclass(param, OperationSchema) or isabstract(param):
                 raise InvalidOperationRegistry(
                     f"{param!r} is not an concrete OperationSchema"
                 )
-            ops.append(param)
+            op_model = param
+            op_models.append(op_model)
 
-        if pointer_cls is None:
-            if registry_pointer_classes and registry_pointer_classes != set([None]):
+        if pointer_cls is PointerBackend:
+            if registry_pointer_classes and registry_pointer_classes != set(
+                [PointerBackend]
+            ):
                 raise InvalidOperationRegistry(
-                    f"Expected standard operation registries, got generics: {[ptr_cls for ptr_cls in registry_pointer_classes if ptr_cls is not None]}"
+                    f"Expected standard operation registries, got generics: {[ptr_cls for ptr_cls in registry_pointer_classes if ptr_cls is not PointerBackend]}"
                 )
         else:
-            for ptr_cls in registry_pointer_classes:
-                if isclass(ptr_cls) and not issubclass(pointer_cls, ptr_cls):
+            for nested_ptr_cls in registry_pointer_classes:
+                if nested_ptr_cls is not PointerBackend and not issubclass(
+                    pointer_cls, nested_ptr_cls
+                ):
                     raise InvalidOperationRegistry(
-                        f"operation pointer class {ptr_cls!r} cannot be stricter than registry pointer class {pointer_cls!r}"
-                    )  # NOTE: do same check with operationschema.ptr's
+                        f"operation pointer class {nested_ptr_cls!r} cannot be stricter than registry pointer class {pointer_cls!r}"
+                    )  # NOTE: do same check with operationschema.ptr's (?)
 
-        return tuple(ops), pointer_cls
+        return tuple(op_models), pointer_cls
 
     @staticmethod
-    def _validate_models(*op_schemas: type[OperationSchema]) -> None:
+    def _validate_op_name_uniqueness(*op_schemas: type[OperationSchema]) -> None:
         if not op_schemas:
             raise InvalidOperationRegistry("At least one OperationSchema is required")
-        seen_names: set[str] = set()
-        for op in op_schemas:
-            if not isclass(op):
-                raise InvalidOperationRegistry(f"{op!r} is not a class")
-            if not issubclass(op, OperationSchema):
-                raise InvalidOperationRegistry(f"{op!r} is not an OperationSchema")
-            if isabstract(op):
-                raise InvalidOperationRegistry(f"{op!r} cannot be abstract")
-            op_name = op.__name__
-            if op_name in seen_names:
-                raise InvalidOperationRegistry(
-                    f"OperationSchema names must be unique; duplicate {op_name!r}"
-                )
-            seen_names.add(op_name)
+        name_counts = Counter(op_model.__name__ for op_model in op_schemas)
+        non_unique_names = {name for name, cnt in name_counts.items() if cnt > 1}
+        if non_unique_names:
+            raise InvalidOperationRegistry(
+                f"Expected unique OperationSchema names, got duplicates for these: {non_unique_names!r}"
+            )
 
     @staticmethod
     def _build_model_map(
@@ -340,7 +350,7 @@ else:
         def _split_ops_and_pointer(
             cls,
             params: object,
-        ) -> tuple[tuple[type[OperationSchema], ...], type[PBT]]:
+        ) -> tuple[tuple[type[OperationSchema], ...], type[_PointerClassProtocol]]:
             if not isinstance(params, tuple):
                 params = (params, PointerBackend)
             else:
