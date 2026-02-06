@@ -221,6 +221,7 @@ class GenericOperationRegistry(Generic[*Ops, PBT], metaclass=_RegistryMeta):
 
     @staticmethod
     def _validate_op_name_uniqueness(*op_models: type[OperationSchema]) -> None:
+        """The __name__ of every op must be unique for the Registry's type name."""
         if not op_models:
             raise InvalidOperationRegistry("At least one OperationSchema is required")
         name_counts = Counter(op_model.__name__ for op_model in op_models)
