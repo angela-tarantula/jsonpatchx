@@ -124,8 +124,8 @@ class GenericOperationRegistry(Generic[*Ops, PBT], metaclass=_RegistryMeta):
     ) -> type[AnyRegistry]: ...
 
     def __class_getitem__(cls, params: object) -> type[AnyRegistry]:
-        op_schemas, pointer_cls = cls._split_ops_and_pointer(params)
-        ordered_ops = cls._deterministic_sort(*op_schemas)
+        op_models, pointer_cls = cls._split_ops_and_pointer(params)
+        ordered_ops = cls._deterministic_sort(*op_models)
         cache_key = (ordered_ops, pointer_cls)
         cached = _REGISTRY_CACHE.get(cache_key)
         if cached is not None:
@@ -166,13 +166,13 @@ class GenericOperationRegistry(Generic[*Ops, PBT], metaclass=_RegistryMeta):
 
         pointer_cls = _validate_backend_class(last_param)
 
-        op_schemas, pointer_cls = cls._validate_variadic_params(
+        op_models, pointer_cls = cls._validate_variadic_params(
             variadic_params, pointer_cls
         )
         cls._validate_op_name_uniqueness(
-            *op_schemas
+            *op_models
         )  # NOTE TO SELF: put this in schemas.py?
-        return op_schemas, pointer_cls  # NOTE TO SELF: changed None -> PointerBackend
+        return op_models, pointer_cls  # NOTE TO SELF: changed None -> PointerBackend
 
     @staticmethod
     def _validate_variadic_params(
@@ -220,10 +220,10 @@ class GenericOperationRegistry(Generic[*Ops, PBT], metaclass=_RegistryMeta):
         return tuple(op_models), pointer_cls
 
     @staticmethod
-    def _validate_op_name_uniqueness(*op_schemas: type[OperationSchema]) -> None:
-        if not op_schemas:
+    def _validate_op_name_uniqueness(*op_models: type[OperationSchema]) -> None:
+        if not op_models:
             raise InvalidOperationRegistry("At least one OperationSchema is required")
-        name_counts = Counter(op_model.__name__ for op_model in op_schemas)
+        name_counts = Counter(op_model.__name__ for op_model in op_models)
         non_unique_names = {name for name, cnt in name_counts.items() if cnt > 1}
         if non_unique_names:
             raise InvalidOperationRegistry(
@@ -232,10 +232,10 @@ class GenericOperationRegistry(Generic[*Ops, PBT], metaclass=_RegistryMeta):
 
     @staticmethod
     def _build_model_map(
-        *op_schemas: type[OperationSchema],
+        *op_models: type[OperationSchema],
     ) -> Mapping[str, type[OperationSchema]]:
         model_map: dict[str, type[OperationSchema]] = {}
-        for model in op_schemas:
+        for model in op_models:
             for op_literal in model._op_literals:
                 if op_literal in model_map:
                     other = model_map[op_literal]
@@ -248,14 +248,14 @@ class GenericOperationRegistry(Generic[*Ops, PBT], metaclass=_RegistryMeta):
 
     @staticmethod
     def _build_adapters(
-        *op_schemas: type[OperationSchema],
+        *op_models: type[OperationSchema],
     ) -> tuple[
         TypeAliasType,
         TypeAdapter[OperationSchema],
         TypeAdapter[list[OperationSchema]],
     ]:
         ordered_ops_tuple: tuple[type[OperationSchema], ...] = (
-            GenericOperationRegistry._deterministic_sort(*op_schemas)
+            GenericOperationRegistry._deterministic_sort(*op_models)
         )
 
         type RegistryPatchOperation = Annotated[
@@ -270,10 +270,10 @@ class GenericOperationRegistry(Generic[*Ops, PBT], metaclass=_RegistryMeta):
 
     @staticmethod
     def _deterministic_sort(
-        *op_schemas: type[OperationSchema],
+        *op_models: type[OperationSchema],
     ) -> tuple[type[OperationSchema], ...]:
         return tuple(  # deterministic ordering of ops in OpenAPI
-            sorted(op_schemas, key=lambda op: op._op_literals[0])
+            sorted(op_models, key=lambda op: op._op_literals[0])
         )
 
     @classmethod
