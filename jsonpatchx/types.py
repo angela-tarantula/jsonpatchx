@@ -24,14 +24,14 @@ type JSONNull = Annotated[None, Field(title="JSON null")]
 
 type JSONArray[T] = Annotated[list[T], Field(strict=True, title="JSON array")]
 type JSONObject[T] = Annotated[dict[str, T], Field(strict=True, title="JSON object")]
-type JSONContainer[T] = JSONArray[T] | JSONObject[T]
+type JSONContainer[T] = JSONArray[T] | JSONObject[T]  # NOTE: make this internal
 
 # type-narrowing helpers
 # NOTE: consider making public type-narrowing helpers
 
 
 def _is_container(value: JSONValue) -> TypeIs[JSONContainer[JSONValue]]:
-    """Internal: runtime check for JSON containers (dict/list). """
+    """Internal: runtime check for JSON containers (dict/list)."""
     return isinstance(value, (list, dict))
 
 

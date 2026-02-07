@@ -3,16 +3,21 @@ from __future__ import annotations
 import copy
 import math
 from dataclasses import dataclass
-from typing import Any, Callable, Final, Mapping, NamedTuple
-from typing_extensions import TypeIs
+from typing import Any, Callable, Final, NamedTuple
 
 import pytest
 from jsonpath import JSONPointer as ExtendedJsonPointer
 from jsonpointer import JsonPointer as RFC6901JsonPointer
 from pydantic import TypeAdapter, ValidationError
 from pytest import Subtests
+from typing_extensions import TypeForm, TypeIs
 
-from jsonpatchx.backend import PointerBackend, TargetState, _PointerClassProtocol, classify_state
+from jsonpatchx.backend import (
+    PointerBackend,
+    TargetState,
+    _PointerClassProtocol,
+    classify_state,
+)
 from jsonpatchx.exceptions import InvalidJSONPointer, PatchConflictError
 from jsonpatchx.pointer import _JSONPOINTER_POINTER_BACKEND_CTX_KEY, JSONPointer
 from jsonpatchx.types import (
@@ -33,9 +38,8 @@ from tests.conftest import (
     PointerMissingParts,
 )
 
-
 # ============================================================================
-# Single source of truth for type acceptance
+# Sources of truth for type acceptance
 # ============================================================================
 
 
@@ -97,24 +101,55 @@ def _is_object_of[T](pred: Predicate[TypeIs[T]]) -> Predicate[JSONObject[T]]:
     return _p
 
 
-# Predicates for every type alias you parameterize over in this file.
-# This map is the "one truth" for the acceptance expectations.
-TYPE_PREDICATES: Final[Mapping[Any, Predicate[Any]]] = {
-    JSONBoolean: _is_bool,
-    JSONNumber: _is_number,
-    JSONString: _is_string,
-    JSONNull: _is_null,
-    JSONArray[Any]: _is_array_any,
-    JSONObject[Any]: _is_object_any,
-    JSONContainer[Any]: lambda v: _is_array_any(v) or _is_object_any(v),
-    JSONValue: _is_json_value,
-    JSONArray[JSONNumber]: _is_array_of(_is_number),
-    JSONObject[JSONString]: _is_object_of(_is_string),
-    JSONArray[JSONObject[JSONNumber]]: _is_array_of(_is_object_of(_is_number)),
-    JSONArray[JSONObject[JSONNumber | JSONNull]]: _is_array_of(
-        _is_object_of(lambda x: _is_number(x) or _is_null(x))
-    ),
-}
+# ===========================================================================================
+# Parameterizations of type aliases and example values that are assignable (or not) to them
+# ===========================================================================================
+
+type CustomType = TypeForm[Any]
+
+
+class ExampleType(NamedTuple):
+    json_type: CustomType
+    predicate: Predicate[CustomType]
+
+
+@dataclass(frozen=True)
+class ExampleTypeCatalog:
+    examples: tuple[ExampleType, ...]
+
+    @property
+    def json_types(self) -> tuple[CustomType, ...]:
+        return tuple(example.json_type for example in self.examples)
+
+    @property
+    def predicates(self) -> dict[CustomType, Predicate[CustomType]]:
+        return {example.json_type: example.predicate for example in self.examples}
+
+
+EXAMPLE_TYPE_CATALOG: Final = ExampleTypeCatalog(
+    (
+        ExampleType(JSONBoolean, _is_bool),
+        ExampleType(JSONNumber, _is_number),
+        ExampleType(JSONString, _is_string),
+        ExampleType(JSONNull, _is_null),
+        ExampleType(JSONArray[Any], _is_array_any),
+        ExampleType(JSONObject[Any], _is_object_any),
+        ExampleType(
+            JSONContainer[Any], lambda v: _is_array_any(v) or _is_object_any(v)
+        ),
+        ExampleType(JSONValue, _is_json_value),
+        ExampleType(JSONArray[JSONNumber], _is_array_of(_is_number)),
+        ExampleType(JSONObject[JSONString], _is_object_of(_is_string)),
+        ExampleType(
+            JSONArray[JSONObject[JSONNumber]],
+            _is_array_of(_is_object_of(_is_number)),
+        ),
+        ExampleType(
+            JSONArray[JSONObject[JSONNumber | JSONNull]],
+            _is_array_of(_is_object_of(lambda x: _is_number(x) or _is_null(x))),
+        ),
+    )
+)
 
 
 class ExampleValue(NamedTuple):
@@ -140,9 +175,7 @@ EXAMPLE_VALUES: Final[tuple[ExampleValue, ...]] = (
     ExampleValue("object-any", {"a": 1, "b": object()}),
     ExampleValue("object-strings", {"a": "ok", "b": "yes"}),
     ExampleValue("object-strings-null", {"a": None}),
-    ExampleValue(
-        "nested", {"a": [1, {"b": [True, None, 3.5]}], "c": {"d": "ok"}}
-    ),
+    ExampleValue("nested", {"a": [1, {"b": [True, None, 3.5]}], "c": {"d": "ok"}}),
     ExampleValue("nested-obj-array-num", [{"a": 1}, {"b": 2}]),
     ExampleValue("nested-obj-array-num-null", [{"a": 1}, {"b": None}]),
     ExampleValue("bytes", b"bytes"),
@@ -156,11 +189,15 @@ EXAMPLE_VALUES: Final[tuple[ExampleValue, ...]] = (
 
 
 def _build_examples_by_type() -> tuple[
-    dict[Any, list[ExampleValue]], dict[Any, list[ExampleValue]]
+    dict[CustomType, list[ExampleValue]], dict[CustomType, list[ExampleValue]]
 ]:
-    valids: dict[Any, list[ExampleValue]] = {t: [] for t in TYPE_PREDICATES}
-    invalids: dict[Any, list[ExampleValue]] = {t: [] for t in TYPE_PREDICATES}
-    for json_type, pred in TYPE_PREDICATES.items():
+    valids: dict[CustomType, list[ExampleValue]] = {
+        example.json_type: [] for example in EXAMPLE_TYPE_CATALOG.examples
+    }
+    invalids: dict[CustomType, list[ExampleValue]] = {
+        example.json_type: [] for example in EXAMPLE_TYPE_CATALOG.examples
+    }
+    for json_type, pred in EXAMPLE_TYPE_CATALOG.predicates.items():
         for example in EXAMPLE_VALUES:
             if pred(example.value):
                 valids[json_type].append(example)
@@ -180,9 +217,10 @@ VALID_EXAMPLES_BY_TYPE, INVALID_EXAMPLES_BY_TYPE = _build_examples_by_type()
 # 1) JSON alias validations
 # ============================================================================
 
-@pytest.mark.parametrize("json_type", tuple(TYPE_PREDICATES.keys()))
+
+@pytest.mark.parametrize("json_type", EXAMPLE_TYPE_CATALOG.json_types)
 def test_json_type_validations(subtests: Subtests, json_type: Any) -> None:
-    pred = TYPE_PREDICATES[json_type]
+    pred = EXAMPLE_TYPE_CATALOG.predicates[json_type]
     adapter = TypeAdapter(json_type)
 
     for example in EXAMPLE_VALUES:
@@ -201,6 +239,7 @@ def test_json_type_validations(subtests: Subtests, json_type: Any) -> None:
 # 2) Pointer backend protocol checks (same as yours)
 # ============================================================================
 
+
 def test_pointer_backend(subtests: Subtests) -> None:
     with subtests.test("RFC6901JsonPointer backend"):
         assert issubclass(RFC6901JsonPointer, _PointerClassProtocol)
@@ -214,6 +253,7 @@ def test_pointer_backend(subtests: Subtests) -> None:
 # 3) classify_state scenarios (directly tested, not used as oracle elsewhere)
 # ============================================================================
 
+
 @dataclass(frozen=True)
 class StateScenario:
     label: str
@@ -224,18 +264,45 @@ class StateScenario:
 
 STATE_SCENARIOS: Final[tuple[StateScenario, ...]] = (
     StateScenario("root", {"a": 1}, "", TargetState.ROOT),
-    StateScenario("parent-not-found", {"a": {}}, "/a/missing/b", TargetState.PARENT_NOT_FOUND),
-    StateScenario("parent-not-container", {"a": 1}, "/a/b", TargetState.PARENT_NOT_CONTAINER),
-    StateScenario("object-key-missing", {"a": {}}, "/a/b", TargetState.OBJECT_KEY_MISSING),
-    StateScenario("value-present-object", {"a": {"b": 1}}, "/a/b", TargetState.VALUE_PRESENT),
-    StateScenario("array-key-invalid", {"a": [1, 2]}, "/a/nope", TargetState.ARRAY_KEY_INVALID),
-    StateScenario("array-index-append", {"a": [1, 2]}, "/a/-", TargetState.ARRAY_INDEX_APPEND),
-    StateScenario("array-index-at-end", {"a": [1, 2]}, "/a/2", TargetState.ARRAY_INDEX_AT_END),
-    StateScenario("array-index-out-of-range", {"a": [1, 2]}, "/a/3", TargetState.ARRAY_INDEX_OUT_OF_RANGE),
-    StateScenario("negative-index-present", {"a": [1, 2]}, "/a/-1", TargetState.VALUE_PRESENT_AT_NEGATIVE_ARRAY_INDEX),
+    StateScenario(
+        "parent-not-found", {"a": {}}, "/a/missing/b", TargetState.PARENT_NOT_FOUND
+    ),
+    StateScenario(
+        "parent-not-container", {"a": 1}, "/a/b", TargetState.PARENT_NOT_CONTAINER
+    ),
+    StateScenario(
+        "object-key-missing", {"a": {}}, "/a/b", TargetState.OBJECT_KEY_MISSING
+    ),
+    StateScenario(
+        "value-present-object", {"a": {"b": 1}}, "/a/b", TargetState.VALUE_PRESENT
+    ),
+    StateScenario(
+        "array-key-invalid", {"a": [1, 2]}, "/a/nope", TargetState.ARRAY_KEY_INVALID
+    ),
+    StateScenario(
+        "array-index-append", {"a": [1, 2]}, "/a/-", TargetState.ARRAY_INDEX_APPEND
+    ),
+    StateScenario(
+        "array-index-at-end", {"a": [1, 2]}, "/a/2", TargetState.ARRAY_INDEX_AT_END
+    ),
+    StateScenario(
+        "array-index-out-of-range",
+        {"a": [1, 2]},
+        "/a/3",
+        TargetState.ARRAY_INDEX_OUT_OF_RANGE,
+    ),
+    StateScenario(
+        "negative-index-present",
+        {"a": [1, 2]},
+        "/a/-1",
+        TargetState.VALUE_PRESENT_AT_NEGATIVE_ARRAY_INDEX,
+    ),
 )
 
-@pytest.mark.parametrize("scenario", STATE_SCENARIOS, ids=[s.label for s in STATE_SCENARIOS])
+
+@pytest.mark.parametrize(
+    "scenario", STATE_SCENARIOS, ids=[s.label for s in STATE_SCENARIOS]
+)
 def test_classify_state(scenario: StateScenario) -> None:
     ptr = TypeAdapter(JSONPointer[JSONValue]).validate_python(scenario.path)
     assert classify_state(ptr.ptr, scenario.doc) is scenario.expected
@@ -245,34 +312,44 @@ def test_classify_state(scenario: StateScenario) -> None:
 # 4) JSONPointer type gating and method semantics (no TargetState oracle)
 # ============================================================================
 
+
 def _ptr_for(type_param: Any, path: str) -> JSONPointer[Any]:
     return TypeAdapter(JSONPointer[type_param]).validate_python(path)
 
-def _expect_get_ok(type_param: Any, value: object) -> bool:
-    # get succeeds iff the resolved value validates as T (your type-gated get semantics)
-    return TYPE_PREDICATES[type_param](value)
 
-def _expect_remove_ok(type_param: Any, value: object) -> bool:
-    # remove is type-gated by reading current value through pointer
-    return _expect_get_ok(type_param, value)
+type _TypeInfo = CustomType | tuple[_TypeInfo]
 
-def _expect_add_value_ok(type_param: Any, new_value: object) -> bool:
-    # add validates:
-    #  - new value conforms to T
-    #  - new value is valid JSONValue
-    return TYPE_PREDICATES[type_param](new_value) and _is_json_value(new_value)
 
-def _expect_add_overwrite_ok_on_object(type_param: Any, existing_value: object, new_value: object) -> bool:
+def _is_compatible(value: object, type_or_tuple: _TypeInfo) -> bool:
+    """
+    Return whether an object is an instance of a type or of a subclass thereof.
+
+    Analogous to `isinstance` but with any Pydantic-powered types in EXAMPLE_TYPE_CATALOG.
+    """
+    if not isinstance(type_or_tuple, tuple):
+        return EXAMPLE_TYPE_CATALOG.predicates[type_or_tuple](value)
+    return all(
+        _is_compatible(value, nested_type_or_tuple)
+        for nested_type_or_tuple in type_or_tuple
+    )
+
+
+def _expect_add_overwrite_ok_on_object(
+    type_param: Any, existing_value: object, new_value: object
+) -> bool:
     # object overwrite requires existing target type is T, and value being written passes
-    return TYPE_PREDICATES[type_param](existing_value) and _expect_add_value_ok(type_param, new_value)
+    return _is_compatible(existing_value, type_param) and _is_compatible(
+        new_value, (type_param, JSONValue)
+    )
 
-def _expect_add_insert_ok_on_array(type_param: Any, new_value: object) -> bool:
-    # list insert path doesn't validate existing element type in your implementation
-    return _expect_add_value_ok(type_param, new_value)
 
-@pytest.mark.parametrize("type_param", tuple(TYPE_PREDICATES), ids=[repr(t) for t in TYPE_PREDICATES])
+@pytest.mark.parametrize(
+    "type_param",
+    EXAMPLE_TYPE_CATALOG.json_types,
+    ids=[repr(t) for t in EXAMPLE_TYPE_CATALOG.json_types],
+)
 def test_jsonpointer_type_gating_methods(subtests: Subtests, type_param: Any) -> None:
-    pred = TYPE_PREDICATES[type_param]
+    pred = EXAMPLE_TYPE_CATALOG.predicates[type_param]
     valid_examples = VALID_EXAMPLES_BY_TYPE[type_param]
     invalid_examples = INVALID_EXAMPLES_BY_TYPE[type_param]
     valid_T_value = valid_examples[0].value
@@ -282,7 +359,7 @@ def test_jsonpointer_type_gating_methods(subtests: Subtests, type_param: Any) ->
         doc: JSONValue = {"k": value}  # target at /k
         ptr = _ptr_for(type_param, "/k")
 
-        expected_get = _expect_get_ok(type_param, value)
+        expected_get = _is_compatible(value, type_param)
 
         with subtests.test(f"{type_param!r} get / is_gettable ({example.label})"):
             if expected_get:
@@ -315,7 +392,7 @@ def test_jsonpointer_type_gating_methods(subtests: Subtests, type_param: Any) ->
 
         # overwrite gating regression: even if new value is valid for T,
         # overwrite must be blocked when existing value isn't T
-        if (not pred(value)) and _expect_add_value_ok(type_param, valid_T_value):
+        if (not pred(value)) and _is_compatible(valid_T_value, (type_param, JSONValue)):
             with subtests.test(
                 f"{type_param!r} overwrite blocked when existing wrong type ({example.label})"
             ):
@@ -324,7 +401,7 @@ def test_jsonpointer_type_gating_methods(subtests: Subtests, type_param: Any) ->
                     ptr.add(copy.deepcopy(doc), valid_T_value)
 
         with subtests.test(f"{type_param!r} remove / is_removable ({example.label})"):
-            expected_remove = _expect_remove_ok(type_param, value)
+            expected_remove = _is_compatible(value, type_param)
             assert ptr.is_removable(doc) is expected_remove
 
             if expected_remove:
@@ -341,7 +418,9 @@ def test_jsonpointer_type_gating_methods(subtests: Subtests, type_param: Any) ->
         doc = {"k": value}
         ptr = _ptr_for(type_param, "/k")
 
-        with subtests.test(f"{type_param!r} invalid get / is_gettable ({example.label})"):
+        with subtests.test(
+            f"{type_param!r} invalid get / is_gettable ({example.label})"
+        ):
             with pytest.raises(PatchConflictError):
                 ptr.get(doc)
             assert ptr.is_gettable(doc) is False
@@ -349,12 +428,14 @@ def test_jsonpointer_type_gating_methods(subtests: Subtests, type_param: Any) ->
         with subtests.test(f"{type_param!r} invalid is_valid_type ({example.label})"):
             assert ptr.is_valid_type(value) is False
 
-        with subtests.test(f"{type_param!r} invalid add / is_addable overwrite-object ({example.label})"):
+        with subtests.test(
+            f"{type_param!r} invalid add / is_addable overwrite-object ({example.label})"
+        ):
             assert ptr.is_addable(doc, value) is False
             with pytest.raises(PatchConflictError):
                 ptr.add(copy.deepcopy(doc), value)
 
-        if _expect_add_value_ok(type_param, valid_T_value):
+        if _is_compatible(valid_T_value, (type_param, JSONValue)):
             with subtests.test(
                 f"{type_param!r} overwrite blocked when existing wrong type ({example.label})"
             ):
@@ -374,6 +455,7 @@ def test_jsonpointer_type_gating_methods(subtests: Subtests, type_param: Any) ->
 # 5) Non-trivial pointer edge cases (structural semantics + mutation assertions)
 #    (No TargetState oracle; we assert observable outcomes.)
 # ============================================================================
+
 
 def test_jsonpointer_edge_cases(subtests: Subtests) -> None:
     adapter = TypeAdapter(JSONPointer[JSONValue])
@@ -453,6 +535,7 @@ def test_jsonpointer_edge_cases(subtests: Subtests) -> None:
 # 6+) Everything else: keep your existing backend-agnostic + binding/reuse/args tests
 #      (These are already not redundant and not circular.)
 # ============================================================================
+
 
 @pytest.mark.parametrize(
     (
