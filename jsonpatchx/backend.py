@@ -3,7 +3,7 @@ from abc import abstractmethod
 from collections.abc import Iterable, Sequence
 from enum import Enum, auto
 from inspect import isclass
-from typing import TYPE_CHECKING, Any, Protocol, Self, cast, override, runtime_checkable
+from typing import TYPE_CHECKING, Protocol, Self, override, runtime_checkable
 
 from jsonpointer import JsonPointer  # type: ignore[import-untyped]
 from jsonpointer import JsonPointerException as JPException
@@ -62,7 +62,7 @@ class _PointerClassProtocol(Protocol):
         """
 
     @abstractmethod
-    def resolve(self, data: Any) -> Any:  # NOTE: JSONValue
+    def resolve(self, doc: JSONValue) -> object:
         """
         Resolve the pointer against a document using backend-defined traversal semantics.
 
@@ -145,9 +145,9 @@ class _DEFAULT_POINTER_CLS(JsonPointer):  # type: ignore[misc]
 if TYPE_CHECKING:
     _dont_raise_mypy_error_1: PointerBackend = _DEFAULT_POINTER_CLS("")
 
-    from jsonpath import JSONPointer as ExtendedJsonPointer
+    # from jsonpath import JSONPointer as ExtendedJsonPointer
 
-    _dont_raise_mypy_error_2: PointerBackend = ExtendedJsonPointer("")
+    # _dont_raise_mypy_error_2: PointerBackend = ExtendedJsonPointer("")
 
 
 def _is_root_ptr(ptr: PointerBackend, doc: JSONValue) -> bool:
@@ -158,7 +158,7 @@ def _is_root_ptr(ptr: PointerBackend, doc: JSONValue) -> bool:
     nor are they required to have exclusively one reference to the root.
     """
     try:
-        target = cast(JSONValue, ptr.resolve(doc))
+        target = ptr.resolve(doc)
     except Exception:
         return False
     return doc == target

@@ -43,6 +43,7 @@ from jsonpatchx.types import (
     JSONObject,
     JSONValue,
     _is_array,
+    _is_container,
     _is_object,
     _type_adapter_for,
     _validate_typeform,
@@ -567,10 +568,13 @@ class JSONPointer(str, Generic[T_co, P_co]):
                 )
             case TargetState.VALUE_PRESENT:
                 container = self.parent_ptr.resolve(doc)
+                assert _is_container(container), (
+                    "classify_state regression: VALUE_PRESENT"
+                )
                 token = self.parts[-1]
                 key = int(token) if _is_array(container) else token
-                self._validate_target(container[key])
-                del container[key]
+                self._validate_target(container[key])  # type: ignore[index]
+                del container[key]  # type: ignore[arg-type]
                 return doc
             case _ as unreachable:
                 assert_never(unreachable)
