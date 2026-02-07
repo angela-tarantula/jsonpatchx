@@ -35,7 +35,7 @@ from jsonpatchx.registry import (
 )
 from jsonpatchx.schema import OperationSchema
 from jsonpatchx.standard import _apply_ops
-from jsonpatchx.types import _JSON_VALUE_ADAPTER, JSONValue
+from jsonpatchx.types import JSONValue, _validate_JSONValue
 
 
 class _RegistryBoundPatchRoot(RootModel[Any]):
@@ -124,7 +124,7 @@ class _BasePatchModel(_RegistryBoundPatchRoot, Generic[ModelT]):
                 f"{self.__class__.__name__}.apply() expects a Pydantic BaseModel instance, "
                 f"got {type(target).__name__}"
             )
-        data = target.model_dump()
+        data = _validate_JSONValue(target.model_dump())
         patched = _apply_ops(self.ops, data, inplace=True)
         try:
             return self.__target_model__.model_validate(patched)
@@ -140,18 +140,15 @@ class _BasePatchBody(_RegistryBoundPatchRoot):
 
     Notes:
         - ``apply(doc, inplace=...)`` delegates to ``_apply_ops`` (engine defines copy and mutation semantics).
-        - Optional ``validate_mutability=True`` validates that ``doc`` is a mutable ``JSONValue`` before patching.
     """
 
     def apply(
         self,
         doc: JSONValue,
         *,
-        validate_mutability: bool = False,
         inplace: bool = False,
     ) -> JSONValue:
-        if validate_mutability:
-            _JSON_VALUE_ADAPTER.validate_python(doc, strict=True)
+        _validate_JSONValue(doc)
         return _apply_ops(self.ops, doc, inplace=inplace)
 
 
@@ -217,7 +214,6 @@ class JsonPatchFor(_RegistryBoundPatchRoot, Generic[TargetT, RegistryT]):
             self: JsonPatchFor[TargetNameN, RegistryT],
             doc: JSONValue,
             *,
-            validate_mutability: bool = False,
             inplace: bool = False,
         ) -> JSONValue:
             """
@@ -225,14 +221,13 @@ class JsonPatchFor(_RegistryBoundPatchRoot, Generic[TargetT, RegistryT]):
 
             Args:
                 doc: The target JSON document.
-                validate_mutability: If True, validate that ``doc`` is a mutable ``JSONValue`` before applying.
                 inplace: Controls whether ``doc`` is deep-copied before application.
 
             Return:
                 patched: The patched JSON document.
 
             Raises:
-                ValidationError: ``validate_mutability=True`` and the input is not a mutable ``JSONValue``.
+                ValidationError: If the input is not a mutable ``JSONValue``.
                 PatchError: Any patch-domain error raised by operations, including conflicts.
                     ``PatchInternalError`` is a ``PatchError`` raised for unexpected failures.
             """
@@ -244,7 +239,7 @@ class JsonPatchFor(_RegistryBoundPatchRoot, Generic[TargetT, RegistryT]):
 
             Raises:
                 TypeError: Model variant expects a Pydantic BaseModel instance.
-                ValidationError: ``validate_mutability=True`` and the input is not a mutable ``JSONValue``.
+                ValidationError: If the input is not a mutable ``JSONValue``.
                 PatchValidationError: Patched data fails validation for the target model.
                 PatchError: Any patch-domain error raised by operations, including conflicts.
                     ``PatchInternalError`` is a ``PatchError`` raised for unexpected failures.

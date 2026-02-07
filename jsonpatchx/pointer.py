@@ -37,7 +37,6 @@ from jsonpatchx.backend import (
 )
 from jsonpatchx.exceptions import InvalidJSONPointer, PatchConflictError
 from jsonpatchx.types import (
-    _JSON_VALUE_ADAPTER,
     JSONArray,
     JSONContainer,
     JSONObject,
@@ -46,6 +45,7 @@ from jsonpatchx.types import (
     _is_container,
     _is_object,
     _type_adapter_for,
+    _validate_JSONValue,
     _validate_typeform,
 )
 
@@ -59,7 +59,6 @@ _Nothing = object()
 
 T_co = TypeVar("T_co", covariant=True)
 P_co = TypeVar("P_co", bound=PointerBackend, covariant=True, default=PointerBackend)
-# NOTE: JSONPointer does not currently enforce that T_co is bound to JSONValue. I can't think of a way to do it.
 
 
 @final
@@ -432,9 +431,7 @@ class JSONPointer(str, Generic[T_co, P_co]):
         # Type errors first
         value_T: T_co = self._validate_target(target=value)
         try:
-            target: JSONValue = _JSON_VALUE_ADAPTER.validate_python(
-                value_T, strict=True
-            )
+            target = _validate_JSONValue(value_T)
         except Exception as e:
             raise PatchConflictError(
                 f"value {value!r} is not valid a valid JSONValue"
@@ -497,7 +494,7 @@ class JSONPointer(str, Generic[T_co, P_co]):
         if value is not _Nothing:
             try:
                 self._validate_target(target=value)
-                _JSON_VALUE_ADAPTER.validate_python(value, strict=True)
+                _validate_JSONValue(value)
             except Exception:
                 return False
 

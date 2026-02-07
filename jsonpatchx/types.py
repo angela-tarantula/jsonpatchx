@@ -98,8 +98,9 @@ def _type_adapter_for[T](expected: TypeForm[T]) -> TypeAdapter[T]:
         ) from e
 
 
-_JSON_VALUE_ADAPTER: TypeAdapter[JSONValue] = _type_adapter_for(JSONValue)
-# NOTE: not a huge fan of the pydantic error messages for simple cases like _JSON_VALUE_ADAPTER.python_validate({1:2})
+def _validate_JSONValue(obj: object) -> JSONValue:
+    # NOTE: not a huge fan of the pydantic error messages for simple cases like {1:2}
+    return _type_adapter_for(JSONValue).validate_python(obj, strict=True)
 
 
 def _validate_typeform(unverified: object) -> TypeForm[Any]:
