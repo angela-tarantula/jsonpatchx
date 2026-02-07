@@ -94,15 +94,29 @@ def _is_array_of[T](pred: Predicate[T]) -> Predicate[JSONArray[T]]:
     return _p
 
 
-def _is_object_of[T](pred: Predicate[TypeIs[T]]) -> Predicate[JSONObject[T]]:
+def _is_object_of[T](pred: Predicate[T]) -> Predicate[JSONObject[T]]:
     def _p(v: object) -> TypeIs[JSONObject[T]]:
         return _is_object_any(v) and all(pred(val) for val in v.values())
 
     return _p
 
 
+type _TypeInfo = CustomType | tuple[_TypeInfo]
+
+
+def _is_compatible(value: object, type_or_tuple: _TypeInfo) -> bool:
+    """
+    Analogous to `isinstance` but with any Pydantic-powered types in EXAMPLE_TYPE_CATALOG.
+    """
+    if not isinstance(type_or_tuple, tuple):
+        return EXAMPLE_TYPE_CATALOG.predicates[type_or_tuple](value)
+    return all(
+        _is_compatible(value, nested_type_or_tuple)
+        for nested_type_or_tuple in type_or_tuple
+    )
+
 # ===========================================================================================
-# Parameterizations of type aliases and example values that are assignable (or not) to them
+# Parameterizations
 # ===========================================================================================
 
 type CustomType = TypeForm[Any]
@@ -120,6 +134,10 @@ class ExampleTypeCatalog:
     @property
     def json_types(self) -> tuple[CustomType, ...]:
         return tuple(example.json_type for example in self.examples)
+
+    @property
+    def ids(self) -> tuple[str, ...]:
+        return tuple(repr(t) for t in self.json_types)
 
     @property
     def predicates(self) -> dict[CustomType, Predicate[CustomType]]:
@@ -192,11 +210,9 @@ def _build_examples_by_type() -> tuple[
     dict[CustomType, list[ExampleValue]], dict[CustomType, list[ExampleValue]]
 ]:
     valids: dict[CustomType, list[ExampleValue]] = {
-        example.json_type: [] for example in EXAMPLE_TYPE_CATALOG.examples
+        json_type: [] for json_type in EXAMPLE_TYPE_CATALOG.json_types
     }
-    invalids: dict[CustomType, list[ExampleValue]] = {
-        example.json_type: [] for example in EXAMPLE_TYPE_CATALOG.examples
-    }
+    invalids = copy.deepcopy(valids)
     for json_type, pred in EXAMPLE_TYPE_CATALOG.predicates.items():
         for example in EXAMPLE_VALUES:
             if pred(example.value):
@@ -218,9 +234,9 @@ VALID_EXAMPLES_BY_TYPE, INVALID_EXAMPLES_BY_TYPE = _build_examples_by_type()
 # ============================================================================
 
 
-@pytest.mark.parametrize("json_type", EXAMPLE_TYPE_CATALOG.json_types)
-def test_json_type_validations(subtests: Subtests, json_type: Any) -> None:
-    pred = EXAMPLE_TYPE_CATALOG.predicates[json_type]
+@pytest.mark.parametrize("example_tuple", EXAMPLE_TYPE_CATALOG.predicates.items())
+def test_json_type_validations(subtests: Subtests, example_tuple: Any) -> None:
+    json_type, pred = example_tuple
     adapter = TypeAdapter(json_type)
 
     for example in EXAMPLE_VALUES:
@@ -236,7 +252,7 @@ def test_json_type_validations(subtests: Subtests, json_type: Any) -> None:
 
 
 # ============================================================================
-# 2) Pointer backend protocol checks (same as yours)
+# 2) Pointer backend protocol checks
 # ============================================================================
 
 
@@ -250,7 +266,7 @@ def test_pointer_backend(subtests: Subtests) -> None:
 
 
 # ============================================================================
-# 3) classify_state scenarios (directly tested, not used as oracle elsewhere)
+# 3) classify_state scenarios
 # ============================================================================
 
 
@@ -309,7 +325,7 @@ def test_classify_state(scenario: StateScenario) -> None:
 
 
 # ============================================================================
-# 4) JSONPointer type gating and method semantics (no TargetState oracle)
+# 4) JSONPointer type gating and method semantics
 # ============================================================================
 
 
@@ -317,42 +333,19 @@ def _ptr_for(type_param: Any, path: str) -> JSONPointer[Any]:
     return TypeAdapter(JSONPointer[type_param]).validate_python(path)
 
 
-type _TypeInfo = CustomType | tuple[_TypeInfo]
-
-
-def _is_compatible(value: object, type_or_tuple: _TypeInfo) -> bool:
-    """
-    Return whether an object is an instance of a type or of a subclass thereof.
-
-    Analogous to `isinstance` but with any Pydantic-powered types in EXAMPLE_TYPE_CATALOG.
-    """
-    if not isinstance(type_or_tuple, tuple):
-        return EXAMPLE_TYPE_CATALOG.predicates[type_or_tuple](value)
-    return all(
-        _is_compatible(value, nested_type_or_tuple)
-        for nested_type_or_tuple in type_or_tuple
-    )
-
-
-def _expect_add_overwrite_ok_on_object(
-    type_param: Any, existing_value: object, new_value: object
-) -> bool:
-    # object overwrite requires existing target type is T, and value being written passes
-    return _is_compatible(existing_value, type_param) and _is_compatible(
-        new_value, (type_param, JSONValue)
-    )
-
-
 @pytest.mark.parametrize(
     "type_param",
     EXAMPLE_TYPE_CATALOG.json_types,
-    ids=[repr(t) for t in EXAMPLE_TYPE_CATALOG.json_types],
+    ids=EXAMPLE_TYPE_CATALOG.ids,
 )
 def test_jsonpointer_type_gating_methods(subtests: Subtests, type_param: Any) -> None:
     pred = EXAMPLE_TYPE_CATALOG.predicates[type_param]
     valid_examples = VALID_EXAMPLES_BY_TYPE[type_param]
     invalid_examples = INVALID_EXAMPLES_BY_TYPE[type_param]
     valid_T_value = valid_examples[0].value
+    alt_valid_T_value = (
+        valid_examples[1].value if len(valid_examples) > 1 else valid_T_value
+    )
 
     for example in valid_examples:
         value = example.value
@@ -373,22 +366,25 @@ def test_jsonpointer_type_gating_methods(subtests: Subtests, type_param: Any) ->
         with subtests.test(f"{type_param!r} is_valid_type ({example.label})"):
             assert ptr.is_valid_type(value) is expected_get
 
-        # add at VALUE_PRESENT on object key "/k"
-        expected_add = _expect_add_overwrite_ok_on_object(type_param, value, value)
+        # add at VALUE_PRESENT on object key "/k" (overwrite with a different value when possible)
+        new_value = alt_valid_T_value if value != alt_valid_T_value else valid_T_value
+        expected_add = _is_compatible(value, type_param) and _is_compatible(
+            new_value, (type_param, JSONValue)
+        )
 
         with subtests.test(
             f"{type_param!r} add / is_addable overwrite-object ({example.label})"
         ):
             if expected_add:
                 d2 = copy.deepcopy(doc)
-                assert ptr.is_addable(d2, value) is True
-                out = ptr.add(d2, value)
+                assert ptr.is_addable(d2, new_value) is True
+                out = ptr.add(d2, new_value)
                 assert isinstance(out, dict)
-                assert out["k"] == value
+                assert out["k"] == new_value
             else:
-                assert ptr.is_addable(doc, value) is False
+                assert ptr.is_addable(doc, new_value) is False
                 with pytest.raises(PatchConflictError):
-                    ptr.add(copy.deepcopy(doc), value)
+                    ptr.add(copy.deepcopy(doc), new_value)
 
         # overwrite gating regression: even if new value is valid for T,
         # overwrite must be blocked when existing value isn't T
@@ -452,8 +448,7 @@ def test_jsonpointer_type_gating_methods(subtests: Subtests, type_param: Any) ->
 
 
 # ============================================================================
-# 5) Non-trivial pointer edge cases (structural semantics + mutation assertions)
-#    (No TargetState oracle; we assert observable outcomes.)
+# 5) Non-trivial pointer edge cases
 # ============================================================================
 
 
@@ -532,8 +527,7 @@ def test_jsonpointer_edge_cases(subtests: Subtests) -> None:
 
 
 # ============================================================================
-# 6+) Everything else: keep your existing backend-agnostic + binding/reuse/args tests
-#      (These are already not redundant and not circular.)
+# 6+) Everything else
 # ============================================================================
 
 
