@@ -35,7 +35,10 @@ from jsonpatchx.backend import (
     _validate_backend_class,
     classify_state,
 )
-from jsonpatchx.exceptions import InvalidJSONPointer, PatchConflictError
+from jsonpatchx.exceptions import (
+    InvalidJSONPointer,
+    PatchConflictError,
+)
 from jsonpatchx.types import (
     JSONArray,
     JSONContainer,

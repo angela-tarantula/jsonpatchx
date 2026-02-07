@@ -47,7 +47,12 @@ import json
 from collections.abc import Mapping, Sequence
 from typing import Self, overload, override
 
-from jsonpatchx.exceptions import PatchError, PatchFailureDetail, PatchInternalError
+from jsonpatchx.exceptions import (
+    PatchError,
+    PatchFailureDetail,
+    PatchInternalError,
+    PatchValidationError,
+)
 from jsonpatchx.registry import AnyRegistry, StandardRegistry
 from jsonpatchx.schema import OperationSchema
 from jsonpatchx.types import JSONValue, _validate_JSONValue
@@ -196,7 +201,10 @@ class JsonPatch(Sequence[OperationSchema]):
             PatchError: Any patch-domain error raised by operations, including conflicts.
                 ``PatchInternalError`` is a ``PatchError`` raised for unexpected failures.
         """
-        _validate_JSONValue(doc)
+        try:
+            _validate_JSONValue(doc)
+        except Exception as e:
+            raise PatchValidationError(f"Invalid JSON document: {e}") from e
         return _apply_ops(self._ops, doc, inplace=inplace)
 
     @override

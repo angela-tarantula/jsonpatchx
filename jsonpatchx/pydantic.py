@@ -124,7 +124,12 @@ class _BasePatchModel(_RegistryBoundPatchRoot, Generic[ModelT]):
                 f"{self.__class__.__name__}.apply() expects a Pydantic BaseModel instance, "
                 f"got {type(target).__name__}"
             )
-        data = _validate_JSONValue(target.model_dump())
+        try:
+            data = _validate_JSONValue(target.model_dump())
+        except Exception as e:
+            raise PatchValidationError(
+                f"Target model produced non-JSON data for patching: {e}"
+            ) from e
         patched = _apply_ops(self.ops, data, inplace=True)
         try:
             return self.__target_model__.model_validate(patched)
@@ -148,7 +153,10 @@ class _BasePatchBody(_RegistryBoundPatchRoot):
         *,
         inplace: bool = False,
     ) -> JSONValue:
-        _validate_JSONValue(doc)
+        try:
+            _validate_JSONValue(doc)
+        except Exception as e:
+            raise PatchValidationError(f"Invalid JSON document: {e}") from e
         return _apply_ops(self.ops, doc, inplace=inplace)
 
 
