@@ -30,16 +30,16 @@ type JSONContainer[T] = JSONArray[T] | JSONObject[T]
 # NOTE: consider making public type-narrowing helpers
 
 
-def _is_container(value: object) -> TypeIs[JSONContainer[JSONValue]]:
-    """Internal: runtime check for JSON containers (dict/list)."""
+def _is_container(value: JSONValue) -> TypeIs[JSONContainer[JSONValue]]:
+    """Internal: runtime check for JSON containers (dict/list). """
     return isinstance(value, (list, dict))
 
 
-def _is_object(value: object) -> TypeIs[JSONObject[JSONValue]]:
+def _is_object(value: JSONValue) -> TypeIs[JSONObject[JSONValue]]:
     return isinstance(value, dict)
 
 
-def _is_array(value: object) -> TypeIs[JSONArray[JSONValue]]:
+def _is_array(value: JSONValue) -> TypeIs[JSONArray[JSONValue]]:
     return isinstance(value, list)
 
 

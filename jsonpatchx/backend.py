@@ -62,7 +62,7 @@ class _PointerClassProtocol(Protocol):
         """
 
     @abstractmethod
-    def resolve(self, doc: JSONValue) -> object:
+    def resolve(self, doc: JSONValue) -> JSONValue:
         """
         Resolve the pointer against a document using backend-defined traversal semantics.
 
