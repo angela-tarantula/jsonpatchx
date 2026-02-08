@@ -6,7 +6,6 @@ from typing import (
     Generic,
     Literal,
     Self,
-    TypeVar,
     assert_never,
     cast,
     final,
@@ -22,7 +21,7 @@ from pydantic import (
 )
 from pydantic.json_schema import JsonSchemaValue
 from pydantic_core import core_schema as cs
-from typing_extensions import TypeForm
+from typing_extensions import TypeForm, TypeVar
 
 from jsonpatchx.backend import (
     _DEFAULT_POINTER_CLS,

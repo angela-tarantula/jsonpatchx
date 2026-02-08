@@ -9,7 +9,6 @@ from typing import (
     ClassVar,
     Generic,
     TypeAliasType,
-    TypeVar,
     TypeVarTuple,
     Union,
     Unpack,
@@ -19,6 +18,7 @@ from typing import (
 )
 
 from pydantic import Field, TypeAdapter
+from typing_extensions import TypeVar
 
 from jsonpatchx.backend import (
     _DEFAULT_POINTER_CLS,
