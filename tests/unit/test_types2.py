@@ -4,15 +4,16 @@ import copy
 from dataclasses import dataclass
 from functools import partial
 from operator import attrgetter
-from typing import Final
+from typing import Any, Final
 
 import pytest
 from jsonpath import JSONPointer as ExtendedJsonPointer
-from jsonpointer import JsonPointer as RFC6901JsonPointer
+from jsonpointer import JsonPointer as CustomJsonPointer
 from pydantic import TypeAdapter, ValidationError
 from pytest import Subtests
 
 from jsonpatchx.backend import (
+    _DEFAULT_POINTER_CLS,
     PointerBackend,
     TargetState,
     _PointerClassProtocol,
@@ -58,10 +59,10 @@ def test_json_type_validations(subtests: Subtests, suite: TypeSuite) -> None:
 
 
 def test_pointer_backend(subtests: Subtests) -> None:
-    with subtests.test("RFC6901JsonPointer backend"):
-        assert issubclass(RFC6901JsonPointer, _PointerClassProtocol)
-        assert isinstance(RFC6901JsonPointer(""), PointerBackend)
-    with subtests.test("ExtendedJsonPointer backend"):
+    with subtests.test("Custom JsonPointer backend"):
+        assert issubclass(CustomJsonPointer, _PointerClassProtocol)
+        assert isinstance(CustomJsonPointer(""), PointerBackend)
+    with subtests.test("Extended JsonPointer backend"):
         assert issubclass(ExtendedJsonPointer, _PointerClassProtocol)
         assert isinstance(ExtendedJsonPointer(""), PointerBackend)
 
@@ -129,14 +130,12 @@ def test_classify_state(scenario: StateScenario) -> None:
 # ============================================================================
 
 
-def test_jsonpointer_get_is_gettable_and_is_valid_type(
-    subtests: Subtests, suite: TypeSuite
-) -> None:
+def test_jsonpointer_get(subtests: Subtests, suite: TypeSuite) -> None:
     for type_param in suite.types:
         ptr = JSONPointer.parse("/k", type_param=type_param)
         for example in suite.examples:
             value = example.value
-            doc: JSONValue = {"k": value}
+            doc: Any = {"k": value}
             expected_get = suite.is_compatible(value, type_param)
 
             with subtests.test(f"{type_param!r} get / is_gettable ({example.label})"):
@@ -152,45 +151,41 @@ def test_jsonpointer_get_is_gettable_and_is_valid_type(
                 assert ptr.is_valid_type(value) is expected_get
 
 
-def test_jsonpointer_remove_is_removable(subtests: Subtests, suite: TypeSuite) -> None:
+def test_jsonpointer_remove(subtests: Subtests, suite: TypeSuite) -> None:
     for type_param in suite.types:
         ptr = JSONPointer.parse("/k", type_param=type_param)
         for example in suite.examples:
             value = example.value
-            doc: JSONValue = {"k": value}
+            doc: Any = {"k": value}
             expected_remove = suite.is_compatible(value, type_param)
 
             with subtests.test(
                 f"{type_param!r} remove / is_removable ({example.label})"
             ):
-                assert ptr.is_removable(doc) is expected_remove
                 if expected_remove:
+                    assert ptr.is_removable(doc) is True
                     d2 = copy.deepcopy(doc)
                     out = ptr.remove(d2)
                     assert isinstance(out, dict)
                     assert "k" not in out
+                    assert ptr.is_removable(d2) is False
                 else:
+                    assert ptr.is_removable(doc) is False
                     with pytest.raises(PatchConflictError):
                         ptr.remove(copy.deepcopy(doc))
 
 
-def test_jsonpointer_add_is_addable_overwrite_object(
-    subtests: Subtests, suite: TypeSuite
-) -> None:
+def test_jsonpointer_add(subtests: Subtests, suite: TypeSuite) -> None:
     for type_param in suite.types:
         valid_examples = suite.get_examples(type_param, valid=True)
         valid_T_value = valid_examples[0].value
-        alt_valid_T_value = (
-            valid_examples[1].value if len(valid_examples) > 1 else valid_T_value
-        )
+        alt_valid_T_value = valid_examples[1].value
         ptr = JSONPointer.parse("/k", type_param=type_param)
 
         for example in suite.examples:
             value = example.value
-            doc: JSONValue = {"k": value}
-            new_value = (
-                alt_valid_T_value if value != alt_valid_T_value else valid_T_value
-            )
+            doc: Any = {"k": value}
+            new_value = alt_valid_T_value
 
             expected_existing_ok = suite.is_compatible(value, type_param)
             expected_new_ok = suite.is_compatible(new_value, (type_param, JSONValue))
@@ -238,7 +233,7 @@ def test_jsonpointer_array_index_handling(subtests: Subtests) -> None:
         assert item.get({"arr": [10, 20]}) == 10
 
     with subtests.test("append add"):
-        doc = {"arr": [10]}
+        doc: JSONValue = {"arr": [10]}
         appended = JSONPointer.parse("/arr/-").add(doc, 30)
         assert appended["arr"] == [10, 30]
 
@@ -314,7 +309,7 @@ def test_jsonpointer_parent_child_edge_cases(subtests: Subtests) -> None:
 
 @pytest.mark.parametrize(
     (
-        "pointer_cls",
+        "custom_pointer_cls",
         "path",
         "parent_path",
         "child_path",
@@ -329,7 +324,7 @@ def test_jsonpointer_parent_child_edge_cases(subtests: Subtests) -> None:
 )
 def test_jsonpointer_public_methods_are_backend_agnostic(
     subtests: Subtests,
-    pointer_cls: type[PointerBackend] | None,
+    custom_pointer_cls: type[PointerBackend] | None,
     path: str,
     parent_path: str,
     child_path: str,
@@ -339,7 +334,7 @@ def test_jsonpointer_public_methods_are_backend_agnostic(
 ) -> None:
     doc = {"a": {"b": 1, "c": {"d": 2}}, "arr": [10, 20]}
 
-    if pointer_cls is None:
+    if custom_pointer_cls is None:
         parse = JSONPointer.parse
     else:
         parse = partial(JSONPointer.parse, backend=DotPointer)
@@ -367,23 +362,23 @@ def test_jsonpointer_public_methods_are_backend_agnostic(
     with subtests.test("is_parent_of"):
         assert parent.is_parent_of(ptr) is True
         assert ptr.is_parent_of(parent) is False
-        if pointer_cls is None:
+        if custom_pointer_cls is None:
             with pytest.raises(InvalidJSONPointer):
                 ptr.is_parent_of(DotPointer("a.b"))
         else:
             with pytest.raises(InvalidJSONPointer):
-                ptr.is_parent_of(RFC6901JsonPointer("/a/b"))
+                ptr.is_parent_of(CustomJsonPointer("/a/b"))
 
     with subtests.test("is_child_of"):
         assert child.is_child_of(ptr) is True
         assert ptr.is_child_of(child) is False
         assert ptr.is_child_of(ptr) is False
-        if pointer_cls is None:
+        if custom_pointer_cls is None:
             with pytest.raises(InvalidJSONPointer):
                 ptr.is_child_of(DotPointer("a.b"))
         else:
             with pytest.raises(InvalidJSONPointer):
-                ptr.is_child_of(RFC6901JsonPointer("/a/b"))
+                ptr.is_child_of(CustomJsonPointer("/a/b"))
 
     with subtests.test("is_valid_type"):
         bool_ptr = parse(parent_path, type_param=JSONBoolean)
@@ -447,11 +442,11 @@ def test_pointer_backend_binding_with_context(subtests: Subtests) -> None:
 
     with subtests.test("no backends"):
         ptr = _validate(JSONPointer[JSONValue], "/a", None)
-        assert isinstance(ptr.ptr, RFC6901JsonPointer)
+        assert isinstance(ptr.ptr, _DEFAULT_POINTER_CLS)
 
     with subtests.test("context PointerBackend treated as default"):
         ptr = _validate(JSONPointer[JSONValue], "/a", PointerBackend)
-        assert isinstance(ptr.ptr, RFC6901JsonPointer)
+        assert isinstance(ptr.ptr, _DEFAULT_POINTER_CLS)
 
     with subtests.test("registry only"):
         ptr = _validate(JSONPointer[JSONValue], "a.b", RegistryPointer)
@@ -463,11 +458,11 @@ def test_pointer_backend_binding_with_context(subtests: Subtests) -> None:
 
     with subtests.test("bound PointerBackend treated as default"):
         ptr = _validate(JSONPointer[JSONValue, PointerBackend], "/a", None)
-        assert isinstance(ptr.ptr, RFC6901JsonPointer)
+        assert isinstance(ptr.ptr, _DEFAULT_POINTER_CLS)
 
     with subtests.test("both PointerBackend treated as default"):
         ptr = _validate(JSONPointer[JSONValue, PointerBackend], "/a", PointerBackend)
-        assert isinstance(ptr.ptr, RFC6901JsonPointer)
+        assert isinstance(ptr.ptr, _DEFAULT_POINTER_CLS)
 
     with subtests.test("same backend"):
         ptr = _validate(JSONPointer[JSONValue, BoundPointer], "a.b", BoundPointer)
@@ -508,7 +503,7 @@ def test_jsonpointer_backend_reuse(subtests: Subtests) -> None:
 
     with subtests.test("reject incompatible backend instances"):
         with pytest.raises(InvalidJSONPointer):
-            dot_ptr_adapter.validate_python(RFC6901JsonPointer("/hello"))
+            dot_ptr_adapter.validate_python(CustomJsonPointer("/hello"))
 
 
 def test_jsonpointer_type_args_validation(subtests: Subtests) -> None:
@@ -545,7 +540,7 @@ def test_jsonpointer_type_args_validation(subtests: Subtests) -> None:
         for valid_backend in [
             PointerBackend,  # default backend
             DotPointer,
-            RFC6901JsonPointer,
+            CustomJsonPointer,
         ]:
             adapter = TypeAdapter(JSONPointer[JSONValue, valid_backend])
             adapter.validate_python("")
@@ -572,7 +567,7 @@ def test_jsonpointer_path_validation(subtests: Subtests) -> None:
         adapter.validate_python(ptr)
     with subtests.test("reject incompatible PointerBackends"):
         with pytest.raises(InvalidJSONPointer):
-            adapter.validate_python(RFC6901JsonPointer("/hello"))
+            adapter.validate_python(CustomJsonPointer("/hello"))
         with pytest.raises(InvalidJSONPointer):
             adapter.validate_python(ExtendedJsonPointer("/hello"))
     with subtests.test("accepts narrower PointerBackends"):

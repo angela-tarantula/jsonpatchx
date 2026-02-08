@@ -5,9 +5,10 @@ from collections.abc import Iterable
 from dataclasses import dataclass
 from functools import cached_property
 from types import NoneType
-from typing import Any, Callable, Final, Self
+from typing import Annotated, Any, Callable, Final, Self
 
 import pytest
+from annotated_types import Ge
 from typing_extensions import TypeForm, TypeIs
 
 from jsonpatchx.backend import PointerBackend
@@ -179,7 +180,7 @@ class TypeSuite:
 
     def get_examples(
         self, json_type: Any, valid: bool = True
-    ) -> tuple[ExampleValue, ...]:
+    ) -> Annotated[tuple[ExampleValue, ...], Ge(2)]:
         """Return example values that pass or fail the predicate for ``json_type``."""
         pred = self.get_predicate(json_type)
         matches = [

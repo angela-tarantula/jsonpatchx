@@ -141,6 +141,10 @@ class _DEFAULT_POINTER_CLS(JsonPointer):  # type: ignore[misc]
         part = self.get_part(doc, part)  # type: ignore[no-untyped-call]
         return super().walk(doc, part)
 
+    @override
+    def __repr__(self) -> str:
+        return "JsonPointerRFC6901(" + repr(self.path) + ")"
+
 
 if TYPE_CHECKING:
     _dont_raise_mypy_error_1: PointerBackend = _DEFAULT_POINTER_CLS("")
