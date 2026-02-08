@@ -467,3 +467,24 @@ git submodule update --init
 ```sh
 uv sync --group dev --all-extras
 ```
+
+### Development
+
+Run type checks:
+
+```sh
+uv run mypy .
+```
+
+Run the test suite:
+
+```sh
+uv run pytest -v
+```
+
+Generate and view the coverage report:
+
+```sh
+uv run pytest --cov=jsonpatchx --cov-report=html
+open htmlcov/index.html
+```
