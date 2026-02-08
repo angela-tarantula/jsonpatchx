@@ -12,7 +12,7 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Annotated, Any, Self, TypeVar, cast
+from typing import Annotated, Any, Self, cast
 
 from fastapi import Body, Depends, FastAPI, HTTPException, Request
 from fastapi.exceptions import RequestValidationError
@@ -27,6 +27,7 @@ from pydantic import (
 )
 from pydantic.json_schema import JsonSchemaValue
 from pydantic_core import core_schema
+from typing_extensions import TypeVar
 
 from jsonpatchx.exceptions import (
     PatchConflictError,

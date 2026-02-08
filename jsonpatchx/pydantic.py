@@ -10,7 +10,6 @@ from typing import (
     Literal,
     Self,
     TypeAliasType,
-    TypeVar,
     cast,
     get_args,
     get_origin,
@@ -27,6 +26,7 @@ from pydantic import (
     create_model,
 )
 from pydantic_core import PydanticUndefined, PydanticUndefinedType
+from typing_extensions import TypeVar
 
 from jsonpatchx.exceptions import PatchValidationError
 from jsonpatchx.registry import (
