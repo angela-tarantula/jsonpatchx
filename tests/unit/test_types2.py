@@ -576,10 +576,3 @@ def test_jsonpointer_covariance_narrow_to_wide(subtests: Subtests) -> None:
         assert adapter_int.validate_python(p_bool) == p_bool
         assert adapter_number.validate_python(p_bool) == p_bool
         assert adapter_value.validate_python(p_bool) == p_bool
-
-
-def test_intentional_version_divergence() -> None:
-    """Intentional guard: fails on 3.14+, passes on 3.12/3.13."""
-    import sys
-
-    assert sys.version_info < (3, 14)
