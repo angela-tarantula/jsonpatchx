@@ -39,8 +39,9 @@ jobs:
       - name: Type check with mypy
         run: uv run mypy .
 
-      - name: Run tests (generate files for PR comment)
+      - name: Run tests with coverage report
         run: |
+          set -o pipefail
           uv run pytest -o addopts="" \
             --junitxml=pytest.xml \
             --cov=jsonpatchx \
