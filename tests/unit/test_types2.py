@@ -21,7 +21,6 @@ from jsonpatchx.exceptions import InvalidJSONPointer, PatchConflictError
 from jsonpatchx.pointer import _JSONPOINTER_POINTER_BACKEND_CTX_KEY, JSONPointer
 from jsonpatchx.types import JSONBoolean, JSONNumber, JSONValue
 from tests.conftest import (
-    TYPE_MAPPING,
     AnotherIncompletePointerBackend,
     BadDotPointer,
     DotPointer,
@@ -34,18 +33,19 @@ from tests.conftest import (
 # Sources of truth for type acceptance
 # ============================================================================
 
-type CustomType = TypeForm[Any]
-type _TypeInfo = CustomType | tuple[_TypeInfo]
+type _TypeInfo = TypeForm[Any] | tuple[_TypeInfo]
 
 
-def _is_compatible(value: object, type_or_tuple: _TypeInfo) -> bool:
+def _is_compatible(
+    type_suite: TypeSuite, value: object, type_or_tuple: _TypeInfo
+) -> bool:
     """
-    Analogous to `isinstance` but with any Pydantic-powered types in PRED.
+    Analogous to `isinstance` but for types in TypeSuite.
     """
     if not isinstance(type_or_tuple, tuple):
-        return PRED[type_or_tuple](value)
+        return type_suite.get_predicate(type_or_tuple)(value)
     return all(
-        _is_compatible(value, nested_type_or_tuple)
+        _is_compatible(type_suite, value, nested_type_or_tuple)
         for nested_type_or_tuple in type_or_tuple
     )
 
@@ -55,24 +55,22 @@ def _is_compatible(value: object, type_or_tuple: _TypeInfo) -> bool:
 # ============================================================================
 
 
-@pytest.mark.parametrize("json_type", TYPE_MAPPING.keys(), ids=lambda t: repr(t))
-def test_json_type_validations(
-    subtests: Subtests, suite: TypeSuite, json_type: Any
-) -> None:
-    """Verify that Pydantic TypeAdapters align with our predicate logic."""
-    adapter = TypeAdapter(json_type)
-    pred = suite.get_predicate(json_type)
+def test_json_type_validations(subtests: Subtests, suite: TypeSuite) -> None:
+    """Verify that Pydantic TypeAdapters align with suite predicate logic."""
+    for json_type in suite.types:
+        adapter = TypeAdapter(json_type)
+        pred = suite.get_predicate(json_type)
 
-    for example in suite.examples:
-        expected_ok = pred(example.value)
-        label = f"{json_type!r} vs {example.label}"
+        for example in suite.examples:
+            expected_ok = pred(example.value)
+            label = f"{json_type!r} vs {example.label}"
 
-        with subtests.test(label):
-            if expected_ok:
-                adapter.validate_python(example.value, strict=True)
-            else:
-                with pytest.raises(ValidationError):
+            with subtests.test(label):
+                if expected_ok:
                     adapter.validate_python(example.value, strict=True)
+                else:
+                    with pytest.raises(ValidationError):
+                        adapter.validate_python(example.value, strict=True)
 
 
 # ============================================================================
@@ -157,190 +155,94 @@ def _ptr_for(type_param: Any, path: str) -> JSONPointer[Any]:
     return TypeAdapter(JSONPointer[type_param]).validate_python(path)
 
 
-@pytest.mark.parametrize(
-    "type_param",
-    JSON_TYPES,
-    ids=lambda t: repr(t),
-)
-def test_jsonpointer_type_gating_methods(
-    subtests: Subtests, type_suite: TypeSuite, type_param: Any
+def test_jsonpointer_get_is_gettable_and_is_valid_type(
+    subtests: Subtests, suite: TypeSuite
 ) -> None:
-    pred = type_suite.get_predicate(type_param)
-    valid_examples = type_suite.get_examples(type_param, valid=True)
-    invalid_examples = type_suite.get_examples(type_param, valid=False)
-    valid_T_value = valid_examples[0][1]
-    alt_valid_T_value = (
-        valid_examples[1][1] if len(valid_examples) > 1 else valid_T_value
-    )
-
-    for example in valid_examples:
-        label, value = example
-        doc: JSONValue = {"k": value}  # target at /k
+    for type_param in suite.types:
         ptr = _ptr_for(type_param, "/k")
+        for example in suite.examples:
+            value = example.value
+            doc: JSONValue = {"k": value}
+            expected_get = _is_compatible(suite, value, type_param)
 
-        expected_get = _is_compatible(value, type_param)
+            with subtests.test(f"{type_param!r} get / is_gettable ({example.label})"):
+                if expected_get:
+                    assert ptr.get(doc) == value
+                    assert ptr.is_gettable(doc) is True
+                else:
+                    with pytest.raises(PatchConflictError):
+                        ptr.get(doc)
+                    assert ptr.is_gettable(doc) is False
 
-        with subtests.test(f"{type_param!r} get / is_gettable ({label})"):
-            if expected_get:
-                assert ptr.get(doc) == value
-                assert ptr.is_gettable(doc) is True
-            else:
-                with pytest.raises(PatchConflictError):
-                    ptr.get(doc)
-                assert ptr.is_gettable(doc) is False
+            with subtests.test(f"{type_param!r} is_valid_type ({example.label})"):
+                assert ptr.is_valid_type(value) is expected_get
 
-        with subtests.test(f"{type_param!r} is_valid_type ({label})"):
-            assert ptr.is_valid_type(value) is expected_get
 
-        # add at VALUE_PRESENT on object key "/k" (overwrite with a different value when possible)
-        new_value = alt_valid_T_value if value != alt_valid_T_value else valid_T_value
-        expected_add = _is_compatible(value, type_param) and _is_compatible(
-            new_value, (type_param, JSONValue)
+def test_jsonpointer_remove_is_removable(subtests: Subtests, suite: TypeSuite) -> None:
+    for type_param in suite.types:
+        ptr = _ptr_for(type_param, "/k")
+        for example in suite.examples:
+            value = example.value
+            doc: JSONValue = {"k": value}
+            expected_remove = _is_compatible(suite, value, type_param)
+
+            with subtests.test(
+                f"{type_param!r} remove / is_removable ({example.label})"
+            ):
+                assert ptr.is_removable(doc) is expected_remove
+                if expected_remove:
+                    d2 = copy.deepcopy(doc)
+                    out = ptr.remove(d2)
+                    assert isinstance(out, dict)
+                    assert "k" not in out
+                else:
+                    with pytest.raises(PatchConflictError):
+                        ptr.remove(copy.deepcopy(doc))
+
+
+def test_jsonpointer_add_is_addable_overwrite_object(
+    subtests: Subtests, suite: TypeSuite
+) -> None:
+    for type_param in suite.types:
+        valid_examples = suite.get_examples(type_param, valid=True)
+        valid_T_value = valid_examples[0].value
+        alt_valid_T_value = (
+            valid_examples[1].value if len(valid_examples) > 1 else valid_T_value
         )
-
-        with subtests.test(
-            f"{type_param!r} add / is_addable overwrite-object ({label})"
-        ):
-            if expected_add:
-                d2 = copy.deepcopy(doc)
-                assert ptr.is_addable(d2, new_value) is True
-                out = ptr.add(d2, new_value)
-                assert isinstance(out, dict)
-                assert out["k"] == new_value
-            else:
-                assert ptr.is_addable(doc, new_value) is False
-                with pytest.raises(PatchConflictError):
-                    ptr.add(copy.deepcopy(doc), new_value)
-
-        # overwrite gating regression: even if new value is valid for T,
-        # overwrite must be blocked when existing value isn't T
-        if (not pred(value)) and _is_compatible(valid_T_value, (type_param, JSONValue)):
-            with subtests.test(
-                f"{type_param!r} overwrite blocked when existing wrong type ({label})"
-            ):
-                assert ptr.is_addable(doc, valid_T_value) is False
-                with pytest.raises(PatchConflictError):
-                    ptr.add(copy.deepcopy(doc), valid_T_value)
-
-        with subtests.test(f"{type_param!r} remove / is_removable ({label})"):
-            expected_remove = _is_compatible(value, type_param)
-            assert ptr.is_removable(doc) is expected_remove
-
-            if expected_remove:
-                d2 = copy.deepcopy(doc)
-                out = ptr.remove(d2)
-                assert isinstance(out, dict)
-                assert "k" not in out
-            else:
-                with pytest.raises(PatchConflictError):
-                    ptr.remove(copy.deepcopy(doc))
-
-    for example in invalid_examples:
-        label, value = example
-        doc = {"k": value}
         ptr = _ptr_for(type_param, "/k")
 
-        with subtests.test(f"{type_param!r} invalid get / is_gettable ({label})"):
-            with pytest.raises(PatchConflictError):
-                ptr.get(doc)
-            assert ptr.is_gettable(doc) is False
+        for example in suite.examples:
+            value = example.value
+            doc: JSONValue = {"k": value}
+            new_value = (
+                alt_valid_T_value if value != alt_valid_T_value else valid_T_value
+            )
 
-        with subtests.test(f"{type_param!r} invalid is_valid_type ({label})"):
-            assert ptr.is_valid_type(value) is False
+            expected_existing_ok = _is_compatible(suite, value, type_param)
+            expected_new_ok = _is_compatible(suite, new_value, (type_param, JSONValue))
+            expected_add = expected_existing_ok and expected_new_ok
 
-        with subtests.test(
-            f"{type_param!r} invalid add / is_addable overwrite-object ({label})"
-        ):
-            assert ptr.is_addable(doc, value) is False
-            with pytest.raises(PatchConflictError):
-                ptr.add(copy.deepcopy(doc), value)
-
-        if _is_compatible(valid_T_value, (type_param, JSONValue)):
             with subtests.test(
-                f"{type_param!r} overwrite blocked when existing wrong type ({label})"
+                f"{type_param!r} add / is_addable overwrite-object ({example.label})"
             ):
-                assert ptr.is_addable(doc, valid_T_value) is False
-                with pytest.raises(PatchConflictError):
-                    ptr.add(copy.deepcopy(doc), valid_T_value)
+                if expected_add:
+                    d2 = copy.deepcopy(doc)
+                    assert ptr.is_addable(d2, new_value) is True
+                    out = ptr.add(d2, new_value)
+                    assert isinstance(out, dict)
+                    assert out["k"] == new_value
+                else:
+                    assert ptr.is_addable(doc, new_value) is False
+                    with pytest.raises(PatchConflictError):
+                        ptr.add(copy.deepcopy(doc), new_value)
 
-        with subtests.test(f"{type_param!r} invalid remove / is_removable ({label})"):
-            assert ptr.is_removable(doc) is False
-            with pytest.raises(PatchConflictError):
-                ptr.remove(copy.deepcopy(doc))
-
-
-@pytest.mark.parametrize("json_type", TYPE_MAPPING.keys(), ids=lambda t: repr(t))
-def test_jsonpointer_type_gating_methods(
-    subtests: Subtests, suite: TypeSuite, json_type: Any
-) -> None:
-    """
-    Verifies JSONPointer type safety across get, add, and remove operations.
-
-    Covers two subtly different behaviors:
-    1. Type Gating: Operations only succeed if the data going in and out matches the Pointer's T.
-    2. JSON Enforcement: Even if T is a permissive type like 'Any', values must be valid JSON types.
-    """
-    pred = suite.get_predicate(json_type)
-    is_json = suite.get_predicate(JSONValue)
-
-    # Representative valid value used to test overwriting existing data
-    valid_examples = suite.get_examples(json_type, valid=True)
-    sample_valid = valid_examples[0].value
-
-    ptr = TypeAdapter(JSONPointer[json_type]).validate_python("/k")
-
-    # Scenario A: Comprehensive Value Iteration
-    for ex in suite.examples:
-        doc = {"k": ex.value}
-        # Does this specific example satisfy the Pointer's type parameter?
-        satisfies_t = pred(ex.value)
-        # Is this a valid JSON type (prevents Python-only types like sets)?
-        satisfies_json = is_json(ex.value)
-
-        with subtests.test(f"op-gating: {json_type!r} with {ex.label}"):
-            # 1. READ: get/is_gettable
-            if satisfies_t:
-                assert ptr.get(doc) == ex.value
-                assert ptr.is_gettable(doc) is True
-                assert ptr.is_valid_type(ex.value) is True
-            else:
-                assert ptr.is_gettable(doc) is False
-                with pytest.raises(PatchConflictError):
-                    ptr.get(doc)
-                assert ptr.is_valid_type(ex.value) is False
-
-            # 2. WRITE: add/is_addable
-            # Must satisfy T AND be valid JSON AND the update must be correct
-            if satisfies_t and satisfies_json:
-                updated = ptr.add(copy.deepcopy(doc), ex.value)
-                assert updated["k"] == ex.value
-                assert ptr.is_addable(doc, ex.value) is True
-            else:
-                assert ptr.is_addable(doc, ex.value) is False
-                with pytest.raises(PatchConflictError):
-                    ptr.add(copy.deepcopy(doc), ex.value)
-
-            # 3. DELETE: remove/is_removable
-            if satisfies_t:
-                assert ptr.is_removable(doc) is True
-                removed = ptr.remove(copy.deepcopy(doc))
-                assert "k" not in removed
-            else:
-                assert ptr.is_removable(doc) is False
-                with pytest.raises(PatchConflictError):
-                    ptr.remove(copy.deepcopy(doc))
-
-    # Scenario B: Overwrite Safety Regression
-    # Logic: If path '/k' contains a non-T value, we cannot use a T-Pointer
-    # to overwrite it, even if the NEW value is valid.
-    invalid_examples = suite.get_examples(json_type, valid=False)
-    for ex in invalid_examples:
-        doc = {"k": ex.value}
-        with subtests.test(f"overwrite-integrity: {json_type!r} on invalid {ex.label}"):
-            # sample_valid is correct for T, but current doc['k'] is not.
-            assert ptr.is_addable(doc, sample_valid) is False
-            with pytest.raises(PatchConflictError):
-                ptr.add(copy.deepcopy(doc), sample_valid)
+            if (not expected_existing_ok) and expected_new_ok:
+                with subtests.test(
+                    f"{type_param!r} overwrite blocked when existing wrong type ({example.label})"
+                ):
+                    assert ptr.is_addable(doc, valid_T_value) is False
+                    with pytest.raises(PatchConflictError):
+                        ptr.add(copy.deepcopy(doc), valid_T_value)
 
 
 # ============================================================================
@@ -348,7 +250,7 @@ def test_jsonpointer_type_gating_methods(
 # ============================================================================
 
 
-def test_jsonpointer_edge_cases(subtests: Subtests) -> None:
+def test_jsonpointer_root_semantics(subtests: Subtests) -> None:
     adapter = TypeAdapter(JSONPointer[JSONValue])
 
     with subtests.test("root semantics"):
@@ -357,16 +259,20 @@ def test_jsonpointer_edge_cases(subtests: Subtests) -> None:
         assert root.add({"a": 1}, {"b": 2}) == {"b": 2}
         assert root.remove({"a": 1}) is None
 
-    with subtests.test("array index handling: get"):
+
+def test_jsonpointer_array_index_handling(subtests: Subtests) -> None:
+    adapter = TypeAdapter(JSONPointer[JSONValue])
+
+    with subtests.test("get by index"):
         item = adapter.validate_python("/arr/0")
         assert item.get({"arr": [10, 20]}) == 10
 
-    with subtests.test("array index handling: append add"):
+    with subtests.test("append add"):
         doc = {"arr": [10]}
         appended = adapter.validate_python("/arr/-").add(doc, 30)
         assert appended["arr"] == [10, 30]
 
-    with subtests.test("array index handling: remove failures"):
+    with subtests.test("remove failures"):
         with pytest.raises(PatchConflictError):
             adapter.validate_python("/arr/-").remove({"arr": [10]})
         with pytest.raises(PatchConflictError):
@@ -378,17 +284,22 @@ def test_jsonpointer_edge_cases(subtests: Subtests) -> None:
         with pytest.raises(PatchConflictError):
             adapter.validate_python("/arr/01").remove({"arr": [10, 20]})
 
-    with subtests.test("array index handling: VALUE_PRESENT insert semantics"):
+    with subtests.test("insert semantics (VALUE_PRESENT)"):
         # /arr/1 with add() inserts (shifts), not overwrite
         doc = {"arr": [10, 20]}
         out = adapter.validate_python("/arr/1").add(doc, 15)
         assert out["arr"] == [10, 15, 20]
 
-    with subtests.test("is_addable edge cases"):
+
+def test_jsonpointer_is_addable_edge_cases(subtests: Subtests) -> None:
+    adapter = TypeAdapter(JSONPointer[JSONValue])
+
+    with subtests.test("root is_addable"):
         root_number = TypeAdapter(JSONPointer[JSONNumber]).validate_python("")
         assert root_number.is_addable(1) is True
         assert root_number.is_addable("nope") is False
 
+    with subtests.test("array indices"):
         doc = {"arr": [10]}
         assert adapter.validate_python("/arr/0").is_addable(doc, 5) is True
         assert adapter.validate_python("/arr/1").is_addable(doc, 5) is True
@@ -396,24 +307,33 @@ def test_jsonpointer_edge_cases(subtests: Subtests) -> None:
         assert adapter.validate_python("/arr/-").is_addable(doc, 5) is True
         assert adapter.validate_python("/arr/nope").is_addable(doc, 5) is False
 
+    with subtests.test("parent not container"):
         assert adapter.validate_python("/a/b").is_addable({"a": 1}, 5) is False
 
-    with subtests.test("container type errors"):
-        ptr = adapter.validate_python("/a/b")
+
+def test_jsonpointer_container_type_errors(subtests: Subtests) -> None:
+    adapter = TypeAdapter(JSONPointer[JSONValue])
+    ptr = adapter.validate_python("/a/b")
+    with subtests.test("add on primitive parent"):
         with pytest.raises(PatchConflictError):
             ptr.add({"a": 1}, "ok")
+    with subtests.test("remove on primitive parent"):
         with pytest.raises(PatchConflictError):
             ptr.remove({"a": 1})
 
-    with subtests.test("parent/child edge cases"):
-        parent = adapter.validate_python("/a")
-        child = adapter.validate_python("/a/b")
-        same = adapter.validate_python("/a")
+
+def test_jsonpointer_parent_child_edge_cases(subtests: Subtests) -> None:
+    adapter = TypeAdapter(JSONPointer[JSONValue])
+    parent = adapter.validate_python("/a")
+    child = adapter.validate_python("/a/b")
+    same = adapter.validate_python("/a")
+    with subtests.test("parent/child basics"):
         assert parent.is_parent_of(child) is True
         assert child.is_child_of(parent) is True
         assert parent.is_parent_of(same) is False
         assert parent.is_child_of(child) is False
 
+    with subtests.test("backend mismatch errors"):
         dot_adapter = TypeAdapter(JSONPointer[JSONValue, DotPointer])
         dot_ptr = dot_adapter.validate_python("a.b")
         with pytest.raises(InvalidJSONPointer):
