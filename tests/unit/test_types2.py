@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import copy
 from dataclasses import dataclass
+from operator import attrgetter
 from typing import Any, Final
 
 import pytest
@@ -37,10 +38,9 @@ def test_json_type_validations(subtests: Subtests, suite: TypeSuite) -> None:
     """Verify that Pydantic TypeAdapters align with suite predicate logic."""
     for json_type in suite.types:
         adapter = TypeAdapter(json_type)
-        pred = suite.get_predicate(json_type)
 
         for example in suite.examples:
-            expected_ok = pred(example.value)
+            expected_ok = suite.is_compatible(example.value, json_type)
             label = f"{json_type!r} vs {example.label}"
 
             with subtests.test(label):
@@ -114,11 +114,10 @@ STATE_SCENARIOS: Final[tuple[StateScenario, ...]] = (
         TargetState.VALUE_PRESENT_AT_NEGATIVE_ARRAY_INDEX,
     ),
 )
+assert len(STATE_SCENARIOS) == len(TargetState)
 
 
-@pytest.mark.parametrize(
-    "scenario", STATE_SCENARIOS, ids=[s.label for s in STATE_SCENARIOS]
-)
+@pytest.mark.parametrize("scenario", STATE_SCENARIOS, ids=attrgetter("label"))
 def test_classify_state(scenario: StateScenario) -> None:
     ptr = TypeAdapter(JSONPointer[JSONValue]).validate_python(scenario.path)
     assert classify_state(ptr.ptr, scenario.doc) is scenario.expected

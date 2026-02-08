@@ -85,59 +85,7 @@ class PointerMissingParts(PointerBackend):
 
 
 # ============================================================================
-# 2) Type Suite
-# ============================================================================
-
-type Predicate[T] = Callable[[object], TypeIs[T]]
-type _TypeInfo = TypeForm[Any] | tuple[_TypeInfo]
-
-
-@dataclass(frozen=True)
-class ExampleValue:
-    label: str
-    value: object
-
-
-@dataclass(frozen=True)
-class TypeSuite:
-    """A registry of JSON types, their predicates, and associated test data."""
-
-    registry: dict[Any, Predicate[Any]]
-    examples: tuple[ExampleValue, ...]
-
-    @cached_property
-    def types(self) -> tuple[Any, ...]:
-        return tuple(self.registry.keys())
-
-    def get_predicate(self, json_type: Any) -> Predicate[Any]:
-        return self.registry[json_type]
-
-    def get_examples(
-        self, json_type: Any, valid: bool = True
-    ) -> tuple[ExampleValue, ...]:
-        pred = self.get_predicate(json_type)
-        matches = [
-            ex
-            for ex in self.examples
-            if (pred(ex.value) if valid else not pred(ex.value))
-        ]
-        if len(matches) < 2:
-            raise AssertionError(
-                f"Insufficient {'valid' if valid else 'invalid'} examples for {json_type!r}"
-            )
-        return tuple(matches)
-
-    def is_compatible(self, value: object, type_or_tuple: _TypeInfo) -> bool:
-        """
-        Analogous to `isinstance` but using suite predicates.
-        """
-        if not isinstance(type_or_tuple, tuple):
-            return self.get_predicate(type_or_tuple)(value)
-        return all(self.is_compatible(value, nested) for nested in type_or_tuple)
-
-
-# ============================================================================
-# 3) Predicate Definitions
+# 2) Predicate Definitions
 # ============================================================================
 
 
@@ -189,6 +137,61 @@ def _is_object_of[T](pred: Predicate[T]) -> Predicate[JSONObject[T]]:
         return _is_object_any(v) and all(pred(val) for val in v.values())
 
     return _p
+
+
+# ============================================================================
+# 3) Type Suite
+# ============================================================================
+
+type Predicate[T] = Callable[[object], TypeIs[T]]
+type _TypeInfo = TypeForm[Any] | tuple[_TypeInfo]
+
+
+@dataclass(frozen=True)
+class ExampleValue:
+    label: str
+    value: object
+
+
+@dataclass(frozen=True)
+class TypeSuite:
+    """A registry of JSON types, their predicates, and associated test data."""
+
+    type_map: dict[TypeForm[Any], Predicate[Any]]
+    examples: tuple[ExampleValue, ...]
+
+    @cached_property
+    def types(self) -> tuple[Any, ...]:
+        """Return all registered JSON types."""
+        return tuple(self.type_map.keys())
+
+    def get_predicate(self, json_type: Any) -> Predicate[Any]:
+        """Return the predicate associated with ``json_type``."""
+        if json_type not in self.type_map:
+            raise AssertionError("Type {json_type!r} is not registered in {self!r}")
+        return self.type_map[json_type]
+
+    def is_compatible(self, value: object, type_or_tuple: _TypeInfo) -> bool:
+        """Analogous to `isinstance` but using suite predicates."""
+        if not isinstance(type_or_tuple, tuple):
+            return self.get_predicate(type_or_tuple)(value)
+        return all(self.is_compatible(value, nested) for nested in type_or_tuple)
+
+    def get_examples(
+        self, json_type: Any, valid: bool = True
+    ) -> tuple[ExampleValue, ...]:
+        """Return example values that pass or fail the predicate for ``json_type``."""
+        pred = self.get_predicate(json_type)
+        matches = [
+            ex
+            for ex in self.examples
+            if (pred(ex.value) if valid else not pred(ex.value))
+        ]
+        if len(matches) < 2:
+            raise AssertionError(
+                f"Insufficient {'valid' if valid else 'invalid'} examples for {json_type!r}"
+            )
+        return tuple(matches)
 
 
 # ============================================================================
@@ -253,4 +256,4 @@ TYPE_MAPPING: Final = {
 
 @pytest.fixture(scope="session")
 def suite() -> TypeSuite:
-    return TypeSuite(registry=TYPE_MAPPING, examples=EXAMPLE_VALUES)
+    return TypeSuite(type_map=TYPE_MAPPING, examples=EXAMPLE_VALUES)
