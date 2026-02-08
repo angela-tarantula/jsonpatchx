@@ -12,24 +12,20 @@ from jsonpatchx import JsonPatch, JSONValue, StandardRegistry
 from jsonpatchx.exceptions import PatchError
 
 JSON_PATCH_TESTS_DIR = Path(__file__).resolve().parents[1] / "json-patch-tests"
-EXTRA_FIELDS_CASES = {
-    "spurious patch properties",
-    "A.11.  Ignoring Unrecognized Elements",
-}
 
 
 MISSING = "__MISSING__"
 
 
 class Case(BaseModel):
-    model_config = ConfigDict(strict=True, extra="forbid")
+    model_config = ConfigDict(frozen=True, strict=True, extra="forbid")
 
     doc: JSONValue
     patch: list[dict[str, Any]]
     expected: JSONValue = MISSING
     error: str | None = None
     comment: str = "<no comment>"
-    disabled: bool | None = None
+    disabled: bool = False
 
     @model_validator(mode="after")
     def _ensure_expected_or_error(self) -> Self:
@@ -65,11 +61,6 @@ def cases() -> list[Case]:
 
 @pytest.mark.parametrize("case", cases(), ids=attrgetter("comment"))
 def test_json_patch_compliance(case: Case) -> None:
-    if case.comment in EXTRA_FIELDS_CASES:
-        with pytest.raises(ValidationError):
-            JsonPatch(case.patch, registry=StandardRegistry)
-        pytest.xfail("library forbids extra fields on operations")
-
     try:
         patch = JsonPatch(case.patch, registry=StandardRegistry)
     except Exception as exc:

@@ -60,7 +60,7 @@ class OperationSchema(BaseModel, ABC):
     model_config = ConfigDict(
         frozen=True,
         strict=True,
-        extra="forbid",
+        extra="allow",
         revalidate_instances="always",  # necessary for converting custom PointerBackends
         # NOTE: validators may run multiple times; guide users to write idempotent validators.
     )
