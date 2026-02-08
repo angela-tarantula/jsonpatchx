@@ -459,7 +459,7 @@ cd json-patch-x
 2. Initialize git submodules (required for the external compliance suite)
 
 ```sh
-git submodule update --init --recursive
+git submodule update --init
 ```
 
 3. Install the dependencies
