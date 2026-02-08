@@ -456,7 +456,13 @@ git clone https://github.com/angela-tarantula/json-patch-x
 cd json-patch-x
 ```
 
-2. Install the dependencies
+2. Initialize git submodules (required for the external compliance suite)
+
+```sh
+git submodule update --init --recursive
+```
+
+3. Install the dependencies
 
 ```sh
 uv sync --group dev --all-extras

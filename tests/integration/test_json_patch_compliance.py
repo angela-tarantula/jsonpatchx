@@ -1,3 +1,10 @@
+"""
+Test json-patch-x against an external compliance test suite.
+
+The json-patch-tests submodule is located in /tests/cts.
+After a git clone, run `git submodule update --init` from the root of the repository.
+"""
+
 from __future__ import annotations
 
 import importlib.resources as resources
@@ -11,7 +18,7 @@ from pydantic import BaseModel, ConfigDict, ValidationError, model_validator
 from jsonpatchx import JsonPatch, JSONValue, StandardRegistry
 from jsonpatchx.exceptions import PatchError
 
-JSON_PATCH_TESTS_DIR = resources.files("tests") / "json-patch-tests"
+JSON_PATCH_TESTS_DIR = resources.files("tests") / "cts"
 
 SKIPPED_CASES: Final = {
     "duplicate ops": (
