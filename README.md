@@ -456,7 +456,7 @@ git clone https://github.com/angela-tarantula/json-patch-x
 cd json-patch-x
 ```
 
-2. Initialize git submodules (required for the external compliance suite)
+2. Initialize [git submodules](https://git-scm.com/book/en/v2/Git-Tools-Submodules) (required for the external compliance suite)
 
 ```sh
 git submodule update --init
@@ -468,23 +468,36 @@ git submodule update --init
 uv sync --group dev --all-extras
 ```
 
+4. Install [prek](https://github.com/j178/prek) (pre-commit runner):
+
+```sh
+uv tool install prek
+prek install
+```
+
 ### Development
 
-Run type checks:
+Run type checks with [mypy](https://www.mypy-lang.org/):
 
 ```sh
 uv run mypy .
 ```
 
-Run the test suite:
+Run tests with [pytest](https://docs.pytest.org/en/stable/):
 
 ```sh
 uv run pytest -v
 ```
 
-Generate and view the coverage report:
+Generate and view the coverage report with [pytest-cov](https://github.com/pytest-dev/pytest-cov):
 
 ```sh
 uv run pytest --cov=jsonpatchx --cov-report=html
 open htmlcov/index.html
+```
+
+Lint with [ruff](https://docs.astral.sh/ruff/):
+
+```sh
+uv run ruff format
 ```
