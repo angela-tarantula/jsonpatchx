@@ -8,7 +8,7 @@ from types import NoneType
 from typing import Any, Callable, Final, Self
 
 import pytest
-from typing_extensions import TypeIs
+from typing_extensions import TypeForm, TypeIs
 
 from jsonpatchx.backend import PointerBackend
 from jsonpatchx.types import (
@@ -89,6 +89,7 @@ class PointerMissingParts(PointerBackend):
 # ============================================================================
 
 type Predicate[T] = Callable[[object], TypeIs[T]]
+type _TypeInfo = TypeForm[Any] | tuple[_TypeInfo]
 
 
 @dataclass(frozen=True)
@@ -125,6 +126,14 @@ class TypeSuite:
                 f"Insufficient {'valid' if valid else 'invalid'} examples for {json_type!r}"
             )
         return tuple(matches)
+
+    def is_compatible(self, value: object, type_or_tuple: _TypeInfo) -> bool:
+        """
+        Analogous to `isinstance` but using suite predicates.
+        """
+        if not isinstance(type_or_tuple, tuple):
+            return self.get_predicate(type_or_tuple)(value)
+        return all(self.is_compatible(value, nested) for nested in type_or_tuple)
 
 
 # ============================================================================

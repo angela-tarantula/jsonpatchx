@@ -9,7 +9,6 @@ from jsonpath import JSONPointer as ExtendedJsonPointer
 from jsonpointer import JsonPointer as RFC6901JsonPointer
 from pydantic import TypeAdapter, ValidationError
 from pytest import Subtests
-from typing_extensions import TypeForm
 
 from jsonpatchx.backend import (
     PointerBackend,
@@ -28,27 +27,6 @@ from tests.conftest import (
     PointerMissingParts,
     TypeSuite,
 )
-
-# ============================================================================
-# Sources of truth for type acceptance
-# ============================================================================
-
-type _TypeInfo = TypeForm[Any] | tuple[_TypeInfo]
-
-
-def _is_compatible(
-    type_suite: TypeSuite, value: object, type_or_tuple: _TypeInfo
-) -> bool:
-    """
-    Analogous to `isinstance` but for types in TypeSuite.
-    """
-    if not isinstance(type_or_tuple, tuple):
-        return type_suite.get_predicate(type_or_tuple)(value)
-    return all(
-        _is_compatible(type_suite, value, nested_type_or_tuple)
-        for nested_type_or_tuple in type_or_tuple
-    )
-
 
 # ============================================================================
 # 1) JSON alias validations
@@ -163,7 +141,7 @@ def test_jsonpointer_get_is_gettable_and_is_valid_type(
         for example in suite.examples:
             value = example.value
             doc: JSONValue = {"k": value}
-            expected_get = _is_compatible(suite, value, type_param)
+            expected_get = suite.is_compatible(value, type_param)
 
             with subtests.test(f"{type_param!r} get / is_gettable ({example.label})"):
                 if expected_get:
@@ -184,7 +162,7 @@ def test_jsonpointer_remove_is_removable(subtests: Subtests, suite: TypeSuite) -
         for example in suite.examples:
             value = example.value
             doc: JSONValue = {"k": value}
-            expected_remove = _is_compatible(suite, value, type_param)
+            expected_remove = suite.is_compatible(value, type_param)
 
             with subtests.test(
                 f"{type_param!r} remove / is_removable ({example.label})"
@@ -218,8 +196,8 @@ def test_jsonpointer_add_is_addable_overwrite_object(
                 alt_valid_T_value if value != alt_valid_T_value else valid_T_value
             )
 
-            expected_existing_ok = _is_compatible(suite, value, type_param)
-            expected_new_ok = _is_compatible(suite, new_value, (type_param, JSONValue))
+            expected_existing_ok = suite.is_compatible(value, type_param)
+            expected_new_ok = suite.is_compatible(new_value, (type_param, JSONValue))
             expected_add = expected_existing_ok and expected_new_ok
 
             with subtests.test(
