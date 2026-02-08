@@ -3,6 +3,7 @@ from __future__ import annotations
 import copy
 import math
 from dataclasses import dataclass
+from types import NoneType
 from typing import Any, Callable, Final, NamedTuple
 
 import pytest
@@ -115,9 +116,51 @@ def _is_compatible(value: object, type_or_tuple: _TypeInfo) -> bool:
         for nested_type_or_tuple in type_or_tuple
     )
 
+
 # ===========================================================================================
 # Parameterizations
 # ===========================================================================================
+
+
+class ExampleValue(NamedTuple):
+    label: str
+    value: object
+
+
+# Fixed regression examples (easy to read, stable, good failure labels)
+EXAMPLE_VALUES: Final[tuple[ExampleValue, ...]] = (
+    ExampleValue("bool-true", True),
+    ExampleValue("bool-false", False),
+    ExampleValue("int", 1),
+    ExampleValue("float", 1.5),
+    ExampleValue("string", "ok"),
+    ExampleValue("stringy-number", "1"),
+    ExampleValue("null-1", None),
+    ExampleValue("null-2", NoneType()),
+    ExampleValue("array-simple", [1, {"a": 2}, "ok"]),
+    ExampleValue("array-object-item", [object()]),
+    ExampleValue("array-bytes-item", [b"bytes"]),
+    ExampleValue("array-number", [1, 2, 3]),
+    ExampleValue("array-number-float", [1, 2.5]),
+    ExampleValue("array-number-null", [1, None]),
+    ExampleValue("empty-object", {}),
+    ExampleValue("object-simple", {"a": 1, "b": "ok", "c": None, "d": True}),
+    ExampleValue("object-any", {"a": 1, "b": object()}),
+    ExampleValue("object-strings", {"a": "ok", "b": "yes"}),
+    ExampleValue("object-strings-null", {"a": None}),
+    ExampleValue("nested", {"a": [1, {"b": [True, None, 3.5]}], "c": {"d": "ok"}}),
+    ExampleValue("empty-array", []),
+    ExampleValue("nested-obj-array-num", [{"a": 1}, {"b": 2}]),
+    ExampleValue("nested-obj-array-num-null", [{"a": 1}, {"b": None}]),
+    ExampleValue("bytes", b"bytes"),
+    ExampleValue("object", object()),
+    ExampleValue("tuple", (1, 2)),
+    ExampleValue("set", {"a", "b"}),
+    ExampleValue("dict-non-str-key", {1: "nope"}),
+    ExampleValue("nan", float("nan")),
+    ExampleValue("inf", float("inf")),
+)
+
 
 type CustomType = TypeForm[Any]
 
@@ -142,6 +185,20 @@ class ExampleTypeCatalog:
     @property
     def predicates(self) -> dict[CustomType, Predicate[CustomType]]:
         return {example.json_type: example.predicate for example in self.examples}
+
+    def valid_examples(self, type: CustomType) -> tuple[ExampleValue, ...]:
+        pred = self.predicates[type]
+        examples = tuple(ex for ex in EXAMPLE_VALUES if pred(ex.value))
+        if len(examples) < 2:
+            raise AssertionError(f"Missing valid examples for {type!r}")
+        return examples
+
+    def invalid_examples(self, type: CustomType) -> tuple[ExampleValue, ...]:
+        pred = self.predicates[type]
+        examples = tuple(ex for ex in EXAMPLE_VALUES if not pred(ex.value))
+        if len(examples) < 2:
+            raise AssertionError(f"Missing invalid examples for {type!r}")
+        return examples
 
 
 EXAMPLE_TYPE_CATALOG: Final = ExampleTypeCatalog(
@@ -168,65 +225,6 @@ EXAMPLE_TYPE_CATALOG: Final = ExampleTypeCatalog(
         ),
     )
 )
-
-
-class ExampleValue(NamedTuple):
-    label: str
-    value: object
-
-
-# Fixed regression examples (easy to read, stable, good failure labels)
-EXAMPLE_VALUES: Final[tuple[ExampleValue, ...]] = (
-    ExampleValue("bool-true", True),
-    ExampleValue("bool-false", False),
-    ExampleValue("int", 1),
-    ExampleValue("float", 1.5),
-    ExampleValue("string", "ok"),
-    ExampleValue("null", None),
-    ExampleValue("array-simple", [1, {"a": 2}, "ok"]),
-    ExampleValue("array-object-item", [object()]),
-    ExampleValue("array-bytes-item", [b"bytes"]),
-    ExampleValue("array-number", [1, 2, 3]),
-    ExampleValue("array-number-float", [1, 2.5]),
-    ExampleValue("array-number-null", [1, None]),
-    ExampleValue("object-simple", {"a": 1, "b": "ok", "c": None, "d": True}),
-    ExampleValue("object-any", {"a": 1, "b": object()}),
-    ExampleValue("object-strings", {"a": "ok", "b": "yes"}),
-    ExampleValue("object-strings-null", {"a": None}),
-    ExampleValue("nested", {"a": [1, {"b": [True, None, 3.5]}], "c": {"d": "ok"}}),
-    ExampleValue("nested-obj-array-num", [{"a": 1}, {"b": 2}]),
-    ExampleValue("nested-obj-array-num-null", [{"a": 1}, {"b": None}]),
-    ExampleValue("bytes", b"bytes"),
-    ExampleValue("object", object()),
-    ExampleValue("tuple", (1, 2)),
-    ExampleValue("set", {"a", "b"}),
-    ExampleValue("dict-non-str-key", {1: "nope"}),
-    ExampleValue("nan", float("nan")),
-    ExampleValue("inf", float("inf")),
-)
-
-
-def _build_examples_by_type() -> tuple[
-    dict[CustomType, list[ExampleValue]], dict[CustomType, list[ExampleValue]]
-]:
-    valids: dict[CustomType, list[ExampleValue]] = {
-        json_type: [] for json_type in EXAMPLE_TYPE_CATALOG.json_types
-    }
-    invalids = copy.deepcopy(valids)
-    for json_type, pred in EXAMPLE_TYPE_CATALOG.predicates.items():
-        for example in EXAMPLE_VALUES:
-            if pred(example.value):
-                valids[json_type].append(example)
-            else:
-                invalids[json_type].append(example)
-        if not valids[json_type]:
-            raise AssertionError(f"Missing valid examples for {json_type!r}")
-        if not invalids[json_type]:
-            raise AssertionError(f"Missing invalid examples for {json_type!r}")
-    return valids, invalids
-
-
-VALID_EXAMPLES_BY_TYPE, INVALID_EXAMPLES_BY_TYPE = _build_examples_by_type()
 
 
 # ============================================================================
@@ -340,8 +338,8 @@ def _ptr_for(type_param: Any, path: str) -> JSONPointer[Any]:
 )
 def test_jsonpointer_type_gating_methods(subtests: Subtests, type_param: Any) -> None:
     pred = EXAMPLE_TYPE_CATALOG.predicates[type_param]
-    valid_examples = VALID_EXAMPLES_BY_TYPE[type_param]
-    invalid_examples = INVALID_EXAMPLES_BY_TYPE[type_param]
+    valid_examples = EXAMPLE_TYPE_CATALOG.valid_examples(type_param)
+    invalid_examples = EXAMPLE_TYPE_CATALOG.invalid_examples(type_param)
     valid_T_value = valid_examples[0].value
     alt_valid_T_value = (
         valid_examples[1].value if len(valid_examples) > 1 else valid_T_value
