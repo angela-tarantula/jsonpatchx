@@ -1,9 +1,9 @@
 from __future__ import annotations
 
+import importlib.resources as resources
 import json
 from operator import attrgetter
-from pathlib import Path
-from typing import Any, Self
+from typing import Any, Final, Self
 
 import pytest
 from pydantic import BaseModel, ConfigDict, ValidationError, model_validator
@@ -11,21 +11,29 @@ from pydantic import BaseModel, ConfigDict, ValidationError, model_validator
 from jsonpatchx import JsonPatch, JSONValue, StandardRegistry
 from jsonpatchx.exceptions import PatchError
 
-JSON_PATCH_TESTS_DIR = Path(__file__).resolve().parents[1] / "json-patch-tests"
+JSON_PATCH_TESTS_DIR = resources.files("tests") / "json-patch-tests"
+
+SKIPPED_CASES: Final = {
+    "duplicate ops": (
+        "Optional case: json-patch-x defers duplicate-key handling to the JSON decoder. "
+        "JsonPatch.from_string() follows json.loads() (last-write-wins). "
+        "If you want strict duplicate-key rejection, parse JSON yourself and pass the result to JsonPatch()."
+    )
+}
 
 
 MISSING = "__MISSING__"
 
 
 class Case(BaseModel):
-    model_config = ConfigDict(frozen=True, strict=True, extra="forbid")
+    model_config = ConfigDict(frozen=True, strict=True)
 
     doc: JSONValue
     patch: list[dict[str, Any]]
     expected: JSONValue = MISSING
     error: str | None = None
     comment: str = "<no comment>"
-    disabled: bool = False
+    # disregard the 'disabled' flag because json-patch-x implements handling of these cases
 
     @model_validator(mode="after")
     def _ensure_expected_or_error(self) -> Self:
@@ -61,6 +69,9 @@ def cases() -> list[Case]:
 
 @pytest.mark.parametrize("case", cases(), ids=attrgetter("comment"))
 def test_json_patch_compliance(case: Case) -> None:
+    if case.comment in SKIPPED_CASES:  # pragma: no cover
+        pytest.skip(reason=SKIPPED_CASES[case.comment])
+
     try:
         patch = JsonPatch(case.patch, registry=StandardRegistry)
     except Exception as exc:

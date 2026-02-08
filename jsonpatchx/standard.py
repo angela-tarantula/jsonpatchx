@@ -159,6 +159,9 @@ class JsonPatch(Sequence[OperationSchema]):
         """
         Construct a JsonPatch from a JSON-formatted string.
 
+        JSON decoding follows last-write-wins just like ``json.loads()``
+        If you want strict duplicate-key rejection, parse JSON yourself and pass the result to ``JsonPatch()``.
+
         Args:
             text: JSON-formatted string/bytes/bytearray for a JSON Patch document.
             registry: OperationRegistry to use for parsing/validation. If omitted,
