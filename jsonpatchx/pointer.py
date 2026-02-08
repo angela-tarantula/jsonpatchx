@@ -334,7 +334,7 @@ class JSONPointer(str, Generic[T_co, P_co]):
         *,
         type_param: TypeForm[Any] = JSONValue,
         backend: type[_PointerClassProtocol] | None = None,
-        context: dict[str, object] | None = None,
+        context: type[_PointerClassProtocol] | None = None,
     ) -> Self:
         """
         Parse a pointer string or instance using Pydantic validation.
@@ -347,7 +347,12 @@ class JSONPointer(str, Generic[T_co, P_co]):
             else JSONPointer[type_param, backend]  # type: ignore[valid-type]
         )
         adapter = TypeAdapter(pointer_type)
-        return adapter.validate_python(path, context=context)
+        ctx: dict[str, type[_PointerClassProtocol]] | None
+        if context is None:
+            ctx = context
+        else:
+            ctx = {_JSONPOINTER_POINTER_BACKEND_CTX_KEY: context}
+        return adapter.validate_python(path, context=ctx)
 
     # Parse-time helpers
 

@@ -20,7 +20,7 @@ from jsonpatchx.backend import (
     classify_state,
 )
 from jsonpatchx.exceptions import InvalidJSONPointer, PatchConflictError
-from jsonpatchx.pointer import _JSONPOINTER_POINTER_BACKEND_CTX_KEY, JSONPointer
+from jsonpatchx.pointer import JSONPointer
 from jsonpatchx.types import JSONBoolean, JSONNumber, JSONValue
 from tests.conftest import (
     AnotherIncompletePointerBackend,
@@ -427,54 +427,41 @@ def test_pointer_backend_binding_with_context(subtests: Subtests) -> None:
     class ChildPointer(BoundPointer):
         pass
 
-    def _validate(
-        pointer_type: type[JSONPointer],
-        path: str,
-        registry_backend: type[PointerBackend] | None,
-    ) -> JSONPointer:
-        adapter = TypeAdapter(pointer_type)
-        context = (
-            None
-            if registry_backend is None
-            else {_JSONPOINTER_POINTER_BACKEND_CTX_KEY: registry_backend}
-        )
-        return adapter.validate_python(path, context=context)
-
     with subtests.test("no backends"):
-        ptr = _validate(JSONPointer[JSONValue], "/a", None)
+        ptr = JSONPointer.parse("/a", backend=None, context=None)
         assert isinstance(ptr.ptr, _DEFAULT_POINTER_CLS)
 
     with subtests.test("context PointerBackend treated as default"):
-        ptr = _validate(JSONPointer[JSONValue], "/a", PointerBackend)
+        ptr = JSONPointer.parse("/a", backend=None, context=PointerBackend)
         assert isinstance(ptr.ptr, _DEFAULT_POINTER_CLS)
 
     with subtests.test("registry only"):
-        ptr = _validate(JSONPointer[JSONValue], "a.b", RegistryPointer)
+        ptr = JSONPointer.parse("a.b", backend=None, context=RegistryPointer)
         assert isinstance(ptr.ptr, RegistryPointer)
 
     with subtests.test("bound only"):
-        ptr = _validate(JSONPointer[JSONValue, BoundPointer], "a.b", None)
+        ptr = JSONPointer.parse("a.b", backend=BoundPointer, context=None)
         assert isinstance(ptr.ptr, BoundPointer)
 
     with subtests.test("bound PointerBackend treated as default"):
-        ptr = _validate(JSONPointer[JSONValue, PointerBackend], "/a", None)
+        ptr = JSONPointer.parse("/a", backend=PointerBackend, context=None)
         assert isinstance(ptr.ptr, _DEFAULT_POINTER_CLS)
 
     with subtests.test("both PointerBackend treated as default"):
-        ptr = _validate(JSONPointer[JSONValue, PointerBackend], "/a", PointerBackend)
+        ptr = JSONPointer.parse("/a", backend=PointerBackend, context=PointerBackend)
         assert isinstance(ptr.ptr, _DEFAULT_POINTER_CLS)
 
     with subtests.test("same backend"):
-        ptr = _validate(JSONPointer[JSONValue, BoundPointer], "a.b", BoundPointer)
+        ptr = JSONPointer.parse("a.b", backend=BoundPointer, context=BoundPointer)
         assert isinstance(ptr.ptr, BoundPointer)
 
     with subtests.test("registry is subclass of bound"):
-        ptr = _validate(JSONPointer[JSONValue, BoundPointer], "a.b", ChildPointer)
+        ptr = JSONPointer.parse("a.b", backend=BoundPointer, context=ChildPointer)
         assert isinstance(ptr.ptr, ChildPointer)
 
     with subtests.test("mismatched backends"):
         with pytest.raises(InvalidJSONPointer):
-            _validate(JSONPointer[JSONValue, BoundPointer], "a.b", RegistryPointer)
+            JSONPointer.parse("a.b", backend=BoundPointer, context=RegistryPointer)
 
 
 def test_jsonpointer_backend_reuse(subtests: Subtests) -> None:
