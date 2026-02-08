@@ -1,3 +1,4 @@
+from functools import partial
 from typing import Any, Final
 
 import pytest
@@ -164,12 +165,11 @@ def test_jsonpointer_type_gating_methods(
     subtests: Subtests,
     type_param: type,
 ) -> None:
-    adapter = TypeAdapter(JSONPointer[type_param])
     valid_value = JSON_TYPE_VALIDATION_REPRESENTATIVE_VALUES[type_param]
     for label, value, _allowed in JSON_TYPE_VALIDATION_TEST_CASES:
         doc = {label: value}
         path = f"/{label}"
-        ptr = adapter.validate_python(path)
+        ptr = JSONPointer.parse(path, type_param=type_param)
         expected_valid = type_param in _allowed
 
         with subtests.test(f"{path} get / is_gettable"):
@@ -209,61 +209,58 @@ def test_jsonpointer_type_gating_methods(
 
 
 def test_jsonpointer_edge_cases(subtests: Subtests) -> None:
-    adapter = TypeAdapter(JSONPointer[JSONValue])
-
     with subtests.test("root semantics"):
-        root = adapter.validate_python("")
+        root = JSONPointer.parse("")
         assert root.get({"a": 1}) == {"a": 1}
         assert root.add({"a": 1}, {"b": 2}) == {"b": 2}
         assert root.remove({"a": 1}) is None
 
     with subtests.test("array index handling"):
-        item = adapter.validate_python("/arr/0")
+        item = JSONPointer.parse("/arr/0")
         assert item.get({"arr": [10, 20]}) == 10
-        appended = adapter.validate_python("/arr/-").add({"arr": [10]}, 30)
+        appended = JSONPointer.parse("/arr/-").add({"arr": [10]}, 30)
         assert appended["arr"] == [10, 30]
         with pytest.raises(PatchConflictError):
-            adapter.validate_python("/arr/-").remove({"arr": [10]})
+            JSONPointer.parse("/arr/-").remove({"arr": [10]})
         with pytest.raises(PatchConflictError):
-            adapter.validate_python("/arr/2").remove({"arr": [10, 20]})
+            JSONPointer.parse("/arr/2").remove({"arr": [10, 20]})
         with pytest.raises(PatchConflictError):
-            adapter.validate_python("/arr/-1").remove({"arr": [10, 20]})
+            JSONPointer.parse("/arr/-1").remove({"arr": [10, 20]})
         with pytest.raises(PatchConflictError):
-            adapter.validate_python("/arr/nope").remove({"arr": [10, 20]})
+            JSONPointer.parse("/arr/nope").remove({"arr": [10, 20]})
         with pytest.raises(PatchConflictError):
-            adapter.validate_python("/arr/01").remove({"arr": [10, 20]})
+            JSONPointer.parse("/arr/01").remove({"arr": [10, 20]})
 
     with subtests.test("is_addable edge cases"):
-        root_number = TypeAdapter(JSONPointer[JSONNumber]).validate_python("")
+        root_number = JSONPointer.parse("", type_param=JSONNumber)
         assert root_number.is_addable(1) is True
         assert root_number.is_addable("nope") is False
         doc = {"arr": [10]}
-        assert adapter.validate_python("/arr/0").is_addable(doc, 5) is True
-        assert adapter.validate_python("/arr/1").is_addable(doc, 5) is True
-        assert adapter.validate_python("/arr/2").is_addable(doc, 5) is False
-        assert adapter.validate_python("/arr/-").is_addable(doc, 5) is True
-        assert adapter.validate_python("/arr/nope").is_addable(doc, 5) is False
+        assert JSONPointer.parse("/arr/0").is_addable(doc, 5) is True
+        assert JSONPointer.parse("/arr/1").is_addable(doc, 5) is True
+        assert JSONPointer.parse("/arr/2").is_addable(doc, 5) is False
+        assert JSONPointer.parse("/arr/-").is_addable(doc, 5) is True
+        assert JSONPointer.parse("/arr/nope").is_addable(doc, 5) is False
 
-        assert adapter.validate_python("/a/b").is_addable({"a": 1}, 5) is False
+        assert JSONPointer.parse("/a/b").is_addable({"a": 1}, 5) is False
 
     with subtests.test("container type errors"):
-        ptr = adapter.validate_python("/a/b")
+        ptr = JSONPointer.parse("/a/b")
         with pytest.raises(PatchConflictError):
             ptr.add({"a": 1}, "ok")
         with pytest.raises(PatchConflictError):
             ptr.remove({"a": 1})
 
     with subtests.test("parent/child edge cases"):
-        parent = adapter.validate_python("/a")
-        child = adapter.validate_python("/a/b")
-        same = adapter.validate_python("/a")
+        parent = JSONPointer.parse("/a")
+        child = JSONPointer.parse("/a/b")
+        same = JSONPointer.parse("/a")
         assert parent.is_parent_of(child) is True
         assert child.is_child_of(parent) is True
         assert parent.is_parent_of(same) is False
         assert parent.is_child_of(child) is False
 
-        dot_adapter = TypeAdapter(JSONPointer[JSONValue, DotPointer])
-        dot_ptr = dot_adapter.validate_python("a.b")
+        dot_ptr = JSONPointer.parse("a.b", backend=DotPointer)
         with pytest.raises(InvalidJSONPointer):
             parent.is_parent_of(dot_ptr)
         with pytest.raises(InvalidJSONPointer):
@@ -298,15 +295,13 @@ def test_jsonpointer_public_methods_are_backend_agnostic(
     doc = {"a": {"b": 1, "c": {"d": 2}}, "arr": [10, 20]}
 
     if pointer_cls is None:
-        adapter = TypeAdapter(JSONPointer[JSONValue])
-        bool_adapter = TypeAdapter(JSONPointer[JSONBoolean])
+        parse = JSONPointer.parse
     else:
-        adapter = TypeAdapter(JSONPointer[JSONValue, DotPointer])
-        bool_adapter = TypeAdapter(JSONPointer[JSONBoolean, DotPointer])
+        parse = partial(JSONPointer.parse, backend=DotPointer)
 
-    ptr = adapter.validate_python(path)
-    parent = adapter.validate_python(parent_path)
-    child = adapter.validate_python(child_path)
+    ptr = parse(path)
+    parent = parse(parent_path)
+    child = parse(child_path)
 
     with subtests.test("ptr"):
         assert ptr.ptr is not None
@@ -319,9 +314,9 @@ def test_jsonpointer_public_methods_are_backend_agnostic(
 
     with subtests.test("is_root"):
         assert ptr.is_root(doc) is False
-        root = adapter.validate_python("")
+        root = parse("")
         assert root.is_root(doc) is True
-        missing = adapter.validate_python(missing_path)
+        missing = parse(missing_path)
         assert missing.is_root(doc) is False
 
     with subtests.test("is_parent_of"):
@@ -346,7 +341,7 @@ def test_jsonpointer_public_methods_are_backend_agnostic(
                 ptr.is_child_of(RFC6901JsonPointer("/a/b"))
 
     with subtests.test("is_valid_type"):
-        bool_ptr = bool_adapter.validate_python(parent_path)
+        bool_ptr = parse(parent_path, type_param=JSONBoolean)
         assert bool_ptr.is_valid_type(True) is True
         assert bool_ptr.is_valid_type(1) is False
 
@@ -355,26 +350,26 @@ def test_jsonpointer_public_methods_are_backend_agnostic(
 
     with subtests.test("is_gettable"):
         assert ptr.is_gettable(doc) is True
-        missing = adapter.validate_python(missing_path)
+        missing = parse(missing_path)
         assert missing.is_gettable(doc) is False
 
     with subtests.test("is_removable"):
         assert ptr.is_removable(doc) is True
-        missing = adapter.validate_python(missing_path)
+        missing = parse(missing_path)
         assert missing.is_removable(doc) is False
 
     with subtests.test("add"):
-        add_ptr = adapter.validate_python(add_path)
+        add_ptr = parse(add_path)
         updated = add_ptr.add({"a": {"b": 1}}, "ok")
         assert updated["a"]["new"] == "ok"
 
     with subtests.test("is_addable"):
-        add_ptr = adapter.validate_python(add_path)
+        add_ptr = parse(add_path)
         assert add_ptr.is_addable({"a": {"b": 1}}, "ok") is True
         assert child.is_addable(doc, "ok") is False
 
     with subtests.test("remove"):
-        remove_ptr = adapter.validate_python(path)
+        remove_ptr = parse(path)
         removed = remove_ptr.remove({"a": {"b": 1}})
         assert "b" not in removed["a"]
 

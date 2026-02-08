@@ -325,6 +325,30 @@ class JSONPointer(str, Generic[T_co, P_co]):
                 f"expected target type {self.type_param} for pointer {str(self)!r}, got: {type(target)}"
             ) from e
 
+    # Constructor - for convenience
+
+    @classmethod
+    def parse(
+        cls,
+        path: str | Self | PointerBackend,
+        *,
+        type_param: TypeForm[Any] = JSONValue,
+        backend: type[_PointerClassProtocol] | None = None,
+        context: dict[str, object] | None = None,
+    ) -> Self:
+        """
+        Parse a pointer string or instance using Pydantic validation.
+
+        This is a convenience wrapper around ``TypeAdapter(JSONPointer[...])``.
+        """
+        pointer_type = (
+            JSONPointer[type_param]  # type: ignore[valid-type]
+            if backend is None
+            else JSONPointer[type_param, backend]  # type: ignore[valid-type]
+        )
+        adapter = TypeAdapter(pointer_type)
+        return adapter.validate_python(path, context=context)
+
     # Parse-time helpers
 
     def is_parent_of(self, other: str) -> bool:
