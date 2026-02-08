@@ -1,11 +1,9 @@
 from __future__ import annotations
 
-import json
 import math
 from collections.abc import Iterable
 from dataclasses import dataclass
 from functools import cached_property
-from pathlib import Path
 from types import NoneType
 from typing import Annotated, Any, Callable, Final, Self
 
@@ -260,21 +258,3 @@ TYPE_MAPPING: Final = {
 @pytest.fixture(scope="session")
 def suite() -> TypeSuite:
     return TypeSuite(type_map=TYPE_MAPPING, examples=EXAMPLE_VALUES)
-
-
-# ============================================================================
-# 6) JSON Patch compliance data
-# ============================================================================
-
-
-JSON_PATCH_TESTS_DIR = Path(__file__).parent / "json-patch-tests"
-
-
-@pytest.fixture(scope="session")
-def json_patch_compliance_records() -> list[dict[str, Any]]:
-    """Return raw json-patch-tests records (tests.json + spec_tests.json)."""
-    records: list[dict[str, Any]] = []
-    for filename in ("tests.json", "spec_tests.json"):
-        with (JSON_PATCH_TESTS_DIR / filename).open(encoding="utf8") as fd:
-            records.extend(json.load(fd))
-    return records
