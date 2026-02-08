@@ -1,8 +1,30 @@
+from __future__ import annotations
+
+import math
 from collections.abc import Iterable
-from typing import Any, Self
+from dataclasses import dataclass
+from functools import cached_property
+from types import NoneType
+from typing import Any, Callable, Final, Self
+
+import pytest
+from typing_extensions import TypeIs
 
 from jsonpatchx.backend import PointerBackend
-from jsonpatchx.types import JSONValue
+from jsonpatchx.types import (
+    JSONArray,
+    JSONBoolean,
+    JSONContainer,
+    JSONNull,
+    JSONNumber,
+    JSONObject,
+    JSONString,
+    JSONValue,
+)
+
+# ============================================================================
+# 1) Custom Pointer Backends
+# ============================================================================
 
 
 class IncompletePointerBackend:
@@ -60,3 +82,166 @@ class PointerMissingParts(PointerBackend):
     __str__ = DotPointer.__str__
 
     __hash__ = DotPointer.__hash__
+
+
+# ============================================================================
+# 2) Type Suite
+# ============================================================================
+
+type Predicate[T] = Callable[[object], TypeIs[T]]
+
+
+@dataclass(frozen=True)
+class ExampleValue:
+    label: str
+    value: object
+
+
+@dataclass(frozen=True)
+class TypeSuite:
+    """A registry of JSON types, their predicates, and associated test data."""
+
+    registry: dict[Any, Predicate[Any]]
+    examples: tuple[ExampleValue, ...]
+
+    @cached_property
+    def types(self) -> tuple[Any, ...]:
+        return tuple(self.registry.keys())
+
+    def get_predicate(self, json_type: Any) -> Predicate[Any]:
+        return self.registry[json_type]
+
+    def get_examples(
+        self, json_type: Any, valid: bool = True
+    ) -> tuple[ExampleValue, ...]:
+        pred = self.get_predicate(json_type)
+        matches = [
+            ex
+            for ex in self.examples
+            if (pred(ex.value) if valid else not pred(ex.value))
+        ]
+        if len(matches) < 2:
+            raise AssertionError(
+                f"Insufficient {'valid' if valid else 'invalid'} examples for {json_type!r}"
+            )
+        return tuple(matches)
+
+
+# ============================================================================
+# 3) Predicate Definitions
+# ============================================================================
+
+
+def _is_bool(v: object) -> TypeIs[JSONBoolean]:
+    return isinstance(v, bool)
+
+
+def _is_number(v: object) -> TypeIs[JSONNumber]:
+    if isinstance(v, bool):
+        return False
+    return isinstance(v, (int, float)) and math.isfinite(v)
+
+
+def _is_string(v: object) -> TypeIs[JSONString]:
+    return isinstance(v, str)
+
+
+def _is_null(v: object) -> TypeIs[JSONNull]:
+    return v is None
+
+
+def _is_object_any(v: object) -> TypeIs[JSONObject[object]]:
+    return isinstance(v, dict) and all(isinstance(k, str) for k in v.keys())
+
+
+def _is_array_any(v: object) -> TypeIs[JSONArray[object]]:
+    return isinstance(v, list)
+
+
+def _is_json_value(v: object) -> TypeIs[JSONValue]:
+    if _is_bool(v) or _is_number(v) or _is_string(v) or _is_null(v):
+        return True
+    if _is_array_any(v):
+        return all(_is_json_value(item) for item in v)
+    if _is_object_any(v):
+        return all(_is_json_value(val) for val in v.values())
+    return False
+
+
+def _is_array_of[T](pred: Predicate[T]) -> Predicate[JSONArray[T]]:
+    def _p(v: object) -> TypeIs[JSONArray[T]]:
+        return _is_array_any(v) and all(pred(item) for item in v)
+
+    return _p
+
+
+def _is_object_of[T](pred: Predicate[T]) -> Predicate[JSONObject[T]]:
+    def _p(v: object) -> TypeIs[JSONObject[T]]:
+        return _is_object_any(v) and all(pred(val) for val in v.values())
+
+    return _p
+
+
+# ============================================================================
+# 4) Global Data
+# ============================================================================
+
+EXAMPLE_VALUES: Final = (
+    ExampleValue("bool-true", True),
+    ExampleValue("bool-false", False),
+    ExampleValue("int", 1),
+    ExampleValue("float", 1.5),
+    ExampleValue("string", "ok"),
+    ExampleValue("stringy-number", "1"),
+    ExampleValue("null-1", None),
+    ExampleValue("null-2", NoneType()),
+    ExampleValue("array-simple", [1, {"a": 2}, "ok"]),
+    ExampleValue("array-object-item", [object()]),
+    ExampleValue("array-bytes-item", [b"bytes"]),
+    ExampleValue("array-number", [1, 2, 3]),
+    ExampleValue("array-number-float", [1, 2.5]),
+    ExampleValue("array-number-null", [1, None]),
+    ExampleValue("empty-object", {}),
+    ExampleValue("object-simple", {"a": 1, "b": "ok", "c": None, "d": True}),
+    ExampleValue("object-any", {"a": 1, "b": object()}),
+    ExampleValue("object-strings", {"a": "ok", "b": "yes"}),
+    ExampleValue("object-strings-null", {"a": None}),
+    ExampleValue("nested", {"a": [1, {"b": [True, None, 3.5]}], "c": {"d": "ok"}}),
+    ExampleValue("empty-array", []),
+    ExampleValue("nested-obj-array-num", [{"a": 1}, {"b": 2}]),
+    ExampleValue("nested-obj-array-num-null", [{"a": 1}, {"b": None}]),
+    ExampleValue("poison-bytes", b"bytes"),
+    ExampleValue("poison-custom-object", object()),
+    ExampleValue("poison-complex", 1 + 2j),
+    ExampleValue("poison-tuple", (1, 2)),
+    ExampleValue("poison-set", {"a", "b"}),
+    ExampleValue("poison-dict-non-str-key", {1: "nope"}),
+    ExampleValue("poison-nan", float("nan")),
+    ExampleValue("poison-inf", float("inf")),
+)
+
+TYPE_MAPPING: Final = {
+    JSONBoolean: _is_bool,
+    JSONNumber: _is_number,
+    JSONString: _is_string,
+    JSONNull: _is_null,
+    JSONArray[Any]: _is_array_any,
+    JSONObject[Any]: _is_object_any,
+    JSONContainer[Any]: lambda v: _is_array_any(v) or _is_object_any(v),
+    JSONValue: _is_json_value,
+    JSONArray[JSONNumber]: _is_array_of(_is_number),
+    JSONObject[JSONString]: _is_object_of(_is_string),
+    JSONArray[JSONObject[JSONNumber]]: _is_array_of(_is_object_of(_is_number)),
+    JSONArray[JSONObject[JSONNumber | JSONNull]]: _is_array_of(
+        _is_object_of(lambda x: _is_number(x) or _is_null(x))
+    ),
+}
+
+# ============================================================================
+# 5) Type Suite
+# ============================================================================
+
+
+@pytest.fixture(scope="session")
+def suite() -> TypeSuite:
+    return TypeSuite(registry=TYPE_MAPPING, examples=EXAMPLE_VALUES)
