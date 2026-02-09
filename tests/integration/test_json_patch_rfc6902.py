@@ -71,7 +71,26 @@ def load_json_patch_compliance_records() -> list[dict[str, Any]]:
 
 
 def cases() -> list[Case]:
-    return [Case(**record) for record in load_json_patch_compliance_records()]
+    return [Case(**record) for record in load_json_patch_compliance_records()] + [
+        Case(
+            doc=[1, 2, 3],
+            patch=[{"op": "replace", "path": "", "value": "something else"}],
+            expected="something else",
+            comment="root-replacement",
+        ),
+        Case(
+            doc=[1, 2, 3],
+            patch=[{"op": "remove", "path": ""}],
+            expected=None,
+            comment=(
+                'RFC 6901 defines "" as a pointer to the whole document. RFC 6902 models patching as producing a '
+                "'resulting document' after each successful operation, which implies that any successful operation yields "
+                "another JSON value/document. RFC 6902 does not explicitly specify the behavior of remove at the root; "
+                "this implementation treats it as producing null (Python None), preserving closure/composability. "
+                "Users who prefer to forbid root removal can enforce that as an additional constraint."
+            ),
+        ),
+    ]
 
 
 @pytest.mark.parametrize("case", cases(), ids=attrgetter("comment"))
