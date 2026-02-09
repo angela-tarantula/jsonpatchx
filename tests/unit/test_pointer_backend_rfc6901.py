@@ -9,6 +9,8 @@ from jsonpatchx import JSONPointer
 
 class URIJsonPointer(CustomJsonPointer):
     # NOTE: investigate functools.partial feasibility
+    # Then make a test for partial compatibility, but remove this URIJsonPointer test
+    # since it's not RFC 6901 related, and this URIJsonPointer fails the last 3 cases of POINTER_CASES.
     def __init__(self, pointer) -> None:
         super().__init__(pointer, uri_decode=True)
 
