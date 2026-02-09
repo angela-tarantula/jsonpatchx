@@ -66,6 +66,9 @@ POINTER_CASES = [
     Case(pointer="/pct%key", expected="has-percent"),
     Case(pointer="/caret^key", expected="has-caret"),
     Case(pointer="/pipe|key", expected="has-pipe"),
+    Case(pointer="/~arr", fail=True),
+    Case(pointer="/#arr", fail=True),
+    Case(pointer="/arr/#1", fail=True),
 ]
 
 
