@@ -1,13 +1,14 @@
 from typing import Final, Self
 
 import pytest
-from jsonpath import JSONPointer as JsonPointer  # NOTE: make this the default pointer
+from jsonpath import JSONPointer as CustomJsonPointer
 from pydantic import BaseModel, model_validator
 
 from jsonpatchx import JSONPointer
 
 
-class URIJsonPointer(JsonPointer):  # NOTE: investigate functools.partial feasibility
+class URIJsonPointer(CustomJsonPointer):
+    # NOTE: investigate functools.partial feasibility
     def __init__(self, pointer) -> None:
         super().__init__(pointer, uri_decode=True)
 
@@ -78,14 +79,14 @@ URI_CASES: Final = [
 ]
 
 
-@pytest.mark.parametrize("case", POINTER_CASES)
+@pytest.mark.parametrize("case", POINTER_CASES)  # NOTE: give IDs
 def test_json_pointer_core(case: Case) -> None:
     if not case.fail:
-        ptr = JSONPointer.parse(case.pointer, backend=JsonPointer)
+        ptr = JSONPointer.parse(case.pointer)
         assert ptr.get(DOC) == case.expected
     else:
         with pytest.raises(Exception):
-            ptr = JSONPointer.parse(case.pointer, backend=JsonPointer)
+            ptr = JSONPointer.parse(case.pointer)
             print(ptr.get(DOC))
 
 

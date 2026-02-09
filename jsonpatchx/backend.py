@@ -117,9 +117,14 @@ class PointerBackend(_PointerClassProtocol, Protocol):
 
 class _DEFAULT_POINTER_CLS(JsonPointer):  # type: ignore[misc]
     # fixes https://github.com/stefankoegl/python-json-pointer/issues/63
+    # and https://github.com/stefankoegl/python-json-pointer/issues/65
     @override
     @classmethod
     def get_part(cls, doc, part):  # type: ignore[no-untyped-def]
+        if isinstance(doc, str):
+            raise JPException(
+                f"Cannot apply token {part!r} to non-container type {type(doc)}"
+            )
         key = super().get_part(doc, part)
         if isinstance(key, int) and not _NONNEGATIVE_ARRAY_INDEX_PATTERN.fullmatch(
             str(part)
