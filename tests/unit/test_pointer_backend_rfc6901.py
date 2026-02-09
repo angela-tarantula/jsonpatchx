@@ -1,9 +1,16 @@
 from typing import Final, Self
 
 import pytest
+from jsonpath import JSONPointer as JsonPointer  # NOTE: make this the default pointer
 from pydantic import BaseModel, model_validator
 
 from jsonpatchx import JSONPointer
+
+
+class URIJsonPointer(JsonPointer):  # NOTE: investigate functools.partial feasibility
+    def __init__(self, pointer) -> None:
+        super().__init__(pointer, uri_decode=True)
+
 
 MISSING = "__MISSING__"
 
@@ -61,12 +68,33 @@ POINTER_CASES = [
 ]
 
 
+URI_CASES: Final = [
+    Case(pointer="/space%20key", expected="has-space"),
+    Case(pointer="/quote%22key", expected="has-quote"),
+    Case(pointer="/back%5Cslash", expected="has-backslash"),
+    Case(pointer="/pct%25key", expected="has-percent"),
+    Case(pointer="/caret%5Ekey", expected="has-caret"),
+    Case(pointer="/pipe%7Ckey", expected="has-pipe"),
+]
+
+
 @pytest.mark.parametrize("case", POINTER_CASES)
 def test_json_pointer_core(case: Case) -> None:
     if not case.fail:
-        ptr = JSONPointer.parse(case.pointer)
+        ptr = JSONPointer.parse(case.pointer, backend=JsonPointer)
         assert ptr.get(DOC) == case.expected
     else:
         with pytest.raises(Exception):
-            ptr = JSONPointer.parse(case.pointer)
+            ptr = JSONPointer.parse(case.pointer, backend=JsonPointer)
+            print(ptr.get(DOC))
+
+
+@pytest.mark.parametrize("case", URI_CASES)
+def test_json_pointer_with_uri_decoding(case: Case) -> None:
+    if not case.fail:
+        ptr = JSONPointer.parse(case.pointer, backend=URIJsonPointer)
+        assert ptr.get(DOC) == case.expected
+    else:
+        with pytest.raises(Exception):
+            ptr = JSONPointer.parse(case.pointer, backend=URIJsonPointer)
             print(ptr.get(DOC))
