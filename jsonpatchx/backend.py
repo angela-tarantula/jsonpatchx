@@ -117,7 +117,7 @@ class PointerBackend(_PointerClassProtocol, Protocol):
 
 class _DEFAULT_POINTER_CLS(JsonPointer):  # type: ignore[misc]
     # fixes https://github.com/stefankoegl/python-json-pointer/issues/63
-    # and https://github.com/stefankoegl/python-json-pointer/issues/65
+    # and https://github.com/stefankoegl/python-json-pointer/issues/70
     @override
     @classmethod
     def get_part(cls, doc, part):  # type: ignore[no-untyped-def]

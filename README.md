@@ -55,10 +55,14 @@ rigid safety of Pydantic.
 
 ## When to use alternatives
 
-**json-patch-x prioritizes correctness, clarity, and extensibility over raw throughput.**
+**json-patch-x optimizes for correctness, intent, and extensibility, not maximum throughput.**
 
-- Use [python-json-patch](https://github.com/stefankoegl/python-json-patch) for a minimal, pure-Python RFC 6902 applicator.
-- Use JSON Merge Patch ([RFC 7386](https://datatracker.ietf.org/doc/html/rfc7386)) if you prefer the "last-write-wins" simplicity of partial document replacement and don't need to distinguish between `null` assignment and key removal.
+If you mainly need speed, diffs, or a minimal RFC 6902 applicator, these are great options:
+
+- Use [python-jsonpath](https://github.com/jg-rp/python-jsonpath?tab=readme-ov-file#json-patch) for a straightforward RFC 6902 applicator.
+- Use [py_yyjson](https://tkte.ch/py_yyjson/#patch-a-document) for high-performance patching.
+- Use [python-json-patch](https://python-json-patch.readthedocs.io/en/latest/commandline.html#jsondiff) for generating diff patches.
+- Use [json-merge-patch](https://github.com/OpenDataServices/json-merge-patch) if you prefer the "last-write-wins" simplicity of Merge Patch ([RFC 7386](https://datatracker.ietf.org/doc/html/rfc7386)) and don't need to distinguish between `null` assignment and key removal.
 
 ---
 

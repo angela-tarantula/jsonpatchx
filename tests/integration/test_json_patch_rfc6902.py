@@ -21,10 +21,11 @@ from jsonpatchx.exceptions import PatchError
 JSON_PATCH_TESTS_DIR = resources.files("tests") / "cts"
 
 SKIPPED_CASES: Final = {
+    # {skipped_test_case: rationale}
     "duplicate ops": (
-        "Optional case: json-patch-x defers duplicate-key handling to the JSON decoder. "
-        "JsonPatch.from_string() follows json.loads() (last-write-wins). "
-        "If you want strict duplicate-key rejection, parse JSON yourself and pass the result to JsonPatch()."
+        "Duplicate-key handling is delegated to the JSON decoder. "
+        "JsonPatch.from_string() follows the last-write-wins policy, just like json.loads(). "
+        "If you need strict duplicate-key rejection, decode JSON yourself and pass the result to JsonPatch()."
     )
 }
 
@@ -39,8 +40,15 @@ class Case(BaseModel):
     patch: list[dict[str, Any]]
     expected: JSONValue = MISSING
     error: str | None = None
-    comment: str = "<no comment>"
+    comment: str
     # disregard the 'disabled' flag because json-patch-x implements handling of these cases
+
+    @model_validator(mode="before")
+    @classmethod
+    def _fill_comment_with_error(cls, data: object) -> object:
+        if isinstance(data, dict):
+            data["comment"] = data.get("comment") or data.get("error") or "<no comment>"
+        return data
 
     @model_validator(mode="after")
     def _ensure_expected_or_error(self) -> Self:
@@ -76,7 +84,7 @@ def cases() -> list[Case]:
             doc=[1, 2, 3],
             patch=[{"op": "replace", "path": "", "value": "something else"}],
             expected="something else",
-            comment="root-replacement",
+            comment="root replacement",
         ),
         Case(
             doc=[1, 2, 3],
@@ -89,6 +97,12 @@ def cases() -> list[Case]:
                 "this implementation treats it as producing null (Python None), preserving closure/composability. "
                 "Users who prefer to forbid root removal can enforce that as an additional constraint."
             ),
+        ),
+        Case(
+            doc={"foo": "should-not-be-indexable"},
+            patch=[{"op": "copy", "from": "/foo/0", "path": "/bar"}],
+            error="strings should not be indexible in JSON as they are in Python",
+            comment="strings can't be indexed",
         ),
     ]
 
