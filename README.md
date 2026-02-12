@@ -3,7 +3,7 @@
 <p align="center">
 A framework for building <strong>safe and expressive PATCH APIs</strong> in Python.
 <br>
-Implements JSON Patch as a <strong>first-class API abstraction</strong>, with typed operations and FastAPI/OpenAPI support.
+Implements JSON Patch as a <strong>first-class API abstraction</strong> with typed operations and FastAPI/OpenAPI support.
 <br>
 Fully compliant with <a href="https://datatracker.ietf.org/doc/html/rfc6902">RFC 6902</a>, tested against the <a href="https://github.com/json-patch/json-patch-tests">JSON Patch Compliance Test Suite</a>.
 </p>
@@ -22,16 +22,16 @@ Fully compliant with <a href="https://datatracker.ietf.org/doc/html/rfc6902">RFC
 
 In modern distributed systems, a partial update is more than just a document edit. It's a **state transition** that crosses process, service, and trust boundaries. When PATCH becomes a public contract, a mechanical applicator isn’t enough.
 
-json-patch-x elevates patching into a governed, typed system:
+json-patch-x turns PATCH into a governed, typed contract:
 
-- Each operation is a **Pydantic model** with clear semantics
-- Pointers are **typed contracts** that fail fast on wrong paths or wrong target types
-- You can define your own **operations** that express API meaning directly (`toggle`, `increment`, `replace_substring`, etc.)
-- Operations are self-documenting and **produce** OpenAPI
-- Operations can be **allow-listed** per route
-- You can even plug your own JSON Pointer implementation for **advanced pointer semantics** (e.g. JSON Path selectors and relative pointers)
+- Each operation is a **Pydantic model** with explicit semantics
+- Pointers are **typed contracts** that fail fast on invalid targets
+- Define **custom operations** that encode API meaning directly (`toggle`, `increment`, `replace_substring`, etc.)
+- Operations are schemas, so OpenAPI stays in sync **automatically**
+- Operations can be **allow-listed per route**
+- Plug in your own JSON Pointer implementation for **advanced pointer semantics** (e.g. JSON Path selectors and relative pointers)
 
-The result is PATCH requests that are **predictable**, **reviewable**, and **easy to evolve** without breaking clients.
+The result is PATCH requests that are **predictable**, **reviewable**, and **safe to evolve** without breaking clients.
 
 Here’s what failure looks like when a client targets the wrong type:
 
@@ -100,7 +100,9 @@ def patch_user(user_id: str, patch: UserPatch) -> User:
 
 FastAPI validates the request body against UserRegistry, and OpenAPI documents exactly which operations are allowed.
 
-(image of swagger API here)
+(assume there's an image of swagger API here)
+
+Want to see it live? Run the [fastapi demos](#demos).
 
 
 ## Fit and Alternatives
@@ -108,12 +110,12 @@ FastAPI validates the request body against UserRegistry, and OpenAPI documents e
 json-patch-x is a good fit for:
 
 - **PATCH as a real API contract:** You need safe, expressive, and evolvable operations for your application.
-- **"Contract-First" APIs:** You need OpenAPI docs to accurately reflect allowed patch operations.
+- **Teams generating SDKs or relying on OpenAPI tooling:** Your documentation must reflect exactly which operations are allowed.
 - **High-safety or regulated endpoints:** You need strong mutation guarantees and allow-listed operations.
-- **Automated or AI-assisted workflows:** Your patches are generated, reviewed, or routed by LLMs or other untrusted tooling
-- **Straightforward RFC 6902 applicator:** You just want a correct patch engine without extra ceremony.
+- **Automated or AI-assisted workflows:** Your patches are generated, reviewed, or routed by LLMs or other untrusted tooling.
+- **Straightforward RFC 6902 patching:** You just want a correct patch engine without extra ceremony.
 
-But if you primarily need speed or a minimal RFC 6902 applicator and you trust your patches, use [py_yyjson](https://tkte.ch/py_yyjson/#patch-a-document). It's high-performance and also supports JSON Merge Patch ([RFC 7386](https://datatracker.ietf.org/doc/html/rfc7386)) if you prefer "last-write-wins" simplicity.
+But if you primarily need speed or a minimal RFC 6902 applicator and you trust your patches, use [py_yyjson](https://tkte.ch/py_yyjson/#py-yyjson). It's high-performance and also supports JSON Merge Patch ([RFC 7386](https://datatracker.ietf.org/doc/html/rfc7386)) if you prefer "last-write-wins" simplicity.
 
 ---
 
