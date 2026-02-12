@@ -87,6 +87,30 @@ def cases() -> list[Case]:
             comment="root replacement",
         ),
         Case(
+            doc={"a": 1, "b": 2},
+            patch=[{"op": "test", "path": "", "value": {"b": 2, "a": 1}}],
+            expected={"a": 1, "b": 2},
+            comment="test at root",
+        ),
+        Case(
+            doc={"a": 1, "b": 2},
+            patch=[{"op": "copy", "from": "/a", "path": ""}],
+            expected=1,
+            comment="copy to root",
+        ),
+        Case(
+            doc={"a": 1, "b": 2},
+            patch=[{"op": "move", "from": "/a", "path": ""}],
+            expected=1,
+            comment="move to root",
+        ),
+        Case(
+            doc={"foo": {"bar": 1}},
+            patch=[{"op": "move", "from": "/foo", "path": "/foo/bar"}],
+            error="move op should reject parent->child path",
+            comment="move parent to child rejected",
+        ),
+        Case(
             doc=[1, 2, 3],
             patch=[{"op": "remove", "path": ""}],
             expected=None,

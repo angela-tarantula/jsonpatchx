@@ -357,11 +357,11 @@ class JSONPointer(str, Generic[T_co, P_co]):
 
     def is_parent_of(self, other: str) -> bool:
         """
-        Check whether this pointer is a parent of `other`.
+        Check whether this pointer is a strict parent of `other`.
 
         `other` may be a JSONPointer or a pointer string; strings are parsed using this pointer's syntax.
 
-        Root is treated as a parent of all paths.
+        Root is treated as a parent of all paths except itself.
 
         Raises InvalidJSONPointer if comparison is called with an `other` pointer with different or invalid syntax.
         """
@@ -381,11 +381,11 @@ class JSONPointer(str, Generic[T_co, P_co]):
 
     def is_child_of(self, other: str) -> bool:
         """
-        Check whether this pointer is a child of `other`.
+        Check whether this pointer is a strict child of `other`.
 
         `other` may be a JSONPointer or a pointer string; strings are parsed using this pointer's syntax.
 
-        Root is treated as a parent of all paths.
+        Root is treated as a parent of all paths except itself.
 
         Raises InvalidJSONPointer if comparison is called with an `other` pointer with different or invalid syntax.
         """
