@@ -3,9 +3,9 @@
 <p align="center">
 A framework for building <strong>safe and expressive PATCH APIs</strong> in Python.
 <br>
-Implements JSON Patch as <strong>first-class API abstraction</strong>, with typed operations and native FastAPI/OpenAPI support.
+Implements JSON Patch as a <strong>first-class API abstraction</strong>, with typed operations and FastAPI/OpenAPI support.
 <br>
-Also usable as a fully compliant <a href="https://datatracker.ietf.org/doc/html/rfc6902">RFC 6902</a> JSON Patch applicator, tested against the <a href="https://github.com/json-patch/json-patch-tests">JSON Patch Compliance Test Suite</a>.
+Fully compliant with <a href="https://datatracker.ietf.org/doc/html/rfc6902">RFC 6902</a>, tested against the <a href="https://github.com/json-patch/json-patch-tests">JSON Patch Compliance Test Suite</a>.
 </p>
 
 
@@ -14,8 +14,6 @@ Also usable as a fully compliant <a href="https://datatracker.ietf.org/doc/html/
     <img src="https://github.com/angela-tarantula/json-patch-x/actions/workflows/python-app.yml/badge.svg?branch=main" alt="CI">
   </a>
 </p>
-
-[![CI](https://github.com/angela-tarantula/json-patch-x/actions/workflows/python-app.yml/badge.svg?branch=main)](https://github.com/marketplace/actions/super-linter)
 
 
 ## Overview
