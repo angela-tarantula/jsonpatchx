@@ -94,7 +94,7 @@ def cases() -> list[Case]:
                 'RFC 6901 defines "" as a pointer to the whole document. RFC 6902 models patching as producing a '
                 "'resulting document' after each successful operation, which implies that any successful operation yields "
                 "another JSON value/document. RFC 6902 does not explicitly specify the behavior of remove at the root; "
-                "this implementation treats it as producing null (Python None), preserving closure/composability. "
+                "this implementation treats it as producing null (Python None), preserving closure and composability. "
                 "Users who prefer to forbid root removal can enforce that as an additional constraint."
             ),
         ),

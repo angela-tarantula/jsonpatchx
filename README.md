@@ -1,70 +1,132 @@
-# json-patch-x
+<h1 align="center">json-patch-x</h1>
+
+<p align="center">
+A framework for building <strong>safe and expressive PATCH APIs</strong> in Python.
+<br>
+Implements JSON Patch as <strong>first-class API abstraction</strong>, with typed operations and native FastAPI/OpenAPI support.
+<br>
+Also usable as a fully compliant <a href="https://datatracker.ietf.org/doc/html/rfc6902">RFC 6902</a> JSON Patch applicator, tested against the <a href="https://github.com/json-patch/json-patch-tests">JSON Patch Compliance Test Suite</a>.
+</p>
+
+
+<p align="center">
+  <a href="https://github.com/marketplace/actions/super-linter">
+    <img src="https://github.com/angela-tarantula/json-patch-x/actions/workflows/python-app.yml/badge.svg?branch=main" alt="CI">
+  </a>
+</p>
 
 [![CI](https://github.com/angela-tarantula/json-patch-x/actions/workflows/python-app.yml/badge.svg?branch=main)](https://github.com/marketplace/actions/super-linter)
 
-Typed, schema-validated JSON Patch for Python ([RFC 6902](https://datatracker.ietf.org/doc/html/rfc6902)) with FastAPI/OpenAPI-native request bodies and typed JSON pointers that fail fast on invalid targets.
-
-json-patch-x treats PATCH as a governed API surface: operations are explicit, validated, and extensible, so your partial updates are safe, auditable, and evolvable.
 
 ## Overview
 
 **json-patch-x treats `PATCH` as a dialogue, not just a diff.**
 
-In modern distributed systems, a partial update is more than just a document
-edit: it’s a transition between system states. Instead of describing updates
-only by their final effect, json-patch-x models each operation as a **typed,
-validated schema** with explicit, checkable semantics.
+In modern distributed systems, a partial update is more than just a document edit. It's a **state transition** that crosses process, service, and trust boundaries. When PATCH becomes a public contract, a mechanical applicator isn’t enough.
 
-By shifting the focus from the *outcome* to the *operation*, json-patch-x allows
-systems to reason about how data is allowed to mutate, ensuring that every
-PATCH is safe, explainable, and evolvable.
+json-patch-x elevates patching into a governed, typed system:
+
+- Each operation is a **Pydantic model** with clear semantics
+- Pointers are **typed contracts** that fail fast on wrong paths or wrong target types
+- You can define your own **operations** that express API meaning directly (`toggle`, `increment`, `replace_substring`, etc.)
+- Operations are self-documenting and **produce** OpenAPI
+- Operations can be **allow-listed** per route
+- You can even plug your own JSON Pointer implementation for **advanced pointer semantics** (e.g. JSON Path selectors and relative pointers)
+
+The result is PATCH requests that are **predictable**, **reviewable**, and **easy to evolve** without breaking clients.
+
+Here’s what failure looks like when a client targets the wrong type:
+
+```json
+{
+  "detail": [
+    {
+      "loc": ["body", 0, "path"],
+      "msg": "Pointer type mismatch. Expected JSONBoolean at /active, got JSONString.",
+      "type": "jsonpatchx.pointer_type_mismatch"
+    }
+  ]
+}
+```
+
+And here’s how easy it is to define and evolve your own operations:
+
+```python
+class ReplaceSubstringOp(OperationSchema):
+    op: Literal["replace_substring"] = "replace_substring"
+    path: JSONPointer[JSONString]
+    old: JSONString
+    new: JSONString
+
+    @override
+    def apply(self, doc: JSONValue) -> JSONValue:
+        current = self.path.get(doc)
+        if self.old not in current:
+            raise PatchConflictError(f"'{self.old}' is not in '{current}'")
+        return ReplaceOp(path=self.path, value=current.replace(self.old, self.new)).apply(doc)
+```
+
+Add a feature later? Just extend the schema:
+
+```python
+class ReplaceSubstringOp(OperationSchema):
+    op: Literal["replace_substring"] = "replace_substring"
+    path: JSONPointer[JSONString]
+    old: JSONString
+    new: JSONString
+    strict: JSONBoolean = True
+
+    @override
+    def apply(self, doc: JSONValue) -> JSONValue:
+        current = self.path.get(doc)
+        if self.strict and self.old not in current:
+            raise PatchConflictError(f"strict mode is enabled and '{self.old}' is not in '{current}'")
+        return ReplaceOp(path=self.path, value=current.replace(self.old, self.new)).apply(doc)
+```
+
+Define your FastAPI route with minimal boilerplate:
+
+```python
+from fastapi import FastAPI
+
+app = FastAPI()
+
+UserRegistry = OperationRegistry[AddOp, RemoveOp, ReplaceOp, ReplaceSubstringOp]
+UserPatch = JsonPatchFor[User, UserRegistry]
+
+@app.patch("/users/{user_id}")
+def patch_user(user_id: str, patch: UserPatch) -> User:
+    user = load_user(user_id)
+    return patch.apply(user)
+```
+
+FastAPI validates the request body against UserRegistry, and OpenAPI documents exactly which operations are allowed.
+
+(image of swagger API here)
+
+
+## Fit and Alternatives
+
+json-patch-x is a good fit for:
+
+- **PATCH as a real API contract:** You need safe, expressive, and evolvable operations for your application.
+- **"Contract-First" APIs:** You need OpenAPI docs to accurately reflect allowed patch operations.
+- **High-safety or regulated endpoints:** You need strong mutation guarantees and allow-listed operations.
+- **Automated or AI-assisted workflows:** Your patches are generated, reviewed, or routed by LLMs or other untrusted tooling
+- **Straightforward RFC 6902 applicator:** You just want a correct patch engine without extra ceremony.
+
+But if you primarily need speed or a minimal RFC 6902 applicator and you trust your patches, use [py_yyjson](https://tkte.ch/py_yyjson/#patch-a-document). It's high-performance and also supports JSON Merge Patch ([RFC 7386](https://datatracker.ietf.org/doc/html/rfc7386)) if you prefer "last-write-wins" simplicity.
 
 ---
 
 ## Table of Contents
 
-- [Why this exists](#why-this-exists)
-- [When to use json-patch-x](#when-to-use-json-patch-x)
-- [When to use alternatives](#when-to-use-alternatives)
 - [Core Concepts](#core-concepts)
 - [FastAPI Integration](#fastapi-integration)
 - [Demos](#demos)
 - [Advanced: Pointer Backends](#advanced-pointer-backends)
 - [Limitations](#limitations)
 - [Contributing](#contributing)
-
-## Why this exists
-
-Standard JSON Patch applicators are intentionally mechanical: they mutate documents, but they don’t enforce your domain’s contracts. json-patch-x adds governance by making each operation a typed, validated schema, so you can safely expose PATCH as a public API.
-
-- **Strict Governance:** When `PATCH` is a public API contract that must protect complex typed models.
-
-- **Domain Semantics:** When you need to move beyond `add`/`remove` to custom operations like `toggle`, `increment`, or `replace_substring`.
-
-- **Automated Agency:** When patch operations are generated or reviewed by LLMs and automation, requiring validation at the operation boundary to prevent invalid mutations.
-
-json-patch-x bridges the gap between the raw flexibility of RFC 6902 and the
-rigid safety of Pydantic.
-
-## When to use json-patch-x
-
-- **You maintain "Contract-First" APIs:** You need your OpenAPI docs to accurately reflect allowed patch operations.
-- **You need Runtime Type Safety:** You want pointer resolution to fail fast when the target isn't the expected type, instead of silently mutating the wrong type.
-- **You use LLMs in your Loop:** You require a structured, validated interface for AI-generated data mutations.
-- **You need Auditability:** You care about preserving the "why" (the operation) rather than just the "what" (the change).
-
-## When to use alternatives
-
-**json-patch-x optimizes for correctness, intent, and extensibility, not maximum throughput.**
-
-If you mainly need speed, diffs, or a minimal RFC 6902 applicator, these are great options:
-
-- Use [python-jsonpath](https://github.com/jg-rp/python-jsonpath?tab=readme-ov-file#json-patch) for a straightforward RFC 6902 applicator.
-- Use [py_yyjson](https://tkte.ch/py_yyjson/#patch-a-document) for high-performance patching.
-- Use [python-json-patch](https://python-json-patch.readthedocs.io/en/latest/commandline.html#jsondiff) for generating diff patches.
-- Use [json-merge-patch](https://github.com/OpenDataServices/json-merge-patch) if you prefer the "last-write-wins" simplicity of Merge Patch ([RFC 7386](https://datatracker.ietf.org/doc/html/rfc7386)) and don't need to distinguish between `null` assignment and key removal.
-
----
 
 ## Core Concepts
 
