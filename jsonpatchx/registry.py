@@ -35,11 +35,7 @@ from jsonpatchx.builtins import (
     ReplaceOp,
     TestOp,
 )
-from jsonpatchx.exceptions import (
-    InvalidOperationRegistry,
-    OperationNotRecognized,
-    OperationValidationError,
-)
+from jsonpatchx.exceptions import InvalidOperationRegistry, OperationNotRecognized
 from jsonpatchx.pointer import (
     _JSONPOINTER_POINTER_BACKEND_CTX_KEY,
     _JSONPOINTER_VALIDATION_CTX_LITERALS,
