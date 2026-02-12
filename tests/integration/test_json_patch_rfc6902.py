@@ -152,3 +152,27 @@ def test_json_patch_compliance(case: Case) -> None:
         assert patch.apply(case.doc) == case.expected
     else:  # pragma: no cover
         pytest.fail("invalid case: {case!r}")
+
+
+@pytest.mark.parametrize("case", cases(), ids=attrgetter("comment"))
+def test_json_patch_compliance_with_instantiated_models(case: Case) -> None:
+    if case.comment in SKIPPED_CASES:  # pragma: no cover
+        pytest.skip(reason=SKIPPED_CASES[case.comment])
+
+    try:
+        ops = StandardRegistry.parse_python_patch(case.patch)
+        patch = JsonPatch(ops, registry=StandardRegistry)
+    except Exception as exc:
+        if case.error is not None:
+            assert isinstance(exc, (PatchError, ValidationError))
+            return
+        raise
+
+    if case.error is not None:
+        with pytest.raises(PatchError):
+            patch.apply(case.doc)
+        return
+    elif case.expected != MISSING:
+        assert patch.apply(case.doc) == case.expected
+    else:  # pragma: no cover
+        pytest.fail("invalid case: {case!r}")

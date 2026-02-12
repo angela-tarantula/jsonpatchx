@@ -35,7 +35,11 @@ from jsonpatchx.builtins import (
     ReplaceOp,
     TestOp,
 )
-from jsonpatchx.exceptions import InvalidOperationRegistry
+from jsonpatchx.exceptions import (
+    InvalidOperationRegistry,
+    OperationNotRecognized,
+    OperationValidationError,
+)
 from jsonpatchx.pointer import (
     _JSONPOINTER_POINTER_BACKEND_CTX_KEY,
     _JSONPOINTER_VALIDATION_CTX_LITERALS,
@@ -289,6 +293,12 @@ class GenericOperationRegistry(Generic[*Ops, PBT], metaclass=_RegistryMeta):
     def parse_python_op(
         cls, obj: Mapping[str, JSONValue] | OperationSchema
     ) -> OperationSchema:
+        if isinstance(obj, OperationSchema):
+            if type(obj) not in cls.ops_set():
+                raise OperationNotRecognized(
+                    f"Operation {type(obj).__name__} is not allowed in this registry"
+                )
+            return obj
         return cls._op_adapter.validate_python(
             obj,
             strict=True,
@@ -301,13 +311,25 @@ class GenericOperationRegistry(Generic[*Ops, PBT], metaclass=_RegistryMeta):
     def parse_python_patch(
         cls, python: Sequence[OperationSchema | Mapping[str, JSONValue]]
     ) -> list[OperationSchema]:
-        return cls._patch_adapter.validate_python(
-            python,
-            strict=True,
-            by_alias=True,
-            by_name=False,
-            context=cls._ctx,
-        )
+        ops: list[OperationSchema] = []
+        for item in python:
+            if isinstance(item, OperationSchema):
+                if type(item) not in cls.ops_set():
+                    raise OperationNotRecognized(
+                        f"Operation {type(item).__name__} is not allowed in this registry"
+                    )
+                ops.append(item)
+            else:
+                ops.append(
+                    cls._op_adapter.validate_python(
+                        item,
+                        strict=True,
+                        by_alias=True,
+                        by_name=False,
+                        context=cls._ctx,
+                    )
+                )
+        return ops
 
     @classmethod
     def parse_json_op(cls, text: str | bytes | bytearray) -> OperationSchema:

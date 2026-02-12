@@ -12,7 +12,7 @@ class URIJsonPointer(CustomJsonPointer):
     # Then make a test for partial compatibility, but remove this URIJsonPointer test
     # since it's not RFC 6901 related, and this URIJsonPointer fails the last 3 cases of POINTER_CASES.
     def __init__(self, pointer) -> None:
-        super().__init__(pointer, uri_decode=True)
+        super().__init__(pointer, uri_decode=True, unicode_escape=False)
 
 
 MISSING = "__MISSING__"
@@ -37,7 +37,7 @@ DOC: Final = {
     "tilde~key": "has-tilde",
     "space key": "has-space",
     'quote"key': "has-quote",
-    r"back\slash": "has-backslash",
+    r"backsl\ash": "has-backslash",
     "pct%key": "has-percent",
     "caret^key": "has-caret",
     "pipe|key": "has-pipe",
@@ -64,7 +64,7 @@ POINTER_CASES = [
     Case(pointer="/tilde~2key", fail=True),
     Case(pointer="/space key", expected="has-space"),
     Case(pointer='/quote"key', expected="has-quote"),
-    Case(pointer=r"/back\slash", expected="has-backslash"),
+    Case(pointer="/backsl\\ash", expected="has-backslash"),
     Case(pointer="/pct%key", expected="has-percent"),
     Case(pointer="/caret^key", expected="has-caret"),
     Case(pointer="/pipe|key", expected="has-pipe"),
@@ -77,7 +77,7 @@ POINTER_CASES = [
 URI_CASES: Final = [
     Case(pointer="/space%20key", expected="has-space"),
     Case(pointer="/quote%22key", expected="has-quote"),
-    Case(pointer="/back%5Cslash", expected="has-backslash"),
+    Case(pointer="/backsl%5Cash", expected="has-backslash"),
     Case(pointer="/pct%25key", expected="has-percent"),
     Case(pointer="/caret%5Ekey", expected="has-caret"),
     Case(pointer="/pipe%7Ckey", expected="has-pipe"),
