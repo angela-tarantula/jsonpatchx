@@ -83,7 +83,7 @@ guild_patch = JsonPatchRoute(
             "summary": "Add badge and raise cap",
             "value": [
                 {"op": "append", "path": "/badges", "value": "raid-ready"},
-                {"op": "increment", "path": "/max_members", "value": 1},
+                {"op": "increment", "path": "/max_members", "value": 5},
             ],
         },
         "cozy-welcome": {

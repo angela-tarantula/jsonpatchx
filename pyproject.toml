@@ -17,6 +17,7 @@ fastapi = [
 
 [dependency-groups]
 dev = [
+    "httpx>=0.28.1",
     "mypy>=1.19.1",
     "pytest>=9.0.1",
     "pytest-cov>=7.0.0",

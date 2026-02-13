@@ -1,0 +1,1119 @@
+{
+  "components": {
+    "schemas": {
+      "AddOp": {
+        "additionalProperties": false,
+        "description": "RFC 6902 add operation.",
+        "properties": {
+          "op": {
+            "const": "add",
+            "default": "add",
+            "title": "Op",
+            "type": "string"
+          },
+          "path": {
+            "description": "JSON Pointer (RFC 6901) string",
+            "format": "json-pointer",
+            "title": "Path",
+            "type": "string"
+          },
+          "value": {
+            "$ref": "#/components/schemas/JSONValue"
+          }
+        },
+        "required": [
+          "op",
+          "path",
+          "value"
+        ],
+        "title": "Add operation",
+        "type": "object"
+      },
+      "AppendOp": {
+        "additionalProperties": false,
+        "description": "Appends a value to an array.",
+        "properties": {
+          "op": {
+            "const": "append",
+            "default": "append",
+            "title": "Op",
+            "type": "string"
+          },
+          "path": {
+            "description": "JSON Pointer (RFC 6901) string",
+            "format": "json-pointer",
+            "title": "Path",
+            "type": "string"
+          },
+          "value": {
+            "$ref": "#/components/schemas/JSONValue"
+          }
+        },
+        "required": [
+          "op",
+          "path",
+          "value"
+        ],
+        "title": "Append operation",
+        "type": "object"
+      },
+      "Apprentice": {
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "mana": {
+            "default": 0,
+            "title": "Mana",
+            "type": "integer"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "rank": {
+            "default": "novice",
+            "title": "Rank",
+            "type": "string"
+          },
+          "sigils": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Sigils",
+            "type": "array"
+          }
+        },
+        "required": [
+          "id",
+          "name"
+        ],
+        "title": "Apprentice",
+        "type": "object"
+      },
+      "ApprenticeId": {
+        "enum": [
+          1,
+          2
+        ],
+        "title": "ApprenticeId",
+        "type": "integer"
+      },
+      "Apprentice_Patch_Document": {
+        "description": "Array of patch operations for Apprentice. Applied to model_dump() and re-validated against the model schema.",
+        "items": {
+          "$ref": "#/components/schemas/Apprentice_Patch_Operation"
+        },
+        "title": "Apprentice Patch Document",
+        "type": "array",
+        "x-target-model": "Apprentice"
+      },
+      "Apprentice_Patch_Operation": {
+        "description": "Discriminated union of patch operations for Apprentice.",
+        "discriminator": {
+          "mapping": {
+            "add": "#/components/schemas/AddOp",
+            "append": "#/components/schemas/AppendOp",
+            "copy": "#/components/schemas/CopyOp",
+            "increment": "#/components/schemas/IncrementOp",
+            "move": "#/components/schemas/MoveOp",
+            "remove": "#/components/schemas/RemoveOp",
+            "replace": "#/components/schemas/ReplaceOp",
+            "test": "#/components/schemas/TestOp"
+          },
+          "propertyName": "op"
+        },
+        "oneOf": [
+          {
+            "$ref": "#/components/schemas/AddOp"
+          },
+          {
+            "$ref": "#/components/schemas/AppendOp"
+          },
+          {
+            "$ref": "#/components/schemas/CopyOp"
+          },
+          {
+            "$ref": "#/components/schemas/IncrementOp"
+          },
+          {
+            "$ref": "#/components/schemas/MoveOp"
+          },
+          {
+            "$ref": "#/components/schemas/RemoveOp"
+          },
+          {
+            "$ref": "#/components/schemas/ReplaceOp"
+          },
+          {
+            "$ref": "#/components/schemas/TestOp"
+          }
+        ],
+        "title": "Apprentice Patch Operation"
+      },
+      "CopyOp": {
+        "additionalProperties": false,
+        "description": "RFC 6902 copy operation.",
+        "properties": {
+          "from": {
+            "description": "JSON Pointer (RFC 6901) string",
+            "format": "json-pointer",
+            "title": "From",
+            "type": "string"
+          },
+          "op": {
+            "const": "copy",
+            "default": "copy",
+            "title": "Op",
+            "type": "string"
+          },
+          "path": {
+            "description": "JSON Pointer (RFC 6901) string",
+            "format": "json-pointer",
+            "title": "Path",
+            "type": "string"
+          }
+        },
+        "required": [
+          "from",
+          "op",
+          "path"
+        ],
+        "title": "Copy operation",
+        "type": "object"
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "title": "Detail",
+            "type": "array"
+          }
+        },
+        "title": "HTTPValidationError",
+        "type": "object"
+      },
+      "IncrementOp": {
+        "additionalProperties": false,
+        "description": "Increments a numeric field by a value.",
+        "properties": {
+          "op": {
+            "const": "increment",
+            "default": "increment",
+            "title": "Op",
+            "type": "string"
+          },
+          "path": {
+            "description": "JSON Pointer (RFC 6901) string",
+            "format": "json-pointer",
+            "title": "Path",
+            "type": "string"
+          },
+          "value": {
+            "$ref": "#/components/schemas/JSONNumber",
+            "gt": 0,
+            "multiple_of": 5
+          }
+        },
+        "required": [
+          "op",
+          "path",
+          "value"
+        ],
+        "title": "Increment operation",
+        "type": "object"
+      },
+      "JSONArray_JSONValue_": {
+        "items": {
+          "$ref": "#/components/schemas/JSONValue"
+        },
+        "title": "JSON array",
+        "type": "array"
+      },
+      "JSONBoolean": {
+        "title": "JSON boolean",
+        "type": "boolean"
+      },
+      "JSONNull": {
+        "title": "JSON null",
+        "type": "null"
+      },
+      "JSONNumber": {
+        "anyOf": [
+          {
+            "type": "integer"
+          },
+          {
+            "type": "number"
+          }
+        ],
+        "description": "integer or finite float (no NaN/Infinity).",
+        "title": "JSON number"
+      },
+      "JSONObject_JSONValue_": {
+        "additionalProperties": {
+          "$ref": "#/components/schemas/JSONValue"
+        },
+        "title": "JSON object",
+        "type": "object"
+      },
+      "JSONString": {
+        "title": "JSON string",
+        "type": "string"
+      },
+      "JSONValue": {
+        "anyOf": [
+          {
+            "$ref": "#/components/schemas/JSONBoolean"
+          },
+          {
+            "$ref": "#/components/schemas/JSONNumber"
+          },
+          {
+            "$ref": "#/components/schemas/JSONString"
+          },
+          {
+            "$ref": "#/components/schemas/JSONNull"
+          },
+          {
+            "$ref": "#/components/schemas/JSONArray_JSONValue_"
+          },
+          {
+            "$ref": "#/components/schemas/JSONObject_JSONValue_"
+          }
+        ],
+        "title": "JSON value"
+      },
+      "MoveOp": {
+        "additionalProperties": false,
+        "description": "RFC 6902 move operation.",
+        "properties": {
+          "from": {
+            "description": "JSON Pointer (RFC 6901) string",
+            "format": "json-pointer",
+            "title": "From",
+            "type": "string"
+          },
+          "op": {
+            "const": "move",
+            "default": "move",
+            "title": "Op",
+            "type": "string"
+          },
+          "path": {
+            "description": "JSON Pointer (RFC 6901) string",
+            "format": "json-pointer",
+            "title": "Path",
+            "type": "string"
+          }
+        },
+        "required": [
+          "from",
+          "op",
+          "path"
+        ],
+        "title": "Move operation",
+        "type": "object"
+      },
+      "RemoveOp": {
+        "additionalProperties": false,
+        "description": "RFC 6902 remove operation. Removal of the root sets it to null.",
+        "properties": {
+          "op": {
+            "const": "remove",
+            "default": "remove",
+            "title": "Op",
+            "type": "string"
+          },
+          "path": {
+            "description": "JSON Pointer (RFC 6901) string",
+            "format": "json-pointer",
+            "title": "Path",
+            "type": "string"
+          }
+        },
+        "required": [
+          "op",
+          "path"
+        ],
+        "title": "Remove operation",
+        "type": "object"
+      },
+      "ReplaceOp": {
+        "additionalProperties": false,
+        "description": "RFC 6902 replace operation.",
+        "properties": {
+          "op": {
+            "const": "replace",
+            "default": "replace",
+            "title": "Op",
+            "type": "string"
+          },
+          "path": {
+            "description": "JSON Pointer (RFC 6901) string",
+            "format": "json-pointer",
+            "title": "Path",
+            "type": "string"
+          },
+          "value": {
+            "$ref": "#/components/schemas/JSONValue"
+          }
+        },
+        "required": [
+          "op",
+          "path",
+          "value"
+        ],
+        "title": "Replace operation",
+        "type": "object"
+      },
+      "SpellbookId": {
+        "enum": [
+          "grimoire",
+          "coven"
+        ],
+        "title": "SpellbookId",
+        "type": "string"
+      },
+      "Spellbook_Patch_Document": {
+        "description": "Array of patch operations for Spellbook.",
+        "items": {
+          "$ref": "#/components/schemas/Spellbook_Patch_Operation"
+        },
+        "title": "Spellbook Patch Document",
+        "type": "array"
+      },
+      "Spellbook_Patch_Operation": {
+        "description": "Discriminated union of patch operations for Spellbook.",
+        "discriminator": {
+          "mapping": {
+            "add": "#/components/schemas/AddOp",
+            "append": "#/components/schemas/AppendOp",
+            "copy": "#/components/schemas/CopyOp",
+            "increment": "#/components/schemas/IncrementOp",
+            "move": "#/components/schemas/MoveOp",
+            "remove": "#/components/schemas/RemoveOp",
+            "replace": "#/components/schemas/ReplaceOp",
+            "test": "#/components/schemas/TestOp"
+          },
+          "propertyName": "op"
+        },
+        "oneOf": [
+          {
+            "$ref": "#/components/schemas/AddOp"
+          },
+          {
+            "$ref": "#/components/schemas/AppendOp"
+          },
+          {
+            "$ref": "#/components/schemas/CopyOp"
+          },
+          {
+            "$ref": "#/components/schemas/IncrementOp"
+          },
+          {
+            "$ref": "#/components/schemas/MoveOp"
+          },
+          {
+            "$ref": "#/components/schemas/RemoveOp"
+          },
+          {
+            "$ref": "#/components/schemas/ReplaceOp"
+          },
+          {
+            "$ref": "#/components/schemas/TestOp"
+          }
+        ],
+        "title": "Spellbook Patch Operation"
+      },
+      "TestOp": {
+        "additionalProperties": false,
+        "description": "RFC 6902 test operation.",
+        "properties": {
+          "op": {
+            "const": "test",
+            "default": "test",
+            "title": "Op",
+            "type": "string"
+          },
+          "path": {
+            "description": "JSON Pointer (RFC 6901) string",
+            "format": "json-pointer",
+            "title": "Path",
+            "type": "string"
+          },
+          "value": {
+            "$ref": "#/components/schemas/JSONValue"
+          }
+        },
+        "required": [
+          "op",
+          "path",
+          "value"
+        ],
+        "title": "Test operation",
+        "type": "object"
+      },
+      "ValidationError": {
+        "properties": {
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "title": "Location",
+            "type": "array"
+          },
+          "msg": {
+            "title": "Message",
+            "type": "string"
+          },
+          "type": {
+            "title": "Error Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError",
+        "type": "object"
+      }
+    }
+  },
+  "info": {
+    "description": "Registry-scoped rune pointer backends for spellbook and apprentice settings. Uses `JsonPatchRoute` to align OpenAPI and runtime validation.",
+    "title": "Demo 4: Spellbook rune pointers",
+    "version": "0.1.0"
+  },
+  "openapi": "3.1.0",
+  "paths": {
+    "/apprentices/{apprentice_id}": {
+      "get": {
+        "description": "Fetch an apprentice by id.",
+        "operationId": "get_apprentice_endpoint_apprentices__apprentice_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "apprentice_id",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/ApprenticeId"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Apprentice"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get an apprentice",
+        "tags": [
+          "apprentices"
+        ]
+      },
+      "patch": {
+        "description": "Use rune pointers like 'mana' or 'sigils.0'.",
+        "operationId": "patch_apprentice_apprentices__apprentice_id__patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "apprentice_id",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/ApprenticeId"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json-patch+json": {
+              "examples": {
+                "lantern-lesson": {
+                  "summary": "rename and add a sigil",
+                  "value": [
+                    {
+                      "op": "replace",
+                      "path": "name",
+                      "value": "Nova"
+                    },
+                    {
+                      "op": "append",
+                      "path": "sigils",
+                      "value": "ember"
+                    }
+                  ]
+                },
+                "sparkle-sprint": {
+                  "summary": "boost mana and add a sigil",
+                  "value": [
+                    {
+                      "op": "increment",
+                      "path": "mana",
+                      "value": 20
+                    },
+                    {
+                      "op": "append",
+                      "path": "sigils",
+                      "value": "aurora"
+                    }
+                  ]
+                }
+              },
+              "schema": {
+                "$ref": "#/components/schemas/Apprentice_Patch_Document",
+                "description": "Array of patch operations for Apprentice. Applied to model_dump() and re-validated against the model schema.",
+                "items": {
+                  "$ref": "#/components/schemas/Apprentice_Patch_Operation"
+                },
+                "title": "Patch",
+                "type": "array",
+                "x-target-model": "Apprentice"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Apprentice"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "detail": {
+                      "oneOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "properties": {
+                            "cause_type": {
+                              "type": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "index": {
+                              "type": "integer"
+                            },
+                            "message": {
+                              "type": "string"
+                            },
+                            "op": {
+                              "type": "object"
+                            }
+                          },
+                          "required": [
+                            "index",
+                            "op",
+                            "message"
+                          ],
+                          "type": "object"
+                        }
+                      ]
+                    }
+                  },
+                  "required": [
+                    "detail"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Patch cannot be applied to current resource state"
+          },
+          "415": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "detail": {
+                      "oneOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "properties": {
+                            "cause_type": {
+                              "type": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "index": {
+                              "type": "integer"
+                            },
+                            "message": {
+                              "type": "string"
+                            },
+                            "op": {
+                              "type": "object"
+                            }
+                          },
+                          "required": [
+                            "index",
+                            "op",
+                            "message"
+                          ],
+                          "type": "object"
+                        }
+                      ]
+                    }
+                  },
+                  "required": [
+                    "detail"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Unsupported Media Type"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "properties": {
+                        "detail": {
+                          "oneOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "properties": {
+                                "cause_type": {
+                                  "type": [
+                                    "string",
+                                    "null"
+                                  ]
+                                },
+                                "index": {
+                                  "type": "integer"
+                                },
+                                "message": {
+                                  "type": "string"
+                                },
+                                "op": {
+                                  "type": "object"
+                                }
+                              },
+                              "required": [
+                                "index",
+                                "op",
+                                "message"
+                              ],
+                              "type": "object"
+                            }
+                          ]
+                        }
+                      },
+                      "required": [
+                        "detail"
+                      ],
+                      "type": "object"
+                    },
+                    {
+                      "$ref": "#/components/schemas/HTTPValidationError"
+                    }
+                  ]
+                }
+              }
+            },
+            "description": "Request validation or patch document validation error"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "detail": {
+                      "oneOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "properties": {
+                            "cause_type": {
+                              "type": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "index": {
+                              "type": "integer"
+                            },
+                            "message": {
+                              "type": "string"
+                            },
+                            "op": {
+                              "type": "object"
+                            }
+                          },
+                          "required": [
+                            "index",
+                            "op",
+                            "message"
+                          ],
+                          "type": "object"
+                        }
+                      ]
+                    }
+                  },
+                  "required": [
+                    "detail"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Patch execution error"
+          }
+        },
+        "summary": "Patch an apprentice (rune pointers)",
+        "tags": [
+          "apprentices"
+        ]
+      }
+    },
+    "/spellbooks/{spellbook_id}": {
+      "get": {
+        "description": "Fetch a spellbook by id.",
+        "operationId": "get_spellbook_endpoint_spellbooks__spellbook_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "spellbook_id",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/SpellbookId"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JSONValue"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get a spellbook",
+        "tags": [
+          "spellbooks"
+        ]
+      },
+      "patch": {
+        "description": "Use rune pointers like 'rituals.summon.enabled'.",
+        "operationId": "patch_spellbook_spellbooks__spellbook_id__patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "spellbook_id",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/SpellbookId"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json-patch+json": {
+              "examples": {
+                "midnight-runes": {
+                  "summary": "toggle ritual and restock ingredients",
+                  "value": [
+                    {
+                      "op": "replace",
+                      "path": "rituals.summon.enabled",
+                      "value": true
+                    },
+                    {
+                      "op": "increment",
+                      "path": "ingredients.moon_salt",
+                      "value": 5
+                    }
+                  ]
+                }
+              },
+              "schema": {
+                "$ref": "#/components/schemas/Spellbook_Patch_Document",
+                "description": "Array of patch operations for Spellbook.",
+                "items": {
+                  "$ref": "#/components/schemas/Spellbook_Patch_Operation"
+                },
+                "title": "Patch",
+                "type": "array"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JSONValue"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "detail": {
+                      "oneOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "properties": {
+                            "cause_type": {
+                              "type": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "index": {
+                              "type": "integer"
+                            },
+                            "message": {
+                              "type": "string"
+                            },
+                            "op": {
+                              "type": "object"
+                            }
+                          },
+                          "required": [
+                            "index",
+                            "op",
+                            "message"
+                          ],
+                          "type": "object"
+                        }
+                      ]
+                    }
+                  },
+                  "required": [
+                    "detail"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Patch cannot be applied to current resource state"
+          },
+          "415": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "detail": {
+                      "oneOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "properties": {
+                            "cause_type": {
+                              "type": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "index": {
+                              "type": "integer"
+                            },
+                            "message": {
+                              "type": "string"
+                            },
+                            "op": {
+                              "type": "object"
+                            }
+                          },
+                          "required": [
+                            "index",
+                            "op",
+                            "message"
+                          ],
+                          "type": "object"
+                        }
+                      ]
+                    }
+                  },
+                  "required": [
+                    "detail"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Unsupported Media Type"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "properties": {
+                        "detail": {
+                          "oneOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "properties": {
+                                "cause_type": {
+                                  "type": [
+                                    "string",
+                                    "null"
+                                  ]
+                                },
+                                "index": {
+                                  "type": "integer"
+                                },
+                                "message": {
+                                  "type": "string"
+                                },
+                                "op": {
+                                  "type": "object"
+                                }
+                              },
+                              "required": [
+                                "index",
+                                "op",
+                                "message"
+                              ],
+                              "type": "object"
+                            }
+                          ]
+                        }
+                      },
+                      "required": [
+                        "detail"
+                      ],
+                      "type": "object"
+                    },
+                    {
+                      "$ref": "#/components/schemas/HTTPValidationError"
+                    }
+                  ]
+                }
+              }
+            },
+            "description": "Request validation or patch document validation error"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "detail": {
+                      "oneOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "properties": {
+                            "cause_type": {
+                              "type": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "index": {
+                              "type": "integer"
+                            },
+                            "message": {
+                              "type": "string"
+                            },
+                            "op": {
+                              "type": "object"
+                            }
+                          },
+                          "required": [
+                            "index",
+                            "op",
+                            "message"
+                          ],
+                          "type": "object"
+                        }
+                      ]
+                    }
+                  },
+                  "required": [
+                    "detail"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Patch execution error"
+          }
+        },
+        "summary": "Patch a spellbook (rune pointers)",
+        "tags": [
+          "spellbooks"
+        ]
+      }
+    }
+  }
+}
