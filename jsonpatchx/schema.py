@@ -63,6 +63,7 @@ class OperationSchema(BaseModel, ABC):
         extra="allow",
         revalidate_instances="always",  # necessary for converting custom PointerBackends
         # NOTE: validators may run multiple times; guide users to write idempotent validators.
+        populate_by_name=True,  # Allow Python-side construction with field names (e.g., from_), while JSON parsing stays alias-only via by_name=False in registries
     )
 
     _op_literals: ClassVar[tuple[str, ...]]

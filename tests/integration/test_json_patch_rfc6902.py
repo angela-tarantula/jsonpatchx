@@ -128,6 +128,55 @@ def cases() -> list[Case]:
             error="strings should not be indexible in JSON as they are in Python",
             comment="strings can't be indexed",
         ),
+        Case(
+            doc={"a": 1},
+            patch=[{"op": "add", "path": "/a/b", "value": 2}],
+            error="parent is not a container",
+            comment="parent not container",
+        ),
+        Case(
+            doc={"foo": "bar", "baz": [1]},
+            patch=[{"op": "move", "from": "/foo", "path": "/baz/-"}],
+            expected={"baz": [1, "bar"]},
+            comment="move with array append",
+        ),
+        Case(
+            doc={"foo": "bar", "baz": [1]},
+            patch=[{"op": "move", "from_": "/foo", "path": "/baz/-"}],
+            error="move using 'from_' instead of 'from'",
+            comment="validate via model field aliases, not model field names",
+        ),
+        Case(
+            doc={"foo": "bar", "baz": [1]},
+            patch=[{"op": "add", "value": 2, "path": "/baz/1"}],
+            expected={"foo": "bar", "baz": [1, 2]},
+            comment="add to array at length of array",
+        ),
+        Case(
+            doc={"foo": "bar", "baz": [1]},
+            patch=[{"op": "remove", "path": "/baz/-"}],
+            error="remove target must exist beforehand",
+            comment="remove using '-'",
+        ),
+        Case(
+            doc={"foo": "bar", "baz": [1]},
+            patch=[{"op": "remove", "path": "/baz/1"}],
+            error="remove target must exist beforehand",
+            comment="remove using index=len(array)",
+        ),
+        Case(
+            doc={"foo": "bar", "baz": [1]},
+            patch=[{"op": "replace", "path": "/baz/-", "value": 2}],
+            error="replace target must exist beforehand",
+            comment="replace using '-'",
+        ),
+        Case(
+            doc={"foo": "bar", "baz": [1]},
+            patch=[{"op": "replace", "path": "/baz/1", "value": 2}],
+            error="replace target must exist beforehand",
+            comment="replace using index=len(array)",
+        ),
+        # more cases for each TargetState.
     ]
 
 
