@@ -16,7 +16,11 @@
             "description": "JSON Pointer (RFC 6901) string",
             "format": "json-pointer",
             "title": "Path",
-            "type": "string"
+            "type": "string",
+            "x-pointer-type-schema": {
+              "items": {},
+              "type": "array"
+            }
           },
           "value": {
             "title": "Value"
@@ -52,7 +56,11 @@
             "description": "JSON Pointer (RFC 6901) string",
             "format": "json-pointer",
             "title": "Path",
-            "type": "string"
+            "type": "string",
+            "x-pointer-type-schema": {
+              "additionalProperties": true,
+              "type": "object"
+            }
           }
         },
         "required": [
@@ -77,7 +85,11 @@
             "description": "JSON Pointer (RFC 6901) string",
             "format": "json-pointer",
             "title": "Path",
-            "type": "string"
+            "type": "string",
+            "x-pointer-type-schema": {
+              "items": {},
+              "type": "array"
+            }
           },
           "values": {
             "items": {},
@@ -121,7 +133,10 @@
             "description": "JSON Pointer (RFC 6901) string",
             "format": "json-pointer",
             "title": "Path",
-            "type": "string"
+            "type": "string",
+            "x-pointer-type-schema": {
+              "type": "number"
+            }
           },
           "value": {
             "gt": 0,
@@ -153,7 +168,10 @@
             "description": "JSON Pointer (RFC 6901) string",
             "format": "json-pointer",
             "title": "Path",
-            "type": "string"
+            "type": "string",
+            "x-pointer-type-schema": {
+              "type": "number"
+            }
           }
         },
         "required": [
@@ -218,13 +236,15 @@
             "description": "JSON Pointer (RFC 6901) string",
             "format": "json-pointer",
             "title": "A",
-            "type": "string"
+            "type": "string",
+            "x-pointer-type-schema": {}
           },
           "b": {
             "description": "JSON Pointer (RFC 6901) string",
             "format": "json-pointer",
             "title": "B",
-            "type": "string"
+            "type": "string",
+            "x-pointer-type-schema": {}
           },
           "op": {
             "const": "swap",
@@ -257,7 +277,10 @@
             "description": "JSON Pointer (RFC 6901) string",
             "format": "json-pointer",
             "title": "Path",
-            "type": "string"
+            "type": "string",
+            "x-pointer-type-schema": {
+              "type": "boolean"
+            }
           }
         },
         "required": [

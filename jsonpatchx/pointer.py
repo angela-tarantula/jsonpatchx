@@ -259,6 +259,7 @@ class JSONPointer(str, Generic[T_co, P_co]):
                     cs.is_instance_schema(PointerBackend),
                 ]
             ),
+            metadata={"type_param": type_param},  # wire to the json_schema
         )
 
     @classmethod
@@ -273,6 +274,17 @@ class JSONPointer(str, Generic[T_co, P_co]):
                 "description": "JSON Pointer (RFC 6901) string",
             }
         )
+
+        # enrich with json schema of type param
+        type_param = schema["metadata"]["type_param"]
+        try:
+            json_schema["x-pointer-type-schema"] = _type_adapter_for(
+                type_param
+            ).json_schema()
+        except Exception as e:
+            raise InvalidJSONPointer(
+                "JSONPointer type param must have a json schema"
+            ) from e
         return json_schema
 
     @classmethod
