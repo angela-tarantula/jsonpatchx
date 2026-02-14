@@ -149,9 +149,9 @@ else:
         def __get_pydantic_json_schema__(
             cls,
             _core_schema: core_schema.CoreSchema,
-            _handler: core_schema.GetJsonSchemaHandler,
+            handler: core_schema.GetJsonSchemaHandler,
         ) -> dict[str, object]:
-            return {"type": "array"}
+            return handler(_core_schema)
 
     class JSONObject[T]:
         @classmethod
@@ -168,9 +168,9 @@ else:
         def __get_pydantic_json_schema__(
             cls,
             _core_schema: core_schema.CoreSchema,
-            _handler: core_schema.GetJsonSchemaHandler,
+            handler: core_schema.GetJsonSchemaHandler,
         ) -> dict[str, object]:
-            return {"type": "object"}
+            return handler(_core_schema)
 
 
 type JSONContainer[T] = JSONArray[T] | JSONObject[T]  # NOTE: make this internal
