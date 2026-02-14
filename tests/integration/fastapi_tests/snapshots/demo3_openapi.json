@@ -18,7 +18,7 @@
             "type": "string"
           },
           "value": {
-            "$ref": "#/components/schemas/JSONValue"
+            "title": "Value"
           }
         },
         "required": [
@@ -77,9 +77,7 @@
             "type": "string"
           },
           "values": {
-            "items": {
-              "$ref": "#/components/schemas/JSONValue"
-            },
+            "items": {},
             "title": "Values",
             "type": "array"
           }
@@ -135,66 +133,8 @@
         "title": "Increment operation",
         "type": "object"
       },
-      "JSONArray_JSONValue_": {
-        "items": {
-          "$ref": "#/components/schemas/JSONValue"
-        },
-        "title": "JSON array",
-        "type": "array"
-      },
-      "JSONBoolean": {
-        "title": "JSON boolean",
-        "type": "boolean"
-      },
-      "JSONNull": {
-        "title": "JSON null",
-        "type": "null"
-      },
       "JSONNumber": {
-        "anyOf": [
-          {
-            "type": "integer"
-          },
-          {
-            "type": "number"
-          }
-        ],
-        "description": "integer or finite float (no NaN/Infinity).",
-        "title": "JSON number"
-      },
-      "JSONObject_JSONValue_": {
-        "additionalProperties": {
-          "$ref": "#/components/schemas/JSONValue"
-        },
-        "title": "JSON object",
-        "type": "object"
-      },
-      "JSONString": {
-        "title": "JSON string",
-        "type": "string"
-      },
-      "JSONValue": {
-        "anyOf": [
-          {
-            "$ref": "#/components/schemas/JSONBoolean"
-          },
-          {
-            "$ref": "#/components/schemas/JSONNumber"
-          },
-          {
-            "$ref": "#/components/schemas/JSONString"
-          },
-          {
-            "$ref": "#/components/schemas/JSONNull"
-          },
-          {
-            "$ref": "#/components/schemas/JSONArray_JSONValue_"
-          },
-          {
-            "$ref": "#/components/schemas/JSONObject_JSONValue_"
-          }
-        ],
-        "title": "JSON value"
+        "type": "number"
       },
       "RemoveNumberOp": {
         "additionalProperties": false,
@@ -383,7 +323,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/JSONValue"
+                  "title": "Response Get Config Endpoint Configs  Config Id  Get"
                 }
               }
             },
@@ -490,7 +430,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/JSONValue"
+                  "title": "Response Patch Config Configs  Config Id  Patch"
                 }
               }
             },
