@@ -156,7 +156,7 @@ class OperationSchema(BaseModel, ABC):
             required = set(json_schema.get("required", []))
             required.add("op")
             json_schema["required"] = sorted(required)
-            json_schema["additionalProperties"] = False
+            json_schema.setdefault("additionalProperties", True)
             json_schema["properties"]["op"].setdefault(
                 "description", "The operation to perform."
             )

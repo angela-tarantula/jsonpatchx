@@ -2,7 +2,7 @@
   "components": {
     "schemas": {
       "AppendOp": {
-        "additionalProperties": false,
+        "additionalProperties": true,
         "description": "Appends a value to an array.",
         "properties": {
           "op": {
@@ -38,7 +38,7 @@
         "type": "string"
       },
       "EnsureObjectOp": {
-        "additionalProperties": false,
+        "additionalProperties": true,
         "description": "Ensures the target path resolves to an object, creating one if missing.",
         "properties": {
           "op": {
@@ -63,7 +63,7 @@
         "type": "object"
       },
       "ExtendOp": {
-        "additionalProperties": false,
+        "additionalProperties": true,
         "description": "Extends an array with a list of values.",
         "properties": {
           "op": {
@@ -109,7 +109,7 @@
         "type": "object"
       },
       "IncrementOp": {
-        "additionalProperties": false,
+        "additionalProperties": true,
         "description": "Increments a numeric field by a value.",
         "properties": {
           "op": {
@@ -141,7 +141,7 @@
         "type": "object"
       },
       "RemoveNumberOp": {
-        "additionalProperties": false,
+        "additionalProperties": true,
         "description": "Removes a numeric value at a path.",
         "properties": {
           "op": {
@@ -213,7 +213,7 @@
         "title": "ServiceConfig Patch Operation"
       },
       "SwapOp": {
-        "additionalProperties": false,
+        "additionalProperties": true,
         "description": "Swaps the values at paths a and b. Paths a and b may not be proper prefixes of each other.",
         "properties": {
           "a": {
@@ -245,7 +245,7 @@
         "type": "object"
       },
       "ToggleBoolOp": {
-        "additionalProperties": false,
+        "additionalProperties": true,
         "description": "Toggles a boolean value at a path.",
         "properties": {
           "op": {

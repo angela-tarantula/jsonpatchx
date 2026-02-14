@@ -2,7 +2,7 @@
   "components": {
     "schemas": {
       "AddOp": {
-        "additionalProperties": false,
+        "additionalProperties": true,
         "description": "RFC 6902 add operation.",
         "properties": {
           "op": {
@@ -31,7 +31,7 @@
         "type": "object"
       },
       "CopyOp": {
-        "additionalProperties": false,
+        "additionalProperties": true,
         "description": "RFC 6902 copy operation.",
         "properties": {
           "from": {
@@ -178,7 +178,7 @@
         "type": "object"
       },
       "MoveOp": {
-        "additionalProperties": false,
+        "additionalProperties": true,
         "description": "RFC 6902 move operation.",
         "properties": {
           "from": {
@@ -210,7 +210,7 @@
         "type": "object"
       },
       "RemoveOp": {
-        "additionalProperties": false,
+        "additionalProperties": true,
         "description": "RFC 6902 remove operation. Removal of the root sets it to null.",
         "properties": {
           "op": {
@@ -235,7 +235,7 @@
         "type": "object"
       },
       "ReplaceOp": {
-        "additionalProperties": false,
+        "additionalProperties": true,
         "description": "RFC 6902 replace operation.",
         "properties": {
           "op": {
@@ -264,7 +264,7 @@
         "type": "object"
       },
       "TestOp": {
-        "additionalProperties": false,
+        "additionalProperties": true,
         "description": "RFC 6902 test operation.",
         "properties": {
           "op": {

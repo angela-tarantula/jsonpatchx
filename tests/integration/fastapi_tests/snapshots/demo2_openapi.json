@@ -2,7 +2,7 @@
   "components": {
     "schemas": {
       "AddOp": {
-        "additionalProperties": false,
+        "additionalProperties": true,
         "description": "RFC 6902 add operation.",
         "properties": {
           "op": {
@@ -31,7 +31,7 @@
         "type": "object"
       },
       "AppendOp": {
-        "additionalProperties": false,
+        "additionalProperties": true,
         "description": "Appends a value to an array.",
         "properties": {
           "op": {
@@ -60,7 +60,7 @@
         "type": "object"
       },
       "AppendUniqueOp": {
-        "additionalProperties": false,
+        "additionalProperties": true,
         "description": "Appends a value if it is not already present.",
         "properties": {
           "op": {
@@ -89,7 +89,7 @@
         "type": "object"
       },
       "CopyOp": {
-        "additionalProperties": false,
+        "additionalProperties": true,
         "description": "RFC 6902 copy operation.",
         "properties": {
           "from": {
@@ -121,7 +121,7 @@
         "type": "object"
       },
       "EnforceMaxLenOp": {
-        "additionalProperties": false,
+        "additionalProperties": true,
         "description": "Trims a list from the front until it fits a max size.",
         "properties": {
           "max_path": {
@@ -272,7 +272,7 @@
         "type": "object"
       },
       "IncrementOp": {
-        "additionalProperties": false,
+        "additionalProperties": true,
         "description": "Increments a numeric field by a value.",
         "properties": {
           "op": {
@@ -304,7 +304,7 @@
         "type": "object"
       },
       "MoveOp": {
-        "additionalProperties": false,
+        "additionalProperties": true,
         "description": "RFC 6902 move operation.",
         "properties": {
           "from": {
@@ -455,7 +455,7 @@
         "title": "Player Patch Operation"
       },
       "RemoveOp": {
-        "additionalProperties": false,
+        "additionalProperties": true,
         "description": "RFC 6902 remove operation. Removal of the root sets it to null.",
         "properties": {
           "op": {
@@ -480,7 +480,7 @@
         "type": "object"
       },
       "RemoveValueOp": {
-        "additionalProperties": false,
+        "additionalProperties": true,
         "description": "Removes a value from an array.",
         "properties": {
           "op": {
@@ -509,7 +509,7 @@
         "type": "object"
       },
       "ReplaceOp": {
-        "additionalProperties": false,
+        "additionalProperties": true,
         "description": "RFC 6902 replace operation.",
         "properties": {
           "op": {
@@ -538,7 +538,7 @@
         "type": "object"
       },
       "RequireMinimumOp": {
-        "additionalProperties": false,
+        "additionalProperties": true,
         "description": "Ensures a numeric value meets a minimum.",
         "properties": {
           "min_value": {
@@ -569,7 +569,7 @@
         "type": "object"
       },
       "TestOp": {
-        "additionalProperties": false,
+        "additionalProperties": true,
         "description": "RFC 6902 test operation.",
         "properties": {
           "op": {
@@ -598,7 +598,7 @@
         "type": "object"
       },
       "ToggleBoolOp": {
-        "additionalProperties": false,
+        "additionalProperties": true,
         "description": "Toggles a boolean value at a path.",
         "properties": {
           "op": {
