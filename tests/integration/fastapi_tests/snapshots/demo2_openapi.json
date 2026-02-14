@@ -8,6 +8,7 @@
           "op": {
             "const": "add",
             "default": "add",
+            "description": "The operation to perform.",
             "title": "Op",
             "type": "string"
           },
@@ -36,6 +37,7 @@
           "op": {
             "const": "append",
             "default": "append",
+            "description": "The operation to perform.",
             "title": "Op",
             "type": "string"
           },
@@ -64,6 +66,7 @@
           "op": {
             "const": "append_unique",
             "default": "append_unique",
+            "description": "The operation to perform.",
             "title": "Op",
             "type": "string"
           },
@@ -98,6 +101,7 @@
           "op": {
             "const": "copy",
             "default": "copy",
+            "description": "The operation to perform.",
             "title": "Op",
             "type": "string"
           },
@@ -129,6 +133,7 @@
           "op": {
             "const": "enforce_max_len",
             "default": "enforce_max_len",
+            "description": "The operation to perform.",
             "title": "Op",
             "type": "string"
           },
@@ -273,6 +278,7 @@
           "op": {
             "const": "increment",
             "default": "increment",
+            "description": "The operation to perform.",
             "title": "Op",
             "type": "string"
           },
@@ -310,6 +316,7 @@
           "op": {
             "const": "move",
             "default": "move",
+            "description": "The operation to perform.",
             "title": "Op",
             "type": "string"
           },
@@ -454,6 +461,7 @@
           "op": {
             "const": "remove",
             "default": "remove",
+            "description": "The operation to perform.",
             "title": "Op",
             "type": "string"
           },
@@ -478,6 +486,7 @@
           "op": {
             "const": "remove_value",
             "default": "remove_value",
+            "description": "The operation to perform.",
             "title": "Op",
             "type": "string"
           },
@@ -506,6 +515,7 @@
           "op": {
             "const": "replace",
             "default": "replace",
+            "description": "The operation to perform.",
             "title": "Op",
             "type": "string"
           },
@@ -539,6 +549,7 @@
           "op": {
             "const": "require_min",
             "default": "require_min",
+            "description": "The operation to perform.",
             "title": "Op",
             "type": "string"
           },
@@ -564,6 +575,7 @@
           "op": {
             "const": "test",
             "default": "test",
+            "description": "The operation to perform.",
             "title": "Op",
             "type": "string"
           },
@@ -592,6 +604,7 @@
           "op": {
             "const": "toggle",
             "default": "toggle",
+            "description": "The operation to perform.",
             "title": "Op",
             "type": "string"
           },
