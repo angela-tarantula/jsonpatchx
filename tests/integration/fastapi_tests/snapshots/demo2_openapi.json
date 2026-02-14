@@ -19,7 +19,7 @@
             "type": "string"
           },
           "value": {
-            "$ref": "#/components/schemas/_JSONValueInternal"
+            "title": "Value"
           }
         },
         "required": [
@@ -48,7 +48,7 @@
             "type": "string"
           },
           "value": {
-            "$ref": "#/components/schemas/_JSONValueInternal"
+            "title": "Value"
           }
         },
         "required": [
@@ -77,7 +77,7 @@
             "type": "string"
           },
           "value": {
-            "$ref": "#/components/schemas/_JSONValueInternal"
+            "title": "Value"
           }
         },
         "required": [
@@ -497,7 +497,7 @@
             "type": "string"
           },
           "value": {
-            "$ref": "#/components/schemas/_JSONValueInternal"
+            "title": "Value"
           }
         },
         "required": [
@@ -526,7 +526,7 @@
             "type": "string"
           },
           "value": {
-            "$ref": "#/components/schemas/_JSONValueInternal"
+            "title": "Value"
           }
         },
         "required": [
@@ -586,7 +586,7 @@
             "type": "string"
           },
           "value": {
-            "$ref": "#/components/schemas/_JSONValueInternal"
+            "title": "Value"
           }
         },
         "required": [
@@ -654,8 +654,7 @@
         ],
         "title": "ValidationError",
         "type": "object"
-      },
-      "_JSONValueInternal": {}
+      }
     }
   },
   "info": {

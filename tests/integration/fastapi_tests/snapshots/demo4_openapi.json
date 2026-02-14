@@ -19,7 +19,7 @@
             "type": "string"
           },
           "value": {
-            "$ref": "#/components/schemas/_JSONValueInternal"
+            "title": "Value"
           }
         },
         "required": [
@@ -48,7 +48,7 @@
             "type": "string"
           },
           "value": {
-            "$ref": "#/components/schemas/_JSONValueInternal"
+            "title": "Value"
           }
         },
         "required": [
@@ -306,7 +306,7 @@
             "type": "string"
           },
           "value": {
-            "$ref": "#/components/schemas/_JSONValueInternal"
+            "title": "Value"
           }
         },
         "required": [
@@ -394,7 +394,7 @@
             "type": "string"
           },
           "value": {
-            "$ref": "#/components/schemas/_JSONValueInternal"
+            "title": "Value"
           }
         },
         "required": [
@@ -437,8 +437,7 @@
         ],
         "title": "ValidationError",
         "type": "object"
-      },
-      "_JSONValueInternal": {}
+      }
     }
   },
   "info": {
@@ -783,7 +782,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/_JSONValueInternal"
+                  "title": "Response Get Spellbook Endpoint Spellbooks  Spellbook Id  Get"
                 }
               }
             },
@@ -856,7 +855,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/_JSONValueInternal"
+                  "title": "Response Patch Spellbook Spellbooks  Spellbook Id  Patch"
                 }
               }
             },

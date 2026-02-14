@@ -19,7 +19,7 @@
             "type": "string"
           },
           "value": {
-            "$ref": "#/components/schemas/_JSONValueInternal"
+            "title": "Value"
           }
         },
         "required": [
@@ -80,9 +80,7 @@
             "type": "string"
           },
           "values": {
-            "items": {
-              "$ref": "#/components/schemas/_JSONValueInternal"
-            },
+            "items": {},
             "title": "Values",
             "type": "array"
           }
@@ -301,8 +299,7 @@
         ],
         "title": "ValidationError",
         "type": "object"
-      },
-      "_JSONValueInternal": {}
+      }
     }
   },
   "info": {
@@ -331,7 +328,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/_JSONValueInternal"
+                  "title": "Response Get Config Endpoint Configs  Config Id  Get"
                 }
               }
             },
@@ -438,7 +435,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/_JSONValueInternal"
+                  "title": "Response Patch Config Configs  Config Id  Patch"
                 }
               }
             },

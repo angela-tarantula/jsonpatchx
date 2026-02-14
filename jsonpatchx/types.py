@@ -9,12 +9,51 @@ from typing_extensions import TypeForm, TypeIs
 
 from jsonpatchx.exceptions import InvalidJSONPointer
 
+# TypeAdapter helpers
+
+
+@lru_cache(maxsize=512)
+def _cached_type_adapter[T](expected: TypeForm[T]) -> TypeAdapter[T]:
+    # https://docs.pydantic.dev/latest/concepts/performance/#typeadapter-instantiated-once
+    return TypeAdapter(expected)
+
+
+def _type_adapter_for[T](expected: TypeForm[T]) -> TypeAdapter[T]:
+    """
+    Internal: return a (usually cached) Pydantic TypeAdapter for a TypeForm.
+
+    JSONPointer uses adapters at apply-time to validate that the resolved target
+    conforms to the pointer's type parameter.
+
+    Adapters are cached for performance when possible. Unhashable TypeForms are supported
+    but cannot be cached.
+    """
+    try:
+        try:
+            return _cached_type_adapter(expected)  # type: ignore[arg-type]
+        except TypeError:
+            # Choice: Don't forbid unhashable typeforms, but don't break an arm supporting them either.
+            # Why: Most TypeForms are hashable, even Annotated[int, json_schema_extra={"dict here": "still hashable"})].
+            #      It's really just cases like Annotated[int, {"dict":"unhashable"}] that are too rare to support for now.
+            return TypeAdapter(expected)
+    except Exception as e:
+        raise InvalidJSONPointer(
+            f"Invalid type parameter for JSON Pointer: {expected!r}. Cannot create TypeAdapter. Did you implement __get_pydantic_core_schema__?"
+        ) from e
+
+
 # Pydantic-aware JSON types (type-checking aliases + runtime classes)
 
 T = TypeVar("T")
 
 
 def _strict_validator(typeform: TypeForm[Any]) -> core_schema.CoreSchema:
+    """
+    Build a strict validator for a TypeForm using a cached TypeAdapter.
+
+    This is used to keep validation strict while avoiding automatic OpenAPI
+    component generation for internal helper types (e.g., JSONValue internals).
+    """
     adapter = _type_adapter_for(typeform)
 
     def _validate(value: object) -> object:
@@ -52,14 +91,14 @@ else:
         def __get_pydantic_core_schema__(
             cls, _source_type: object, _handler: core_schema.GetCoreSchemaHandler
         ) -> core_schema.CoreSchema:
-            type _JSONNumberData = Annotated[  # NOTE: document the necessity of field strictness. adapters strict too for preventing "2" -> 2 for JSONBoolean and int/float
+            type _JSONNumberInternal = Annotated[  # NOTE: document the necessity of field strictness. adapters strict too for preventing "2" -> 2 for JSONBoolean and int/float
                 Annotated[int, Field(strict=True)]
                 | Annotated[float, Field(strict=True, allow_inf_nan=False)],
                 Field(
                     description="integer or finite float (no NaN/Infinity).",
                 ),
             ]
-            return _strict_validator(_JSONNumberData)
+            return _strict_validator(_JSONNumberInternal)
 
         @classmethod
         def __get_pydantic_json_schema__(
@@ -189,7 +228,7 @@ else:
 
         @classmethod
         def __get_pydantic_core_schema__(
-            cls, _source_type: object, handler: core_schema.GetCoreSchemaHandler
+            cls, _source_type: object, _handler: core_schema.GetCoreSchemaHandler
         ) -> core_schema.CoreSchema:
             type _JSONValueInternal = Annotated[
                 JSONBoolean
@@ -200,7 +239,7 @@ else:
                 | JSONObject[_JSONValueInternal],
                 Field(),
             ]
-            return handler.generate_schema(_JSONValueInternal)
+            return _strict_validator(_JSONValueInternal)
 
         @classmethod
         def __get_pydantic_json_schema__(
@@ -211,45 +250,12 @@ else:
             return {}
 
 
-# TypeAdapter helpers
-
-
-@lru_cache(maxsize=512)
-def _cached_type_adapter[T](expected: TypeForm[T]) -> TypeAdapter[T]:
-    # https://docs.pydantic.dev/latest/concepts/performance/#typeadapter-instantiated-once
-    return TypeAdapter(expected)
-
-
-def _type_adapter_for[T](expected: TypeForm[T]) -> TypeAdapter[T]:
-    """
-    Internal: return a (usually cached) Pydantic TypeAdapter for a TypeForm.
-
-    JSONPointer uses adapters at apply-time to validate that the resolved target
-    conforms to the pointer's type parameter.
-
-    Adapters are cached for performance when possible. Unhashable TypeForms are supported
-    but cannot be cached.
-    """
-    try:
-        try:
-            return _cached_type_adapter(expected)  # type: ignore[arg-type]
-        except TypeError:
-            # Choice: Don't forbid unhashable typeforms, but don't break an arm supporting them either.
-            # Why: Most TypeForms are hashable, even Annotated[int, json_schema_extra={"dict here": "still hashable"})].
-            #      It's really just cases like Annotated[int, {"dict":"unhashable"}] that are too rare to support for now.
-            return TypeAdapter(expected)
-    except Exception as e:
-        raise InvalidJSONPointer(
-            f"Invalid type parameter for JSON Pointer: {expected!r}. Cannot create TypeAdapter. Did you implement __get_pydantic_core_schema__?"
-        ) from e
-
-
 def _validate_JSONValue(obj: object) -> JSONValue:
     return _type_adapter_for(JSONValue).validate_python(obj, strict=True)
 
 
 def _validate_typeform(unverified: object) -> TypeForm[Any]:
-    """Validate a TypeForm parameter."""
+    """Validate a TypeForm parameter."""  # NOTE: move to JSONPointer if it's gonna raise InvalidJSONPointer
     try:
         _type_adapter_for(unverified)  # type: ignore[arg-type]
     except Exception as e:
