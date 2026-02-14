@@ -1,11 +1,7 @@
 import pytest
 
-pytest.importorskip("fastapi")
-pytest.importorskip("httpx")
-
 from examples.fastapi import demo3
-
-from .utils import make_client, patch_json
+from tests.integration.fastapi_tests.utils import make_client, patch_json
 
 pytestmark = pytest.mark.anyio
 

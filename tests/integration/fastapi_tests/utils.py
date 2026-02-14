@@ -1,9 +1,6 @@
 from __future__ import annotations
 
-import pytest
-
-pytest.importorskip("fastapi")
-httpx = pytest.importorskip("httpx")
+import httpx
 
 
 def make_client(app: object) -> "httpx.AsyncClient":

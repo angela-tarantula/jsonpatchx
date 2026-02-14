@@ -4,7 +4,7 @@ Four focused FastAPI demos. Each demo is a standalone file that reads cleanly in
 
 ## Setup (once)
 
-- Install demo deps: `uv sync --group fastapi`
+- Install demo deps: `uv sync`
 - Run commands from the repo root.
 
 ## Quick links

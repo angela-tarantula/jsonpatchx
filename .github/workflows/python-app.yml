@@ -33,7 +33,7 @@ jobs:
             uv.lock
 
       - name: Install Dependencies
-        run: uv sync --group dev --all-extras
+        run: uv sync
 
       - name: Ruff
         run: uv run ruff check

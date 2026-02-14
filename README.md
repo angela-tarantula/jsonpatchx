@@ -5,7 +5,7 @@ A framework for building <strong>safe and expressive PATCH APIs</strong> in Pyth
 <br>
 Implements JSON Patch as a <strong>first-class API abstraction</strong> with typed operations and FastAPI/OpenAPI support.
 <br>
-Fully compliant with <a href="https://datatracker.ietf.org/doc/html/rfc6902">RFC 6902</a>, tested against the <a href="https://github.com/json-patch/json-patch-tests">JSON Patch Compliance Test Suite</a>.
+Fully compliant with <a href="https://datatracker.ietf.org/doc/html/rfc6902">RFC 6902</a>, tested against the <a href="https://github.com/json-patch/json-patch-tests">Official JSON Patch Compliance Test Suite</a>.
 </p>
 
 
@@ -111,8 +111,8 @@ json-patch-x is a good fit for:
 
 - **PATCH as a real API contract:** You need safe, expressive, and evolvable operations for your application.
 - **Teams generating SDKs or relying on OpenAPI tooling:** Your documentation must reflect exactly which operations are allowed.
-- **High-safety or regulated endpoints:** You need strong mutation guarantees and allow-listed operations.
 - **Automated or AI-assisted workflows:** Your patches are generated, reviewed, or routed by LLMs or other untrusted tooling.
+- **High-safety or regulated endpoints:** You need strong mutation guarantees and allow-listed operations.
 - **Straightforward RFC 6902 patching:** You just want a correct patch engine without extra ceremony.
 
 But if you primarily need speed or a minimal RFC 6902 applicator and you trust your patches, use [py_yyjson](https://tkte.ch/py_yyjson/#py-yyjson). It's high-performance and also supports JSON Merge Patch ([RFC 7386](https://datatracker.ietf.org/doc/html/rfc7386)) if you prefer "last-write-wins" simplicity.
@@ -530,7 +530,7 @@ git submodule update --init
 3. Install the dependencies
 
 ```sh
-uv sync --group dev --all-extras
+uv sync
 ```
 
 4. Install [prek](https://github.com/j178/prek) (pre-commit runner):

@@ -1,7 +1,5 @@
 import pytest
 
-pytest.importorskip("fastapi")
-
 from examples.fastapi.shared import reset_store
 
 

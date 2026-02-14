@@ -3,8 +3,6 @@ from pathlib import Path
 
 import pytest
 
-pytest.importorskip("fastapi")
-
 from examples.fastapi import demo1, demo2, demo3, demo4
 
 SNAPSHOT_DIR = Path(__file__).resolve().parent / "snapshots"

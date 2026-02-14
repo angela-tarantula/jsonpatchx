@@ -12,11 +12,11 @@ dependencies = [
 [project.optional-dependencies]
 fastapi = [
     "fastapi>=0.128.0",
-    "uvicorn>=0.40.0",
 ]
 
 [dependency-groups]
 dev = [
+    "fastapi>=0.128.0",
     "httpx>=0.28.1",
     "mypy>=1.19.1",
     "pytest>=9.0.1",
@@ -24,6 +24,7 @@ dev = [
     "python-jsonpath>=2.0.2",
     "ruff>=0.14.7",
     "typing-extensions>=4.15.0",
+    "uvicorn>=0.40.0",
 ]
 
 [tool.mypy]
