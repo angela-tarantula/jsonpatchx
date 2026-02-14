@@ -18,7 +18,7 @@
             "type": "string"
           },
           "value": {
-            "title": "Value"
+            "$ref": "#/components/schemas/_JSONValueInternal"
           }
         },
         "required": [
@@ -247,7 +247,7 @@
             "type": "string"
           },
           "value": {
-            "title": "Value"
+            "$ref": "#/components/schemas/_JSONValueInternal"
           }
         },
         "required": [
@@ -275,7 +275,7 @@
             "type": "string"
           },
           "value": {
-            "title": "Value"
+            "$ref": "#/components/schemas/_JSONValueInternal"
           }
         },
         "required": [
@@ -318,7 +318,8 @@
         ],
         "title": "ValidationError",
         "type": "object"
-      }
+      },
+      "_JSONValueInternal": {}
     }
   },
   "info": {

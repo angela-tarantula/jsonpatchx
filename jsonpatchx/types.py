@@ -1,51 +1,141 @@
 from __future__ import annotations
 
 from functools import lru_cache
-from typing import TYPE_CHECKING, Annotated, Any, cast
+from typing import TYPE_CHECKING, Annotated, Any, Generic, TypeVar, cast, get_args
 
 from pydantic import Field, TypeAdapter
-from pydantic.json_schema import WithJsonSchema
 from pydantic_core import core_schema
 from typing_extensions import TypeForm, TypeIs
 
 from jsonpatchx.exceptions import InvalidJSONPointer
 
-# Pydantic-aware JSON type aliases
+# Pydantic-aware JSON types (type-checking aliases + runtime classes)
 
-type JSONBoolean = Annotated[
-    bool,
-    Field(strict=True),
-    WithJsonSchema({"type": "boolean"}),
-]
-type JSONNumber = Annotated[  # NOTE: document the necessity of field strictness. adapters strict too for preventing "2" -> 2 for JSONBoolean and int/float
-    Annotated[int, Field(strict=True)]
-    | Annotated[float, Field(strict=True, allow_inf_nan=False)],
-    Field(
-        description="integer or finite float (no NaN/Infinity).",
-    ),
-    WithJsonSchema({"type": "number"}),
-]
-type JSONString = Annotated[
-    str,
-    Field(strict=True),
-    WithJsonSchema({"type": "string"}),
-]
-type JSONNull = Annotated[
-    None,
-    Field(),
-    WithJsonSchema({"type": "null"}),
-]
+T = TypeVar("T")
 
-type JSONArray[T] = Annotated[
-    list[T],
-    Field(strict=True),
-    WithJsonSchema({"type": "array"}),
-]
-type JSONObject[T] = Annotated[
-    dict[str, T],
-    Field(strict=True),
-    WithJsonSchema({"type": "object"}),
-]
+
+def _strict_validator(typeform: TypeForm[Any]) -> core_schema.CoreSchema:
+    adapter = _type_adapter_for(typeform)
+
+    def _validate(value: object) -> object:
+        return adapter.validate_python(value, strict=True)
+
+    return core_schema.no_info_plain_validator_function(_validate)
+
+
+if TYPE_CHECKING:
+    type JSONBoolean = bool
+    type JSONNumber = int | float
+    type JSONString = str
+    type JSONNull = None
+    type JSONArray[T] = list[T]
+    type JSONObject[T] = dict[str, T]
+else:
+
+    class JSONBoolean:
+        @classmethod
+        def __get_pydantic_core_schema__(
+            cls, _source_type: object, _handler: core_schema.GetCoreSchemaHandler
+        ) -> core_schema.CoreSchema:
+            return _strict_validator(Annotated[bool, Field(strict=True)])
+
+        @classmethod
+        def __get_pydantic_json_schema__(
+            cls,
+            _core_schema: core_schema.CoreSchema,
+            _handler: core_schema.GetJsonSchemaHandler,
+        ) -> dict[str, object]:
+            return {"type": "boolean"}
+
+    class JSONNumber:
+        @classmethod
+        def __get_pydantic_core_schema__(
+            cls, _source_type: object, _handler: core_schema.GetCoreSchemaHandler
+        ) -> core_schema.CoreSchema:
+            type _JSONNumberData = Annotated[  # NOTE: document the necessity of field strictness. adapters strict too for preventing "2" -> 2 for JSONBoolean and int/float
+                Annotated[int, Field(strict=True)]
+                | Annotated[float, Field(strict=True, allow_inf_nan=False)],
+                Field(
+                    description="integer or finite float (no NaN/Infinity).",
+                ),
+            ]
+            return _strict_validator(_JSONNumberData)
+
+        @classmethod
+        def __get_pydantic_json_schema__(
+            cls,
+            _core_schema: core_schema.CoreSchema,
+            _handler: core_schema.GetJsonSchemaHandler,
+        ) -> dict[str, object]:
+            return {"type": "number"}
+
+    class JSONString:
+        @classmethod
+        def __get_pydantic_core_schema__(
+            cls, _source_type: object, _handler: core_schema.GetCoreSchemaHandler
+        ) -> core_schema.CoreSchema:
+            return _strict_validator(Annotated[str, Field(strict=True)])
+
+        @classmethod
+        def __get_pydantic_json_schema__(
+            cls,
+            _core_schema: core_schema.CoreSchema,
+            _handler: core_schema.GetJsonSchemaHandler,
+        ) -> dict[str, object]:
+            return {"type": "string"}
+
+    class JSONNull:
+        @classmethod
+        def __get_pydantic_core_schema__(
+            cls, _source_type: object, _handler: core_schema.GetCoreSchemaHandler
+        ) -> core_schema.CoreSchema:
+            return _strict_validator(Annotated[None, Field()])
+
+        @classmethod
+        def __get_pydantic_json_schema__(
+            cls,
+            _core_schema: core_schema.CoreSchema,
+            _handler: core_schema.GetJsonSchemaHandler,
+        ) -> dict[str, object]:
+            return {"type": "null"}
+
+    class JSONArray(Generic[T]):
+        @classmethod
+        def __get_pydantic_core_schema__(
+            cls, source_type: object, handler: core_schema.GetCoreSchemaHandler
+        ) -> core_schema.CoreSchema:
+            (item_type,) = get_args(source_type) or (Any,)
+            item_schema = handler.generate_schema(item_type)
+            return core_schema.list_schema(item_schema, strict=True)
+
+        @classmethod
+        def __get_pydantic_json_schema__(
+            cls,
+            _core_schema: core_schema.CoreSchema,
+            _handler: core_schema.GetJsonSchemaHandler,
+        ) -> dict[str, object]:
+            return {"type": "array"}
+
+    class JSONObject(Generic[T]):
+        @classmethod
+        def __get_pydantic_core_schema__(
+            cls, source_type: object, handler: core_schema.GetCoreSchemaHandler
+        ) -> core_schema.CoreSchema:
+            (value_type,) = get_args(source_type) or (Any,)
+            value_schema = handler.generate_schema(value_type)
+            return core_schema.dict_schema(
+                core_schema.str_schema(), value_schema, strict=True
+            )
+
+        @classmethod
+        def __get_pydantic_json_schema__(
+            cls,
+            _core_schema: core_schema.CoreSchema,
+            _handler: core_schema.GetJsonSchemaHandler,
+        ) -> dict[str, object]:
+            return {"type": "object"}
+
+
 type JSONContainer[T] = JSONArray[T] | JSONObject[T]  # NOTE: make this internal
 
 # type-narrowing helpers
@@ -110,12 +200,7 @@ else:
                 | JSONObject[_JSONValueInternal],
                 Field(),
             ]
-            adapter = _type_adapter_for(_JSONValueInternal)
-
-            def _validate(value: object) -> object:
-                return adapter.validate_python(value, strict=True)
-
-            return core_schema.no_info_plain_validator_function(_validate)
+            return handler.generate_schema(_JSONValueInternal)
 
         @classmethod
         def __get_pydantic_json_schema__(

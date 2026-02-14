@@ -18,7 +18,7 @@
             "type": "string"
           },
           "value": {
-            "title": "Value"
+            "$ref": "#/components/schemas/_JSONValueInternal"
           }
         },
         "required": [
@@ -46,7 +46,7 @@
             "type": "string"
           },
           "value": {
-            "title": "Value"
+            "$ref": "#/components/schemas/_JSONValueInternal"
           }
         },
         "required": [
@@ -74,7 +74,7 @@
             "type": "string"
           },
           "value": {
-            "title": "Value"
+            "$ref": "#/components/schemas/_JSONValueInternal"
           }
         },
         "required": [
@@ -283,9 +283,10 @@
             "type": "string"
           },
           "value": {
-            "$ref": "#/components/schemas/JSONNumber",
             "gt": 0,
-            "multiple_of": 5
+            "multiple_of": 5,
+            "title": "Value",
+            "type": "number"
           }
         },
         "required": [
@@ -295,9 +296,6 @@
         ],
         "title": "Increment operation",
         "type": "object"
-      },
-      "JSONNumber": {
-        "type": "number"
       },
       "MoveOp": {
         "additionalProperties": false,
@@ -490,7 +488,7 @@
             "type": "string"
           },
           "value": {
-            "title": "Value"
+            "$ref": "#/components/schemas/_JSONValueInternal"
           }
         },
         "required": [
@@ -518,7 +516,7 @@
             "type": "string"
           },
           "value": {
-            "title": "Value"
+            "$ref": "#/components/schemas/_JSONValueInternal"
           }
         },
         "required": [
@@ -534,8 +532,9 @@
         "description": "Ensures a numeric value meets a minimum.",
         "properties": {
           "min_value": {
-            "$ref": "#/components/schemas/JSONNumber",
-            "gt": 0
+            "gt": 0,
+            "title": "Min Value",
+            "type": "number"
           },
           "op": {
             "const": "require_min",
@@ -575,7 +574,7 @@
             "type": "string"
           },
           "value": {
-            "title": "Value"
+            "$ref": "#/components/schemas/_JSONValueInternal"
           }
         },
         "required": [
@@ -642,7 +641,8 @@
         ],
         "title": "ValidationError",
         "type": "object"
-      }
+      },
+      "_JSONValueInternal": {}
     }
   },
   "info": {

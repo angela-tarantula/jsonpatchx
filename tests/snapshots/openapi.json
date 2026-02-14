@@ -18,7 +18,7 @@
             "type": "string"
           },
           "value": {
-            "title": "Value"
+            "$ref": "#/components/schemas/_JSONValueInternal"
           }
         },
         "required": [
@@ -306,7 +306,7 @@
             "type": "string"
           },
           "value": {
-            "title": "Value"
+            "$ref": "#/components/schemas/_JSONValueInternal"
           }
         },
         "required": [
@@ -334,7 +334,7 @@
             "type": "string"
           },
           "value": {
-            "title": "Value"
+            "$ref": "#/components/schemas/_JSONValueInternal"
           }
         },
         "required": [
@@ -443,7 +443,8 @@
         ],
         "title": "ValidationError",
         "type": "object"
-      }
+      },
+      "_JSONValueInternal": {}
     }
   },
   "info": {
@@ -481,7 +482,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "title": "Response Patch Config Configs  Config Id  Patch"
+                  "$ref": "#/components/schemas/_JSONValueInternal"
                 }
               }
             },
@@ -535,7 +536,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "title": "Response Patch Config Dep Configs  Config Id  Dep Patch"
+                  "$ref": "#/components/schemas/_JSONValueInternal"
                 }
               }
             },

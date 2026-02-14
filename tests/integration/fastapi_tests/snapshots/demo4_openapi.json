@@ -18,7 +18,7 @@
             "type": "string"
           },
           "value": {
-            "title": "Value"
+            "$ref": "#/components/schemas/_JSONValueInternal"
           }
         },
         "required": [
@@ -46,7 +46,7 @@
             "type": "string"
           },
           "value": {
-            "title": "Value"
+            "$ref": "#/components/schemas/_JSONValueInternal"
           }
         },
         "required": [
@@ -213,9 +213,10 @@
             "type": "string"
           },
           "value": {
-            "$ref": "#/components/schemas/JSONNumber",
             "gt": 0,
-            "multiple_of": 5
+            "multiple_of": 5,
+            "title": "Value",
+            "type": "number"
           }
         },
         "required": [
@@ -225,9 +226,6 @@
         ],
         "title": "Increment operation",
         "type": "object"
-      },
-      "JSONNumber": {
-        "type": "number"
       },
       "MoveOp": {
         "additionalProperties": false,
@@ -301,7 +299,7 @@
             "type": "string"
           },
           "value": {
-            "title": "Value"
+            "$ref": "#/components/schemas/_JSONValueInternal"
           }
         },
         "required": [
@@ -388,7 +386,7 @@
             "type": "string"
           },
           "value": {
-            "title": "Value"
+            "$ref": "#/components/schemas/_JSONValueInternal"
           }
         },
         "required": [
@@ -431,7 +429,8 @@
         ],
         "title": "ValidationError",
         "type": "object"
-      }
+      },
+      "_JSONValueInternal": {}
     }
   },
   "info": {
@@ -776,7 +775,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "title": "Response Get Spellbook Endpoint Spellbooks  Spellbook Id  Get"
+                  "$ref": "#/components/schemas/_JSONValueInternal"
                 }
               }
             },
@@ -849,7 +848,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "title": "Response Patch Spellbook Spellbooks  Spellbook Id  Patch"
+                  "$ref": "#/components/schemas/_JSONValueInternal"
                 }
               }
             },
