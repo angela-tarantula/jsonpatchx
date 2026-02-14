@@ -7,3 +7,8 @@ repos:
         language: system
         types: [python]
         pass_filenames: false
+      - id: update-openapi-snapshots
+        name: update openapi snapshots
+        entry: uv run python scripts/update_openapi_snapshots.py
+        language: system
+        pass_filenames: false
