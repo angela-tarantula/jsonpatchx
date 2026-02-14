@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from functools import lru_cache
-from typing import TYPE_CHECKING, Annotated, Any, Generic, TypeVar, cast, get_args
+from typing import TYPE_CHECKING, Annotated, Any, cast, get_args
 
 from pydantic import Field, TypeAdapter
 from pydantic_core import core_schema
@@ -43,8 +43,6 @@ def _type_adapter_for[T](expected: TypeForm[T]) -> TypeAdapter[T]:
 
 
 # Pydantic-aware JSON types (type-checking aliases + runtime classes)
-
-T = TypeVar("T")
 
 
 def _strict_validator(typeform: TypeForm[Any]) -> core_schema.CoreSchema:
@@ -138,7 +136,7 @@ else:
         ) -> dict[str, object]:
             return {"type": "null"}
 
-    class JSONArray(Generic[T]):
+    class JSONArray[T]:
         @classmethod
         def __get_pydantic_core_schema__(
             cls, source_type: object, handler: core_schema.GetCoreSchemaHandler
@@ -155,7 +153,7 @@ else:
         ) -> dict[str, object]:
             return {"type": "array"}
 
-    class JSONObject(Generic[T]):
+    class JSONObject[T]:
         @classmethod
         def __get_pydantic_core_schema__(
             cls, source_type: object, handler: core_schema.GetCoreSchemaHandler
