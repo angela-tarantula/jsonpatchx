@@ -10,11 +10,8 @@ Fully compliant with <a href="https://datatracker.ietf.org/doc/html/rfc6902">RFC
 
 
 <p align="center">
-    <a href="https://github.com/marketplace/actions/super-linter">
-        <img src="https://github.com/angela-tarantula/json-patch-x/actions/workflows/python-app.yml/badge.svg?branch=main" alt="CI">
-    </a>
     <a href="https://github.com/angela-tarantula/json-patch-x/actions">
-        <img src="https://img.shields.io/github/actions/workflow/status/angela-tarantula/json-patch-x/python-app.yml?branch=main&label=Python%20CI&style=flat-square" alt="Python CI">
+        <img src="https://img.shields.io/github/actions/workflow/status/angela-tarantula/json-patch-x/python-app.yml?branch=main&label=CI&style=flat" alt="Tests">
     </a>
 </p>
 
