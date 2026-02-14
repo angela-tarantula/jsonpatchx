@@ -30,6 +30,14 @@
       "args": ["run", "pytest", "-v"],
       "group": "test",
       "problemMatcher": []
+    },
+    {
+      "label": "update-openapi-snapshots",
+      "type": "shell",
+      "command": "uv",
+      "args": ["run", "python", "scripts/update_openapi_snapshots.py"],
+      "group": "build",
+      "problemMatcher": []
     }
   ]
 }
