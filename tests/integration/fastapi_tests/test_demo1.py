@@ -1,19 +1,18 @@
 import pytest
+from httpx import AsyncClient
 
-from examples.fastapi import demo1
-from tests.integration.fastapi_tests.utils import make_client, patch_json
+from tests.integration.fastapi_tests.conftest import patch_json
 
 pytestmark = pytest.mark.anyio
 
 
-async def test_demo1_confetti_fix() -> None:
+async def test_demo1_confetti_fix(demo1_client: AsyncClient) -> None:
     patch = [
         {"op": "replace", "path": "/email", "value": "morgan@example.com"},
         {"op": "replace", "path": "/marketing_opt_in", "value": True},
     ]
 
-    async with make_client(demo1.app) as client:
-        response = await patch_json(client, "/customers/2", patch)
+    response = await patch_json(demo1_client, "/customers/2", patch)
 
     assert response.status_code == 200
     payload = response.json()
@@ -22,14 +21,13 @@ async def test_demo1_confetti_fix() -> None:
     assert payload["marketing_opt_in"] is True
 
 
-async def test_demo1_vip_sprinkles() -> None:
+async def test_demo1_vip_sprinkles(demo1_client: AsyncClient) -> None:
     patch = [
         {"op": "add", "path": "/tags/-", "value": "vip"},
         {"op": "replace", "path": "/status", "value": "priority"},
     ]
 
-    async with make_client(demo1.app) as client:
-        response = await patch_json(client, "/customers/2", patch)
+    response = await patch_json(demo1_client, "/customers/2", patch)
 
     assert response.status_code == 200
     payload = response.json()
@@ -38,7 +36,7 @@ async def test_demo1_vip_sprinkles() -> None:
     assert payload["status"] == "priority"
 
 
-async def test_demo1_address_glowup() -> None:
+async def test_demo1_address_glowup(demo1_client: AsyncClient) -> None:
     patch = [
         {"op": "replace", "path": "/phone", "value": "+1-555-0111"},
         {
@@ -48,8 +46,7 @@ async def test_demo1_address_glowup() -> None:
         },
     ]
 
-    async with make_client(demo1.app) as client:
-        response = await patch_json(client, "/customers/1", patch)
+    response = await patch_json(demo1_client, "/customers/1", patch)
 
     assert response.status_code == 200
     payload = response.json()

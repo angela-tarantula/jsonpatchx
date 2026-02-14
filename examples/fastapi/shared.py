@@ -21,7 +21,7 @@ from jsonpatchx import (
 )
 from jsonpatchx.backend import PointerBackend
 from jsonpatchx.exceptions import InvalidJSONPointer
-from jsonpatchx.fastapi import JSON_PATCH_MEDIA_TYPE, install_jsonpatch_error_handlers
+from jsonpatchx.fastapi import install_jsonpatch_error_handlers
 from jsonpatchx.pointer import JSONPointer
 from jsonpatchx.types import (
     JSONArray,
@@ -597,7 +597,6 @@ __all__ = [
     "EnforceMaxLenOp",
     "ExtendOp",
     "IncrementOp",
-    "JSON_PATCH_MEDIA_TYPE",
     "RemoveNumberOp",
     "RemoveValueOp",
     "RequireMinimumOp",

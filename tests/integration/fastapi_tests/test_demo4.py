@@ -1,19 +1,18 @@
 import pytest
+from httpx import AsyncClient
 
-from examples.fastapi import demo4
-from tests.integration.fastapi_tests.utils import make_client, patch_json
+from tests.integration.fastapi_tests.conftest import patch_json
 
 pytestmark = pytest.mark.anyio
 
 
-async def test_demo4_spellbook_midnight_runes() -> None:
+async def test_demo4_spellbook_midnight_runes(demo4_client: AsyncClient) -> None:
     patch = [
         {"op": "replace", "path": "rituals.summon.enabled", "value": True},
         {"op": "increment", "path": "ingredients.moon_salt", "value": 5},
     ]
 
-    async with make_client(demo4.app) as client:
-        response = await patch_json(client, "/spellbooks/grimoire", patch)
+    response = await patch_json(demo4_client, "/spellbooks/grimoire", patch)
 
     assert response.status_code == 200
     payload = response.json()
@@ -21,14 +20,13 @@ async def test_demo4_spellbook_midnight_runes() -> None:
     assert payload["ingredients"]["moon_salt"] == 8
 
 
-async def test_demo4_apprentice_sparkle_sprint() -> None:
+async def test_demo4_apprentice_sparkle_sprint(demo4_client: AsyncClient) -> None:
     patch = [
         {"op": "increment", "path": "mana", "value": 20},
         {"op": "append", "path": "sigils", "value": "aurora"},
     ]
 
-    async with make_client(demo4.app) as client:
-        response = await patch_json(client, "/apprentices/1", patch)
+    response = await patch_json(demo4_client, "/apprentices/1", patch)
 
     assert response.status_code == 200
     payload = response.json()
@@ -36,14 +34,13 @@ async def test_demo4_apprentice_sparkle_sprint() -> None:
     assert payload["sigils"][-1] == "aurora"
 
 
-async def test_demo4_apprentice_lantern_lesson() -> None:
+async def test_demo4_apprentice_lantern_lesson(demo4_client: AsyncClient) -> None:
     patch = [
         {"op": "replace", "path": "name", "value": "Nova"},
         {"op": "append", "path": "sigils", "value": "ember"},
     ]
 
-    async with make_client(demo4.app) as client:
-        response = await patch_json(client, "/apprentices/2", patch)
+    response = await patch_json(demo4_client, "/apprentices/2", patch)
 
     assert response.status_code == 200
     payload = response.json()
