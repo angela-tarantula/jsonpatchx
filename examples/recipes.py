@@ -278,8 +278,8 @@ class SortNumbersOp(OperationSchema):
     @override
     def apply(self, doc: JSONValue) -> JSONValue:
         current = self.path.get(doc)
-        current.sort(reverse=self.order == "desc")
-        return doc
+        new = sorted(current, reverse=self.order == "desc")
+        return ReplaceOp(path=self.path, value=new).apply(doc)
 
 
 class BitSetOp(OperationSchema):
