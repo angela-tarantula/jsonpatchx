@@ -198,6 +198,7 @@
             "extend": "#/components/schemas/ExtendOp",
             "increment": "#/components/schemas/IncrementOp",
             "remove_number": "#/components/schemas/RemoveNumberOp",
+            "set_message": "#/components/schemas/SetMessageOp",
             "swap": "#/components/schemas/SwapOp",
             "toggle": "#/components/schemas/ToggleBoolOp"
           },
@@ -220,6 +221,9 @@
             "$ref": "#/components/schemas/RemoveNumberOp"
           },
           {
+            "$ref": "#/components/schemas/SetMessageOp"
+          },
+          {
             "$ref": "#/components/schemas/SwapOp"
           },
           {
@@ -227,6 +231,53 @@
           }
         ],
         "title": "ServiceConfig Patch Operation"
+      },
+      "SetMessageOp": {
+        "additionalProperties": true,
+        "description": "Sets a string field to text or null.",
+        "properties": {
+          "message": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Message"
+          },
+          "op": {
+            "const": "set_message",
+            "default": "set_message",
+            "description": "The operation to perform.",
+            "title": "Op",
+            "type": "string"
+          },
+          "path": {
+            "description": "JSON Pointer (RFC 6901) string",
+            "format": "json-pointer",
+            "title": "Path",
+            "type": "string",
+            "x-pointer-type-schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          }
+        },
+        "required": [
+          "message",
+          "op",
+          "path"
+        ],
+        "title": "Set message operation",
+        "type": "object"
       },
       "SwapOp": {
         "additionalProperties": true,
@@ -390,6 +441,16 @@
           "content": {
             "application/json-patch+json": {
               "examples": {
+                "maintenance-note": {
+                  "summary": "set or clear the service_name message",
+                  "value": [
+                    {
+                      "message": "Atlas maintenance in progress",
+                      "op": "set_message",
+                      "path": "/service_name"
+                    }
+                  ]
+                },
                 "oops-expected": {
                   "summary": "type-gated remove (expected failure)",
                   "value": [

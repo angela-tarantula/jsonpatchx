@@ -54,3 +54,29 @@ async def test_demo3_oops_expected(demo3_client: AsyncClient) -> None:
     response = await patch_json(demo3_client, "/configs/service", patch)
 
     assert response.status_code == 409
+
+
+async def test_demo3_set_message_string(demo3_client: AsyncClient) -> None:
+    patch = [
+        {
+            "op": "set_message",
+            "path": "/service_name",
+            "message": "Atlas rolling deploy",
+        }
+    ]
+
+    response = await patch_json(demo3_client, "/configs/service", patch)
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["service_name"] == "Atlas rolling deploy"
+
+
+async def test_demo3_set_message_null(demo3_client: AsyncClient) -> None:
+    patch = [{"op": "set_message", "path": "/service_name", "message": None}]
+
+    response = await patch_json(demo3_client, "/configs/service", patch)
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["service_name"] is None

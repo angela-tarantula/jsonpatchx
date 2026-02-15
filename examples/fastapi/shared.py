@@ -26,8 +26,10 @@ from jsonpatchx.pointer import JSONPointer
 from jsonpatchx.types import (
     JSONArray,
     JSONBoolean,
+    JSONNull,
     JSONNumber,
     JSONObject,
+    JSONString,
 )
 
 DEMO_UNEXPECTED_ERRORS = os.getenv("JSONPATCH_DEMO_UNEXPECTED_ERRORS", "1") != "0"
@@ -530,6 +532,21 @@ class RemoveNumberOp(OperationSchema):
         return RemoveOp(path=self.path).apply(doc)
 
 
+class SetMessageOp(OperationSchema):
+    model_config = ConfigDict(
+        title="Set message operation",
+        json_schema_extra={"description": "Sets a string field to text or null."},
+    )
+
+    op: Literal["set_message"] = "set_message"
+    path: JSONPointer[JSONString | JSONNull]
+    message: JSONString | JSONNull
+
+    @override
+    def apply(self, doc: JSONValue) -> JSONValue:
+        return AddOp(path=self.path, value=self.message).apply(doc)
+
+
 class RunePointer(PointerBackend):
     """
     Demonstrative pointer backend using dot-separated rune paths ("a.b.c").
@@ -600,6 +617,7 @@ __all__ = [
     "RemoveNumberOp",
     "RemoveValueOp",
     "RequireMinimumOp",
+    "SetMessageOp",
     "SwapOp",
     "ToggleBoolOp",
     "create_app",

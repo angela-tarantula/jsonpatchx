@@ -15,6 +15,7 @@ from examples.fastapi.shared import (
     ExtendOp,
     IncrementOp,
     RemoveNumberOp,
+    SetMessageOp,
     SwapOp,
     ToggleBoolOp,
     create_app,
@@ -35,6 +36,7 @@ ConfigRegistry = OperationRegistry[
     SwapOp,
     EnsureObjectOp,
     RemoveNumberOp,
+    SetMessageOp,
 ]
 ConfigPatch = JsonPatchFor[Literal["ServiceConfig"], ConfigRegistry]
 config_patch = JsonPatchRoute(
@@ -59,6 +61,16 @@ config_patch = JsonPatchRoute(
             "value": [
                 {"op": "swap", "a": "/service_name", "b": "/features/chat"},
                 {"op": "toggle", "path": "/features/chat"},
+            ],
+        },
+        "maintenance-note": {
+            "summary": "set or clear the service_name message",
+            "value": [
+                {
+                    "op": "set_message",
+                    "path": "/service_name",
+                    "message": "Atlas maintenance in progress",
+                }
             ],
         },
         "oops-expected": {
