@@ -181,15 +181,7 @@
         "title": "Remove number operation",
         "type": "object"
       },
-      "ServiceConfig_Patch_Document": {
-        "description": "Array of patch operations for ServiceConfig.",
-        "items": {
-          "$ref": "#/components/schemas/ServiceConfig_Patch_Operation"
-        },
-        "title": "ServiceConfig Patch Document",
-        "type": "array"
-      },
-      "ServiceConfig_Patch_Operation": {
+      "ServiceConfigPatchOperation": {
         "description": "Discriminated union of patch operations for ServiceConfig.",
         "discriminator": {
           "mapping": {
@@ -231,6 +223,14 @@
           }
         ],
         "title": "ServiceConfig Patch Operation"
+      },
+      "ServiceConfigPatchRequest": {
+        "description": "Array of patch operations for ServiceConfig.",
+        "items": {
+          "$ref": "#/components/schemas/ServiceConfigPatchOperation"
+        },
+        "title": "ServiceConfig Patch Request",
+        "type": "array"
       },
       "SetMessageOp": {
         "additionalProperties": true,
@@ -508,7 +508,7 @@
                 }
               },
               "schema": {
-                "$ref": "#/components/schemas/ServiceConfig_Patch_Document"
+                "$ref": "#/components/schemas/ServiceConfigPatchRequest"
               }
             }
           },

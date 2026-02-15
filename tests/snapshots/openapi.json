@@ -31,15 +31,7 @@
         "title": "Add operation",
         "type": "object"
       },
-      "Config_Patch_Document": {
-        "description": "Array of patch operations for Config.",
-        "items": {
-          "$ref": "#/components/schemas/Config_Patch_Operation"
-        },
-        "title": "Config Patch Document",
-        "type": "array"
-      },
-      "Config_Patch_Operation": {
+      "ConfigPatchOperation": {
         "description": "Discriminated union of patch operations for Config.",
         "discriminator": {
           "mapping": {
@@ -78,6 +70,14 @@
         ],
         "title": "Config Patch Operation"
       },
+      "ConfigPatchRequest": {
+        "description": "Array of patch operations for Config.",
+        "items": {
+          "$ref": "#/components/schemas/ConfigPatchOperation"
+        },
+        "title": "Config Patch Request",
+        "type": "array"
+      },
       "CopyOp": {
         "additionalProperties": true,
         "description": "RFC 6902 copy operation.",
@@ -112,15 +112,7 @@
         "title": "Copy operation",
         "type": "object"
       },
-      "DotConfigPatch_Patch_Document": {
-        "description": "Array of patch operations for DotConfigPatch.",
-        "items": {
-          "$ref": "#/components/schemas/DotConfigPatch_Patch_Operation"
-        },
-        "title": "DotConfigPatch Patch Document",
-        "type": "array"
-      },
-      "DotConfigPatch_Patch_Operation": {
+      "DotConfigPatchPatchOperation": {
         "description": "Discriminated union of patch operations for DotConfigPatch.",
         "discriminator": {
           "mapping": {
@@ -159,6 +151,14 @@
         ],
         "title": "DotConfigPatch Patch Operation"
       },
+      "DotConfigPatchPatchRequest": {
+        "description": "Array of patch operations for DotConfigPatch.",
+        "items": {
+          "$ref": "#/components/schemas/DotConfigPatchPatchOperation"
+        },
+        "title": "DotConfigPatch Patch Request",
+        "type": "array"
+      },
       "HTTPValidationError": {
         "properties": {
           "detail": {
@@ -191,16 +191,7 @@
         "title": "MedicalRecord",
         "type": "object"
       },
-      "MedicalRecord_Patch_Document": {
-        "description": "Array of patch operations for MedicalRecord. Applied to model_dump() and re-validated against the model schema.",
-        "items": {
-          "$ref": "#/components/schemas/MedicalRecord_Patch_Operation"
-        },
-        "title": "MedicalRecord Patch Document",
-        "type": "array",
-        "x-target-model": "MedicalRecord"
-      },
-      "MedicalRecord_Patch_Operation": {
+      "MedicalRecordPatchOperation": {
         "description": "Discriminated union of patch operations for MedicalRecord.",
         "discriminator": {
           "mapping": {
@@ -238,6 +229,15 @@
           }
         ],
         "title": "MedicalRecord Patch Operation"
+      },
+      "MedicalRecordPatchRequest": {
+        "description": "Array of patch operations for MedicalRecord. Applied to model_dump() and re-validated against the model schema.",
+        "items": {
+          "$ref": "#/components/schemas/MedicalRecordPatchOperation"
+        },
+        "title": "MedicalRecord Patch Request",
+        "type": "array",
+        "x-target-model": "MedicalRecord"
       },
       "MoveOp": {
         "additionalProperties": true,
@@ -405,16 +405,7 @@
         "title": "User",
         "type": "object"
       },
-      "User_Patch_Document": {
-        "description": "Array of patch operations for User. Applied to model_dump() and re-validated against the model schema.",
-        "items": {
-          "$ref": "#/components/schemas/User_Patch_Operation"
-        },
-        "title": "User Patch Document",
-        "type": "array",
-        "x-target-model": "User"
-      },
-      "User_Patch_Operation": {
+      "UserPatchOperation": {
         "description": "Discriminated union of patch operations for User.",
         "discriminator": {
           "mapping": {
@@ -428,6 +419,15 @@
           }
         ],
         "title": "User Patch Operation"
+      },
+      "UserPatchRequest": {
+        "description": "Array of patch operations for User. Applied to model_dump() and re-validated against the model schema.",
+        "items": {
+          "$ref": "#/components/schemas/UserPatchOperation"
+        },
+        "title": "User Patch Request",
+        "type": "array",
+        "x-target-model": "User"
       },
       "ValidationError": {
         "properties": {
@@ -488,7 +488,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/Config_Patch_Document"
+                "$ref": "#/components/schemas/ConfigPatchRequest"
               }
             }
           },
@@ -539,7 +539,7 @@
               "schema": {
                 "description": "Array of patch operations for DotConfigPatch.",
                 "items": {
-                  "$ref": "#/components/schemas/DotConfigPatch_Patch_Operation"
+                  "$ref": "#/components/schemas/DotConfigPatchPatchOperation"
                 },
                 "title": "Patch",
                 "type": "array"
@@ -591,7 +591,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/MedicalRecord_Patch_Document"
+                "$ref": "#/components/schemas/MedicalRecordPatchRequest"
               }
             }
           },
@@ -642,7 +642,7 @@
               "schema": {
                 "description": "Array of patch operations for MedicalRecord. Applied to model_dump() and re-validated against the model schema.",
                 "items": {
-                  "$ref": "#/components/schemas/MedicalRecord_Patch_Operation"
+                  "$ref": "#/components/schemas/MedicalRecordPatchOperation"
                 },
                 "title": "Patch",
                 "type": "array",
@@ -695,7 +695,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/User_Patch_Document"
+                "$ref": "#/components/schemas/UserPatchRequest"
               }
             }
           },

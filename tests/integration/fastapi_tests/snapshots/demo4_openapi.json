@@ -107,16 +107,7 @@
         "title": "ApprenticeId",
         "type": "integer"
       },
-      "Apprentice_Patch_Document": {
-        "description": "Array of patch operations for Apprentice. Applied to model_dump() and re-validated against the model schema.",
-        "items": {
-          "$ref": "#/components/schemas/Apprentice_Patch_Operation"
-        },
-        "title": "Apprentice Patch Document",
-        "type": "array",
-        "x-target-model": "Apprentice"
-      },
-      "Apprentice_Patch_Operation": {
+      "ApprenticePatchOperation": {
         "description": "Discriminated union of patch operations for Apprentice.",
         "discriminator": {
           "mapping": {
@@ -158,6 +149,15 @@
           }
         ],
         "title": "Apprentice Patch Operation"
+      },
+      "ApprenticePatchRequest": {
+        "description": "Array of patch operations for Apprentice. Applied to model_dump() and re-validated against the model schema.",
+        "items": {
+          "$ref": "#/components/schemas/ApprenticePatchOperation"
+        },
+        "title": "Apprentice Patch Request",
+        "type": "array",
+        "x-target-model": "Apprentice"
       },
       "CopyOp": {
         "additionalProperties": true,
@@ -339,15 +339,7 @@
         "title": "SpellbookId",
         "type": "string"
       },
-      "Spellbook_Patch_Document": {
-        "description": "Array of patch operations for Spellbook.",
-        "items": {
-          "$ref": "#/components/schemas/Spellbook_Patch_Operation"
-        },
-        "title": "Spellbook Patch Document",
-        "type": "array"
-      },
-      "Spellbook_Patch_Operation": {
+      "SpellbookPatchOperation": {
         "description": "Discriminated union of patch operations for Spellbook.",
         "discriminator": {
           "mapping": {
@@ -389,6 +381,14 @@
           }
         ],
         "title": "Spellbook Patch Operation"
+      },
+      "SpellbookPatchRequest": {
+        "description": "Array of patch operations for Spellbook.",
+        "items": {
+          "$ref": "#/components/schemas/SpellbookPatchOperation"
+        },
+        "title": "Spellbook Patch Request",
+        "type": "array"
       },
       "TestOp": {
         "additionalProperties": true,
@@ -552,10 +552,10 @@
                 }
               },
               "schema": {
-                "$ref": "#/components/schemas/Apprentice_Patch_Document",
+                "$ref": "#/components/schemas/ApprenticePatchRequest",
                 "description": "Array of patch operations for Apprentice. Applied to model_dump() and re-validated against the model schema.",
                 "items": {
-                  "$ref": "#/components/schemas/Apprentice_Patch_Operation"
+                  "$ref": "#/components/schemas/ApprenticePatchOperation"
                 },
                 "title": "Patch",
                 "type": "array",
@@ -853,10 +853,10 @@
                 }
               },
               "schema": {
-                "$ref": "#/components/schemas/Spellbook_Patch_Document",
+                "$ref": "#/components/schemas/SpellbookPatchRequest",
                 "description": "Array of patch operations for Spellbook.",
                 "items": {
-                  "$ref": "#/components/schemas/Spellbook_Patch_Operation"
+                  "$ref": "#/components/schemas/SpellbookPatchOperation"
                 },
                 "title": "Patch",
                 "type": "array"

@@ -220,16 +220,7 @@
         "title": "GuildId",
         "type": "integer"
       },
-      "Guild_Patch_Document": {
-        "description": "Array of patch operations for Guild. Applied to model_dump() and re-validated against the model schema.",
-        "items": {
-          "$ref": "#/components/schemas/Guild_Patch_Operation"
-        },
-        "title": "Guild Patch Document",
-        "type": "array",
-        "x-target-model": "Guild"
-      },
-      "Guild_Patch_Operation": {
+      "GuildPatchOperation": {
         "description": "Discriminated union of patch operations for Guild.",
         "discriminator": {
           "mapping": {
@@ -275,6 +266,15 @@
           }
         ],
         "title": "Guild Patch Operation"
+      },
+      "GuildPatchRequest": {
+        "description": "Array of patch operations for Guild. Applied to model_dump() and re-validated against the model schema.",
+        "items": {
+          "$ref": "#/components/schemas/GuildPatchOperation"
+        },
+        "title": "Guild Patch Request",
+        "type": "array",
+        "x-target-model": "Guild"
       },
       "HTTPValidationError": {
         "properties": {
@@ -413,16 +413,7 @@
         "title": "PlayerId",
         "type": "integer"
       },
-      "Player_Patch_Document": {
-        "description": "Array of patch operations for Player. Applied to model_dump() and re-validated against the model schema.",
-        "items": {
-          "$ref": "#/components/schemas/Player_Patch_Operation"
-        },
-        "title": "Player Patch Document",
-        "type": "array",
-        "x-target-model": "Player"
-      },
-      "Player_Patch_Operation": {
+      "PlayerPatchOperation": {
         "description": "Discriminated union of patch operations for Player.",
         "discriminator": {
           "mapping": {
@@ -476,6 +467,15 @@
           }
         ],
         "title": "Player Patch Operation"
+      },
+      "PlayerPatchRequest": {
+        "description": "Array of patch operations for Player. Applied to model_dump() and re-validated against the model schema.",
+        "items": {
+          "$ref": "#/components/schemas/PlayerPatchOperation"
+        },
+        "title": "Player Patch Request",
+        "type": "array",
+        "x-target-model": "Player"
       },
       "RemoveOp": {
         "additionalProperties": true,
@@ -805,7 +805,7 @@
                 }
               },
               "schema": {
-                "$ref": "#/components/schemas/Guild_Patch_Document"
+                "$ref": "#/components/schemas/GuildPatchRequest"
               }
             }
           },
@@ -1128,7 +1128,7 @@
                 }
               },
               "schema": {
-                "$ref": "#/components/schemas/Player_Patch_Document"
+                "$ref": "#/components/schemas/PlayerPatchRequest"
               }
             }
           },

@@ -123,16 +123,7 @@
         "title": "CustomerId",
         "type": "integer"
       },
-      "Customer_Patch_Document": {
-        "description": "Array of patch operations for Customer. Applied to model_dump() and re-validated against the model schema.",
-        "items": {
-          "$ref": "#/components/schemas/Customer_Patch_Operation"
-        },
-        "title": "Customer Patch Document",
-        "type": "array",
-        "x-target-model": "Customer"
-      },
-      "Customer_Patch_Operation": {
+      "CustomerPatchOperation": {
         "description": "Discriminated union of patch operations for Customer.",
         "discriminator": {
           "mapping": {
@@ -166,6 +157,15 @@
           }
         ],
         "title": "Customer Patch Operation"
+      },
+      "CustomerPatchRequest": {
+        "description": "Array of patch operations for Customer. Applied to model_dump() and re-validated against the model schema.",
+        "items": {
+          "$ref": "#/components/schemas/CustomerPatchOperation"
+        },
+        "title": "Customer Patch Request",
+        "type": "array",
+        "x-target-model": "Customer"
       },
       "HTTPValidationError": {
         "properties": {
@@ -447,7 +447,7 @@
                 }
               },
               "schema": {
-                "$ref": "#/components/schemas/Customer_Patch_Document"
+                "$ref": "#/components/schemas/CustomerPatchRequest"
               }
             }
           },

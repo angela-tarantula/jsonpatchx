@@ -284,7 +284,7 @@ class JsonPatchFor(_RegistryBoundPatchRoot, Generic[TargetT, RegistryT]):
         registry: type[AnyRegistry],
     ) -> type[_BasePatchBody]:
         BodyPatchOperation = TypeAliasType(  # type: ignore[misc]
-            f"{schema_name}_Patch_Operation",
+            f"{schema_name}PatchOperation",
             Annotated[
                 registry.union.__value__,
                 Field(
@@ -297,10 +297,10 @@ class JsonPatchFor(_RegistryBoundPatchRoot, Generic[TargetT, RegistryT]):
         )  # NOTE: can't use type keyword because otherwise OpenAPI title binds to "BodyPatchOperation" instead
 
         PatchBody = create_model(
-            f"{schema_name}_Patch_Document",
+            f"{schema_name}PatchRequest",
             __base__=_BasePatchBody,
             __config__=ConfigDict(
-                title=f"{schema_name} Patch Document",
+                title=f"{schema_name} Patch Request",
                 json_schema_extra={
                     "description": f"Array of patch operations for {schema_name}.",
                 },
@@ -320,7 +320,7 @@ class JsonPatchFor(_RegistryBoundPatchRoot, Generic[TargetT, RegistryT]):
         registry: type[AnyRegistry],
     ) -> type[_BasePatchModel[ModelT]]:
         ModelPatchOperation = TypeAliasType(  # type: ignore[misc]
-            f"{model.__name__}_Patch_Operation",
+            f"{model.__name__}PatchOperation",
             Annotated[
                 registry.union.__value__,
                 Field(
@@ -331,10 +331,10 @@ class JsonPatchFor(_RegistryBoundPatchRoot, Generic[TargetT, RegistryT]):
         )  # NOTE: can't use type keyword because otherwise OpenAPI title binds to "ModelPatchOperation" instead
 
         PatchModel = create_model(
-            f"{model.__name__}_Patch_Document",
+            f"{model.__name__}PatchRequest",
             __base__=_BasePatchModel,
             __config__=ConfigDict(
-                title=f"{model.__name__} Patch Document",
+                title=f"{model.__name__} Patch Request",
                 json_schema_extra={
                     "description": (
                         f"Array of patch operations for {model.__name__}. "
