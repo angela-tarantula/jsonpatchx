@@ -117,16 +117,30 @@ def cases() -> list[Case]:
             comment=(
                 'RFC 6901 defines "" as a pointer to the whole document. RFC 6902 models patching as producing a '
                 "'resulting document' after each successful operation, which implies that any successful operation yields "
-                "another JSON value/document. RFC 6902 does not explicitly specify the behavior of remove at the root; "
-                "this implementation treats it as producing null (Python None), preserving closure and composability. "
-                "Users who prefer to forbid root removal can enforce that as an additional constraint."
+                "another JSON value/document. RFC 6902 does not indicate in any way that removal at the root should be unsuccessful. "
+                "This implementation treats root removal as producing null (Python None), preserving closure under successful operations. "
+                "If removal of the root was not allowed, so would replacement of the root, according to the RFC. "
+                "In general, the RemoveOp would be less composable out-of-the-box if it restricted root removal. "
+                "Users who prefer to forbid root removal can enforce that as an additional constraint in custom Remove/Replace ops."
             ),
-        ),
+        ),  # NOTE: the "replace whole document" test is technically undefined in the RFC
         Case(
             doc={"foo": "should-not-be-indexable"},
             patch=[{"op": "copy", "from": "/foo/0", "path": "/bar"}],
             error="strings should not be indexible in JSON as they are in Python",
             comment="strings can't be indexed",
+        ),
+        Case(
+            doc={"foo": "bar", "baz": [1]},
+            patch=[{"op": "copy", "from": "/baz/-", "path": "/foo"}],
+            error="copy source must exist beforehand",
+            comment="copy with source using '-'",
+        ),
+        Case(
+            doc={"foo": "bar", "baz": [1]},
+            patch=[{"op": "copy", "from": "/baz/1", "path": "/foo"}],
+            error="copy source must exist beforehand",
+            comment="copy with source index=len(array)",
         ),
         Case(
             doc={"a": 1},
@@ -139,6 +153,18 @@ def cases() -> list[Case]:
             patch=[{"op": "move", "from": "/foo", "path": "/baz/-"}],
             expected={"baz": [1, "bar"]},
             comment="move with array append",
+        ),
+        Case(
+            doc={"foo": "bar", "baz": [1]},
+            patch=[{"op": "move", "from": "/baz/-", "path": "/foo"}],
+            error="move source must exist beforehand",
+            comment="move with source using '-'",
+        ),
+        Case(
+            doc={"foo": "bar", "baz": [1]},
+            patch=[{"op": "move", "from": "/baz/1", "path": "/foo"}],
+            error="move source must exist beforehand",
+            comment="move with source index=len(array)",
         ),
         Case(
             doc={"foo": "bar", "baz": [1]},
