@@ -261,15 +261,20 @@ def _validate_typeform(unverified: object) -> TypeForm[Any]:
 
 type JSONBound = (
     JSONScalar | JSONContainer[Any]
-)  # A type to bound all recursively JSON types
+)  # Bound for all recursively JSON-ish types.
+# Use it like ``T = TypeVar("T", default=JSONValue, bound=JSONBound)``
 
-# NOTE: We'd like this bound to accept JSON containers parameterized by *any* JSON element type:
-#   JSONArray[T] | JSONObject[T]  where  T <: JSONValue
+# NOTE: Ideally we'd accept JSON containers parameterized by *any* JSON element type:
+#   type JSONBound = JSONScalar | JSONContainer[T]  where  T <: JSONValue
 # This is an existential ("there exists some T") constraint. Writing
-#   JSONArray[JSONValue] | JSONObject[JSONValue]
-# is too narrow because JSONArray/JSONObject are invariant (e.g., mutable), because it would not
-# match JSONArray[JSONNumber], etc. Python typing can't express this existential form in a
-# reusable TypeVar bound/alias, so we use `Any` in container branches as a pragmatic
-# approximation (static checkers won't reject non-JSON elements inside containers).
-# Ideally, I'd propose in a PEP or something this syntax:
+#   type JSONBound = JSONScalar | JSONContainer[JSONValue]
+# is too narrow when JSONContainer is invariant (e.g., mutable), because it would reject
+# JSONContainer[JSONNumber], etc.
+#
+# Python typing can't currently express this existential constraint for invariant recursive
+# containers in type aliases/annotations, so we use `Any` in the container branch as a
+# pragmatic approximation. (Consequence: static checkers may not reject non-JSON element
+# types inside containers.)
+#
+# My proposed syntax (not supported today):
 #   type JSONBound = JSONScalar | JSONContainer[T: JSONValue]
