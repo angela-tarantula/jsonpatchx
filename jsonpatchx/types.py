@@ -173,7 +173,8 @@ else:
             return handler(_core_schema)
 
 
-type JSONContainer[T] = JSONArray[T] | JSONObject[T]  # NOTE: make this internal
+type JSONScalar = JSONBoolean | JSONNumber | JSONString | JSONNull
+type JSONContainer[T] = JSONArray[T] | JSONObject[T]
 
 # type-narrowing helpers
 # NOTE: consider making public type-narrowing helpers
@@ -195,12 +196,7 @@ def _is_array(value: JSONValue) -> TypeIs[JSONArray[JSONValue]]:
 if TYPE_CHECKING:
     # Static typing: keep JSONValue as a strict JSON union.
     type JSONValue = Annotated[
-        JSONBoolean
-        | JSONNumber
-        | JSONString
-        | JSONNull
-        | JSONArray[JSONValue]
-        | JSONObject[JSONValue],
+        JSONScalar | JSONContainer[JSONValue],
         Field(),
     ]  # NOTE: document somewhere tha you can't do isinstance because these are type aliases
     """
@@ -261,3 +257,19 @@ def _validate_typeform(unverified: object) -> TypeForm[Any]:
             f"JSONPointer type parameter {unverified!r} must be a valid TypeForm"
         ) from e
     return cast(TypeForm[Any], unverified)
+
+
+type JSONBound = (
+    JSONScalar | JSONContainer[Any]
+)  # A type to bound all recursively JSON types
+
+# NOTE: We'd like this bound to accept JSON containers parameterized by *any* JSON element type:
+#   JSONArray[T] | JSONObject[T]  where  T <: JSONValue
+# This is an existential ("there exists some T") constraint. Writing
+#   JSONArray[JSONValue] | JSONObject[JSONValue]
+# is too narrow because JSONArray/JSONObject are invariant (e.g., mutable), because it would not
+# match JSONArray[JSONNumber], etc. Python typing can't express this existential form in a
+# reusable TypeVar bound/alias, so we use `Any` in container branches as a pragmatic
+# approximation (static checkers won't reject non-JSON elements inside containers).
+# Ideally, I'd propose in a PEP or something this syntax:
+#   type JSONBound = JSONScalar | JSONContainer[T: JSONValue]

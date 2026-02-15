@@ -40,6 +40,7 @@ from jsonpatchx.exceptions import (
 )
 from jsonpatchx.types import (
     JSONArray,
+    JSONBound,
     JSONContainer,
     JSONObject,
     JSONValue,
@@ -59,7 +60,7 @@ _Nothing = object()
 # NOTE: maybe add pydantic_core.MISSING to JSONPointer.get() on failure
 
 
-T_co = TypeVar("T_co", covariant=True)
+T_co = TypeVar("T_co", bound=JSONBound, covariant=True)
 P_co = TypeVar("P_co", bound=PointerBackend, covariant=True, default=PointerBackend)
 
 
@@ -166,7 +167,7 @@ class JSONPointer(str, Generic[T_co, P_co]):
         return _type_adapter_for(self._type)
 
     @property
-    def parent_ptr(self) -> P_co:
+    def parent_ptr(self) -> P_co:  # NOTE: add parent property for JSONPointer of parent
         # NOTE: make this public
         return _parent_ptr_of(self._ptr)
 

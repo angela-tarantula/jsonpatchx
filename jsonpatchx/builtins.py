@@ -7,14 +7,18 @@ from typing_extensions import TypeVar
 from jsonpatchx.exceptions import OperationValidationError, TestOpFailed
 from jsonpatchx.pointer import JSONPointer
 from jsonpatchx.schema import OperationSchema
-from jsonpatchx.types import JSONValue
+from jsonpatchx.types import (
+    JSONBound,
+    JSONValue,
+)
 
 # Advanced: RFC ops are actually generic: AddOp[T], RemoveOp[T], ReplaceOp[T], MoveOp[T], CopyOp[T], TestOp[T] (default T=JSONValue).
 # This lets custom ops use precise pointer targets like JSONPointer[JSONArray[JSONNumber]] and still compose safely.
 # Users don't need to make their own ops generic unless for advanced use case they intend to commpose them with type-safety.
 # So RFC ops are not advertised as generic in order to lower the barrier to entry.
 
-T = TypeVar("T", default=JSONValue)
+
+T = TypeVar("T", default=JSONValue, bound=JSONBound)
 
 
 class AddOp(OperationSchema, Generic[T]):
