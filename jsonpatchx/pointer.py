@@ -532,7 +532,7 @@ class JSONPointer(str, Generic[T_co, P_co]):
         value: object = _Nothing,
     ) -> bool:
         """
-        Return True if ``add`` would succeed for this document, else False.
+        Return True if RFC 6902 ``add`` would succeed for this document, else False.
         If ``value`` is provided, it must conform to the pointer's type parameter ``T``.
         """
         if value is not _Nothing:
@@ -621,7 +621,7 @@ class JSONPointer(str, Generic[T_co, P_co]):
                 assert_never(unreachable)
 
     def is_removable(self, doc: JSONValue) -> bool:
-        """Return True if ``remove`` would succeed for this document, else False."""
+        """Return True if RFC 6902 ``remove`` would succeed for this document, else False."""
         return self.is_gettable(doc)
 
     @override

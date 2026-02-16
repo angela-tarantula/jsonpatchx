@@ -202,6 +202,18 @@ def cases() -> list[Case]:
             error="replace target must exist beforehand",
             comment="replace using index=len(array)",
         ),
+        Case(
+            doc={"value": 1},
+            patch=[{"op": "replace", "path": "/value", "value": float("nan")}],
+            error="non-finite numbers are not valid JSON values",
+            comment="nan is rejected",
+        ),
+        Case(
+            doc={"value": 1},
+            patch=[{"op": "replace", "path": "/value", "value": float("-inf")}],
+            error="non-finite numbers are not valid JSON values",
+            comment="±inf is rejected",
+        ),
         # more cases for each TargetState.
     ]
 
