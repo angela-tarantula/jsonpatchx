@@ -1,11 +1,8 @@
 <h1 align="center">json-patch-x</h1>
 
 <p align="center">
-A framework for building <strong>safe and expressive PATCH APIs</strong> in Python.
-<br>
-Implements JSON Patch as a <strong>first-class API abstraction</strong> with typed operations and FastAPI/OpenAPI support.
-<br>
-Fully compliant with <a href="https://datatracker.ietf.org/doc/html/rfc6902">RFC 6902</a>, tested against the <a href="https://github.com/json-patch/json-patch-tests">Official JSON Patch Compliance Test Suite</a>.
+<strong>PATCH is a dialogue, not just a diff.</strong><br>
+A framework for <strong>governed, type-safe, and evolvable</strong> partial updates in Python.
 </p>
 
 
@@ -13,6 +10,8 @@ Fully compliant with <a href="https://datatracker.ietf.org/doc/html/rfc6902">RFC
     <a href="https://github.com/angela-tarantula/json-patch-x/actions">
         <img src="https://img.shields.io/github/actions/workflow/status/angela-tarantula/json-patch-x/python-app.yml?branch=main&label=CI&style=flat" alt="Tests">
     </a>
+    <img src="https://img.shields.io/badge/RFC-6902-blue" alt="RFC 6902 Compliant">
+    <img src="https://img.shields.io/badge/FastAPI-First%20Class-009688" alt="FastAPI Ready">
 </p>
 
 
