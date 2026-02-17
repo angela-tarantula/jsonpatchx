@@ -21,7 +21,16 @@ from examples.fastapi.shared import (
     save_apprentice,
     save_spellbook,
 )
-from jsonpatchx import GenericOperationRegistry, JSONValue, StandardRegistry
+from jsonpatchx import (
+    AddOp,
+    CopyOp,
+    GenericOperationRegistry,
+    JSONValue,
+    MoveOp,
+    RemoveOp,
+    ReplaceOp,
+    TestOp,
+)
 from jsonpatchx.fastapi import JsonPatchRoute
 from jsonpatchx.pydantic import JsonPatchFor
 
@@ -36,7 +45,15 @@ app = create_app(
 )
 
 registry = GenericOperationRegistry[
-    StandardRegistry, IncrementOp, AppendOp, RunePointer
+    AddOp,
+    CopyOp,
+    MoveOp,
+    RemoveOp,
+    ReplaceOp,
+    TestOp,
+    IncrementOp,
+    AppendOp,
+    RunePointer,
 ]
 SpellbookPatch = JsonPatchFor[Literal["Spellbook"], registry]
 ApprenticePatch = JsonPatchFor[Apprentice, registry]

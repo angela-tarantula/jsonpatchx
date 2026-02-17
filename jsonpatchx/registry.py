@@ -44,7 +44,7 @@ from jsonpatchx.schema import OperationSchema
 from jsonpatchx.types import JSONValue
 
 type AnyRegistry = GenericOperationRegistry[*tuple[Any, ...]]
-Ops = TypeVarTuple("Ops")  # bound=type[OperationSchema] | type[AnyRegistry]
+Ops = TypeVarTuple("Ops")  # bound=type[OperationSchema]
 PBT = TypeVar("PBT", bound=PointerBackend)
 
 _REGISTRY_CACHE: dict[
@@ -100,7 +100,7 @@ class GenericOperationRegistry(Generic[*Ops, PBT], metaclass=_RegistryMeta):
     Registry for JSON Patch operation types with a custom JSON Pointer.
 
     >>> DotPointerRegistry = GenericOperationRegistry[AddOp, RemoveOp, DotPointer]
-    >>> LogRegistry = GenericOperationRegistry[StandardRegistry, IncrementOp, LogPointer]
+    >>> LogRegistry = GenericOperationRegistry[AddOp, IncrementOp, LogPointer]
     """
 
     # Normally, ClassVars can't be generic (https://github.com/python/typing/discussions/1424#discussioncomment-7989934)
@@ -180,42 +180,17 @@ class GenericOperationRegistry(Generic[*Ops, PBT], metaclass=_RegistryMeta):
         pointer_cls: type[_PointerClassProtocol],
     ) -> tuple[tuple[type[OperationSchema], ...], type[_PointerClassProtocol]]:
         op_models: list[type[OperationSchema]] = []
-        registry_pointer_classes: set[type[_PointerClassProtocol]] = (
-            set()
-        )  # NOTE TO SELF: used to be type[PBT] |none
 
         for param in variadic_params:
             if not isclass(param):
                 raise InvalidOperationRegistry(f"{param!r} is not a class")
 
-            if issubclass(param, GenericOperationRegistry):
-                registry = param
-                op_models.extend(registry.ops)
-                registry_pointer_classes.add(registry._pointer_cls)
-                continue
-
             if not issubclass(param, OperationSchema) or isabstract(param):
                 raise InvalidOperationRegistry(
-                    f"{param!r} is not an concrete OperationSchema"
+                    f"{param!r} is not a concrete OperationSchema"
                 )
             op_model = param
             op_models.append(op_model)
-
-        if pointer_cls is PointerBackend:
-            if registry_pointer_classes and registry_pointer_classes != set(
-                [PointerBackend]
-            ):
-                raise InvalidOperationRegistry(
-                    f"Expected standard operation registries, got generics: {[ptr_cls for ptr_cls in registry_pointer_classes if ptr_cls is not PointerBackend]}"
-                )
-        else:
-            for nested_ptr_cls in registry_pointer_classes:
-                if nested_ptr_cls is not PointerBackend and not issubclass(
-                    pointer_cls, nested_ptr_cls
-                ):
-                    raise InvalidOperationRegistry(
-                        f"operation pointer class {nested_ptr_cls!r} cannot be stricter than registry pointer class {pointer_cls!r}"
-                    )  # NOTE: do same check with operationschema.ptr's (?)
 
         return tuple(op_models), pointer_cls
 
@@ -359,7 +334,7 @@ if TYPE_CHECKING:
         Registry for JSON Patch operation types.
 
         >>> LimitedRegistry = OperationRegistry[AddOp, RemoveOp]
-        >>> ExpandedRegistry = OperationRegistry[StandardRegistry, ToggleOp]
+        >>> ExpandedRegistry = OperationRegistry[AddOp, RemoveOp, ToggleOp]
         """
 else:
 

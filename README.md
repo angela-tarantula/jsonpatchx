@@ -199,14 +199,14 @@ allowing any arbitrary operation, you explicitly define which verbs are "legal"
 in your domain.
 
 ```py
-from jsonpatchx import AddOp, MoveOp, OperationRegistry, StandardRegistry
+from jsonpatchx import AddOp, CopyOp, MoveOp, OperationRegistry, RemoveOp, ReplaceOp, StandardRegistry, TestOp
 
 # Create a restricted vocabulary for high-security endpoints
 AdminRegistry = StandardRegistry
 UserRegistry = OperationRegistry[AddOp, MoveOp]
 
 # Extend the language with domain-specific verbs
-DevRegistry = OperationRegistry[StandardRegistry, ToggleOp, SwapOp]
+DevRegistry = OperationRegistry[AddOp, CopyOp, MoveOp, RemoveOp, ReplaceOp, TestOp, ToggleOp, SwapOp]
 ```
 
 The registry ensures that your API doesn't just "apply patches"; it speaks your
@@ -254,9 +254,9 @@ At the center of this is `JsonPatchFor`, which turns an operation registry into 
 The result is a Pydantic model that represents a valid PATCH request body.
 
 ```py
-from jsonpatchx import JsonPatchFor, OperationRegistry, StandardRegistry
+from jsonpatchx import AddOp, CopyOp, JsonPatchFor, MoveOp, OperationRegistry, RemoveOp, ReplaceOp, TestOp
 
-UserRegistry = OperationRegistry[StandardRegistry, ToggleOp]
+UserRegistry = OperationRegistry[AddOp, CopyOp, MoveOp, RemoveOp, ReplaceOp, TestOp, ToggleOp]
 UserPatch = JsonPatchFor[User, UserRegistry]
 ```
 
@@ -299,11 +299,11 @@ while adding a few niceties:
 ```py
 from typing import Annotated, Literal
 from fastapi import FastAPI
-from jsonpatchx import JsonPatchFor, OperationRegistry, StandardRegistry, JSONValue
+from jsonpatchx import AddOp, CopyOp, JsonPatchFor, JSONValue, MoveOp, OperationRegistry, RemoveOp, ReplaceOp, TestOp
 from jsonpatchx.fastapi import JsonPatchRoute
 
 app = FastAPI()
-UserRegistry = OperationRegistry[StandardRegistry, DeduplicateOp, IncrementOp]
+UserRegistry = OperationRegistry[AddOp, CopyOp, MoveOp, RemoveOp, ReplaceOp, TestOp, DeduplicateOp, IncrementOp]
 UserPatch = JsonPatchFor[User, UserRegistry]
 
 user_patch = JsonPatchRoute(
@@ -415,7 +415,7 @@ Custom backends let you implement:
 
 ```py
 from typing import Any
-from jsonpatchx import GenericOperationRegistry, StandardRegistry
+from jsonpatchx import AddOp, CopyOp, GenericOperationRegistry, MoveOp, RemoveOp, ReplaceOp, TestOp
 from jsonpatchx.backend import PointerBackend
 
 class DotPointer(PointerBackend):
@@ -425,7 +425,7 @@ class DotPointer(PointerBackend):
     # ... implement required interface ...
 
 # Bind the backend to a registry
-registry = GenericOperationRegistry[StandardRegistry, ToggleOp, DotPointer]
+registry = GenericOperationRegistry[AddOp, CopyOp, MoveOp, RemoveOp, ReplaceOp, TestOp, ToggleOp, DotPointer]
 ```
 
 The last param of `GenericOperationRegistry` must be the custom pointer class.

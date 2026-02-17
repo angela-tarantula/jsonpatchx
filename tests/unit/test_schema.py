@@ -118,6 +118,16 @@ def test_invalid_operation_registry(subtests: Subtests) -> None:
         with pytest.raises(InvalidOperationRegistry):
             OperationRegistry[FirstOp()]  # type: ignore[misc]
 
+    with subtests.test("OperationRegistry rejects nested registries"):
+        nested = OperationRegistry[FirstOp]
+        with pytest.raises(InvalidOperationRegistry):
+            OperationRegistry[nested, SecondOp]
+
+    with subtests.test("GenericOperationRegistry rejects nested registries"):
+        nested = GenericOperationRegistry[FirstOp, DotPointer]
+        with pytest.raises(InvalidOperationRegistry):
+            GenericOperationRegistry[nested, SecondOp, DotPointer]
+
 
 def test_valid_operation_schema(subtests: Subtests) -> None:
     with subtests.test("valid op instantiation succeeds"):

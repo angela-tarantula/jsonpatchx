@@ -6,10 +6,18 @@ import pytest
 from fastapi import Body, Depends, FastAPI
 from pydantic import BaseModel, ConfigDict
 
-from jsonpatchx import JsonPatchFor
+from jsonpatchx import (
+    AddOp,
+    CopyOp,
+    JsonPatchFor,
+    MoveOp,
+    RemoveOp,
+    ReplaceOp,
+    TestOp,
+)
 from jsonpatchx.fastapi import JSON_PATCH_MEDIA_TYPE, PatchDependency
 from jsonpatchx.pointer import JSONPointer
-from jsonpatchx.registry import OperationRegistry, StandardRegistry
+from jsonpatchx.registry import OperationRegistry
 from jsonpatchx.schema import OperationSchema
 from jsonpatchx.types import JSONBoolean, JSONValue
 
@@ -38,7 +46,15 @@ class ToggleOp(OperationSchema):
 
 
 LimitedRegistry = OperationRegistry[ToggleOp]
-ExtendedRegistry = OperationRegistry[StandardRegistry, ToggleOp]
+ExtendedRegistry = OperationRegistry[
+    AddOp,
+    CopyOp,
+    MoveOp,
+    RemoveOp,
+    ReplaceOp,
+    TestOp,
+    ToggleOp,
+]
 UserPatch = JsonPatchFor[User, LimitedRegistry]
 MedicalPatch = JsonPatchFor[MedicalRecord, ExtendedRegistry]
 JsonPatch = JsonPatchFor[Literal["Config"], ExtendedRegistry]

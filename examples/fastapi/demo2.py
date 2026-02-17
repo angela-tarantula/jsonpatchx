@@ -26,14 +26,27 @@ from examples.fastapi.shared import (
     save_guild,
     save_player,
 )
-from jsonpatchx import OperationRegistry, StandardRegistry
+from jsonpatchx import (
+    AddOp,
+    CopyOp,
+    MoveOp,
+    OperationRegistry,
+    RemoveOp,
+    ReplaceOp,
+    TestOp,
+)
 from jsonpatchx.fastapi import JsonPatchRoute
 from jsonpatchx.pydantic import JsonPatchFor
 
 STRICT_JSON_PATCH = True
 
 PlayerRegistry = OperationRegistry[
-    StandardRegistry,
+    AddOp,
+    CopyOp,
+    MoveOp,
+    RemoveOp,
+    ReplaceOp,
+    TestOp,
     IncrementOp,
     ToggleBoolOp,
     RequireMinimumOp,
@@ -41,7 +54,12 @@ PlayerRegistry = OperationRegistry[
     RemoveValueOp,
 ]
 GuildRegistry = OperationRegistry[
-    StandardRegistry,
+    AddOp,
+    CopyOp,
+    MoveOp,
+    RemoveOp,
+    ReplaceOp,
+    TestOp,
     AppendOp,
     IncrementOp,
     EnforceMaxLenOp,
