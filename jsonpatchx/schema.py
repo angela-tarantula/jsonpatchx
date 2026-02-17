@@ -1,6 +1,5 @@
 from abc import ABC, abstractmethod
 from typing import (
-    Annotated,
     ClassVar,
     Literal,
     Unpack,
@@ -101,7 +100,6 @@ class OperationSchema(BaseModel, ABC):
 
         - ``op: Literal["add"]``
         - ``op: Literal["add", "create"]``
-        - ``op: Annotated[Literal["add"], ...]``
 
         Returns an empty tuple if the subclass does not declare a valid ``Literal[str, ...]``
         annotation for ``op``.
@@ -112,12 +110,6 @@ class OperationSchema(BaseModel, ABC):
             return ()
 
         origin = get_origin(op_anno)
-
-        # Strip Annotated[...] if present
-        if origin is Annotated:
-            inner_anno, *_ = get_args(op_anno)
-            op_anno = inner_anno
-            origin = get_origin(op_anno)
 
         if origin is not Literal:
             return ()
@@ -141,7 +133,6 @@ class OperationSchema(BaseModel, ABC):
             - Whether the caller-owned document is mutated is controlled by the patch engine
               (see ``_apply_ops(..., inplace=...)``), not by this method.
         """
-        ...
 
     @classmethod
     @override
@@ -151,12 +142,12 @@ class OperationSchema(BaseModel, ABC):
         json_schema = handler(schema)
         # 1. allow users to set "op" defaults, but tell OpenAPI it's required
         # 2. tell OpenAPI that additionalProperties are forbidden
-        if json_schema.get("type") == "object":
-            required = set(json_schema.get("required", []))
-            required.add("op")
-            json_schema["required"] = sorted(required)
-            json_schema.setdefault("additionalProperties", True)
-            json_schema["properties"]["op"].setdefault(
-                "description", "The operation to perform."
-            )
+        assert json_schema["type"] == "object", "internal error"
+        required = set(json_schema.get("required", []))
+        required.add("op")
+        json_schema["required"] = sorted(required)
+        json_schema.setdefault("additionalProperties", True)
+        json_schema["properties"]["op"].setdefault(
+            "description", "The operation to perform."
+        )
         return json_schema

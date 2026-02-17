@@ -158,7 +158,7 @@ class ReplaceWithPriorOp(OperationSchema):
     path: JSONPointer[JSONValue]
     prior_value: JSONValue = Field(
         validation_alias=AliasChoices("prior value", "priorValue"),
-        serialization_alias="priorValue",
+        serialization_alias="priorValue",  # openapi requires ^[a-zA-Z0-9\.\-_]+$ but for parsing json 'prior value' is also accepted
     )
     value: JSONValue
 
