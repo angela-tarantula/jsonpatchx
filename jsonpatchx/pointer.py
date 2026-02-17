@@ -278,14 +278,9 @@ class JSONPointer(str, Generic[T_co, P_co]):
 
         # enrich with json schema of type param
         type_param = schema["metadata"]["type_param"]
-        try:
-            json_schema["x-pointer-type-schema"] = _type_adapter_for(
-                type_param
-            ).json_schema()
-        except Exception as e:
-            raise InvalidJSONPointer(
-                "JSONPointer type param must have a json schema"
-            ) from e
+        json_schema["x-pointer-type-schema"] = _type_adapter_for(
+            type_param
+        ).json_schema()
         return json_schema
 
     @classmethod
@@ -477,9 +472,7 @@ class JSONPointer(str, Generic[T_co, P_co]):
         try:
             target = _validate_JSONValue(value_T)
         except Exception as e:
-            raise PatchConflictError(
-                f"value {value!r} is not valid a valid JSONValue"
-            ) from e
+            raise PatchConflictError(f"value {value!r} is not a valid JSONValue") from e
 
         match classify_state(self._ptr, doc):
             case TargetState.ROOT:
