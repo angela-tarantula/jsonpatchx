@@ -107,7 +107,7 @@ def _build_openapi() -> dict[str, object]:
 
 
 def test_openapi_snapshot() -> None:
-    if not SNAPSHOT_PATH.exists():
+    if not SNAPSHOT_PATH.exists():  # pragma: no cover
         pytest.fail(f"OpenAPI snapshot missing: {SNAPSHOT_PATH}")
 
     expected = json.loads(SNAPSHOT_PATH.read_text())

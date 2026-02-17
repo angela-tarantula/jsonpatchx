@@ -2,7 +2,7 @@ import re
 from abc import abstractmethod
 from collections.abc import Iterable, Sequence
 from enum import Enum, auto
-from inspect import isclass
+from inspect import isabstract, isclass
 from typing import TYPE_CHECKING, Protocol, Self, override, runtime_checkable
 
 from jsonpointer import JsonPointer  # type: ignore[import-untyped]
@@ -220,6 +220,8 @@ def _validate_backend_class(unverified: object) -> type[_PointerClassProtocol]:
         raise InvalidJSONPointer(
             f"JSONPointer backend parameter {unverified!r} must be a PointerBackend class"
         )
+    if isabstract(unverified):
+        raise InvalidJSONPointer("JSONPointer backend parameter cannot be abstract")
     if not issubclass(unverified, _PointerClassProtocol):
         raise InvalidJSONPointer(
             f"JSONPointer backend parameter {unverified!r} must implement the PointerBackend Protocol"

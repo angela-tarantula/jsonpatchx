@@ -39,13 +39,13 @@ class Case(BaseModel):
     @model_validator(mode="before")
     @classmethod
     def _fill_comment_with_error(cls, data: object) -> object:
-        if isinstance(data, dict):
-            data["comment"] = data.get("comment") or data.get("error") or "<no comment>"
+        assert isinstance(data, dict)
+        data["comment"] = data.get("comment") or data.get("error") or "<no comment>"
         return data
 
     @model_validator(mode="after")
     def _ensure_expected_or_error(self) -> Self:
-        if self.expected == MISSING and self.error is None:
+        if self.expected == MISSING and self.error is None:  # pragma: no cover
             raise ValueError("case must include expected or error")
         return self
 

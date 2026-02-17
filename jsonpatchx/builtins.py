@@ -123,6 +123,8 @@ class CopyOp(OperationSchema, Generic[T]):
 class TestOp(OperationSchema, Generic[T]):
     """RFC 6902 test operation."""
 
+    __test__ = False  # Suppress pytest warning
+
     model_config = ConfigDict(
         title="Test operation",
         json_schema_extra={"description": "RFC 6902 test operation."},

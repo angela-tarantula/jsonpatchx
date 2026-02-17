@@ -431,8 +431,8 @@ def test_pointer_backend_binding_with_context(subtests: Subtests) -> None:
         ptr = JSONPointer.parse("/a", backend=None, context=None)
         assert isinstance(ptr.ptr, _DEFAULT_POINTER_CLS)
 
-    with subtests.test("context PointerBackend treated as default"):
-        ptr = JSONPointer.parse("/a", backend=None, context=PointerBackend)
+    with subtests.test("context default backend class treated as default"):
+        ptr = JSONPointer.parse("/a", backend=None, context=_DEFAULT_POINTER_CLS)
         assert isinstance(ptr.ptr, _DEFAULT_POINTER_CLS)
 
     with subtests.test("registry only"):
@@ -443,13 +443,27 @@ def test_pointer_backend_binding_with_context(subtests: Subtests) -> None:
         ptr = JSONPointer.parse("a.b", backend=BoundPointer, context=None)
         assert isinstance(ptr.ptr, BoundPointer)
 
-    with subtests.test("bound PointerBackend treated as default"):
-        ptr = JSONPointer.parse("/a", backend=PointerBackend, context=None)
+    with subtests.test("explicit default backend class behaves like omitted backend"):
+        ptr = JSONPointer.parse("/a", backend=_DEFAULT_POINTER_CLS, context=None)
         assert isinstance(ptr.ptr, _DEFAULT_POINTER_CLS)
 
-    with subtests.test("both PointerBackend treated as default"):
-        ptr = JSONPointer.parse("/a", backend=PointerBackend, context=PointerBackend)
-        assert isinstance(ptr.ptr, _DEFAULT_POINTER_CLS)
+    with subtests.test("explicit default backend allows registry context override"):
+        ptr = JSONPointer.parse(
+            "a.b", backend=_DEFAULT_POINTER_CLS, context=RegistryPointer
+        )
+        assert isinstance(ptr.ptr, RegistryPointer)
+
+    with subtests.test("bound PointerBackend is invalid"):
+        with pytest.raises(InvalidJSONPointer):
+            JSONPointer.parse("/a", backend=PointerBackend, context=None)
+
+    with subtests.test("context PointerBackend is invalid"):
+        with pytest.raises(InvalidJSONPointer):
+            JSONPointer.parse("/a", backend=None, context=PointerBackend)
+
+    with subtests.test("both PointerBackend is invalid"):
+        with pytest.raises(InvalidJSONPointer):
+            JSONPointer.parse("/a", backend=PointerBackend, context=PointerBackend)
 
     with subtests.test("same backend"):
         ptr = JSONPointer.parse("a.b", backend=BoundPointer, context=BoundPointer)
@@ -515,6 +529,7 @@ def test_jsonpointer_type_args_validation(subtests: Subtests) -> None:
             IncompletePointerBackend,
             AnotherIncompletePointerBackend,
             PointerMissingParts,
+            PointerBackend,
             BadDotPointer,
             DotPointer(""),
             "DotPointer",  # forward references disallowed for predictability
@@ -525,12 +540,20 @@ def test_jsonpointer_type_args_validation(subtests: Subtests) -> None:
 
     with subtests.test("valid backend"):
         for valid_backend in [
-            PointerBackend,  # default backend
+            _DEFAULT_POINTER_CLS,
             DotPointer,
             CustomJsonPointer,
         ]:
             adapter = TypeAdapter(JSONPointer[JSONValue, valid_backend])
             adapter.validate_python("")
+
+    with subtests.test("validation context PointerBackend sentinel is invalid"):
+        adapter = TypeAdapter(JSONPointer[JSONValue])
+        with pytest.raises(InvalidJSONPointer):
+            adapter.validate_python(
+                "/a",
+                context={"jsonpatch:pointer_backend": PointerBackend},
+            )
 
     with subtests.test("reject invalid default backend string syntax"):
         adapter = TypeAdapter(JSONPointer[JSONValue])

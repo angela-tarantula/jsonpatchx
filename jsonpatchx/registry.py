@@ -68,11 +68,11 @@ class _RegistryMeta(type):
     ) -> str:
         if (
             ops == GenericOperationRegistry._deterministic_sort(*STANDARD_OPS)
-            and pointer_cls is PointerBackend
+            and pointer_cls is _DEFAULT_POINTER_CLS
         ):
             return "StandardRegistry"
         op_names = "_".join(op.__name__ for op in ops)
-        if pointer_cls is PointerBackend:
+        if pointer_cls is _DEFAULT_POINTER_CLS:
             return f"OperationRegistry_{op_names}"
         return f"GenericOperationRegistry_{op_names}__{pointer_cls.__name__}"
 
@@ -82,7 +82,7 @@ class _RegistryMeta(type):
         pointer_cls: type[_PointerClassProtocol],
     ) -> str:
         op_names = ", ".join(op.__name__ for op in ops)
-        if pointer_cls is PointerBackend:
+        if pointer_cls is _DEFAULT_POINTER_CLS:
             return f"OperationRegistry[{op_names}]"
         return f"GenericOperationRegistry[{op_names}, {pointer_cls.__name__}]"
 
@@ -133,11 +133,8 @@ class GenericOperationRegistry(Generic[*Ops, PBT], metaclass=_RegistryMeta):
 
         model_map = cls._build_model_map(*ordered_ops)
         union_type, op_adapter, patch_adapter = cls._build_adapters(*ordered_ops)
-        ctx_backend = (
-            _DEFAULT_POINTER_CLS if pointer_cls is PointerBackend else pointer_cls
-        )
         ctx: dict[_JSONPOINTER_VALIDATION_CTX_LITERALS, type[_PointerClassProtocol]] = {
-            _JSONPOINTER_POINTER_BACKEND_CTX_KEY: ctx_backend
+            _JSONPOINTER_POINTER_BACKEND_CTX_KEY: pointer_cls
         }
 
         name = cls._registry_type_name(ordered_ops, pointer_cls)
@@ -165,14 +162,13 @@ class GenericOperationRegistry(Generic[*Ops, PBT], metaclass=_RegistryMeta):
         last_param = cast(object, params[-1])
 
         pointer_cls = _validate_backend_class(last_param)
-
         op_models, pointer_cls = cls._validate_variadic_params(
             variadic_params, pointer_cls
         )
         cls._validate_op_name_uniqueness(
             *op_models
         )  # NOTE TO SELF: put this in schemas.py?
-        return op_models, pointer_cls  # NOTE TO SELF: changed None -> PointerBackend
+        return op_models, pointer_cls
 
     @staticmethod
     def _validate_variadic_params(
@@ -323,13 +319,13 @@ class GenericOperationRegistry(Generic[*Ops, PBT], metaclass=_RegistryMeta):
         )
 
 
-# A statement like ``type OperationRegistry[*Ops] = GenericOperationRegistry[*Ops, PointerBackend]``
+# A statement like ``type OperationRegistry[*Ops] = GenericOperationRegistry[*Ops, _DEFAULT_POINTER_CLS]``
 # creates a typing.TypeAliasType at runtime, not an actual class, so it would lack the metaclass
 # machinery (__class_getitem__, registry caching, etc.) that the runtime relies on.
 if TYPE_CHECKING:
     # Mypy only needs a generic alias form, but at runtime a concrete class is necessary to inject the
     # default pointer backend into __class_getitem__.
-    class OperationRegistry(GenericOperationRegistry[*Ops, PointerBackend]):
+    class OperationRegistry(GenericOperationRegistry[*Ops, _DEFAULT_POINTER_CLS]):
         """
         Registry for JSON Patch operation types.
 
@@ -346,9 +342,9 @@ else:
             params: object,
         ) -> tuple[tuple[type[OperationSchema], ...], type[_PointerClassProtocol]]:
             if not isinstance(params, tuple):
-                params = (params, PointerBackend)
+                params = (params, _DEFAULT_POINTER_CLS)
             else:
-                params = (*params, PointerBackend)
+                params = (*params, _DEFAULT_POINTER_CLS)
             return super()._split_ops_and_pointer(params)
 
 

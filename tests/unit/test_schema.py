@@ -4,6 +4,8 @@ import pytest
 from pydantic import ValidationError
 from pytest import Subtests
 
+from jsonpatchx.backend import _DEFAULT_POINTER_CLS, PointerBackend
+from jsonpatchx.builtins import AddOp, RemoveOp, ReplaceOp
 from jsonpatchx.exceptions import (
     InvalidJSONPointer,
     InvalidOperationDefinition,
@@ -117,6 +119,15 @@ def test_invalid_operation_registry(subtests: Subtests) -> None:
     with subtests.test("OperationRegistry rejects OperationSchema instances"):
         with pytest.raises(InvalidOperationRegistry):
             OperationRegistry[FirstOp()]  # type: ignore[misc]
+
+    with subtests.test("GenericOperationRegistry rejects PointerBackend protocol"):
+        with pytest.raises(InvalidJSONPointer):
+            GenericOperationRegistry[FirstOp, PointerBackend]
+
+    with subtests.test("OperationRegistry default context backend is concrete"):
+        registry = OperationRegistry[FirstOp]
+        assert registry._ctx["jsonpatch:pointer_backend"] is _DEFAULT_POINTER_CLS
+        assert registry._ctx["jsonpatch:pointer_backend"] is not PointerBackend
 
     with subtests.test("OperationRegistry rejects nested registries"):
         nested = OperationRegistry[FirstOp]
@@ -305,3 +316,35 @@ def test_jsonpointer_backend_mismatch_parent_check() -> None:
 
     with pytest.raises(InvalidJSONPointer):
         dot.path.is_parent_of(slash.path)
+
+
+def test_composed_ops_preserve_custom_pointer_backend() -> None:
+    class DotReplaceOp(OperationSchema):
+        op: Literal["dot-replace"] = "dot-replace"
+        path: JSONPointer[JSONValue, DotPointer]
+        value: JSONValue
+
+        @override
+        def apply(self, doc: JSONValue) -> JSONValue:
+            return ReplaceOp(path=self.path, value=self.value).apply(doc)
+
+    class DotMoveOp(OperationSchema):
+        op: Literal["dot-move"] = "dot-move"
+        from_: JSONPointer[JSONValue, DotPointer]
+        path: JSONPointer[JSONValue, DotPointer]
+
+        @override
+        def apply(self, doc: JSONValue) -> JSONValue:
+            value = self.from_.get(doc)
+            doc = RemoveOp(path=self.from_).apply(doc)
+            return AddOp(path=self.path, value=value).apply(doc)
+
+    replaced = DotReplaceOp.model_validate(
+        {"path": "a.b", "value": 2},
+    ).apply({"a": {"b": 1}})
+    assert replaced == {"a": {"b": 2}}
+
+    moved = DotMoveOp.model_validate(
+        {"from_": "a.b", "path": "x.y"},
+    ).apply({"a": {"b": 1}, "x": {}})
+    assert moved == {"a": {}, "x": {"y": 1}}

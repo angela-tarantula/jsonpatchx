@@ -61,7 +61,9 @@ _Nothing = object()
 
 
 T_co = TypeVar("T_co", bound=JSONBound, covariant=True)
-P_co = TypeVar("P_co", bound=PointerBackend, covariant=True, default=PointerBackend)
+P_co = TypeVar(
+    "P_co", bound=PointerBackend, covariant=True, default=_DEFAULT_POINTER_CLS
+)
 
 
 @final
@@ -191,14 +193,17 @@ class JSONPointer(str, Generic[T_co, P_co]):
         """
         # Fetch PointerBackend from the registry's validation context, if present
         ctx = registry_info.context or {} if registry_info is not None else {}
-        registry_backend = cast(
-            type[_PointerClassProtocol],
-            ctx.get(_JSONPOINTER_POINTER_BACKEND_CTX_KEY, PointerBackend),
+        registry_backend_is_explicit = _JSONPOINTER_POINTER_BACKEND_CTX_KEY in ctx
+        unverified_backend = cast(
+            object, ctx.get(_JSONPOINTER_POINTER_BACKEND_CTX_KEY, _DEFAULT_POINTER_CLS)
         )
+        registry_backend = _validate_backend_class(unverified_backend)
 
         # Enforce registry_backend ⊆ bound_backend ⊂ PointerBackend and get the strictest one
         strictest_protocol = cls._resolve_strictest_backend(
-            registry_backend, bound_backend
+            registry_backend,
+            bound_backend,
+            registry_backend_is_explicit=registry_backend_is_explicit,
         )
 
         if isinstance(path, str):
@@ -225,20 +230,22 @@ class JSONPointer(str, Generic[T_co, P_co]):
             obj._type = type_param
 
         # Reuse pointer backends when provided directly or via JSONPointer
-        if isinstance(path_str, JSONPointer) and isinstance(
+        if (
+            isinstance(path_str, JSONPointer)
+            and not registry_backend_is_explicit
+            and bound_backend is _DEFAULT_POINTER_CLS
+        ):
+            obj._ptr = cast(P_co, path_str._ptr)
+        elif isinstance(path_str, JSONPointer) and isinstance(
             path_str._ptr, strictest_protocol
         ):
             obj._ptr = cast(P_co, path_str._ptr)
         elif isinstance(path, strictest_protocol):
             obj._ptr = cast(P_co, path)
         else:
-            pointer_cls = (
-                strictest_protocol
-                if strictest_protocol is not PointerBackend
-                else _DEFAULT_POINTER_CLS
-            )
             obj._ptr = cast(
-                P_co, _pointer_backend_instance(path_str, pointer_cls=pointer_cls)
+                P_co,
+                _pointer_backend_instance(path_str, pointer_cls=strictest_protocol),
             )
 
         return obj
@@ -292,7 +299,7 @@ class JSONPointer(str, Generic[T_co, P_co]):
             raise TypeError(f"{cls} requires at least one type parameter")
         unverified_typeform = cast(object, args[0])
         unverified_bound_backend = (
-            cast(object, args[1]) if len(args) > 1 else PointerBackend
+            cast(object, args[1]) if len(args) > 1 else _DEFAULT_POINTER_CLS
         )
 
         backend_param = _validate_backend_class(unverified_bound_backend)
@@ -304,24 +311,23 @@ class JSONPointer(str, Generic[T_co, P_co]):
     def _resolve_strictest_backend(
         registry_backend: type[_PointerClassProtocol],
         bound_backend: type[_PointerClassProtocol],
+        *,
+        registry_backend_is_explicit: bool,
     ) -> type[_PointerClassProtocol]:
         """Determine the strictest PointerBackend class, given optional ``registry_backend`` and ``bound_backend``."""
+        if not registry_backend_is_explicit:
+            return bound_backend
+        if bound_backend is _DEFAULT_POINTER_CLS:
+            return registry_backend
         if registry_backend is bound_backend:
             return registry_backend
-        if (
-            registry_backend is not PointerBackend
-            and bound_backend is not PointerBackend
-        ):
-            if not issubclass(registry_backend, bound_backend):
-                raise InvalidJSONPointer(
-                    "JSONPointer backend mismatch: "
-                    f"registry requires {registry_backend.__name__} but field uses "
-                    f"{bound_backend.__name__}"
-                )
-            return registry_backend
-        if registry_backend is not PointerBackend:
-            return registry_backend
-        return bound_backend
+        if not issubclass(registry_backend, bound_backend):
+            raise InvalidJSONPointer(
+                "JSONPointer backend mismatch: "
+                f"registry requires {registry_backend.__name__} but field uses "
+                f"{bound_backend.__name__}"
+            )
+        return registry_backend
 
     def _validate_target(self, target: object) -> T_co:
         """Strictly validate the ``target`` with this JSONPointer's TypeAdapter."""
@@ -348,17 +354,27 @@ class JSONPointer(str, Generic[T_co, P_co]):
 
         This is a convenience wrapper around ``TypeAdapter(JSONPointer[...])``.
         """
-        pointer_type = (
-            JSONPointer[type_param]  # type: ignore[valid-type]
-            if backend is None
-            else JSONPointer[type_param, backend]  # type: ignore[valid-type]
-        )
-        adapter = TypeAdapter(pointer_type)
+        pointer_args: tuple[object, ...]
+        if backend is None:
+            pointer_args = (type_param,)
+        else:
+            pointer_args = (type_param, backend)
+        validated_type, validated_backend = cls._parse_pointer_type_args(*pointer_args)
+
+        if backend is None:
+            adapter = TypeAdapter(
+                JSONPointer[validated_type]  # type: ignore[valid-type]
+            )
+        else:
+            adapter = TypeAdapter(
+                JSONPointer[validated_type, validated_backend]  # type: ignore[valid-type]
+            )
         ctx: dict[str, type[_PointerClassProtocol]] | None
         if context is None:
             ctx = context
         else:
-            ctx = {_JSONPOINTER_POINTER_BACKEND_CTX_KEY: context}
+            validated_context = _validate_backend_class(context)
+            ctx = {_JSONPOINTER_POINTER_BACKEND_CTX_KEY: validated_context}
         return adapter.validate_python(path, context=ctx)
 
     # Parse-time helpers

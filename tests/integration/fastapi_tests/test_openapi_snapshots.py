@@ -20,7 +20,7 @@ SNAPSHOT_DIR = Path(__file__).resolve().parent / "snapshots"
 )
 def test_openapi_snapshot(name: str, app: object) -> None:
     snapshot_path = SNAPSHOT_DIR / f"{name}_openapi.json"
-    if not snapshot_path.exists():
+    if not snapshot_path.exists():  # pragma: no cover
         pytest.fail(f"OpenAPI snapshot missing: {snapshot_path}")
 
     expected = json.loads(snapshot_path.read_text())
