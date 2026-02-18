@@ -3,13 +3,20 @@ from abc import abstractmethod
 from collections.abc import Iterable, Sequence
 from enum import Enum, auto
 from inspect import isabstract, isclass
-from typing import TYPE_CHECKING, Protocol, Self, override, runtime_checkable
+from typing import (
+    TYPE_CHECKING,
+    Protocol,
+    Self,
+    assert_never,
+    override,
+    runtime_checkable,
+)
 
 from jsonpointer import JsonPointer  # type: ignore[import-untyped]
 from jsonpointer import JsonPointerException as JPException
 
 from jsonpatchx.exceptions import InvalidJSONPointer
-from jsonpatchx.types import JSONValue, _is_container, _is_object
+from jsonpatchx.types import JSONValue, _is_array, _is_container, _is_object
 
 # strict RFC 6901 array index
 _NONNEGATIVE_ARRAY_INDEX_PATTERN = re.compile(r"^(0|[1-9][0-9]*)$")
@@ -266,28 +273,31 @@ def classify_state(ptr: PointerBackend, doc: JSONValue) -> TargetState:
     try:
         parent_ptr = _parent_ptr_of(ptr)
         container = parent_ptr.resolve(doc)
+        token = ptr.parts[-1]
     except Exception:
-        return TargetState.PARENT_NOT_FOUND
+        return TargetState.PARENT_NOT_FOUND  # resolution failed to complete
     if not _is_container(container):
         return TargetState.PARENT_NOT_CONTAINER
 
-    token = ptr.parts[-1]
     if _is_object(container):
         key = token
         if key not in container:
             return TargetState.OBJECT_KEY_MISSING
         return TargetState.VALUE_PRESENT
 
-    # list container
-    if token == "-":
-        return TargetState.ARRAY_INDEX_APPEND
-    if _INTEGER_ARRAY_INDEX_PATTERN.fullmatch(token):
-        index = int(token)
-        if index > len(container) or index < -len(container):
-            return TargetState.ARRAY_INDEX_OUT_OF_RANGE
-        if index == len(container):
-            return TargetState.ARRAY_INDEX_AT_END
-        if index < 0:
-            return TargetState.VALUE_PRESENT_AT_NEGATIVE_ARRAY_INDEX
-        return TargetState.VALUE_PRESENT
-    return TargetState.ARRAY_KEY_INVALID
+    elif _is_array(container):
+        if token == "-":
+            return TargetState.ARRAY_INDEX_APPEND
+        if _INTEGER_ARRAY_INDEX_PATTERN.fullmatch(token):
+            index = int(token)
+            if index > len(container) or index < -len(container):
+                return TargetState.ARRAY_INDEX_OUT_OF_RANGE
+            if index == len(container):
+                return TargetState.ARRAY_INDEX_AT_END
+            if index < 0:
+                return TargetState.VALUE_PRESENT_AT_NEGATIVE_ARRAY_INDEX
+            return TargetState.VALUE_PRESENT
+        return TargetState.ARRAY_KEY_INVALID
+
+    else:  # pragma: no cover
+        assert_never(container)
