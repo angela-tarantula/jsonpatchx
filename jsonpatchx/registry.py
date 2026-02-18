@@ -11,9 +11,7 @@ from typing import (
     TypeAliasType,
     TypeVarTuple,
     Union,
-    Unpack,
     cast,
-    overload,
     override,
 )
 
@@ -43,9 +41,9 @@ from jsonpatchx.pointer import (
 from jsonpatchx.schema import OperationSchema
 from jsonpatchx.types import JSONValue
 
-type AnyRegistry = GenericOperationRegistry[*tuple[Any, ...]]
+type AnyRegistry = GenericOperationRegistry[PointerBackend, *tuple[Any, ...]]
 Ops = TypeVarTuple("Ops")  # bound=type[OperationSchema]
-PBT = TypeVar("PBT", bound=PointerBackend)
+PBT = TypeVar("PBT", bound=PointerBackend, covariant=True)
 
 _REGISTRY_CACHE: dict[
     tuple[tuple[type[OperationSchema], ...], type[_PointerClassProtocol]],
@@ -74,7 +72,7 @@ class _RegistryMeta(type):
         op_names = "_".join(op.__name__ for op in ops)
         if pointer_cls is _DEFAULT_POINTER_CLS:
             return f"OperationRegistry_{op_names}"
-        return f"GenericOperationRegistry_{op_names}__{pointer_cls.__name__}"
+        return f"GenericOperationRegistry_{pointer_cls.__name__}__{op_names}"
 
     @staticmethod
     def _registry_display_name(
@@ -84,7 +82,7 @@ class _RegistryMeta(type):
         op_names = ", ".join(op.__name__ for op in ops)
         if pointer_cls is _DEFAULT_POINTER_CLS:
             return f"OperationRegistry[{op_names}]"
-        return f"GenericOperationRegistry[{op_names}, {pointer_cls.__name__}]"
+        return f"GenericOperationRegistry[{pointer_cls.__name__}, {op_names}]"
 
     @override
     def __repr__(cls) -> str:
@@ -95,12 +93,12 @@ class _RegistryMeta(type):
         return _RegistryMeta._registry_display_name(cls.ops, cls._pointer_cls)
 
 
-class GenericOperationRegistry(Generic[*Ops, PBT], metaclass=_RegistryMeta):
+class GenericOperationRegistry(Generic[PBT, *Ops], metaclass=_RegistryMeta):
     """
     Registry for JSON Patch operation types with a custom JSON Pointer.
 
-    >>> DotPointerRegistry = GenericOperationRegistry[AddOp, RemoveOp, DotPointer]
-    >>> LogRegistry = GenericOperationRegistry[AddOp, IncrementOp, LogPointer]
+    >>> DotPointerRegistry = GenericOperationRegistry[DotPointer, AddOp, RemoveOp]
+    >>> LogRegistry = GenericOperationRegistry[LogPointer, AddOp, IncrementOp]
     """
 
     # Normally, ClassVars can't be generic (https://github.com/python/typing/discussions/1424#discussioncomment-7989934)
@@ -114,14 +112,6 @@ class GenericOperationRegistry(Generic[*Ops, PBT], metaclass=_RegistryMeta):
     _ctx: ClassVar[
         dict[_JSONPOINTER_VALIDATION_CTX_LITERALS, type[_PointerClassProtocol]]
     ]
-
-    @overload
-    def __class_getitem__(cls, params: tuple[Unpack[Ops]]) -> type[AnyRegistry]: ...
-
-    @overload
-    def __class_getitem__(
-        cls, params: tuple[Unpack[Ops], type[PBT]]
-    ) -> type[AnyRegistry]: ...
 
     def __class_getitem__(cls, params: object) -> type[AnyRegistry]:
         op_models, pointer_cls = cls._split_ops_and_pointer(params)
@@ -156,28 +146,21 @@ class GenericOperationRegistry(Generic[*Ops, PBT], metaclass=_RegistryMeta):
         cls,
         params: object,
     ) -> tuple[tuple[type[OperationSchema], ...], type[_PointerClassProtocol]]:
-        if not params or not isinstance(params, tuple):
+        if not isinstance(params, tuple) or len(params) < 2:
             raise InvalidOperationRegistry(f"Invalid registry params: {params!r}")
-        variadic_params = cast(tuple[object], params[:-1])
-        last_param = cast(object, params[-1])
+        first_param = cast(object, params[0])
+        variadic_params = cast(tuple[object, ...], params[1:])
 
-        pointer_cls = _validate_backend_class(last_param)
-        op_models, pointer_cls = cls._validate_variadic_params(
-            variadic_params, pointer_cls
-        )
-        cls._validate_op_name_uniqueness(
-            *op_models
-        )  # NOTE TO SELF: put this in schemas.py?
+        pointer_cls = _validate_backend_class(first_param)
+        op_models = cls._validate_op_models(variadic_params)
+        cls._validate_op_name_uniqueness(*op_models)
         return op_models, pointer_cls
 
     @staticmethod
-    def _validate_variadic_params(
-        variadic_params: tuple[object, ...],
-        pointer_cls: type[_PointerClassProtocol],
-    ) -> tuple[tuple[type[OperationSchema], ...], type[_PointerClassProtocol]]:
-        op_models: list[type[OperationSchema]] = []
-
-        for param in variadic_params:
+    def _validate_op_models(
+        unverified_params: tuple[object, ...],
+    ) -> tuple[type[OperationSchema], ...]:
+        for param in unverified_params:
             if not isclass(param):
                 raise InvalidOperationRegistry(f"{param!r} is not a class")
 
@@ -185,16 +168,11 @@ class GenericOperationRegistry(Generic[*Ops, PBT], metaclass=_RegistryMeta):
                 raise InvalidOperationRegistry(
                     f"{param!r} is not a concrete OperationSchema"
                 )
-            op_model = param
-            op_models.append(op_model)
-
-        return tuple(op_models), pointer_cls
+        return cast(tuple[type[OperationSchema], ...], unverified_params)
 
     @staticmethod
     def _validate_op_name_uniqueness(*op_models: type[OperationSchema]) -> None:
         """The __name__ of every op must be unique for the Registry's type name."""
-        if not op_models:
-            raise InvalidOperationRegistry("At least one OperationSchema is required")
         name_counts = Counter(op_model.__name__ for op_model in op_models)
         non_unique_names = {name for name, cnt in name_counts.items() if cnt > 1}
         if non_unique_names:
@@ -319,13 +297,13 @@ class GenericOperationRegistry(Generic[*Ops, PBT], metaclass=_RegistryMeta):
         )
 
 
-# A statement like ``type OperationRegistry[*Ops] = GenericOperationRegistry[*Ops, _DEFAULT_POINTER_CLS]``
+# A statement like ``type OperationRegistry[*Ops] = GenericOperationRegistry[_DEFAULT_POINTER_CLS, *Ops]``
 # creates a typing.TypeAliasType at runtime, not an actual class, so it would lack the metaclass
 # machinery (__class_getitem__, registry caching, etc.) that the runtime relies on.
 if TYPE_CHECKING:
     # Mypy only needs a generic alias form, but at runtime a concrete class is necessary to inject the
     # default pointer backend into __class_getitem__.
-    class OperationRegistry(GenericOperationRegistry[*Ops, _DEFAULT_POINTER_CLS]):
+    class OperationRegistry(GenericOperationRegistry[_DEFAULT_POINTER_CLS, *Ops]):
         """
         Registry for JSON Patch operation types.
 
@@ -342,17 +320,17 @@ else:
             params: object,
         ) -> tuple[tuple[type[OperationSchema], ...], type[_PointerClassProtocol]]:
             if not isinstance(params, tuple):
-                params = (params, _DEFAULT_POINTER_CLS)
+                params = (_DEFAULT_POINTER_CLS, params)
             else:
-                params = (*params, _DEFAULT_POINTER_CLS)
+                params = (_DEFAULT_POINTER_CLS, *params)
             return super()._split_ops_and_pointer(params)
 
 
 StandardRegistry = OperationRegistry[AddOp, CopyOp, MoveOp, RemoveOp, ReplaceOp, TestOp]
 
 if TYPE_CHECKING:
-    _dont_raise_mypy_error_1 = GenericOperationRegistry[AddOp, _DEFAULT_POINTER_CLS]
+    _dont_raise_mypy_error_1 = GenericOperationRegistry[_DEFAULT_POINTER_CLS, AddOp]
 
     # from jsonpath import JSONPointer as ExtendedJsonPointer
 
-    # _dont_raise_mypy_error_2 = GenericOperationRegistry[AddOp, ExtendedJsonPointer]
+    # _dont_raise_mypy_error_2 = GenericOperationRegistry[ExtendedJsonPointer, AddOp]

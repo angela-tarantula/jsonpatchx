@@ -425,10 +425,10 @@ class DotPointer(PointerBackend):
     # ... implement required interface ...
 
 # Bind the backend to a registry
-registry = GenericOperationRegistry[AddOp, CopyOp, MoveOp, RemoveOp, ReplaceOp, TestOp, ToggleOp, DotPointer]
+registry = GenericOperationRegistry[DotPointer, AddOp, CopyOp, MoveOp, RemoveOp, ReplaceOp, TestOp, ToggleOp]
 ```
 
-The last param of `GenericOperationRegistry` must be the custom pointer class.
+The first param of `GenericOperationRegistry` must be the custom pointer class.
 
 An `OperationRegistry` is just a `GenericOperationRegistry` with a default PointerBackend.
 

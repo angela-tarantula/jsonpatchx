@@ -45,6 +45,7 @@ app = create_app(
 )
 
 registry = GenericOperationRegistry[
+    RunePointer,
     AddOp,
     CopyOp,
     MoveOp,
@@ -53,7 +54,6 @@ registry = GenericOperationRegistry[
     TestOp,
     IncrementOp,
     AppendOp,
-    RunePointer,
 ]
 SpellbookPatch = JsonPatchFor[Literal["Spellbook"], registry]
 ApprenticePatch = JsonPatchFor[Apprentice, registry]

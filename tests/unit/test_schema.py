@@ -122,7 +122,7 @@ def test_invalid_operation_registry(subtests: Subtests) -> None:
 
     with subtests.test("GenericOperationRegistry rejects PointerBackend protocol"):
         with pytest.raises(InvalidJSONPointer):
-            GenericOperationRegistry[FirstOp, PointerBackend]
+            GenericOperationRegistry[PointerBackend, FirstOp]
 
     with subtests.test("OperationRegistry default context backend is concrete"):
         registry = OperationRegistry[FirstOp]
@@ -135,9 +135,9 @@ def test_invalid_operation_registry(subtests: Subtests) -> None:
             OperationRegistry[nested, SecondOp]
 
     with subtests.test("GenericOperationRegistry rejects nested registries"):
-        nested = GenericOperationRegistry[FirstOp, DotPointer]
+        nested = GenericOperationRegistry[DotPointer, FirstOp]
         with pytest.raises(InvalidOperationRegistry):
-            GenericOperationRegistry[nested, SecondOp, DotPointer]
+            GenericOperationRegistry[DotPointer, nested, SecondOp]
 
 
 def test_valid_operation_schema(subtests: Subtests) -> None:
@@ -229,7 +229,7 @@ def test_pointer_backend_binding(subtests: Subtests) -> None:
             registry_1.parse_python_op({"op": "dot-remove", "path": "a.b"})
 
     with subtests.test("registry backend match succeeds"):
-        registry_2 = GenericOperationRegistry[DotRemoveOp, DotPointer]
+        registry_2 = GenericOperationRegistry[DotPointer, DotRemoveOp]
         op = cast(
             DotRemoveOp, registry_2.parse_python_op({"op": "dot-remove", "path": "a.b"})
         )

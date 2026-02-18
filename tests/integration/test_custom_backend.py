@@ -17,7 +17,7 @@ def test_custom_backend_with_registry() -> None:
         def apply(self, doc: JSONValue) -> JSONValue:
             return self.path.remove(doc)
 
-    registry = GenericOperationRegistry[DotRemoveOp, DotPointer]
+    registry = GenericOperationRegistry[DotPointer, DotRemoveOp]
     patch = JsonPatch([{"op": "dot-remove", "path": "a.b"}], registry=registry)
     result = patch.apply({"a": {"b": 1}})
     assert result == {"a": {}}
