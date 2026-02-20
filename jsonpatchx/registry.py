@@ -237,9 +237,8 @@ class GenericOperationRegistry(Generic[PBT, *Ops], metaclass=_RegistryMeta):
     def _deterministic_sort(
         *op_models: type[OperationSchema],
     ) -> tuple[type[OperationSchema], ...]:
-        return tuple(  # deterministic ordering of ops in OpenAPI
-            sorted(op_models, key=lambda op: op._op_literals[0])
-        )
+        """Deterministic sorting of OperationSchemas for OpenAPI reproducibility."""
+        return tuple(sorted(op_models, key=lambda op: op._op_literals[0]))
 
     @classmethod
     def _bind_op_models(
