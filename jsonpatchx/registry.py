@@ -1,6 +1,7 @@
 import copy
 from collections import Counter
 from collections.abc import Mapping, Sequence
+from functools import lru_cache
 from inspect import isabstract, isclass
 from types import MappingProxyType
 from typing import (
@@ -53,10 +54,6 @@ PBT = TypeVar("PBT", bound=PointerBackend, covariant=True)
 _REGISTRY_CACHE: dict[
     tuple[tuple[type[OperationSchema], ...], type[_PointerClassProtocol]],
     type[AnyRegistry],
-] = {}
-_SPECIALIZED_OP_CACHE: dict[
-    tuple[type[OperationSchema], type[_PointerClassProtocol]],
-    type[OperationSchema],
 ] = {}
 _TYPEVAR_RUNTIME_TYPE = type(TypeVar("_PointerBackendTypeVarProbe"))
 
@@ -252,16 +249,12 @@ class GenericOperationRegistry(Generic[PBT, *Ops], metaclass=_RegistryMeta):
         )
 
     @classmethod
+    @lru_cache(maxsize=512)
     def _bind_op_model_pointer_backend(
         cls,
         op_model: type[OperationSchema],
         pointer_cls: type[_PointerClassProtocol],
     ) -> type[OperationSchema]:
-        cache_key = (op_model, pointer_cls)
-        cached = _SPECIALIZED_OP_CACHE.get(cache_key)
-        if cached is not None:
-            return cached
-
         type_hints = cast(
             dict[str, TypeForm[Any]], get_type_hints(op_model, include_extras=True)
         )
@@ -288,7 +281,6 @@ class GenericOperationRegistry(Generic[PBT, *Ops], metaclass=_RegistryMeta):
             )
 
         if not field_overrides:
-            _SPECIALIZED_OP_CACHE[cache_key] = op_model
             return op_model
 
         bound_op_model = create_model(
@@ -296,7 +288,6 @@ class GenericOperationRegistry(Generic[PBT, *Ops], metaclass=_RegistryMeta):
             __base__=op_model,
             **cast(dict[str, Any], field_overrides),
         )
-        _SPECIALIZED_OP_CACHE[cache_key] = bound_op_model
         return bound_op_model
 
     @classmethod
