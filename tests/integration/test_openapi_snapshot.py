@@ -1,9 +1,9 @@
 import json
 from pathlib import Path
-from typing import Annotated, Literal, override
+from typing import Literal, override
 
 import pytest
-from fastapi import Body, Depends, FastAPI
+from fastapi import Body, FastAPI
 from pydantic import BaseModel, ConfigDict
 
 from jsonpatchx import (
@@ -15,7 +15,6 @@ from jsonpatchx import (
     ReplaceOp,
     TestOp,
 )
-from jsonpatchx.fastapi import JSON_PATCH_MEDIA_TYPE, PatchDependency
 from jsonpatchx.pointer import JSONPointer
 from jsonpatchx.registry import OperationRegistry
 from jsonpatchx.schema import OperationSchema
@@ -58,8 +57,8 @@ ExtendedRegistry = OperationRegistry[
 UserPatch = JsonPatchFor[User, LimitedRegistry]
 MedicalPatch = JsonPatchFor[MedicalRecord, ExtendedRegistry]
 JsonPatch = JsonPatchFor[Literal["Config"], ExtendedRegistry]
-JsonPatchWithDep = JsonPatchFor[Literal["DotConfigPatch"], ExtendedRegistry]
-ModelPatchWithDep = JsonPatchFor[MedicalRecord, ExtendedRegistry]
+JsonPatchAlt = JsonPatchFor[Literal["Config"], ExtendedRegistry]
+MedicalPatchAlt = JsonPatchFor[MedicalRecord, ExtendedRegistry]
 
 
 def _build_openapi() -> dict[str, object]:
@@ -67,14 +66,6 @@ def _build_openapi() -> dict[str, object]:
         title="jsonpatchx openapi snapshot",
         version="0.1.0",
         separate_input_output_schemas=False,
-    )
-    JsonDepends = PatchDependency(
-        JsonPatchWithDep,
-        request_param=Body(..., media_type=JSON_PATCH_MEDIA_TYPE),
-    )
-    ModelDepends = PatchDependency(
-        ModelPatchWithDep,
-        request_param=Body(..., media_type=JSON_PATCH_MEDIA_TYPE),
     )
 
     @app.patch("/users/{user_id}")
@@ -89,17 +80,13 @@ def _build_openapi() -> dict[str, object]:
     def patch_config(config_id: str, patch: JsonPatch = Body(...)) -> JSONValue:
         return {"ok": True}
 
-    @app.patch("/configs/{config_id}/dep")
-    def patch_config_dep(
-        config_id: str,
-        patch: Annotated[JsonPatchWithDep, Depends(JsonDepends)],
-    ) -> JSONValue:
+    @app.patch("/configs/{config_id}/alt")
+    def patch_config_alt(config_id: str, patch: JsonPatchAlt = Body(...)) -> JSONValue:
         return {"ok": True}
 
-    @app.patch("/records/{record_id}/dep")
-    def patch_record_dep(
-        record_id: int,
-        patch: Annotated[ModelPatchWithDep, Depends(ModelDepends)],
+    @app.patch("/records/{record_id}/alt")
+    def patch_record_alt(
+        record_id: int, patch: MedicalPatchAlt = Body(...)
     ) -> MedicalRecord:
         return MedicalRecord(id=record_id, diagnosis="ok")
 

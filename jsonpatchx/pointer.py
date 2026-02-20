@@ -2,9 +2,7 @@ from collections.abc import Sequence
 from functools import partial
 from typing import (
     Any,
-    Final,
     Generic,
-    Literal,
     Self,
     assert_never,
     cast,
@@ -17,7 +15,6 @@ from pydantic import (
     GetCoreSchemaHandler,
     GetJsonSchemaHandler,
     TypeAdapter,
-    ValidationInfo,
 )
 from pydantic.json_schema import JsonSchemaValue
 from pydantic_core import core_schema as cs
@@ -51,10 +48,6 @@ from jsonpatchx.types import (
     _validate_JSONValue,
     _validate_typeform,
 )
-
-type _JSONPOINTER_VALIDATION_CTX_LITERALS = Literal["jsonpatch:pointer_backend"]
-_JSONPOINTER_POINTER_BACKEND_CTX_KEY: Final = "jsonpatch:pointer_backend"
-
 
 _Nothing = object()
 # NOTE: maybe add pydantic_core.MISSING to JSONPointer.get() on failure
@@ -103,10 +96,8 @@ class JSONPointer(str, Generic[T_co, P_co]):
 
     ## Backend semantics (advanced)
 
-    - A backend is selected at validation time via Pydantic context under the key
-      ``"jsonpatch:pointer_backend"``.
-    - Default backend: ``jsonpointer.JsonPointer``; custom backend: provided by ``OperationRegistry`` or
-      bound directly via ``JSONPointer[T, Backend]``.
+    - Default backend: ``jsonpointer.JsonPointer``.
+    - Custom backend: bound directly via ``JSONPointer[T, Backend]``.
     - Invalid pointer strings raise ``InvalidJSONPointer``.
     - Backend traversal failures in ``get``/``add``/``remove`` are normalized into
       ``PatchConflictError``.
@@ -181,7 +172,6 @@ class JSONPointer(str, Generic[T_co, P_co]):
     def _validator(
         cls,
         path: str | PointerBackend,
-        registry_info: ValidationInfo | None,
         *,
         type_param: TypeForm[Any],
         bound_backend: type[_PointerClassProtocol],
@@ -189,32 +179,27 @@ class JSONPointer(str, Generic[T_co, P_co]):
         """
         Validator function for JSONPointer.
 
-        Assumes ``registry_info``, ``type_param``, and ``bound_backend`` are all valid, if povided.
+        Assumes ``type_param`` and ``bound_backend`` are already validated.
         """
-        # Fetch PointerBackend from the registry's validation context, if present
-        ctx = registry_info.context or {} if registry_info is not None else {}
-        registry_backend_is_explicit = _JSONPOINTER_POINTER_BACKEND_CTX_KEY in ctx
-        unverified_backend = cast(
-            object, ctx.get(_JSONPOINTER_POINTER_BACKEND_CTX_KEY, _DEFAULT_POINTER_CLS)
-        )
-        registry_backend = _validate_backend_class(unverified_backend)
-
-        # Enforce registry_backend ⊆ bound_backend ⊂ PointerBackend and get the strictest one
-        strictest_protocol = cls._resolve_strictest_backend(
-            registry_backend,
-            bound_backend,
-            registry_backend_is_explicit=registry_backend_is_explicit,
-        )
-
-        if isinstance(path, str):
-            path_str: str = path
+        if isinstance(path, JSONPointer):
+            path_str = str(path)
+            if bound_backend is _DEFAULT_POINTER_CLS:
+                ptr = path._ptr
+            elif isinstance(path._ptr, bound_backend):
+                ptr = path._ptr
+            else:
+                ptr = _pointer_backend_instance(path_str, pointer_cls=bound_backend)
+        elif isinstance(path, str):
+            path_str = path
+            ptr = _pointer_backend_instance(path_str, pointer_cls=bound_backend)
         elif isinstance(path, PointerBackend):
-            if isinstance(path, strictest_protocol):
+            if isinstance(path, bound_backend):
                 path_str = str(path)
+                ptr = path
             else:
                 raise InvalidJSONPointer(
                     "JSONPointer backend mismatch: "
-                    f"required backend is {strictest_protocol.__name__} but field uses "
+                    f"required backend is {bound_backend.__name__} but field uses "
                     f"{path.__class__.__name__}"
                 )
         else:  # pragma: no cover
@@ -224,29 +209,13 @@ class JSONPointer(str, Generic[T_co, P_co]):
         obj: Self = str.__new__(cls, path_str)
 
         # Try to reuse the type parameters (type checkers already enforce covariance)
-        if isinstance(path_str, JSONPointer):
-            obj._type = path_str._type
+        if isinstance(path, JSONPointer):
+            obj._type = path._type
         else:
             obj._type = type_param
 
-        # Reuse pointer backends when provided directly or via JSONPointer
-        if (
-            isinstance(path_str, JSONPointer)
-            and not registry_backend_is_explicit
-            and bound_backend is _DEFAULT_POINTER_CLS
-        ):
-            obj._ptr = cast(P_co, path_str._ptr)
-        elif isinstance(path_str, JSONPointer) and isinstance(
-            path_str._ptr, strictest_protocol
-        ):
-            obj._ptr = cast(P_co, path_str._ptr)
-        elif isinstance(path, strictest_protocol):
-            obj._ptr = cast(P_co, path)
-        else:
-            obj._ptr = cast(
-                P_co,
-                _pointer_backend_instance(path_str, pointer_cls=strictest_protocol),
-            )
+        # Reuse pointer backends when provided directly or via JSONPointer.
+        obj._ptr = cast(P_co, ptr)
 
         return obj
 
@@ -258,7 +227,7 @@ class JSONPointer(str, Generic[T_co, P_co]):
         validator_function = partial(
             cls._validator, type_param=type_param, bound_backend=bound_backend
         )
-        return cs.with_info_after_validator_function(
+        return cs.no_info_after_validator_function(
             function=validator_function,
             schema=cs.union_schema(
                 [
@@ -306,28 +275,6 @@ class JSONPointer(str, Generic[T_co, P_co]):
 
         return type_param, backend_param
 
-    @staticmethod
-    def _resolve_strictest_backend(
-        registry_backend: type[_PointerClassProtocol],
-        bound_backend: type[_PointerClassProtocol],
-        *,
-        registry_backend_is_explicit: bool,
-    ) -> type[_PointerClassProtocol]:
-        """Determine the strictest PointerBackend class, given optional ``registry_backend`` and ``bound_backend``."""
-        if not registry_backend_is_explicit:
-            return bound_backend
-        if bound_backend is _DEFAULT_POINTER_CLS:
-            return registry_backend
-        if registry_backend is bound_backend:
-            return registry_backend
-        if not issubclass(registry_backend, bound_backend):
-            raise InvalidJSONPointer(
-                "JSONPointer backend mismatch: "
-                f"registry requires {registry_backend.__name__} but field uses "
-                f"{bound_backend.__name__}"
-            )
-        return registry_backend
-
     def _validate_target(self, target: object) -> T_co:
         """Strictly validate the ``target`` with this JSONPointer's TypeAdapter."""
         try:
@@ -346,7 +293,6 @@ class JSONPointer(str, Generic[T_co, P_co]):
         *,
         type_param: TypeForm[Any] = JSONValue,
         backend: type[_PointerClassProtocol] | None = None,
-        context: type[_PointerClassProtocol] | None = None,
     ) -> Self:
         """
         Parse a pointer string or instance using Pydantic validation.
@@ -368,13 +314,7 @@ class JSONPointer(str, Generic[T_co, P_co]):
             adapter = TypeAdapter(
                 JSONPointer[validated_type, validated_backend]  # type: ignore[valid-type]
             )
-        ctx: dict[str, type[_PointerClassProtocol]] | None
-        if context is None:
-            ctx = context
-        else:
-            validated_context = _validate_backend_class(context)
-            ctx = {_JSONPOINTER_POINTER_BACKEND_CTX_KEY: validated_context}
-        return adapter.validate_python(path, context=ctx)
+        return adapter.validate_python(path)
 
     # Parse-time helpers
 

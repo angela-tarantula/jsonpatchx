@@ -54,13 +54,9 @@ Plain JSON patching for service configs using `JsonPatchFor[Name, Registry]`.
 ## Demo 4: Spellbook rune pointers
 
 Registry-scoped rune-pointer backends for spellbook and apprentice settings.
-Uses `JsonPatchRoute.dependency()` to inject the validation context.
 
 **File:** `examples/fastapi/demo4.py`
 
 **Run**
 
 - `uv run uvicorn examples.fastapi.demo4:app --reload --port 8003`
-
-This demo uses `JsonPatchRoute.dependency()` to inject Pydantic validation context, which
-FastAPI does not currently provide for request bodies.

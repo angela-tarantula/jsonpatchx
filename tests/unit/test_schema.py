@@ -4,7 +4,7 @@ import pytest
 from pydantic import ValidationError
 from pytest import Subtests
 
-from jsonpatchx.backend import _DEFAULT_POINTER_CLS, PointerBackend
+from jsonpatchx.backend import PointerBackend
 from jsonpatchx.builtins import AddOp, RemoveOp, ReplaceOp
 from jsonpatchx.exceptions import (
     InvalidJSONPointer,
@@ -124,11 +124,6 @@ def test_invalid_operation_registry(subtests: Subtests) -> None:
         with pytest.raises(InvalidJSONPointer):
             GenericOperationRegistry[PointerBackend, FirstOp]
 
-    with subtests.test("OperationRegistry default context backend is concrete"):
-        registry = OperationRegistry[FirstOp]
-        assert registry._ctx["jsonpatch:pointer_backend"] is _DEFAULT_POINTER_CLS
-        assert registry._ctx["jsonpatch:pointer_backend"] is not PointerBackend
-
     with subtests.test("OperationRegistry rejects nested registries"):
         nested = OperationRegistry[FirstOp]
         with pytest.raises(InvalidOperationRegistry):
@@ -223,10 +218,12 @@ def test_pointer_backend_binding(subtests: Subtests) -> None:
         op = DotRemoveOp.model_validate({"path": "a.b"})
         assert isinstance(op.path.ptr, DotPointer)
 
-    with subtests.test("registry backend mismatch fails"):
+    with subtests.test("OperationRegistry preserves explicit pointer backend"):
         registry_1 = OperationRegistry[DotRemoveOp]
-        with pytest.raises(InvalidJSONPointer):
-            registry_1.parse_python_op({"op": "dot-remove", "path": "a.b"})
+        op = cast(
+            DotRemoveOp, registry_1.parse_python_op({"op": "dot-remove", "path": "a.b"})
+        )
+        assert isinstance(op.path.ptr, DotPointer)
 
     with subtests.test("registry backend match succeeds"):
         registry_2 = GenericOperationRegistry[DotPointer, DotRemoveOp]

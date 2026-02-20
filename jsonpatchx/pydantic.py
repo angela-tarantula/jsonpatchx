@@ -8,7 +8,6 @@ from typing import (
     ClassVar,
     Generic,
     Literal,
-    Self,
     TypeAliasType,
     cast,
     get_args,
@@ -46,9 +45,6 @@ class _RegistryBoundPatchRoot(RootModel[Any]):
         - ``root`` is a JSON Patch document: ``list[registry.union]`` built dynamically via
           ``create_model``.
         - ``__registry__`` is set on subclasses.
-        - ``model_validate`` and ``model_validate_json`` inject ``context=__registry__._ctx`` unless the
-          caller already provided ``context``. This ensures ``JSONPointer[...]`` fields are created with
-          the registry's configured pointer backend.
     """
 
     # Choice: This base intentionally uses RootModel[Any].
@@ -66,38 +62,6 @@ class _RegistryBoundPatchRoot(RootModel[Any]):
     def ops(self) -> list[OperationSchema]:
         # Assumption: subclasses will set root to list[registry.union]
         return cast(list[OperationSchema], self.root)
-
-    @classmethod
-    @override
-    def model_validate(cls, obj: Any, **kwargs: Any) -> Self:
-        # Assumption: callers who do provide overriding context know what they're doing
-        #             (or else the PointerBackend context injection silently doesn't happen)
-        if isinstance(cls.__registry__, PydanticUndefinedType):
-            raise NotImplementedError(f"Missing registry in {cls!r}")
-        if "context" not in kwargs:
-            kwargs["context"] = cls.__registry__._ctx
-        elif not isinstance(kwargs["context"], dict):
-            raise NotImplementedError("Context must be dict")
-        else:
-            kwargs["context"].update(cls.__registry__._ctx)
-        return super().model_validate(obj, **kwargs)
-
-    @classmethod
-    @override
-    def model_validate_json(
-        cls, json_data: str | bytes | bytearray, **kwargs: Any
-    ) -> Self:
-        # Assumption: callers who do provide overriding context know what they're doing
-        #             (or else the PointerBackend context injection silently doesn't happen)
-        if isinstance(cls.__registry__, PydanticUndefinedType):
-            raise NotImplementedError(f"Missing registry in {cls!r}")
-        if "context" not in kwargs:
-            kwargs["context"] = cls.__registry__._ctx
-        elif not isinstance(kwargs["context"], dict):
-            raise NotImplementedError("Context must be dict")
-        else:
-            kwargs["context"].update(cls.__registry__._ctx)
-        return super().model_validate_json(json_data, **kwargs)
 
 
 ModelT = TypeVar("ModelT", bound=BaseModel)

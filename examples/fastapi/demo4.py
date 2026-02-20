@@ -1,6 +1,4 @@
-"""
-Demo 4: spellbook dot-runes pointer backend with FastAPI dependency injection.
-"""
+"""Demo 4: spellbook dot-runes pointer backend."""
 
 from __future__ import annotations
 

@@ -40,8 +40,6 @@ from jsonpatchx.builtins import (
 )
 from jsonpatchx.exceptions import InvalidOperationRegistry, OperationNotRecognized
 from jsonpatchx.pointer import (
-    _JSONPOINTER_POINTER_BACKEND_CTX_KEY,
-    _JSONPOINTER_VALIDATION_CTX_LITERALS,
     JSONPointer,
 )
 from jsonpatchx.schema import OperationSchema
@@ -118,9 +116,6 @@ class GenericOperationRegistry(Generic[PBT, *Ops], metaclass=_RegistryMeta):
     _model_map: ClassVar[Mapping[str, type[OperationSchema]]]
     _op_adapter: ClassVar[TypeAdapter[OperationSchema]]
     _patch_adapter: ClassVar[TypeAdapter[list[OperationSchema]]]
-    _ctx: ClassVar[
-        dict[_JSONPOINTER_VALIDATION_CTX_LITERALS, type[_PointerClassProtocol]]
-    ]
 
     def __class_getitem__(cls, params: object) -> type[AnyRegistry]:
         op_models, pointer_cls = cls._split_ops_and_pointer(params)
@@ -133,9 +128,6 @@ class GenericOperationRegistry(Generic[PBT, *Ops], metaclass=_RegistryMeta):
 
         model_map = cls._build_model_map(*bound_ops)
         union_type, op_adapter, patch_adapter = cls._build_adapters(*bound_ops)
-        ctx: dict[_JSONPOINTER_VALIDATION_CTX_LITERALS, type[_PointerClassProtocol]] = {
-            _JSONPOINTER_POINTER_BACKEND_CTX_KEY: pointer_cls
-        }
 
         name = cls._registry_type_name(ordered_ops, pointer_cls)
         namespace = {
@@ -147,7 +139,6 @@ class GenericOperationRegistry(Generic[PBT, *Ops], metaclass=_RegistryMeta):
             "_model_map": model_map,
             "_op_adapter": op_adapter,
             "_patch_adapter": patch_adapter,
-            "_ctx": ctx,
         }
         registry_type = type(name, (cls,), namespace)
         _REGISTRY_CACHE[cache_key] = registry_type
@@ -410,14 +401,12 @@ class GenericOperationRegistry(Generic[PBT, *Ops], metaclass=_RegistryMeta):
                 strict=True,
                 by_alias=True,
                 by_name=False,
-                context=cls._ctx,
             )
         return cls._op_adapter.validate_python(
             obj,
             strict=True,
             by_alias=True,
             by_name=False,
-            context=cls._ctx,
         )
 
     @classmethod
@@ -440,7 +429,6 @@ class GenericOperationRegistry(Generic[PBT, *Ops], metaclass=_RegistryMeta):
                             strict=True,
                             by_alias=True,
                             by_name=False,
-                            context=cls._ctx,
                         )
                     )
             else:
@@ -450,7 +438,6 @@ class GenericOperationRegistry(Generic[PBT, *Ops], metaclass=_RegistryMeta):
                         strict=True,
                         by_alias=True,
                         by_name=False,
-                        context=cls._ctx,
                     )
                 )
         return ops
@@ -462,7 +449,6 @@ class GenericOperationRegistry(Generic[PBT, *Ops], metaclass=_RegistryMeta):
             strict=True,
             by_alias=True,
             by_name=False,
-            context=cls._ctx,
         )
 
     @classmethod
@@ -472,7 +458,6 @@ class GenericOperationRegistry(Generic[PBT, *Ops], metaclass=_RegistryMeta):
             strict=True,
             by_alias=True,
             by_name=False,
-            context=cls._ctx,
         )
 
 

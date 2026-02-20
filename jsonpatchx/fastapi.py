@@ -10,24 +10,14 @@ Default error mapping:
 
 from __future__ import annotations
 
-from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Annotated, Any, Self, cast
+from typing import Any, cast
 
 from fastapi import Body, Depends, FastAPI, HTTPException, Request
-from fastapi.exceptions import RequestValidationError
 from fastapi.params import Body as BodyParam
 from fastapi.params import Depends as DependsParam
 from fastapi.responses import JSONResponse
-from pydantic import (
-    BaseModel,
-    GetCoreSchemaHandler,
-    GetJsonSchemaHandler,
-    ValidationError,
-)
-from pydantic.json_schema import JsonSchemaValue
-from pydantic_core import core_schema
-from typing_extensions import TypeVar
+from pydantic import BaseModel
 
 from jsonpatchx.exceptions import (
     PatchConflictError,
@@ -38,7 +28,6 @@ from jsonpatchx.exceptions import (
 from jsonpatchx.pydantic import JsonPatchFor
 
 JSON_PATCH_MEDIA_TYPE = "application/json-patch+json"
-PatchT = TypeVar("PatchT", bound=BaseModel)
 
 
 class PatchFailureDetailResponse(BaseModel):
@@ -268,111 +257,6 @@ class JsonPatchRoute:
         if self.strict_content_type:
             body_kwargs.setdefault("media_type", self.media_type)
         return cast(BodyParam, Body(..., **body_kwargs))
-
-    def dependency(
-        self,
-        *,
-        error_mapper: Callable[[PatchInputError, Any], Exception] | None = None,
-    ) -> Callable[[Any], JsonPatchFor[Any, Any]]:
-        return PatchDependency(
-            self.patch_model,
-            request_param=self.Body(),
-            error_mapper=error_mapper,
-        )
-
-
-def PatchDependency(
-    patch_model: type[PatchT],
-    *,
-    request_param: BodyParam | None = None,
-    error_mapper: Callable[[PatchInputError, Any], Exception] | None = None,
-) -> Callable[[Any], PatchT]:
-    """Return a dependency function that validates a JSON Patch document.
-
-    ``request_param`` is optional; when provided, it is used to declare the
-    FastAPI Body parameter and its OpenAPI metadata.
-
-    Example:
-        from typing import Annotated
-
-        PatchBody = JsonPatchFor[User, UserRegistry]
-        PatchDepends = PatchDependency(
-            PatchBody,
-            request_param=Body(..., media_type=JSON_PATCH_MEDIA_TYPE),
-        )
-
-        @app.patch("/users/{user_id}")
-        def patch_user(
-            user_id: int,
-            patch: Annotated[PatchBody, Depends(PatchDepends)],
-        ) -> User:
-            return patch.apply(load_user(user_id))
-    """
-
-    def _dep(patch: Any) -> PatchT:
-        try:
-            return patch_model.model_validate(patch)
-        except ValidationError as e:
-            raise RequestValidationError(e.errors(), body=patch) from e
-        except PatchInputError as e:
-            if error_mapper:
-                raise error_mapper(e, patch) from e
-            raise RequestValidationError(
-                [
-                    {
-                        "loc": ("body",),
-                        "msg": str(e),
-                        "type": "value_error.patch_input",
-                        "ctx": {"cause_type": type(e).__name__},
-                    }
-                ],
-                body=patch,
-            ) from e
-
-    patch_annotation = _patch_body_annotation(patch_model)
-    if request_param is None:
-        _dep.__annotations__["patch"] = patch_annotation
-    else:
-        _dep.__annotations__["patch"] = Annotated[patch_annotation, request_param]
-    _dep.__annotations__["return"] = patch_model
-
-    return _dep
-
-
-# Internal helpers
-
-
-def _patch_body_annotation(patch_model: type[Any]) -> type[Any]:
-    class PatchBodyAnnotation:
-        __patch_model__ = patch_model
-        __patch_core_schema__: core_schema.CoreSchema | None = None
-
-        @classmethod
-        def __get_pydantic_core_schema__(
-            cls, source_type: type[Self], handler: GetCoreSchemaHandler
-        ) -> core_schema.CoreSchema:
-            original_schema = handler.generate_schema(cls.__patch_model__)
-            cls.__patch_core_schema__ = original_schema
-            metadata = {
-                "pydantic_js_annotation_functions": [lambda _c, h: h(original_schema)]
-            }
-            return core_schema.any_schema(
-                metadata=metadata,
-                serialization=core_schema.wrap_serializer_function_ser_schema(
-                    function=lambda v, h: h(v),
-                    schema=original_schema,
-                ),
-            )
-
-        @classmethod
-        def __get_pydantic_json_schema__(
-            cls, schema: core_schema.CoreSchema, handler: GetJsonSchemaHandler
-        ) -> JsonSchemaValue:
-            core_schema_to_use = cls.__patch_core_schema__ or schema
-            return handler(core_schema_to_use)
-
-    PatchBodyAnnotation.__name__ = f"{patch_model.__name__}Body"
-    return PatchBodyAnnotation
 
 
 def _patch_error_response_map(exc: PatchError) -> JSONResponse:

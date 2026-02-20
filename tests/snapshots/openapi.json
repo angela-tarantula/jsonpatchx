@@ -112,53 +112,6 @@
         "title": "Copy operation",
         "type": "object"
       },
-      "DotConfigPatchPatchOperation": {
-        "description": "Discriminated union of patch operations for DotConfigPatch.",
-        "discriminator": {
-          "mapping": {
-            "add": "#/components/schemas/AddOp",
-            "copy": "#/components/schemas/CopyOp",
-            "move": "#/components/schemas/MoveOp",
-            "remove": "#/components/schemas/RemoveOp",
-            "replace": "#/components/schemas/ReplaceOp",
-            "test": "#/components/schemas/TestOp",
-            "toggle": "#/components/schemas/ToggleOp"
-          },
-          "propertyName": "op"
-        },
-        "oneOf": [
-          {
-            "$ref": "#/components/schemas/AddOp"
-          },
-          {
-            "$ref": "#/components/schemas/CopyOp"
-          },
-          {
-            "$ref": "#/components/schemas/MoveOp"
-          },
-          {
-            "$ref": "#/components/schemas/RemoveOp"
-          },
-          {
-            "$ref": "#/components/schemas/ReplaceOp"
-          },
-          {
-            "$ref": "#/components/schemas/TestOp"
-          },
-          {
-            "$ref": "#/components/schemas/ToggleOp"
-          }
-        ],
-        "title": "DotConfigPatch Patch Operation"
-      },
-      "DotConfigPatchPatchRequest": {
-        "description": "Array of patch operations for DotConfigPatch.",
-        "items": {
-          "$ref": "#/components/schemas/DotConfigPatchPatchOperation"
-        },
-        "title": "DotConfigPatch Patch Request",
-        "type": "array"
-      },
       "HTTPValidationError": {
         "properties": {
           "detail": {
@@ -519,9 +472,9 @@
         "summary": "Patch Config"
       }
     },
-    "/configs/{config_id}/dep": {
+    "/configs/{config_id}/alt": {
       "patch": {
-        "operationId": "patch_config_dep_configs__config_id__dep_patch",
+        "operationId": "patch_config_alt_configs__config_id__alt_patch",
         "parameters": [
           {
             "in": "path",
@@ -535,14 +488,9 @@
         ],
         "requestBody": {
           "content": {
-            "application/json-patch+json": {
+            "application/json": {
               "schema": {
-                "description": "Array of patch operations for DotConfigPatch.",
-                "items": {
-                  "$ref": "#/components/schemas/DotConfigPatchPatchOperation"
-                },
-                "title": "Patch",
-                "type": "array"
+                "$ref": "#/components/schemas/ConfigPatchRequest"
               }
             }
           },
@@ -553,7 +501,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "title": "Response Patch Config Dep Configs  Config Id  Dep Patch"
+                  "title": "Response Patch Config Alt Configs  Config Id  Alt Patch"
                 }
               }
             },
@@ -570,7 +518,7 @@
             "description": "Validation Error"
           }
         },
-        "summary": "Patch Config Dep"
+        "summary": "Patch Config Alt"
       }
     },
     "/records/{record_id}": {
@@ -622,9 +570,9 @@
         "summary": "Patch Record"
       }
     },
-    "/records/{record_id}/dep": {
+    "/records/{record_id}/alt": {
       "patch": {
-        "operationId": "patch_record_dep_records__record_id__dep_patch",
+        "operationId": "patch_record_alt_records__record_id__alt_patch",
         "parameters": [
           {
             "in": "path",
@@ -638,15 +586,9 @@
         ],
         "requestBody": {
           "content": {
-            "application/json-patch+json": {
+            "application/json": {
               "schema": {
-                "description": "Array of patch operations for MedicalRecord. Applied to model_dump() and re-validated against the model schema.",
-                "items": {
-                  "$ref": "#/components/schemas/MedicalRecordPatchOperation"
-                },
-                "title": "Patch",
-                "type": "array",
-                "x-target-model": "MedicalRecord"
+                "$ref": "#/components/schemas/MedicalRecordPatchRequest"
               }
             }
           },
@@ -674,7 +616,7 @@
             "description": "Validation Error"
           }
         },
-        "summary": "Patch Record Dep"
+        "summary": "Patch Record Alt"
       }
     },
     "/users/{user_id}": {
