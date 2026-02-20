@@ -1,3 +1,4 @@
+import copy
 from collections import Counter
 from collections.abc import Mapping, Sequence
 from inspect import isabstract, isclass
@@ -12,11 +13,14 @@ from typing import (
     TypeVarTuple,
     Union,
     cast,
+    get_args,
+    get_origin,
+    get_type_hints,
     override,
 )
 
-from pydantic import Field, TypeAdapter
-from typing_extensions import TypeVar
+from pydantic import Field, TypeAdapter, create_model
+from typing_extensions import TypeForm, TypeVar
 
 from jsonpatchx.backend import (
     _DEFAULT_POINTER_CLS,
@@ -37,6 +41,7 @@ from jsonpatchx.exceptions import InvalidOperationRegistry, OperationNotRecogniz
 from jsonpatchx.pointer import (
     _JSONPOINTER_POINTER_BACKEND_CTX_KEY,
     _JSONPOINTER_VALIDATION_CTX_LITERALS,
+    JSONPointer,
 )
 from jsonpatchx.schema import OperationSchema
 from jsonpatchx.types import JSONValue
@@ -49,6 +54,11 @@ _REGISTRY_CACHE: dict[
     tuple[tuple[type[OperationSchema], ...], type[_PointerClassProtocol]],
     type[AnyRegistry],
 ] = {}
+_SPECIALIZED_OP_CACHE: dict[
+    tuple[type[OperationSchema], type[_PointerClassProtocol]],
+    type[OperationSchema],
+] = {}
+_TYPEVAR_RUNTIME_TYPE = type(TypeVar("_PointerBackendTypeVarProbe"))
 
 
 class _RegistryMeta(type):
@@ -106,6 +116,8 @@ class GenericOperationRegistry(Generic[PBT, *Ops], metaclass=_RegistryMeta):
     ops: ClassVar[tuple[type[OperationSchema], ...]]
     _pointer_cls: ClassVar[type[_PointerClassProtocol]]
     union: ClassVar[TypeAliasType]
+    _bound_ops_set: ClassVar[frozenset[type[OperationSchema]]]
+    _accepted_ops_set: ClassVar[frozenset[type[OperationSchema]]]
     _model_map: ClassVar[Mapping[str, type[OperationSchema]]]
     _op_adapter: ClassVar[TypeAdapter[OperationSchema]]
     _patch_adapter: ClassVar[TypeAdapter[list[OperationSchema]]]
@@ -116,13 +128,14 @@ class GenericOperationRegistry(Generic[PBT, *Ops], metaclass=_RegistryMeta):
     def __class_getitem__(cls, params: object) -> type[AnyRegistry]:
         op_models, pointer_cls = cls._split_ops_and_pointer(params)
         ordered_ops = cls._deterministic_sort(*op_models)
+        bound_ops = cls._bind_op_models(pointer_cls, *ordered_ops)
         cache_key = (ordered_ops, pointer_cls)
         cached = _REGISTRY_CACHE.get(cache_key)
         if cached is not None:
             return cached
 
-        model_map = cls._build_model_map(*ordered_ops)
-        union_type, op_adapter, patch_adapter = cls._build_adapters(*ordered_ops)
+        model_map = cls._build_model_map(*bound_ops)
+        union_type, op_adapter, patch_adapter = cls._build_adapters(*bound_ops)
         ctx: dict[_JSONPOINTER_VALIDATION_CTX_LITERALS, type[_PointerClassProtocol]] = {
             _JSONPOINTER_POINTER_BACKEND_CTX_KEY: pointer_cls
         }
@@ -130,6 +143,8 @@ class GenericOperationRegistry(Generic[PBT, *Ops], metaclass=_RegistryMeta):
         name = cls._registry_type_name(ordered_ops, pointer_cls)
         namespace = {
             "ops": ordered_ops,
+            "_bound_ops_set": frozenset(bound_ops),
+            "_accepted_ops_set": frozenset((*ordered_ops, *bound_ops)),
             "_pointer_cls": pointer_cls,
             "union": union_type,
             "_model_map": model_map,
@@ -227,23 +242,186 @@ class GenericOperationRegistry(Generic[PBT, *Ops], metaclass=_RegistryMeta):
         )
 
     @classmethod
+    def _bind_op_models(
+        cls,
+        pointer_cls: type[_PointerClassProtocol],
+        *op_models: type[OperationSchema],
+    ) -> tuple[type[OperationSchema], ...]:
+        return tuple(
+            cls._bind_op_model_pointer_backend(op_model, pointer_cls)
+            for op_model in op_models
+        )
+
+    @classmethod
+    def _bind_op_model_pointer_backend(
+        cls,
+        op_model: type[OperationSchema],
+        pointer_cls: type[_PointerClassProtocol],
+    ) -> type[OperationSchema]:
+        cache_key = (op_model, pointer_cls)
+        cached = _SPECIALIZED_OP_CACHE.get(cache_key)
+        if cached is not None:
+            return cached
+
+        type_hints = cast(
+            dict[str, TypeForm[Any]], get_type_hints(op_model, include_extras=True)
+        )
+        field_overrides: dict[str, tuple[object, object]] = {}
+
+        for field_name, field_info in op_model.model_fields.items():
+            annotation = type_hints.get(field_name)
+            if annotation is None:
+                raise InvalidOperationRegistry(
+                    f"{op_model.__name__}.{field_name} is missing a resolved type annotation; "
+                    "cannot specialize pointer backend"
+                )
+            specialized_annotation = cls._specialize_pointer_annotation(
+                annotation,
+                pointer_cls,
+                op_model=op_model,
+                field_name=field_name,
+            )
+            if specialized_annotation == annotation:
+                continue
+            field_overrides[field_name] = (
+                specialized_annotation,
+                copy.deepcopy(field_info),
+            )
+
+        if not field_overrides:
+            _SPECIALIZED_OP_CACHE[cache_key] = op_model
+            return op_model
+
+        bound_op_model = create_model(
+            f"{op_model.__name__}__{pointer_cls.__name__}Bound",
+            __base__=op_model,
+            **cast(dict[str, Any], field_overrides),
+        )
+        _SPECIALIZED_OP_CACHE[cache_key] = bound_op_model
+        return bound_op_model
+
+    @classmethod
+    def _specialize_pointer_annotation(
+        cls,
+        annotation: TypeForm[Any],
+        pointer_cls: type[_PointerClassProtocol],
+        *,
+        op_model: type[OperationSchema],
+        field_name: str,
+    ) -> TypeForm[Any]:
+        origin = get_origin(annotation)
+        if isinstance(origin, type) and issubclass(origin, JSONPointer):
+            pointer_args = cast(tuple[TypeForm[Any]], get_args(annotation))
+            if len(pointer_args) == 1:
+                # JSONPointer[T]
+                type_param = pointer_args[0]
+                return cast(
+                    TypeForm[Any],
+                    origin[type_param, pointer_cls],  # type: ignore[index]
+                )
+            else:
+                # JSONPointr[T, P] or more args
+                type_param, backend_param, *extra_args = pointer_args
+                validated_backend = cls._resolve_backend_param_for_registry(
+                    backend_param,
+                    pointer_cls,
+                    op_model=op_model,
+                    field_name=field_name,
+                )
+                rewritten_args = (type_param, validated_backend, *extra_args)
+                return cast(TypeForm[Any], origin[rewritten_args])
+
+        if origin is Annotated:
+            annotation_args = get_args(annotation)
+            if not annotation_args:
+                return annotation
+            base_annotation, *metadata = annotation_args
+            specialized_base = cls._specialize_pointer_annotation(
+                base_annotation,
+                pointer_cls,
+                op_model=op_model,
+                field_name=field_name,
+            )
+            if specialized_base == base_annotation:
+                return annotation
+            return cast(TypeForm[Any], Annotated[specialized_base, *metadata])
+
+        return annotation
+
+    @classmethod
+    def _resolve_backend_param_for_registry(
+        cls,
+        backend_param: object,
+        registry_backend: type[_PointerClassProtocol],
+        *,
+        op_model: type[OperationSchema],
+        field_name: str,
+    ) -> type[_PointerClassProtocol]:
+        if backend_param is _DEFAULT_POINTER_CLS:
+            return registry_backend
+
+        if isinstance(backend_param, _TYPEVAR_RUNTIME_TYPE):
+            if not cls._is_backend_typevar_compatible(backend_param, registry_backend):
+                raise InvalidOperationRegistry(
+                    f"{op_model.__name__}.{field_name} backend type parameter "
+                    f"{backend_param!r} is incompatible with registry backend "
+                    f"{registry_backend.__name__}"
+                )
+            return registry_backend
+
+        bound_backend = _validate_backend_class(backend_param)
+        if not issubclass(registry_backend, bound_backend):
+            return bound_backend
+        return registry_backend
+
+    @staticmethod
+    def _is_backend_typevar_compatible(
+        backend_typevar: object,
+        registry_backend: type[_PointerClassProtocol],
+    ) -> bool:
+        constraints = cast(
+            tuple[object, ...], getattr(backend_typevar, "__constraints__")
+        )
+        if constraints:
+            validated_constraints = tuple(
+                _validate_backend_class(c) for c in constraints
+            )
+            return any(
+                issubclass(registry_backend, constraint)
+                for constraint in validated_constraints
+            )
+        bound = getattr(backend_typevar, "__bound__", None)
+        if bound is None:
+            return False
+        validated_bound = _validate_backend_class(bound)
+        return issubclass(registry_backend, validated_bound)
+
+    @classmethod
     def ops_by_name(cls) -> Mapping[str, type[OperationSchema]]:
         return cls._model_map
 
     @classmethod
     def ops_set(cls) -> frozenset[type[OperationSchema]]:
-        return frozenset(cls._model_map.values())
+        return cls._accepted_ops_set
 
     @classmethod
     def parse_python_op(
         cls, obj: Mapping[str, JSONValue] | OperationSchema
     ) -> OperationSchema:
         if isinstance(obj, OperationSchema):
-            if type(obj) not in cls.ops_set():
+            if type(obj) not in cls._accepted_ops_set:
                 raise OperationNotRecognized(
                     f"Operation {type(obj).__name__} is not allowed in this registry"
                 )
-            return obj
+            if type(obj) in cls._bound_ops_set:
+                return obj
+            return cls._op_adapter.validate_python(
+                obj.model_dump(mode="json", by_alias=True),
+                strict=True,
+                by_alias=True,
+                by_name=False,
+                context=cls._ctx,
+            )
         return cls._op_adapter.validate_python(
             obj,
             strict=True,
@@ -259,11 +437,22 @@ class GenericOperationRegistry(Generic[PBT, *Ops], metaclass=_RegistryMeta):
         ops: list[OperationSchema] = []
         for item in python:
             if isinstance(item, OperationSchema):
-                if type(item) not in cls.ops_set():
+                if type(item) not in cls._accepted_ops_set:
                     raise OperationNotRecognized(
                         f"Operation {type(item).__name__} is not allowed in this registry"
                     )
-                ops.append(item)
+                if type(item) in cls._bound_ops_set:
+                    ops.append(item)
+                else:
+                    ops.append(
+                        cls._op_adapter.validate_python(
+                            item.model_dump(mode="json", by_alias=True),
+                            strict=True,
+                            by_alias=True,
+                            by_name=False,
+                            context=cls._ctx,
+                        )
+                    )
             else:
                 ops.append(
                     cls._op_adapter.validate_python(

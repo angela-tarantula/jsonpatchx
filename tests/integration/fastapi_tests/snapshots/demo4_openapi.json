@@ -1,7 +1,7 @@
 {
   "components": {
     "schemas": {
-      "AddOp": {
+      "AddOp__RunePointerBound": {
         "additionalProperties": true,
         "description": "RFC 6902 add operation.",
         "properties": {
@@ -31,7 +31,7 @@
         "title": "Add operation",
         "type": "object"
       },
-      "AppendOp": {
+      "AppendOp__RunePointerBound": {
         "additionalProperties": true,
         "description": "Appends a value to an array.",
         "properties": {
@@ -111,41 +111,41 @@
         "description": "Discriminated union of patch operations for Apprentice.",
         "discriminator": {
           "mapping": {
-            "add": "#/components/schemas/AddOp",
-            "append": "#/components/schemas/AppendOp",
-            "copy": "#/components/schemas/CopyOp",
-            "increment": "#/components/schemas/IncrementOp",
-            "move": "#/components/schemas/MoveOp",
-            "remove": "#/components/schemas/RemoveOp",
-            "replace": "#/components/schemas/ReplaceOp",
-            "test": "#/components/schemas/TestOp"
+            "add": "#/components/schemas/AddOp__RunePointerBound",
+            "append": "#/components/schemas/AppendOp__RunePointerBound",
+            "copy": "#/components/schemas/CopyOp__RunePointerBound",
+            "increment": "#/components/schemas/IncrementOp__RunePointerBound",
+            "move": "#/components/schemas/MoveOp__RunePointerBound",
+            "remove": "#/components/schemas/RemoveOp__RunePointerBound",
+            "replace": "#/components/schemas/ReplaceOp__RunePointerBound",
+            "test": "#/components/schemas/TestOp__RunePointerBound"
           },
           "propertyName": "op"
         },
         "oneOf": [
           {
-            "$ref": "#/components/schemas/AddOp"
+            "$ref": "#/components/schemas/AddOp__RunePointerBound"
           },
           {
-            "$ref": "#/components/schemas/AppendOp"
+            "$ref": "#/components/schemas/AppendOp__RunePointerBound"
           },
           {
-            "$ref": "#/components/schemas/CopyOp"
+            "$ref": "#/components/schemas/CopyOp__RunePointerBound"
           },
           {
-            "$ref": "#/components/schemas/IncrementOp"
+            "$ref": "#/components/schemas/IncrementOp__RunePointerBound"
           },
           {
-            "$ref": "#/components/schemas/MoveOp"
+            "$ref": "#/components/schemas/MoveOp__RunePointerBound"
           },
           {
-            "$ref": "#/components/schemas/RemoveOp"
+            "$ref": "#/components/schemas/RemoveOp__RunePointerBound"
           },
           {
-            "$ref": "#/components/schemas/ReplaceOp"
+            "$ref": "#/components/schemas/ReplaceOp__RunePointerBound"
           },
           {
-            "$ref": "#/components/schemas/TestOp"
+            "$ref": "#/components/schemas/TestOp__RunePointerBound"
           }
         ],
         "title": "Apprentice Patch Operation"
@@ -159,7 +159,7 @@
         "type": "array",
         "x-target-model": "Apprentice"
       },
-      "CopyOp": {
+      "CopyOp__RunePointerBound": {
         "additionalProperties": true,
         "description": "RFC 6902 copy operation.",
         "properties": {
@@ -206,7 +206,7 @@
         "title": "HTTPValidationError",
         "type": "object"
       },
-      "IncrementOp": {
+      "IncrementOp__RunePointerBound": {
         "additionalProperties": true,
         "description": "Increments a numeric field by a value.",
         "properties": {
@@ -241,7 +241,7 @@
         "title": "Increment operation",
         "type": "object"
       },
-      "MoveOp": {
+      "MoveOp__RunePointerBound": {
         "additionalProperties": true,
         "description": "RFC 6902 move operation.",
         "properties": {
@@ -275,7 +275,7 @@
         "title": "Move operation",
         "type": "object"
       },
-      "RemoveOp": {
+      "RemoveOp__RunePointerBound": {
         "additionalProperties": true,
         "description": "RFC 6902 remove operation. Removal of the root sets it to null.",
         "properties": {
@@ -301,7 +301,7 @@
         "title": "Remove operation",
         "type": "object"
       },
-      "ReplaceOp": {
+      "ReplaceOp__RunePointerBound": {
         "additionalProperties": true,
         "description": "RFC 6902 replace operation.",
         "properties": {
@@ -343,41 +343,41 @@
         "description": "Discriminated union of patch operations for Spellbook.",
         "discriminator": {
           "mapping": {
-            "add": "#/components/schemas/AddOp",
-            "append": "#/components/schemas/AppendOp",
-            "copy": "#/components/schemas/CopyOp",
-            "increment": "#/components/schemas/IncrementOp",
-            "move": "#/components/schemas/MoveOp",
-            "remove": "#/components/schemas/RemoveOp",
-            "replace": "#/components/schemas/ReplaceOp",
-            "test": "#/components/schemas/TestOp"
+            "add": "#/components/schemas/AddOp__RunePointerBound",
+            "append": "#/components/schemas/AppendOp__RunePointerBound",
+            "copy": "#/components/schemas/CopyOp__RunePointerBound",
+            "increment": "#/components/schemas/IncrementOp__RunePointerBound",
+            "move": "#/components/schemas/MoveOp__RunePointerBound",
+            "remove": "#/components/schemas/RemoveOp__RunePointerBound",
+            "replace": "#/components/schemas/ReplaceOp__RunePointerBound",
+            "test": "#/components/schemas/TestOp__RunePointerBound"
           },
           "propertyName": "op"
         },
         "oneOf": [
           {
-            "$ref": "#/components/schemas/AddOp"
+            "$ref": "#/components/schemas/AddOp__RunePointerBound"
           },
           {
-            "$ref": "#/components/schemas/AppendOp"
+            "$ref": "#/components/schemas/AppendOp__RunePointerBound"
           },
           {
-            "$ref": "#/components/schemas/CopyOp"
+            "$ref": "#/components/schemas/CopyOp__RunePointerBound"
           },
           {
-            "$ref": "#/components/schemas/IncrementOp"
+            "$ref": "#/components/schemas/IncrementOp__RunePointerBound"
           },
           {
-            "$ref": "#/components/schemas/MoveOp"
+            "$ref": "#/components/schemas/MoveOp__RunePointerBound"
           },
           {
-            "$ref": "#/components/schemas/RemoveOp"
+            "$ref": "#/components/schemas/RemoveOp__RunePointerBound"
           },
           {
-            "$ref": "#/components/schemas/ReplaceOp"
+            "$ref": "#/components/schemas/ReplaceOp__RunePointerBound"
           },
           {
-            "$ref": "#/components/schemas/TestOp"
+            "$ref": "#/components/schemas/TestOp__RunePointerBound"
           }
         ],
         "title": "Spellbook Patch Operation"
@@ -390,7 +390,7 @@
         "title": "Spellbook Patch Request",
         "type": "array"
       },
-      "TestOp": {
+      "TestOp__RunePointerBound": {
         "additionalProperties": true,
         "description": "RFC 6902 test operation.",
         "properties": {
@@ -552,14 +552,7 @@
                 }
               },
               "schema": {
-                "$ref": "#/components/schemas/ApprenticePatchRequest",
-                "description": "Array of patch operations for Apprentice. Applied to model_dump() and re-validated against the model schema.",
-                "items": {
-                  "$ref": "#/components/schemas/ApprenticePatchOperation"
-                },
-                "title": "Patch",
-                "type": "array",
-                "x-target-model": "Apprentice"
+                "$ref": "#/components/schemas/ApprenticePatchRequest"
               }
             }
           },
@@ -853,13 +846,7 @@
                 }
               },
               "schema": {
-                "$ref": "#/components/schemas/SpellbookPatchRequest",
-                "description": "Array of patch operations for Spellbook.",
-                "items": {
-                  "$ref": "#/components/schemas/SpellbookPatchOperation"
-                },
-                "title": "Patch",
-                "type": "array"
+                "$ref": "#/components/schemas/SpellbookPatchRequest"
               }
             }
           },

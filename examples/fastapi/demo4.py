@@ -6,7 +6,7 @@ from __future__ import annotations
 
 from typing import Annotated, Literal
 
-from fastapi import Depends, HTTPException, Path
+from fastapi import HTTPException, Path
 
 from examples.fastapi.shared import (
     AppendOp,
@@ -124,10 +124,7 @@ def patch_spellbook(
         SpellbookId,
         Path(...),
     ],
-    patch: Annotated[
-        SpellbookPatch,
-        Depends(spellbook_patch.dependency()),
-    ],
+    patch: Annotated[SpellbookPatch, spellbook_patch.Body()],
 ) -> JSONValue:
     doc = get_spellbook(spellbook_id)
     if doc is None:
@@ -169,10 +166,7 @@ def patch_apprentice(
         ApprenticeId,
         Path(...),
     ],
-    patch: Annotated[
-        ApprenticePatch,
-        Depends(apprentice_patch.dependency()),
-    ],
+    patch: Annotated[ApprenticePatch, apprentice_patch.Body()],
 ) -> Apprentice:
     apprentice = get_apprentice(apprentice_id)
     if apprentice is None:
