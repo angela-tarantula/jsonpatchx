@@ -1,3 +1,14 @@
+"""
+OpenAPI contract snapshot for JsonPatchFor model generation/reuse invariants.
+
+This test intentionally uses plain FastAPI request bodies (no JsonPatchRoute helper) to
+lock down schema behavior for dynamically generated JsonPatchFor models, including
+deterministic reuse when the same target/registry pair is requested multiple times.
+
+End-to-end OpenAPI docs for demo apps and route helpers are covered separately by
+`test_demo_openapi_snapshots.py`.
+"""
+
 import json
 from pathlib import Path
 from typing import Literal, override
@@ -20,7 +31,7 @@ from jsonpatchx.registry import OperationRegistry
 from jsonpatchx.schema import OperationSchema
 from jsonpatchx.types import JSONBoolean, JSONValue
 
-SNAPSHOT_PATH = Path(__file__).resolve().parents[1] / "snapshots" / "openapi.json"
+SNAPSHOT_PATH = Path(__file__).resolve().parent / "snapshots" / "openapi_contract.json"
 
 
 class User(BaseModel):
@@ -93,7 +104,7 @@ def _build_openapi() -> dict[str, object]:
     return app.openapi()
 
 
-def test_openapi_snapshot() -> None:
+def test_openapi_contract_snapshot() -> None:
     if not SNAPSHOT_PATH.exists():  # pragma: no cover
         pytest.fail(f"OpenAPI snapshot missing: {SNAPSHOT_PATH}")
 

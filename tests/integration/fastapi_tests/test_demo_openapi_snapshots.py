@@ -1,3 +1,10 @@
+"""
+OpenAPI snapshots for end-to-end FastAPI demo applications.
+
+This test verifies that the published OpenAPI docs for demo1-4 remain stable as
+examples evolve, including route-helper behavior and example-driven schema output.
+"""
+
 import json
 from pathlib import Path
 
@@ -18,7 +25,7 @@ SNAPSHOT_DIR = Path(__file__).resolve().parent / "snapshots"
     ],
     ids=lambda item: item[0] if isinstance(item, tuple) else str(item),
 )
-def test_openapi_snapshot(name: str, app: object) -> None:
+def test_demo_openapi_snapshot(name: str, app: object) -> None:
     snapshot_path = SNAPSHOT_DIR / f"{name}_openapi.json"
     if not snapshot_path.exists():  # pragma: no cover
         pytest.fail(f"OpenAPI snapshot missing: {snapshot_path}")

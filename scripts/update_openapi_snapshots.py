@@ -8,7 +8,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
 from examples.fastapi import demo1, demo2, demo3, demo4  # noqa: E402
-from tests.integration.test_openapi_snapshot import (  # noqa: E402
+from tests.integration.fastapi_tests.test_openapi_contract_snapshot import (  # noqa: E402
     SNAPSHOT_PATH,
     _build_openapi,
 )
