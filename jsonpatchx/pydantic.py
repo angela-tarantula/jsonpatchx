@@ -26,7 +26,7 @@ from pydantic import (
     create_model,
 )
 from pydantic_core import PydanticUndefined, PydanticUndefinedType
-from typing_extensions import TypeVar
+from typing_extensions import TypeForm, TypeVar
 
 from jsonpatchx.exceptions import PatchValidationError
 from jsonpatchx.registry import (
@@ -179,7 +179,7 @@ def _coerce_schema_name(target: object) -> str | None:
         return target
     origin = get_origin(target)
     if origin is Literal:
-        args = get_args(target)
+        args = cast(tuple[TypeForm[Any], ...], get_args(target))
         if len(args) == 1 and isinstance(args[0], str):
             return args[0]
     return None

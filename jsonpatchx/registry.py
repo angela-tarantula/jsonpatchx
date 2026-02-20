@@ -310,7 +310,7 @@ class GenericOperationRegistry(Generic[PBT, *Ops], metaclass=_RegistryMeta):
     ) -> TypeForm[Any]:
         origin = get_origin(annotation)
         if isinstance(origin, type) and issubclass(origin, JSONPointer):
-            pointer_args = cast(tuple[TypeForm[Any]], get_args(annotation))
+            pointer_args = cast(tuple[TypeForm[Any], ...], get_args(annotation))
             if len(pointer_args) == 1:
                 # JSONPointer[T]
                 type_param = pointer_args[0]
@@ -328,10 +328,10 @@ class GenericOperationRegistry(Generic[PBT, *Ops], metaclass=_RegistryMeta):
                     field_name=field_name,
                 )
                 rewritten_args = (type_param, validated_backend, *extra_args)
-                return cast(TypeForm[Any], origin[rewritten_args])
+                return cast(TypeForm[Any], origin[rewritten_args])  # type: ignore[index]
 
         if origin is Annotated:
-            annotation_args = get_args(annotation)
+            annotation_args = cast(tuple[TypeForm[Any], ...], get_args(annotation))
             if not annotation_args:
                 return annotation
             base_annotation, *metadata = annotation_args
