@@ -21,6 +21,7 @@ from typing import (
 )
 
 from pydantic import Field, TypeAdapter, create_model
+from pydantic.fields import FieldInfo
 from typing_extensions import TypeForm, TypeVar
 
 from jsonpatchx.backend import (
@@ -249,7 +250,7 @@ class GenericOperationRegistry(Generic[PBT, *Ops], metaclass=_RegistryMeta):
         type_hints = cast(
             dict[str, TypeForm[Any]], get_type_hints(op_model, include_extras=True)
         )
-        field_overrides: dict[str, tuple[object, object]] = {}
+        field_overrides: dict[str, tuple[TypeForm[Any], FieldInfo]] = {}
 
         for field_name, field_info in op_model.model_fields.items():
             annotation = type_hints.get(field_name)
@@ -277,6 +278,7 @@ class GenericOperationRegistry(Generic[PBT, *Ops], metaclass=_RegistryMeta):
         bound_op_model = create_model(
             f"{op_model.__name__}__{pointer_cls.__name__}Bound",
             __base__=op_model,
+            # Cast only for mypy: Pydantic create_model stubs are too narrow here
             **cast(dict[str, Any], field_overrides),
         )
         return bound_op_model
@@ -296,12 +298,9 @@ class GenericOperationRegistry(Generic[PBT, *Ops], metaclass=_RegistryMeta):
             if len(pointer_args) == 1:
                 # JSONPointer[T]
                 type_param = pointer_args[0]
-                return cast(
-                    TypeForm[Any],
-                    origin[type_param, pointer_cls],  # type: ignore[index]
-                )
+                return cast(TypeForm[Any], origin[type_param, pointer_cls])  # type: ignore[index]
             else:
-                # JSONPointr[T, P] or more args
+                # JSONPointer[T, P] or a subclass with T, P, and more args
                 type_param, backend_param, *extra_args = pointer_args
                 validated_backend = cls._resolve_backend_param_for_registry(
                     backend_param,
