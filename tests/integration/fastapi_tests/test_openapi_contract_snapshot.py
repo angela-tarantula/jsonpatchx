@@ -52,7 +52,7 @@ class ToggleOp(OperationSchema):
 
     @override
     def apply(self, doc: JSONValue) -> JSONValue:
-        return doc
+        return doc  # pragma: no cover
 
 
 LimitedRegistry = OperationRegistry[ToggleOp]
@@ -81,25 +81,25 @@ def _build_openapi() -> dict[str, object]:
 
     @app.patch("/users/{user_id}")
     def patch_user(user_id: int, patch: UserPatch = Body(...)) -> User:
-        return User(id=user_id, name="ok")
+        return User(id=user_id, name="ok")  # pragma: no cover
 
     @app.patch("/records/{record_id}")
     def patch_record(record_id: int, patch: MedicalPatch = Body(...)) -> MedicalRecord:
-        return MedicalRecord(id=record_id, diagnosis="ok")
+        return MedicalRecord(id=record_id, diagnosis="ok")  # pragma: no cover
 
     @app.patch("/configs/{config_id}")
     def patch_config(config_id: str, patch: JsonPatch = Body(...)) -> JSONValue:
-        return {"ok": True}
+        return {"ok": True}  # pragma: no cover
 
     @app.patch("/configs/{config_id}/alt")
     def patch_config_alt(config_id: str, patch: JsonPatchAlt = Body(...)) -> JSONValue:
-        return {"ok": True}
+        return {"ok": True}  # pragma: no cover
 
     @app.patch("/records/{record_id}/alt")
     def patch_record_alt(
         record_id: int, patch: MedicalPatchAlt = Body(...)
     ) -> MedicalRecord:
-        return MedicalRecord(id=record_id, diagnosis="ok")
+        return MedicalRecord(id=record_id, diagnosis="ok")  # pragma: no cover
 
     return app.openapi()
 

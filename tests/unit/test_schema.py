@@ -54,7 +54,7 @@ def test_invalid_operation_schema_class(subtests: Subtests) -> None:
 
             @override
             def apply(self, doc: JSONValue) -> JSONValue:
-                return None
+                return None  # pragma: no cover
 
         with pytest.raises(ValidationError):
             AppleOp(op="orange")  # type: ignore[arg-type]
@@ -67,7 +67,7 @@ def test_invalid_operation_schema_class(subtests: Subtests) -> None:
 
             @override
             def apply(self, doc: JSONValue) -> JSONValue:
-                return None
+                return None  # pragma: no cover
 
         orange = Orange(value="peel")
 
@@ -81,14 +81,14 @@ def test_invalid_operation_registry(subtests: Subtests) -> None:
 
         @override
         def apply(self, doc: JSONValue) -> JSONValue:
-            return None
+            return None  # pragma: no cover
 
     class SecondOp(OperationSchema):
         op: Literal["dup"] = "dup"
 
         @override
         def apply(self, doc: JSONValue) -> JSONValue:
-            return None
+            return None  # pragma: no cover
 
     class AbstractOp(OperationSchema):
         op: Literal["abstract"] = "abstract"
@@ -145,7 +145,7 @@ def test_valid_operation_schema(subtests: Subtests) -> None:
 
             @override
             def apply(self, doc: JSONValue) -> JSONValue:
-                return None
+                return None  # pragma: no cover
 
         op = IncrementOp(path="/", value=3)
         assert op.op == "increment"
@@ -159,7 +159,7 @@ def test_valid_operation_schema(subtests: Subtests) -> None:
 
             @override
             def apply(self, doc: JSONValue) -> JSONValue:
-                return None
+                return None  # pragma: no cover
 
         OrganizeOp(op="organize")
         OrganizeOp(op="organise")
@@ -173,7 +173,7 @@ def test_patch_schema_parse_happy_path(subtests: Subtests) -> None:
 
         @override
         def apply(self, doc: JSONValue) -> JSONValue:
-            return None
+            return None  # pragma: no cover
 
     class ToggleOp(OperationSchema):
         op: Literal["toggle"] = "toggle"
@@ -181,7 +181,7 @@ def test_patch_schema_parse_happy_path(subtests: Subtests) -> None:
 
         @override
         def apply(self, doc: JSONValue) -> JSONValue:
-            return None
+            return None  # pragma: no cover
 
     schema = OperationRegistry[IncrementOp, ToggleOp]
 
@@ -212,7 +212,7 @@ def test_pointer_backend_binding(subtests: Subtests) -> None:
 
         @override
         def apply(self, doc: JSONValue) -> JSONValue:
-            return doc
+            return doc  # pragma: no cover
 
     with subtests.test("direct instantiation uses backend"):
         op = DotRemoveOp.model_validate({"path": "a.b"})
@@ -240,7 +240,7 @@ def test_jsonvalue_accepts_json_types() -> None:
 
         @override
         def apply(self, doc: JSONValue) -> JSONValue:
-            return doc
+            return doc  # pragma: no cover
 
     valid_values: list[JSONValue] = [
         True,
@@ -269,7 +269,7 @@ def test_jsonpointer_invalid_syntax() -> None:
 
         @override
         def apply(self, doc: JSONValue) -> JSONValue:
-            return doc
+            return doc  # pragma: no cover
 
     with pytest.raises(InvalidJSONPointer):
         ReadOp.model_validate({"path": "/a~2"})
@@ -282,7 +282,7 @@ def test_jsonpointer_type_gating() -> None:
 
         @override
         def apply(self, doc: JSONValue) -> JSONValue:
-            return doc
+            return doc  # pragma: no cover
 
     op = ToggleOp.model_validate({"path": "/flag"})
     assert op.path.get({"flag": True}) is True
@@ -298,7 +298,7 @@ def test_jsonpointer_backend_mismatch_parent_check() -> None:
 
         @override
         def apply(self, doc: JSONValue) -> JSONValue:
-            return doc
+            return doc  # pragma: no cover
 
     class SlashOp(OperationSchema):
         op: Literal["slash"] = "slash"
@@ -306,7 +306,7 @@ def test_jsonpointer_backend_mismatch_parent_check() -> None:
 
         @override
         def apply(self, doc: JSONValue) -> JSONValue:
-            return doc
+            return doc  # pragma: no cover
 
     dot = DotOp.model_validate({"path": "a.b"})
     slash = SlashOp.model_validate({"path": "/a/b"})
