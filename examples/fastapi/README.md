@@ -1,6 +1,6 @@
 # Examples: jsonpatchx demo suite
 
-Four focused FastAPI demos. Each demo is a standalone file that reads cleanly in Swagger UI.
+Six focused FastAPI demos. Each demo is a standalone file that reads cleanly in Swagger UI.
 
 ## Setup (once)
 
@@ -60,3 +60,23 @@ Registry-scoped rune-pointer backends for spellbook and apprentice settings.
 **Run**
 
 - `uv run uvicorn examples.fastapi.demo4:app --reload --port 8003`
+
+## Demo 5: Explicit custom backend ops
+
+Registry-scoped backend with operations that already annotate explicit custom pointer backends.
+
+**File:** `examples/fastapi/demo5.py`
+
+**Run**
+
+- `uv run uvicorn examples.fastapi.demo5:app --reload --port 8004`
+
+## Demo 6: Generic P backend ops
+
+Registry-scoped backend with operations authored as `JSONPointer[..., P]`.
+
+**File:** `examples/fastapi/demo6.py`
+
+**Run**
+
+- `uv run uvicorn examples.fastapi.demo6:app --reload --port 8005`

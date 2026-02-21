@@ -7,7 +7,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
-from examples.fastapi import demo1, demo2, demo3, demo4  # noqa: E402
+from examples.fastapi import demo1, demo2, demo3, demo4, demo5, demo6  # noqa: E402
 from tests.integration.fastapi_tests.test_openapi_contract_snapshot import (  # noqa: E402
     SNAPSHOT_PATH,
     _build_openapi,
@@ -27,6 +27,8 @@ def main() -> None:
     _write_snapshot(snapshot_dir / "demo2_openapi.json", demo2.app.openapi())
     _write_snapshot(snapshot_dir / "demo3_openapi.json", demo3.app.openapi())
     _write_snapshot(snapshot_dir / "demo4_openapi.json", demo4.app.openapi())
+    _write_snapshot(snapshot_dir / "demo5_openapi.json", demo5.app.openapi())
+    _write_snapshot(snapshot_dir / "demo6_openapi.json", demo6.app.openapi())
     _write_snapshot(SNAPSHOT_PATH, _build_openapi())
 
 

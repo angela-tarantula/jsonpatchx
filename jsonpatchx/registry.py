@@ -54,7 +54,6 @@ _REGISTRY_CACHE: dict[
     tuple[tuple[type[OperationSchema], ...], type[_PointerClassProtocol]],
     type[AnyRegistry],
 ] = {}
-_TYPEVAR_RUNTIME_TYPE = type(TypeVar("_PointerBackendTypeVarProbe"))
 
 
 class _RegistryMeta(type):
@@ -295,12 +294,13 @@ class GenericOperationRegistry(Generic[PBT, *Ops], metaclass=_RegistryMeta):
         origin = get_origin(annotation)
         if isinstance(origin, type) and issubclass(origin, JSONPointer):
             pointer_args = cast(tuple[TypeForm[Any], ...], get_args(annotation))
-            if len(pointer_args) == 1:
+            # NOTE: what about 0 args? test on subclasses
+            if len(pointer_args) == 1:  # NOTE: test on subclasses
                 # JSONPointer[T]
                 type_param = pointer_args[0]
                 return cast(TypeForm[Any], origin[type_param, pointer_cls])  # type: ignore[index]
             else:
-                # JSONPointer[T, P] or a subclass with T, P, and more args
+                # JSONPointer[T, P] or a subclass with T, P, and more args # NOTE: test on subclasses
                 type_param, backend_param, *extra_args = pointer_args
                 validated_backend = cls._resolve_backend_param_for_registry(
                     backend_param,
@@ -331,7 +331,7 @@ class GenericOperationRegistry(Generic[PBT, *Ops], metaclass=_RegistryMeta):
     @classmethod
     def _resolve_backend_param_for_registry(
         cls,
-        backend_param: object,
+        backend_param: TypeForm[Any],
         registry_backend: type[_PointerClassProtocol],
         *,
         op_model: type[OperationSchema],
@@ -340,7 +340,7 @@ class GenericOperationRegistry(Generic[PBT, *Ops], metaclass=_RegistryMeta):
         if backend_param is _DEFAULT_POINTER_CLS:
             return registry_backend
 
-        if isinstance(backend_param, _TYPEVAR_RUNTIME_TYPE):
+        if isinstance(backend_param, TypeVar):
             if not cls._is_backend_typevar_compatible(backend_param, registry_backend):
                 raise InvalidOperationRegistry(
                     f"{op_model.__name__}.{field_name} backend type parameter "
@@ -351,17 +351,18 @@ class GenericOperationRegistry(Generic[PBT, *Ops], metaclass=_RegistryMeta):
 
         bound_backend = _validate_backend_class(backend_param)
         if not issubclass(registry_backend, bound_backend):
-            return bound_backend
+            raise InvalidOperationRegistry(
+                f"{op_model.__name__}.{field_name} backend {bound_backend.__name__} "
+                f"is incompatible with registry backend {registry_backend.__name__}"
+            )
         return registry_backend
 
     @staticmethod
     def _is_backend_typevar_compatible(
-        backend_typevar: object,
+        backend_typevar: TypeVar,
         registry_backend: type[_PointerClassProtocol],
     ) -> bool:
-        constraints = cast(
-            tuple[object, ...], getattr(backend_typevar, "__constraints__")
-        )
+        constraints = cast(tuple[object, ...], backend_typevar.__constraints__)
         if constraints:
             validated_constraints = tuple(
                 _validate_backend_class(c) for c in constraints

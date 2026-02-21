@@ -218,12 +218,9 @@ def test_pointer_backend_binding(subtests: Subtests) -> None:
         op = DotRemoveOp.model_validate({"path": "a.b"})
         assert isinstance(op.path.ptr, DotPointer)
 
-    with subtests.test("OperationRegistry preserves explicit pointer backend"):
-        registry_1 = OperationRegistry[DotRemoveOp]
-        op = cast(
-            DotRemoveOp, registry_1.parse_python_op({"op": "dot-remove", "path": "a.b"})
-        )
-        assert isinstance(op.path.ptr, DotPointer)
+    with subtests.test("registry backend mismatch fails"):
+        with pytest.raises(InvalidOperationRegistry, match="incompatible"):
+            OperationRegistry[DotRemoveOp]
 
     with subtests.test("registry backend match succeeds"):
         registry_2 = GenericOperationRegistry[DotPointer, DotRemoveOp]

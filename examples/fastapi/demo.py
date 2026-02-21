@@ -11,6 +11,8 @@ DEMOS: dict[str, tuple[str, str, int]] = {
     "2": ("Player and guild progression", "examples.fastapi.demo2:app", 8001),
     "3": ("Control plane configs", "examples.fastapi.demo3:app", 8002),
     "4": ("Spellbook rune pointers", "examples.fastapi.demo4:app", 8003),
+    "5": ("Explicit custom backend ops", "examples.fastapi.demo5:app", 8004),
+    "6": ("Generic P backend ops", "examples.fastapi.demo6:app", 8005),
 }
 
 
@@ -43,7 +45,7 @@ def main() -> None:
     for key, (label, _, port) in DEMOS.items():
         print(f"  {key}) {label} (port {port})")
 
-    choice = input("\nSelect a demo (1-4): ").strip()
+    choice = input("\nSelect a demo (1-6): ").strip()
     if choice not in DEMOS:
         print("Invalid choice.")
         return

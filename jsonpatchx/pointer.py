@@ -248,7 +248,7 @@ class JSONPointer(str, Generic[T_co, P_co]):
             {
                 "type": "string",
                 "format": "json-pointer",
-                "description": "JSON Pointer (RFC 6901) string",
+                "description": "JSON Pointer (RFC 6901) string",  # NOTE: let it be overridable
             }
         )
 

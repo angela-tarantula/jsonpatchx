@@ -392,10 +392,12 @@ See [`examples/recipes.py`](./examples/recipes.py) for a catalog of custom opera
 
 See [`examples/fastapi/README.md`](./examples/fastapi/README.md) for the FastAPI demo suite, including:
 
-- typed model patching
-- model-bound custom ops
-- custom operations on JSON documents
-- pointer backends with context injection
+- demo 1: typed model patching with standard RFC operations
+- demo 2: model-bound custom operation registries
+- demo 3: custom operations on plain JSON documents
+- demo 4: registry-scoped custom pointer backend
+- demo 5: registry-scoped backend with explicit backend annotations on ops
+- demo 6: registry-scoped backend for ops generic in backend type `P`
 
 ---
 
@@ -460,42 +462,9 @@ class JsonPathReplaceOp(OperationSchema):
 Ops that require a custom pointer backend can only live in registries that bind
 that backend for all ops.
 
-See [FastAPI Validation Context](#fastapi-validation-context) for the FastAPI
-request-body validation workaround.
-
 ---
 
 ### Limitations
-
-#### FastAPI Validation Context
-
-FastAPI does not yet natively pass `validation_context` from the request body
-into Pydantic models, which is required to validate requests against custom
-pointer backends.
-
-As a workaround, json-patch-x provides `JsonPatchRoute.dependency()` so
-validation runs with the registry context.
-
-```py
-from typing import Annotated, Literal
-
-from fastapi import Depends
-from jsonpatchx.fastapi import JsonPatchRoute
-
-PatchBody = JsonPatchFor[Literal["DotPointerPatch"], registry]
-patch_route = JsonPatchRoute(PatchBody, strict_content_type=True)
-
-@app.patch("/configs/{id}")
-def patch_config(
-    id: str,
-    patch: Annotated[PatchBody, Depends(patch_route.dependency())],
-) -> JSONValue:
-    # 'patch' is now fully validated using your DotPointer backend
-    return patch.apply(load_config(id))
-```
-
-Upstream limitation: FastAPI does not expose a request-body validation context today.
-See [FastAPI discussion #10864](https://github.com/fastapi/fastapi/discussions/10864).
 
 ---
 
