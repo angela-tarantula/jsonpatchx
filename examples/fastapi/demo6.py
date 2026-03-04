@@ -43,7 +43,6 @@ class RunePointerV2(RunePointer):
 
 class GenericIncrementOp(OperationSchema, Generic[P]):
     model_config = ConfigDict(
-        defer_build=True,
         title="Increment operation",
         json_schema_extra={
             "description": "Increments a numeric field using a pointer backend generic type parameter."
@@ -62,7 +61,6 @@ class GenericIncrementOp(OperationSchema, Generic[P]):
 
 class GenericAppendOp(OperationSchema, Generic[P]):
     model_config = ConfigDict(
-        defer_build=True,
         title="Append operation",
         json_schema_extra={
             "description": "Appends a value to an array using a pointer backend generic type parameter."

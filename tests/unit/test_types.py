@@ -11,6 +11,7 @@ from jsonpath import JSONPointer as ExtendedJsonPointer
 from jsonpointer import JsonPointer as CustomJsonPointer
 from pydantic import TypeAdapter, ValidationError
 from pytest import Subtests
+from typing_extensions import TypeVar
 
 from jsonpatchx.backend import (
     _DEFAULT_POINTER_CLS,
@@ -517,6 +518,28 @@ def test_jsonpointer_type_args_validation(subtests: Subtests) -> None:
             CustomJsonPointer,
         ]:
             adapter = TypeAdapter(JSONPointer[JSONValue, valid_backend])
+            adapter.validate_python("")
+
+    with subtests.test("valid backend typevar bound to PointerBackend"):
+        P_backend = TypeVar("P_backend", bound=PointerBackend)
+        adapter = TypeAdapter(JSONPointer[JSONValue, P_backend])
+        adapter.validate_python("")
+
+    with subtests.test("valid backend typevar constraints"):
+        P_constrained = TypeVar("P_constrained", DotPointer, CustomJsonPointer)
+        adapter = TypeAdapter(JSONPointer[JSONValue, P_constrained])
+        adapter.validate_python("")
+
+    with subtests.test("invalid backend typevar bound"):
+        P_invalid_bound = TypeVar("P_invalid_bound", bound=str)
+        with pytest.raises(InvalidJSONPointer):
+            adapter = TypeAdapter(JSONPointer[JSONValue, P_invalid_bound])
+            adapter.validate_python("")
+
+    with subtests.test("invalid backend typevar without constraints or bound"):
+        P_unbound = TypeVar("P_unbound")
+        with pytest.raises(InvalidJSONPointer):
+            adapter = TypeAdapter(JSONPointer[JSONValue, P_unbound])
             adapter.validate_python("")
 
     with subtests.test("reject invalid default backend string syntax"):

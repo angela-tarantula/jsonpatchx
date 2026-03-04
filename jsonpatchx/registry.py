@@ -374,6 +374,10 @@ class GenericOperationRegistry(Generic[PBT, *Ops], metaclass=_RegistryMeta):
         bound = getattr(backend_typevar, "__bound__", None)
         if bound is None:
             return False
+        if bound is PointerBackend:
+            return True
+        if isinstance(bound, type) and issubclass(bound, _PointerClassProtocol):
+            return issubclass(registry_backend, bound)
         validated_bound = _validate_backend_class(bound)
         return issubclass(registry_backend, validated_bound)
 

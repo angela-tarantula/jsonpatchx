@@ -270,10 +270,37 @@ class JSONPointer(str, Generic[T_co, P_co]):
         unverified_bound_backend = args[1] if len(args) > 1 else _DEFAULT_POINTER_CLS
 
         # NOTE: make these methods take TypeForm[Any]
-        backend_param = _validate_backend_class(unverified_bound_backend)
+        backend_param = cls._resolve_backend_type_param(unverified_bound_backend)
         type_param = _validate_typeform(unverified_typeform)
 
         return type_param, backend_param
+
+    @staticmethod
+    def _resolve_backend_type_param(
+        backend_param: object,
+    ) -> type[_PointerClassProtocol]:
+        if isinstance(backend_param, TypeVar):
+            constraints = cast(
+                tuple[object, ...], getattr(backend_param, "__constraints__", ())
+            )
+            if constraints:
+                return _validate_backend_class(constraints[0])
+
+            bound = getattr(backend_param, "__bound__", None)
+            if bound is None:
+                raise InvalidJSONPointer(
+                    "JSONPointer backend TypeVar must declare constraints "
+                    "or a bound compatible with PointerBackend"
+                )
+            if bound is PointerBackend:
+                return _DEFAULT_POINTER_CLS
+            if isinstance(bound, type) and issubclass(bound, _PointerClassProtocol):
+                return _validate_backend_class(bound)
+            raise InvalidJSONPointer(
+                f"JSONPointer backend TypeVar bound {bound!r} must be PointerBackend "
+                "or a concrete PointerBackend class"
+            )
+        return _validate_backend_class(backend_param)
 
     def _validate_target(self, target: object) -> T_co:
         """Strictly validate the ``target`` with this JSONPointer's TypeAdapter."""
