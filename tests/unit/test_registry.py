@@ -1,14 +1,17 @@
 import json
-from typing import Literal, override
+from typing import Any, Generic, Literal, cast, override
 
 import pytest
+from typing_extensions import TypeVar
 
+from jsonpatchx.backend import _DEFAULT_POINTER_CLS
 from jsonpatchx.exceptions import InvalidOperationRegistry, OperationNotRecognized
 from jsonpatchx.pointer import JSONPointer
-from jsonpatchx.registry import OperationRegistry
+from jsonpatchx.registry import GenericOperationRegistry, OperationRegistry
 from jsonpatchx.schema import OperationSchema
 from jsonpatchx.standard import JsonPatch, StandardRegistry
 from jsonpatchx.types import JSONValue
+from tests.conftest import DotPointer
 
 
 class ToggleOp(OperationSchema):
@@ -78,3 +81,33 @@ def test_registry_rejects_missing_resolved_field_annotation() -> None:
 
     with pytest.raises(InvalidOperationRegistry, match="missing a resolved type"):
         OperationRegistry[CorruptedOp]
+
+
+def test_registry_backend_rewrite_policies() -> None:
+    class DotBackendA(DotPointer):
+        pass
+
+    class DotBackendB(DotPointer):
+        pass
+
+    P_backend = TypeVar("P_backend", bound=DotPointer, default=DotBackendA)
+
+    class GenericOp(OperationSchema, Generic[P_backend]):
+        op: Literal["generic-op"] = "generic-op"
+        path: JSONPointer[JSONValue, P_backend]
+
+        @override
+        def apply(self, doc: JSONValue) -> JSONValue:
+            return doc
+
+    default_registry = OperationRegistry[GenericOp[DotBackendA]]
+    default_op = cast(
+        Any, default_registry.parse_python_op({"op": "generic-op", "path": "/a/b"})
+    )
+    assert isinstance(default_op.path.ptr, _DEFAULT_POINTER_CLS)
+
+    custom_registry = GenericOperationRegistry[DotBackendB, GenericOp]
+    custom_op = cast(
+        Any, custom_registry.parse_python_op({"op": "generic-op", "path": "a.b"})
+    )
+    assert isinstance(custom_op.path.ptr, DotBackendB)
