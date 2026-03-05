@@ -22,36 +22,47 @@ from examples.fastapi.shared import (
 from jsonpatchx import (
     AddOp,
     CopyOp,
-    GenericOperationRegistry,
     JSONValue,
     MoveOp,
+    OperationRegistry,
     RemoveOp,
     ReplaceOp,
     TestOp,
 )
 from jsonpatchx.fastapi import JsonPatchRoute
+from jsonpatchx.pointer import JSONPointer
 from jsonpatchx.pydantic import JsonPatchFor
+from jsonpatchx.types import JSONNumber
 
 STRICT_JSON_PATCH = True
 
 app = create_app(
     title="Demo 4: Spellbook rune pointers",
     description=(
-        "Registry-scoped rune pointer backends for spellbook and apprentice settings. "
+        "Mixed pointer backends in one registry: RFC6901 slash-pointer built-ins "
+        "plus rune-pointer custom ops. "
         "Uses `JsonPatchRoute` to align OpenAPI and runtime validation."
     ),
 )
 
-registry = GenericOperationRegistry[
-    RunePointer,
+
+class RuneIncrementOp(IncrementOp):
+    path: JSONPointer[JSONNumber, RunePointer]
+
+
+class RuneAppendOp(AppendOp):
+    path: JSONPointer[list[JSONValue], RunePointer]
+
+
+registry = OperationRegistry[
     AddOp,
     CopyOp,
     MoveOp,
     RemoveOp,
     ReplaceOp,
     TestOp,
-    IncrementOp,
-    AppendOp,
+    RuneIncrementOp,
+    RuneAppendOp,
 ]
 SpellbookPatch = JsonPatchFor[Literal["Spellbook"], registry]
 ApprenticePatch = JsonPatchFor[Apprentice, registry]
@@ -59,9 +70,9 @@ spellbook_patch = JsonPatchRoute(
     SpellbookPatch,
     examples={
         "midnight-runes": {
-            "summary": "toggle ritual and restock ingredients",
+            "summary": "slash replace + rune increment in one patch",
             "value": [
-                {"op": "replace", "path": "rituals.summon.enabled", "value": True},
+                {"op": "replace", "path": "/rituals/summon/enabled", "value": True},
                 {"op": "increment", "path": "ingredients.moon_salt", "value": 5},
             ],
         }
@@ -72,16 +83,17 @@ apprentice_patch = JsonPatchRoute(
     ApprenticePatch,
     examples={
         "sparkle-sprint": {
-            "summary": "boost mana and add a sigil",
+            "summary": "slash replace + rune increment + rune append",
             "value": [
+                {"op": "replace", "path": "/name", "value": "Morgan Vale"},
                 {"op": "increment", "path": "mana", "value": 20},
                 {"op": "append", "path": "sigils", "value": "aurora"},
             ],
         },
         "lantern-lesson": {
-            "summary": "rename and add a sigil",
+            "summary": "slash replace + rune append",
             "value": [
-                {"op": "replace", "path": "name", "value": "Nova"},
+                {"op": "replace", "path": "/name", "value": "Nova"},
                 {"op": "append", "path": "sigils", "value": "ember"},
             ],
         },
@@ -113,8 +125,8 @@ def get_spellbook_endpoint(
     "/spellbooks/{spellbook_id}",
     response_model=JSONValue,
     tags=["spellbooks"],
-    summary="Patch a spellbook (rune pointers)",
-    description="Use rune pointers like 'rituals.summon.enabled'.",
+    summary="Patch a spellbook (mixed pointer backends)",
+    description="Use slash pointers for built-ins and rune pointers for custom ops.",
     **spellbook_patch.route_kwargs(),
 )
 def patch_spellbook(
@@ -155,8 +167,8 @@ def get_apprentice_endpoint(
     "/apprentices/{apprentice_id}",
     response_model=Apprentice,
     tags=["apprentices"],
-    summary="Patch an apprentice (rune pointers)",
-    description="Use rune pointers like 'mana' or 'sigils.0'.",
+    summary="Patch an apprentice (mixed pointer backends)",
+    description="Use slash pointers for built-ins and rune pointers for custom ops.",
     **apprentice_patch.route_kwargs(),
 )
 def patch_apprentice(

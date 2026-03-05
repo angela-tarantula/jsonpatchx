@@ -53,7 +53,8 @@ Plain JSON patching for service configs using `JsonPatchFor[Name, Registry]`.
 
 ## Demo 4: Spellbook rune pointers
 
-Registry-scoped rune-pointer backends for spellbook and apprentice settings.
+Mixed pointer backends in one registry: slash-pointer built-ins and rune-pointer
+custom operations.
 
 **File:** `examples/fastapi/demo4.py`
 
@@ -63,7 +64,8 @@ Registry-scoped rune-pointer backends for spellbook and apprentice settings.
 
 ## Demo 5: Explicit custom backend ops
 
-Registry-scoped backend with operations that already annotate explicit custom pointer backends.
+Operations that explicitly annotate custom pointer backends (no registry-level
+backend override).
 
 **File:** `examples/fastapi/demo5.py`
 
@@ -73,7 +75,8 @@ Registry-scoped backend with operations that already annotate explicit custom po
 
 ## Demo 6: Generic P backend ops
 
-Registry-scoped backend with operations authored as `JSONPointer[..., P]`.
+Operations authored as `JSONPointer[..., P]` and specialized per-op via
+generic backend parameterization.
 
 **File:** `examples/fastapi/demo6.py`
 

@@ -18,9 +18,9 @@ from examples.fastapi.shared import (
 from jsonpatchx import (
     AddOp,
     CopyOp,
-    GenericOperationRegistry,
     JSONValue,
     MoveOp,
+    OperationRegistry,
     RemoveOp,
     ReplaceOp,
     TestOp,
@@ -32,10 +32,6 @@ from jsonpatchx.schema import OperationSchema
 from jsonpatchx.types import JSONArray, JSONNumber
 
 STRICT_JSON_PATCH = True
-
-
-class RunePointerV2(RunePointer):
-    """Marker subclass to show registry-scoped backend replacement on explicit backends."""
 
 
 class ExplicitRuneIncrementOp(OperationSchema):
@@ -74,8 +70,7 @@ class ExplicitRuneAppendOp(OperationSchema):
         return self.path.add(doc, [*current, self.value])
 
 
-registry = GenericOperationRegistry[
-    RunePointerV2,
+registry = OperationRegistry[
     AddOp,
     CopyOp,
     MoveOp,
@@ -103,7 +98,7 @@ apprentice_patch = JsonPatchRoute(
 app = create_app(
     title="Demo 5: Explicit custom backend ops",
     description=(
-        "Registry-scoped rune-pointer backend with ops that already declare "
+        "Rune-pointer ops that already declare "
         "an explicit custom backend in their path annotations."
     ),
 )
