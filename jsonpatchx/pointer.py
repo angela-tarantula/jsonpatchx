@@ -308,10 +308,10 @@ class JSONPointer(str, Generic[T_co, P_co]):
         backend_typevar: TypeVar,
     ) -> type[PointerBackend]:
         # Only TypeVar defaults are used for unspecialized backend TypeVars.
-        try:
-            has_default = backend_typevar.has_default()
-        except AttributeError:
-            has_default = False
+        # try:
+        has_default = backend_typevar.has_default()
+        # except AttributeError:
+        #     has_default = False
         if has_default:
             default_candidate = getattr(backend_typevar, "__default__")
             default_backend = cls._coerce_runtime_backend_candidate(default_candidate)

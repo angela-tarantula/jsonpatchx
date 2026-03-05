@@ -532,7 +532,9 @@ def test_jsonpointer_type_args_validation(subtests: Subtests) -> None:
             adapter.validate_python("")
 
     with subtests.test("backend typevar non-backend bound fails at runtime"):
-        P_invalid_bound = TypeVar("P_invalid_bound", bound=str)
+        import typing
+
+        P_invalid_bound = typing.TypeVar("P_invalid_bound", bound=str)
         adapter = TypeAdapter(JSONPointer[JSONValue, P_invalid_bound])
         with pytest.raises(InvalidJSONPointer):
             adapter.validate_python("")
