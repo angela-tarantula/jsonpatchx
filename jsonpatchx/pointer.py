@@ -310,7 +310,7 @@ class JSONPointer(str, Generic[T_co, P_co]):
         # Only TypeVar defaults are used for unspecialized backend TypeVars.
         try:
             has_default = backend_typevar.has_default()
-        except AttributeError:
+        except AttributeError:  # pragma: no cover # for Py3.12
             has_default = False
         if has_default:
             default_candidate = getattr(backend_typevar, "__default__")
