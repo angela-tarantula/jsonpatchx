@@ -532,9 +532,7 @@ def test_jsonpointer_type_args_validation(subtests: Subtests) -> None:
             adapter.validate_python("")
 
     with subtests.test("backend typevar non-backend bound fails at runtime"):
-        import typing
-
-        P_invalid_bound = typing.TypeVar("P_invalid_bound", bound=str)
+        P_invalid_bound = TypeVar("P_invalid_bound", bound=str)
         adapter = TypeAdapter(JSONPointer[JSONValue, P_invalid_bound])
         with pytest.raises(InvalidJSONPointer):
             adapter.validate_python("")
@@ -609,6 +607,17 @@ def test_backend_typevar_explicit_policy_cases(subtests: Subtests) -> None:
 
         model = GenericModel[OtherDotPointer].model_validate({"path": "a.b"})
         assert isinstance(model.path.ptr, OtherDotPointer)
+
+    with subtests.test("TypeVar without default works in Python 3.12 and below"):
+        import typing
+
+        P_backend = typing.TypeVar("P_backend", bound=PointerBackend)
+
+        class GenericModel(BaseModel, Generic[P_backend]):
+            path: JSONPointer[JSONValue, P_backend]
+
+        model = GenericModel[DotPointer].model_validate({"path": "a.b"})
+        assert isinstance(model.path.ptr, DotPointer)
 
 
 def test_jsonpointer_path_validation(subtests: Subtests) -> None:
