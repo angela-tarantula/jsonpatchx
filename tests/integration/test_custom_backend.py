@@ -1,7 +1,7 @@
 from typing import Literal, override
 
 from jsonpatchx.pointer import JSONPointer
-from jsonpatchx.registry import GenericOperationRegistry
+from jsonpatchx.registry import OperationRegistry
 from jsonpatchx.schema import OperationSchema
 from jsonpatchx.standard import JsonPatch
 from jsonpatchx.types import JSONValue
@@ -17,7 +17,7 @@ def test_custom_backend_with_registry() -> None:
         def apply(self, doc: JSONValue) -> JSONValue:
             return self.path.remove(doc)
 
-    registry = GenericOperationRegistry[DotPointer, DotRemoveOp]
+    registry = OperationRegistry[DotRemoveOp]
     patch = JsonPatch([{"op": "dot-remove", "path": "a.b"}], registry=registry)
     result = patch.apply({"a": {"b": 1}})
     assert result == {"a": {}}

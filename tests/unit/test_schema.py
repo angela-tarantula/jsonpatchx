@@ -1,4 +1,4 @@
-from typing import Literal, cast, override
+from typing import Literal, override
 
 import pytest
 from pydantic import ValidationError
@@ -8,11 +8,9 @@ from jsonpatchx.builtins import AddOp, RemoveOp, ReplaceOp
 from jsonpatchx.exceptions import (
     InvalidJSONPointer,
     InvalidOperationDefinition,
-    InvalidOperationRegistry,
     PatchConflictError,
 )
 from jsonpatchx.pointer import JSONPointer
-from jsonpatchx.registry import GenericOperationRegistry, OperationRegistry
 from jsonpatchx.schema import OperationSchema
 from jsonpatchx.types import JSONBoolean, JSONValue
 from tests.conftest import DotPointer
@@ -74,62 +72,6 @@ def test_invalid_operation_schema_class(subtests: Subtests) -> None:
             orange.value = "ripe"  # type: ignore[misc]
 
 
-def test_invalid_operation_registry(subtests: Subtests) -> None:
-    class FirstOp(OperationSchema):
-        op: Literal["dup"] = "dup"
-
-        @override
-        def apply(self, doc: JSONValue) -> JSONValue:
-            return None  # pragma: no cover
-
-    class SecondOp(OperationSchema):
-        op: Literal["dup"] = "dup"
-
-        @override
-        def apply(self, doc: JSONValue) -> JSONValue:
-            return None  # pragma: no cover
-
-    class AbstractOp(OperationSchema):
-        op: Literal["abstract"] = "abstract"
-
-    with subtests.test("OperationRegistry requires at least one model"):
-        with pytest.raises(InvalidOperationRegistry):
-            OperationRegistry.__class_getitem__(())
-
-    with subtests.test("OperationRegistry requires unique op identifiers"):
-        with pytest.raises(InvalidOperationRegistry):
-            OperationRegistry[FirstOp, SecondOp]
-
-    with subtests.test("OperationRegistry rejects non-OperationSchema input"):
-        with pytest.raises(InvalidOperationRegistry):
-            OperationRegistry[str]
-
-        with pytest.raises(InvalidOperationRegistry):
-            OperationRegistry[42]  # type: ignore[valid-type]
-
-    with subtests.test("OperationRegistry rejects OperationSchema base class"):
-        with pytest.raises(InvalidOperationRegistry):
-            OperationRegistry[OperationSchema]
-
-    with subtests.test("OperationRegistry rejects abstract OperationSchema subclasses"):
-        with pytest.raises(InvalidOperationRegistry):
-            OperationRegistry[AbstractOp]
-
-    with subtests.test("OperationRegistry rejects OperationSchema instances"):
-        with pytest.raises(InvalidOperationRegistry):
-            OperationRegistry[FirstOp()]  # type: ignore[misc]
-
-    with subtests.test("OperationRegistry rejects nested registries"):
-        nested = OperationRegistry[FirstOp]
-        with pytest.raises(InvalidOperationRegistry):
-            OperationRegistry[nested, SecondOp]
-
-    with subtests.test("GenericOperationRegistry rejects nested registries"):
-        nested = GenericOperationRegistry[DotPointer, FirstOp]
-        with pytest.raises(InvalidOperationRegistry):
-            GenericOperationRegistry[DotPointer, nested, SecondOp]
-
-
 def test_valid_operation_schema(subtests: Subtests) -> None:
     with subtests.test("valid op instantiation succeeds"):
 
@@ -158,67 +100,6 @@ def test_valid_operation_schema(subtests: Subtests) -> None:
 
         OrganizeOp(op="organize")
         OrganizeOp(op="organise")
-
-
-def test_patch_schema_parse_happy_path(subtests: Subtests) -> None:
-    class IncrementOp(OperationSchema):
-        op: Literal["increment"] = "increment"
-        path: str
-        value: int = 1
-
-        @override
-        def apply(self, doc: JSONValue) -> JSONValue:
-            return None  # pragma: no cover
-
-    class ToggleOp(OperationSchema):
-        op: Literal["toggle"] = "toggle"
-        path: str
-
-        @override
-        def apply(self, doc: JSONValue) -> JSONValue:
-            return None  # pragma: no cover
-
-    schema = OperationRegistry[IncrementOp, ToggleOp]
-
-    with subtests.test("parse_op succeeds"):
-        op = schema.parse_python_op({"op": "increment", "path": "/foo", "value": 3})
-        assert isinstance(op, IncrementOp)
-        assert op.path == "/foo"
-        assert op.value == 3
-
-    with subtests.test("parse_patch succeeds"):
-        patch = schema.parse_python_patch(
-            [
-                {"op": "increment", "path": "/foo", "value": 1},
-                {"op": "toggle", "path": "/foo"},
-            ]
-        )
-        op1, op2 = patch
-        assert isinstance(op1, IncrementOp)
-        assert isinstance(op2, ToggleOp)
-        assert op1.path == op2.path == "/foo"
-        assert op1.value == 1
-
-
-def test_pointer_backend_binding(subtests: Subtests) -> None:
-    class DotRemoveOp(OperationSchema):
-        op: Literal["dot-remove"] = "dot-remove"
-        path: JSONPointer[JSONValue, DotPointer]
-
-        @override
-        def apply(self, doc: JSONValue) -> JSONValue:
-            return doc  # pragma: no cover
-
-    with subtests.test("direct instantiation uses backend"):
-        op = DotRemoveOp.model_validate({"path": "a.b"})
-        assert isinstance(op.path.ptr, DotPointer)
-
-    with subtests.test("registry backend match succeeds"):
-        registry_2 = GenericOperationRegistry[DotPointer, DotRemoveOp]
-        op = cast(
-            DotRemoveOp, registry_2.parse_python_op({"op": "dot-remove", "path": "a.b"})
-        )
-        assert isinstance(op.path.ptr, DotPointer)
 
 
 def test_jsonvalue_accepts_json_types() -> None:

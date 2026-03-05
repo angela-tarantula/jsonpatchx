@@ -2,12 +2,12 @@ import json
 from typing import Any, Generic, Literal, cast, override
 
 import pytest
+from pytest import Subtests
 from typing_extensions import TypeVar
 
-from jsonpatchx.backend import _DEFAULT_POINTER_CLS
 from jsonpatchx.exceptions import InvalidOperationRegistry, OperationNotRecognized
 from jsonpatchx.pointer import JSONPointer
-from jsonpatchx.registry import GenericOperationRegistry, OperationRegistry
+from jsonpatchx.registry import OperationRegistry
 from jsonpatchx.schema import OperationSchema
 from jsonpatchx.standard import JsonPatch, StandardRegistry
 from jsonpatchx.types import JSONValue
@@ -21,6 +21,120 @@ class ToggleOp(OperationSchema):
     @override
     def apply(self, doc: JSONValue) -> JSONValue:
         return doc
+
+
+def test_invalid_operation_registry(subtests: Subtests) -> None:
+    class FirstOp(OperationSchema):
+        op: Literal["dup"] = "dup"
+
+        @override
+        def apply(self, doc: JSONValue) -> JSONValue:
+            return None  # pragma: no cover
+
+    class SecondOp(OperationSchema):
+        op: Literal["dup"] = "dup"
+
+        @override
+        def apply(self, doc: JSONValue) -> JSONValue:
+            return None  # pragma: no cover
+
+    class AbstractOp(OperationSchema):
+        op: Literal["abstract"] = "abstract"
+
+    with subtests.test("OperationRegistry requires at least one model"):
+        with pytest.raises(InvalidOperationRegistry):
+            OperationRegistry.__class_getitem__(())
+
+    with subtests.test("OperationRegistry requires unique op identifiers"):
+        with pytest.raises(InvalidOperationRegistry):
+            OperationRegistry[FirstOp, SecondOp]
+
+    with subtests.test("OperationRegistry rejects non-OperationSchema input"):
+        with pytest.raises(InvalidOperationRegistry):
+            OperationRegistry[str]
+
+        with pytest.raises(InvalidOperationRegistry):
+            OperationRegistry[42]  # type: ignore[valid-type]
+
+    with subtests.test("OperationRegistry rejects OperationSchema base class"):
+        with pytest.raises(InvalidOperationRegistry):
+            OperationRegistry[OperationSchema]
+
+    with subtests.test("OperationRegistry rejects abstract OperationSchema subclasses"):
+        with pytest.raises(InvalidOperationRegistry):
+            OperationRegistry[AbstractOp]
+
+    with subtests.test("OperationRegistry rejects OperationSchema instances"):
+        with pytest.raises(InvalidOperationRegistry):
+            OperationRegistry[FirstOp()]  # type: ignore[misc]
+
+    with subtests.test("OperationRegistry rejects nested registries"):
+        nested = OperationRegistry[FirstOp]
+        with pytest.raises(InvalidOperationRegistry):
+            OperationRegistry[nested, SecondOp]
+
+
+def test_patch_schema_parse_happy_path(subtests: Subtests) -> None:
+    class IncrementOp(OperationSchema):
+        op: Literal["increment"] = "increment"
+        path: str
+        value: int = 1
+
+        @override
+        def apply(self, doc: JSONValue) -> JSONValue:
+            return None  # pragma: no cover
+
+    class ToggleByPathOp(OperationSchema):
+        op: Literal["toggle-by-path"] = "toggle-by-path"
+        path: str
+
+        @override
+        def apply(self, doc: JSONValue) -> JSONValue:
+            return None  # pragma: no cover
+
+    schema = OperationRegistry[IncrementOp, ToggleByPathOp]
+
+    with subtests.test("parse_op succeeds"):
+        op = schema.parse_python_op({"op": "increment", "path": "/foo", "value": 3})
+        assert isinstance(op, IncrementOp)
+        assert op.path == "/foo"
+        assert op.value == 3
+
+    with subtests.test("parse_patch succeeds"):
+        patch = schema.parse_python_patch(
+            [
+                {"op": "increment", "path": "/foo", "value": 1},
+                {"op": "toggle-by-path", "path": "/foo"},
+            ]
+        )
+        op1, op2 = patch
+        assert isinstance(op1, IncrementOp)
+        assert isinstance(op2, ToggleByPathOp)
+        assert op1.path == op2.path == "/foo"
+        assert op1.value == 1
+
+
+def test_operation_registry_preserves_explicit_pointer_backend(
+    subtests: Subtests,
+) -> None:
+    class DotRemoveOp(OperationSchema):
+        op: Literal["dot-remove"] = "dot-remove"
+        path: JSONPointer[JSONValue, DotPointer]
+
+        @override
+        def apply(self, doc: JSONValue) -> JSONValue:
+            return doc  # pragma: no cover
+
+    with subtests.test("direct instantiation uses backend"):
+        op = DotRemoveOp.model_validate({"path": "a.b"})
+        assert isinstance(op.path.ptr, DotPointer)
+
+    with subtests.test("operation registry preserves explicit pointer backend"):
+        registry = OperationRegistry[DotRemoveOp]
+        op = cast(
+            DotRemoveOp, registry.parse_python_op({"op": "dot-remove", "path": "a.b"})
+        )
+        assert isinstance(op.path.ptr, DotPointer)
 
 
 def test_registry_repr_and_hash() -> None:
@@ -100,14 +214,75 @@ def test_registry_backend_rewrite_policies() -> None:
         def apply(self, doc: JSONValue) -> JSONValue:
             return doc
 
-    default_registry = OperationRegistry[GenericOp[DotBackendA]]
-    default_op = cast(
-        Any, default_registry.parse_python_op({"op": "generic-op", "path": "/a/b"})
-    )
-    assert isinstance(default_op.path.ptr, _DEFAULT_POINTER_CLS)
+    registry_a = OperationRegistry[GenericOp[DotBackendA]]
+    op_a = cast(Any, registry_a.parse_python_op({"op": "generic-op", "path": "a.b"}))
+    assert isinstance(op_a.path.ptr, DotBackendA)
 
-    custom_registry = GenericOperationRegistry[DotBackendB, GenericOp]
-    custom_op = cast(
-        Any, custom_registry.parse_python_op({"op": "generic-op", "path": "a.b"})
-    )
-    assert isinstance(custom_op.path.ptr, DotBackendB)
+    registry_b = OperationRegistry[GenericOp[DotBackendB]]
+    op_b = cast(Any, registry_b.parse_python_op({"op": "generic-op", "path": "a.b"}))
+    assert isinstance(op_b.path.ptr, DotBackendB)
+
+
+def test_registry_accepts_mixed_backends() -> None:
+    class SlashOp(OperationSchema):
+        op: Literal["slash-op"] = "slash-op"
+        path: JSONPointer[JSONValue]
+
+        @override
+        def apply(self, doc: JSONValue) -> JSONValue:
+            return doc
+
+    class DotOp(OperationSchema):
+        op: Literal["dot-op"] = "dot-op"
+        path: JSONPointer[JSONValue, DotPointer]
+
+        @override
+        def apply(self, doc: JSONValue) -> JSONValue:
+            return doc
+
+    registry = OperationRegistry[SlashOp, DotOp]
+
+    slash = cast(Any, registry.parse_python_op({"op": "slash-op", "path": "/a/b"}))
+    dot = cast(Any, registry.parse_python_op({"op": "dot-op", "path": "a.b"}))
+
+    assert type(slash) is SlashOp
+    assert type(dot) is DotOp
+
+
+def test_registry_model_input_requires_exact_class_identity(subtests: Subtests) -> None:
+    class Backend1(DotPointer):
+        pass
+
+    class Backend2(DotPointer):
+        pass
+
+    P_backend = TypeVar("P_backend", bound=DotPointer, default=Backend1)
+
+    class GenericOp(OperationSchema, Generic[P_backend]):
+        op: Literal["identity-op"] = "identity-op"
+        path: JSONPointer[JSONValue, P_backend]
+
+        @override
+        def apply(self, doc: JSONValue) -> JSONValue:
+            return doc
+
+    class SubGenericOp(GenericOp[Backend1]):
+        pass
+
+    registry = OperationRegistry[GenericOp[Backend1]]
+
+    accepted = GenericOp[Backend1].model_validate({"path": "a.b"})
+    parsed = registry.parse_python_op(accepted)
+    assert parsed is accepted
+
+    with subtests.test("generic specialization mismatch is rejected"):
+        wrong_backend_specialization = GenericOp[Backend2].model_validate(
+            {"path": "a.b"}
+        )
+        with pytest.raises(OperationNotRecognized):
+            registry.parse_python_op(wrong_backend_specialization)
+
+    with subtests.test("subclass instance mismatch is rejected"):
+        subclass_instance = SubGenericOp.model_validate({"path": "a.b"})
+        with pytest.raises(OperationNotRecognized):
+            registry.parse_python_op(subclass_instance)
