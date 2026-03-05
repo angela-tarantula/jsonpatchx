@@ -2,7 +2,6 @@ import re
 from abc import abstractmethod
 from collections.abc import Iterable, Sequence
 from enum import Enum, auto
-from inspect import isabstract, isclass
 from typing import (
     TYPE_CHECKING,
     Protocol,
@@ -24,36 +23,35 @@ _NONNEGATIVE_ARRAY_INDEX_PATTERN = re.compile(r"^(0|[1-9][0-9]*)$")
 _INTEGER_ARRAY_INDEX_PATTERN = re.compile(r"^-?(0|[1-9][0-9]*)$")
 
 
-# You may be wondering, why does `_PointerClassProtocol` exist? Here's context.
-#
-# TL;DR: This library aims to surface user erros as eagerly as possible. It's not
-#        possible to validate a custom pointer backend until it's instantiated. As
-#        a workaround, `_PointerClassProtocol` exists internally to raise errors
-#        at JSONPointer definition time, and `PointerBackend` exists inernally to
-#        raise errors at JSONPointer instantiation time. Only `PointerBackend`
-#        needs to be publicly exposed to communicate pointer backend requirements.
-#
-# `PointerBackend` is the public protocol for injecting custom pointer classes.
-# `PointerBackend` is `@runtime_checkable` so that `OperationSchmea` can eagerly
-# validate custom pointer classes. Unfortunately, though, it's invalid to do
-# `issubclass(X, PointerBackend)` because of the following error:
-#
-#   TypeError: Protocols with non-method members don't support issubclass(). Non-method members: 'parts'.
-#   https://github.com/python/mypy/blob/0c6340170b2d0a9eb2e55eacd06709e8fd3d92b0/mypy/messages.py#L2052
-#
-# A workaround would be to use `isinstance` instead of `issubclass`, but that
-# requires having a PointerBackend instance like `X("/foo/bar")`. The problem is
-# that custom pointer backends are not required to use any particular syntax.
-# This means it's not possible to know what strings are supposed to be valid
-# for any given custom pointer backend. I considered requiring that all custom
-# pointer backends accept the empty string, `""`, but it's not necessary.
-# Instead, `_PointerClassProtocol` exists as an internal-only protocol just to
-# be comptaible with `issubclass`. `PointerBackend` simply subclasses it and adds
-# the instance-level requirements.
-
-
 @runtime_checkable
-class _PointerClassProtocol(Protocol):
+class PointerBackend(Protocol):
+    """
+    NOTE: also require that parent pointers are constructable from parts[:-1] OR require that in certain methods!
+    Protocol for custom JSON Pointer backends.
+
+    This library is pointer-backend agnostic. By default it uses ``jsonpointer.JsonPointer``,
+    but advanced users may plug in a custom backend (different parsing or escaping rules, richer
+    pointer objects, alternative traversal semantics, and so on).
+
+    A backend only needs to provide a small pointer-shaped surface area:
+
+    - Constructible from a pointer string.
+    - Exposes unescaped path tokens via ``parts``.
+    - Can be reconstructed from tokens via ``from_parts``.
+    - Can resolve a pointer against a document via ``resolve``.
+    - Has a round-trippable string form via ``__str__``.
+
+    Notes:
+        - The backend defines its own pointer syntax; there is no universal "root" string.
+        - Round-trip invariants should hold for the backend's canonical string form:
+          ``PointerBackend(x)`` equals ``PointerBackend(str(PointerBackend(x)))`` and
+          ``PointerBackend(x)`` equals ``PointerBackend.from_parts(PointerBackend(x).parts)``.
+        - The library may cache backend instances; implementations should be immutable or otherwise
+          safe to reuse across calls.
+        - Backends may raise whatever exceptions are natural for them. Higher-level APIs normalize
+          backend failures into library patch errors for a consistent user experience.
+    """
+
     @abstractmethod
     def __init__(self, pointer: str) -> None:
         """Parse and construct a backend-specific pointer."""
@@ -85,36 +83,6 @@ class _PointerClassProtocol(Protocol):
 
         Must round-trip such that ``PointerBackend(str(ptr))`` yields an equivalent pointer.
         """
-
-
-@runtime_checkable
-class PointerBackend(_PointerClassProtocol, Protocol):
-    """
-    NOTE: also require that parent pointers are constructable from parts[:-1] OR require that in certain methods!
-    Protocol for custom JSON Pointer backends.
-
-    This library is pointer-backend agnostic. By default it uses ``jsonpointer.JsonPointer``,
-    but advanced users may plug in a custom backend (different parsing or escaping rules, richer
-    pointer objects, alternative traversal semantics, and so on).
-
-    A backend only needs to provide a small pointer-shaped surface area:
-
-    - Constructible from a pointer string.
-    - Exposes unescaped path tokens via ``parts``.
-    - Can be reconstructed from tokens via ``from_parts``.
-    - Can resolve a pointer against a document via ``resolve``.
-    - Has a round-trippable string form via ``__str__``.
-
-    Notes:
-        - The backend defines its own pointer syntax; there is no universal "root" string.
-        - Round-trip invariants should hold for the backend's canonical string form:
-          ``PointerBackend(x)`` equals ``PointerBackend(str(PointerBackend(x)))`` and
-          ``PointerBackend(x)`` equals ``PointerBackend.from_parts(PointerBackend(x).parts)``.
-        - The library may cache backend instances; implementations should be immutable or otherwise
-          safe to reuse across calls.
-        - Backends may raise whatever exceptions are natural for them. Higher-level APIs normalize
-          backend failures into library patch errors for a consistent user experience.
-    """
 
     @property
     @abstractmethod
@@ -186,9 +154,9 @@ def _parent_ptr_of[PB: PointerBackend](ptr: PB) -> PB:
     return ptr.from_parts(ptr.parts[:-1])
 
 
-def _pointer_backend_instance(
-    path: str, *, pointer_cls: type[_PointerClassProtocol]
-) -> PointerBackend:
+def _pointer_backend_instance[PB: PointerBackend](
+    path: str, *, pointer_cls: type[PB]
+) -> PB:
     """
     Internal: construct a PointerBackend instance for a path string.
 
@@ -219,21 +187,6 @@ def _pointer_backend_instance(
             f"pointer_cls {pointer_cls!r} instances must implement the PointerBackend Protocol"
         )
     return ptr
-
-
-def _validate_backend_class(unverified: object) -> type[_PointerClassProtocol]:
-    """Validate a pointer backend parameter."""
-    if not isclass(unverified):
-        raise InvalidJSONPointer(
-            f"JSONPointer backend parameter {unverified!r} must be a PointerBackend class"
-        )
-    if isabstract(unverified):
-        raise InvalidJSONPointer("JSONPointer backend parameter cannot be abstract")
-    if not issubclass(unverified, _PointerClassProtocol):
-        raise InvalidJSONPointer(
-            f"JSONPointer backend parameter {unverified!r} must implement the PointerBackend Protocol"
-        )
-    return unverified
 
 
 # NOTE: move methods that raise InvalidJSONPointer below

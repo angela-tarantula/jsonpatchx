@@ -1,7 +1,6 @@
 import copy
 from collections import Counter
 from collections.abc import Mapping, Sequence
-from functools import lru_cache
 from inspect import isabstract, isclass
 from types import MappingProxyType
 from typing import (
@@ -27,8 +26,6 @@ from typing_extensions import TypeForm, TypeVar
 from jsonpatchx.backend import (
     _DEFAULT_POINTER_CLS,
     PointerBackend,
-    _PointerClassProtocol,
-    _validate_backend_class,
 )
 from jsonpatchx.builtins import (
     STANDARD_OPS,
@@ -51,7 +48,7 @@ Ops = TypeVarTuple("Ops")  # bound=type[OperationSchema]
 PBT = TypeVar("PBT", bound=PointerBackend, covariant=True)
 
 _REGISTRY_CACHE: dict[
-    tuple[tuple[type[OperationSchema], ...], type[_PointerClassProtocol]],
+    tuple[tuple[type[OperationSchema], ...], type[PointerBackend]],
     type[AnyRegistry],
 ] = {}
 
@@ -67,7 +64,7 @@ class _RegistryMeta(type):
     @staticmethod
     def _registry_type_name(
         ops: tuple[type[OperationSchema], ...],
-        pointer_cls: type[_PointerClassProtocol],
+        pointer_cls: type[PointerBackend],
     ) -> str:
         if (
             ops == GenericOperationRegistry._deterministic_sort(*STANDARD_OPS)
@@ -82,7 +79,7 @@ class _RegistryMeta(type):
     @staticmethod
     def _registry_display_name(
         ops: tuple[type[OperationSchema], ...],
-        pointer_cls: type[_PointerClassProtocol],
+        pointer_cls: type[PointerBackend],
     ) -> str:
         op_names = ", ".join(op.__name__ for op in ops)
         if pointer_cls is _DEFAULT_POINTER_CLS:
@@ -109,7 +106,7 @@ class GenericOperationRegistry(Generic[PBT, *Ops], metaclass=_RegistryMeta):
     # Normally, ClassVars can't be generic (https://github.com/python/typing/discussions/1424#discussioncomment-7989934)
     # But in this case, GenericOperationRegistry[A] and GenericOperationRegistry[B] are different runtime objects.
     ops: ClassVar[tuple[type[OperationSchema], ...]]
-    _pointer_cls: ClassVar[type[_PointerClassProtocol]]
+    _pointer_cls: ClassVar[type[PointerBackend]]
     union: ClassVar[TypeAliasType]
     _bound_ops_set: ClassVar[frozenset[type[OperationSchema]]]
     _accepted_ops_set: ClassVar[frozenset[type[OperationSchema]]]
@@ -148,13 +145,17 @@ class GenericOperationRegistry(Generic[PBT, *Ops], metaclass=_RegistryMeta):
     def _split_ops_and_pointer(
         cls,
         params: object,
-    ) -> tuple[tuple[type[OperationSchema], ...], type[_PointerClassProtocol]]:
+    ) -> tuple[tuple[type[OperationSchema], ...], type[PointerBackend]]:
         if not isinstance(params, tuple) or len(params) < 2:
             raise InvalidOperationRegistry(f"Invalid registry params: {params!r}")
         first_param = cast(object, params[0])
         variadic_params = cast(tuple[object, ...], params[1:])
 
-        pointer_cls = _validate_backend_class(first_param)
+        if not isclass(first_param):
+            raise InvalidOperationRegistry(
+                f"Registry backend parameter {first_param!r} must be a class"
+            )
+        pointer_cls = cast(type[PointerBackend], first_param)
         op_models = cls._validate_op_models(variadic_params)
         cls._validate_op_name_uniqueness(*op_models)
         return op_models, pointer_cls
@@ -231,7 +232,7 @@ class GenericOperationRegistry(Generic[PBT, *Ops], metaclass=_RegistryMeta):
     @classmethod
     def _bind_op_models(
         cls,
-        pointer_cls: type[_PointerClassProtocol],
+        pointer_cls: type[PointerBackend],
         *op_models: type[OperationSchema],
     ) -> tuple[type[OperationSchema], ...]:
         return tuple(
@@ -240,11 +241,10 @@ class GenericOperationRegistry(Generic[PBT, *Ops], metaclass=_RegistryMeta):
         )
 
     @classmethod
-    @lru_cache(maxsize=512)
     def _bind_op_model_pointer_backend(
         cls,
         op_model: type[OperationSchema],
-        pointer_cls: type[_PointerClassProtocol],
+        pointer_cls: type[PointerBackend],
     ) -> type[OperationSchema]:
         type_hints = cast(
             dict[str, TypeForm[Any]], get_type_hints(op_model, include_extras=True)
@@ -286,7 +286,7 @@ class GenericOperationRegistry(Generic[PBT, *Ops], metaclass=_RegistryMeta):
     def _specialize_pointer_annotation(
         cls,
         annotation: TypeForm[Any],
-        pointer_cls: type[_PointerClassProtocol],
+        pointer_cls: type[PointerBackend],
         *,
         op_model: type[OperationSchema],
         field_name: str,
@@ -301,14 +301,8 @@ class GenericOperationRegistry(Generic[PBT, *Ops], metaclass=_RegistryMeta):
                 return cast(TypeForm[Any], origin[type_param, pointer_cls])  # type: ignore[index]
             else:
                 # JSONPointer[T, P] or a subclass with T, P, and more args # NOTE: test on subclasses
-                type_param, backend_param, *extra_args = pointer_args
-                validated_backend = cls._resolve_backend_param_for_registry(
-                    backend_param,
-                    pointer_cls,
-                    op_model=op_model,
-                    field_name=field_name,
-                )
-                rewritten_args = (type_param, validated_backend, *extra_args)
+                type_param, _, *extra_args = pointer_args
+                rewritten_args = (type_param, pointer_cls, *extra_args)
                 return cast(TypeForm[Any], origin[rewritten_args])  # type: ignore[index]
 
         if origin is Annotated:
@@ -327,59 +321,6 @@ class GenericOperationRegistry(Generic[PBT, *Ops], metaclass=_RegistryMeta):
             return cast(TypeForm[Any], Annotated[specialized_base, *metadata])
 
         return annotation
-
-    @classmethod
-    def _resolve_backend_param_for_registry(
-        cls,
-        backend_param: TypeForm[Any],
-        registry_backend: type[_PointerClassProtocol],
-        *,
-        op_model: type[OperationSchema],
-        field_name: str,
-    ) -> type[_PointerClassProtocol]:
-        if backend_param is _DEFAULT_POINTER_CLS:
-            return registry_backend
-
-        if isinstance(backend_param, TypeVar):
-            if not cls._is_backend_typevar_compatible(backend_param, registry_backend):
-                raise InvalidOperationRegistry(
-                    f"{op_model.__name__}.{field_name} backend type parameter "
-                    f"{backend_param!r} is incompatible with registry backend "
-                    f"{registry_backend.__name__}"
-                )
-            return registry_backend
-
-        bound_backend = _validate_backend_class(backend_param)
-        if not issubclass(registry_backend, bound_backend):
-            raise InvalidOperationRegistry(
-                f"{op_model.__name__}.{field_name} backend {bound_backend.__name__} "
-                f"is incompatible with registry backend {registry_backend.__name__}"
-            )
-        return registry_backend
-
-    @staticmethod
-    def _is_backend_typevar_compatible(
-        backend_typevar: TypeVar,
-        registry_backend: type[_PointerClassProtocol],
-    ) -> bool:
-        constraints = cast(tuple[object, ...], backend_typevar.__constraints__)
-        if constraints:
-            validated_constraints = tuple(
-                _validate_backend_class(c) for c in constraints
-            )
-            return any(
-                issubclass(registry_backend, constraint)
-                for constraint in validated_constraints
-            )
-        bound = getattr(backend_typevar, "__bound__", None)
-        if bound is None:
-            return False
-        if bound is PointerBackend:
-            return True
-        if isinstance(bound, type) and issubclass(bound, _PointerClassProtocol):
-            return issubclass(registry_backend, bound)
-        validated_bound = _validate_backend_class(bound)
-        return issubclass(registry_backend, validated_bound)
 
     @classmethod
     def ops_by_name(cls) -> Mapping[str, type[OperationSchema]]:
@@ -486,7 +427,7 @@ else:
         def _split_ops_and_pointer(
             cls,
             params: object,
-        ) -> tuple[tuple[type[OperationSchema], ...], type[_PointerClassProtocol]]:
+        ) -> tuple[tuple[type[OperationSchema], ...], type[PointerBackend]]:
             if not isinstance(params, tuple):
                 params = (_DEFAULT_POINTER_CLS, params)
             else:

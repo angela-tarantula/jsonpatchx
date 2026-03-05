@@ -4,12 +4,12 @@ import copy
 from dataclasses import dataclass
 from functools import partial
 from operator import attrgetter
-from typing import Any, Final
+from typing import Any, Final, Generic
 
 import pytest
 from jsonpath import JSONPointer as ExtendedJsonPointer
 from jsonpointer import JsonPointer as CustomJsonPointer
-from pydantic import TypeAdapter, ValidationError
+from pydantic import BaseModel, TypeAdapter, ValidationError
 from pytest import Subtests
 from typing_extensions import TypeVar
 
@@ -17,7 +17,6 @@ from jsonpatchx.backend import (
     _DEFAULT_POINTER_CLS,
     PointerBackend,
     TargetState,
-    _PointerClassProtocol,
     classify_state,
 )
 from jsonpatchx.exceptions import InvalidJSONPointer, PatchConflictError
@@ -61,10 +60,8 @@ def test_json_type_validations(subtests: Subtests, suite: TypeSuite) -> None:
 
 def test_pointer_backend(subtests: Subtests) -> None:
     with subtests.test("Custom JsonPointer backend"):
-        assert issubclass(CustomJsonPointer, _PointerClassProtocol)
         assert isinstance(CustomJsonPointer(""), PointerBackend)
     with subtests.test("Extended JsonPointer backend"):
-        assert issubclass(ExtendedJsonPointer, _PointerClassProtocol)
         assert isinstance(ExtendedJsonPointer(""), PointerBackend)
 
 
@@ -520,27 +517,66 @@ def test_jsonpointer_type_args_validation(subtests: Subtests) -> None:
             adapter = TypeAdapter(JSONPointer[JSONValue, valid_backend])
             adapter.validate_python("")
 
-    with subtests.test("valid backend typevar bound to PointerBackend"):
+    with subtests.test(
+        "backend typevar bound to PointerBackend requires specialization or default"
+    ):
         P_backend = TypeVar("P_backend", bound=PointerBackend)
         adapter = TypeAdapter(JSONPointer[JSONValue, P_backend])
-        adapter.validate_python("")
+        with pytest.raises(InvalidJSONPointer):
+            adapter.validate_python("")
 
-    with subtests.test("valid backend typevar constraints"):
+    with subtests.test("backend typevar constraints require specialization or default"):
         P_constrained = TypeVar("P_constrained", DotPointer, CustomJsonPointer)
         adapter = TypeAdapter(JSONPointer[JSONValue, P_constrained])
-        adapter.validate_python("")
+        with pytest.raises(InvalidJSONPointer):
+            adapter.validate_python("")
 
-    with subtests.test("invalid backend typevar bound"):
+    with subtests.test("backend typevar non-backend bound fails at runtime"):
         P_invalid_bound = TypeVar("P_invalid_bound", bound=str)
+        adapter = TypeAdapter(JSONPointer[JSONValue, P_invalid_bound])
         with pytest.raises(InvalidJSONPointer):
-            adapter = TypeAdapter(JSONPointer[JSONValue, P_invalid_bound])
             adapter.validate_python("")
 
-    with subtests.test("invalid backend typevar without constraints or bound"):
+    with subtests.test("backend typevar without constraints or bound is rejected"):
         P_unbound = TypeVar("P_unbound")
+        adapter = TypeAdapter(JSONPointer[JSONValue, P_unbound])
         with pytest.raises(InvalidJSONPointer):
-            adapter = TypeAdapter(JSONPointer[JSONValue, P_unbound])
             adapter.validate_python("")
+
+    with subtests.test("backend typevar default is honored at runtime"):
+
+        class DefaultDotPointer(DotPointer):
+            pass
+
+        P_default = TypeVar(
+            "P_default", bound=PointerBackend, default=DefaultDotPointer
+        )
+        adapter = TypeAdapter(JSONPointer[JSONValue, P_default])
+        ptr = adapter.validate_python("a.b")
+        assert isinstance(ptr.ptr, DefaultDotPointer)
+
+    with subtests.test("backend typevar nested default typevar is resolved"):
+        P_inner = TypeVar("P_inner", bound=PointerBackend, default=DotPointer)
+        P_outer = TypeVar("P_outer", bound=PointerBackend, default=P_inner)
+        adapter = TypeAdapter(JSONPointer[JSONValue, P_outer])
+        ptr = adapter.validate_python("a.b")
+        assert isinstance(ptr.ptr, DotPointer)
+
+    with subtests.test("backend typevar non-type default is rejected"):
+        P_non_type_default = TypeVar(
+            "P_non_type_default", bound=PointerBackend, default=123
+        )
+        adapter = TypeAdapter(JSONPointer[JSONValue, P_non_type_default])
+        with pytest.raises(InvalidJSONPointer):
+            adapter.validate_python("/a/b")
+
+    with subtests.test("backend typevar PointerBackend default is rejected"):
+        P_protocol_default = TypeVar(
+            "P_protocol_default", bound=PointerBackend, default=PointerBackend
+        )
+        adapter = TypeAdapter(JSONPointer[JSONValue, P_protocol_default])
+        with pytest.raises(InvalidJSONPointer):
+            adapter.validate_python("/a/b")
 
     with subtests.test("reject invalid default backend string syntax"):
         adapter = TypeAdapter(JSONPointer[JSONValue])
@@ -551,6 +587,26 @@ def test_jsonpointer_type_args_validation(subtests: Subtests) -> None:
         adapter = TypeAdapter(JSONPointer[JSONValue, DotPointer])
         with pytest.raises(InvalidJSONPointer):
             adapter.validate_python("a..b")
+
+
+def test_backend_typevar_explicit_policy_cases(subtests: Subtests) -> None:
+    with subtests.test("explicit PointerBackend parameter is rejected at runtime"):
+        adapter = TypeAdapter(JSONPointer[JSONValue, PointerBackend])
+        with pytest.raises(InvalidJSONPointer):
+            adapter.validate_python("/a/b")
+
+    with subtests.test("direct specialization uses explicit backend"):
+
+        class OtherDotPointer(DotPointer):
+            pass
+
+        P_backend = TypeVar("P_backend", bound=PointerBackend, default=DotPointer)
+
+        class GenericModel(BaseModel, Generic[P_backend]):
+            path: JSONPointer[JSONValue, P_backend]
+
+        model = GenericModel[OtherDotPointer].model_validate({"path": "a.b"})
+        assert isinstance(model.path.ptr, OtherDotPointer)
 
 
 def test_jsonpointer_path_validation(subtests: Subtests) -> None:

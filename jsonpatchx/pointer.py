@@ -1,5 +1,6 @@
 from collections.abc import Sequence
 from functools import partial
+from inspect import isabstract
 from typing import (
     Any,
     Generic,
@@ -27,8 +28,6 @@ from jsonpatchx.backend import (
     _is_root_ptr,
     _parent_ptr_of,
     _pointer_backend_instance,
-    _PointerClassProtocol,
-    _validate_backend_class,
     classify_state,
 )
 from jsonpatchx.exceptions import (
@@ -174,32 +173,36 @@ class JSONPointer(str, Generic[T_co, P_co]):
         path: str | PointerBackend,
         *,
         type_param: TypeForm[Any],
-        bound_backend: type[_PointerClassProtocol],
+        concrete_backend: type[PointerBackend] | TypeVar,
     ) -> Self:
         """
         Validator function for JSONPointer.
 
         Assumes ``type_param`` and ``bound_backend`` are already validated.
         """
+        resolved_backend = cls._resolve_runtime_backend_param(concrete_backend)
         if isinstance(path, JSONPointer):
             path_str = str(path)
-            if bound_backend is _DEFAULT_POINTER_CLS:
+            if resolved_backend is _DEFAULT_POINTER_CLS:
                 ptr = path._ptr
-            elif isinstance(path._ptr, bound_backend):
+            elif isinstance(path._ptr, resolved_backend):
                 ptr = path._ptr
             else:
-                ptr = _pointer_backend_instance(path_str, pointer_cls=bound_backend)
+                ptr = _pointer_backend_instance(path_str, pointer_cls=resolved_backend)
         elif isinstance(path, str):
             path_str = path
-            ptr = _pointer_backend_instance(path_str, pointer_cls=bound_backend)
+            ptr = _pointer_backend_instance(
+                path_str,
+                pointer_cls=resolved_backend,
+            )
         elif isinstance(path, PointerBackend):
-            if isinstance(path, bound_backend):
+            if isinstance(path, resolved_backend):
                 path_str = str(path)
                 ptr = path
             else:
                 raise InvalidJSONPointer(
                     "JSONPointer backend mismatch: "
-                    f"required backend is {bound_backend.__name__} but field uses "
+                    f"required backend is {resolved_backend.__name__} but field uses "
                     f"{path.__class__.__name__}"
                 )
         else:  # pragma: no cover
@@ -223,9 +226,13 @@ class JSONPointer(str, Generic[T_co, P_co]):
     def __get_pydantic_core_schema__(
         cls, source_type: type[Self], handler: GetCoreSchemaHandler
     ) -> cs.CoreSchema:
-        type_param, bound_backend = cls._parse_pointer_type_args(*get_args(source_type))
+        type_param, concrete_backend = cls._parse_pointer_type_args(
+            *get_args(source_type)
+        )
         validator_function = partial(
-            cls._validator, type_param=type_param, bound_backend=bound_backend
+            cls._validator,
+            type_param=type_param,
+            concrete_backend=concrete_backend,
         )
         return cs.no_info_after_validator_function(
             function=validator_function,
@@ -262,14 +269,13 @@ class JSONPointer(str, Generic[T_co, P_co]):
     @classmethod
     def _parse_pointer_type_args(
         cls, *args: TypeForm[Any]
-    ) -> tuple[TypeForm[Any], type[_PointerClassProtocol]]:
+    ) -> tuple[TypeForm[Any], type[PointerBackend] | TypeVar]:
         """Validate the JSONPointer's parameter tuple, e.g. ``(JSONValue, DotPointer)`` for ``JSONPointer[JSONValue, DotPointer]``."""
         if not args:
             raise TypeError(f"{cls} requires at least one type parameter")
         unverified_typeform = args[0]
         unverified_bound_backend = args[1] if len(args) > 1 else _DEFAULT_POINTER_CLS
 
-        # NOTE: make these methods take TypeForm[Any]
         backend_param = cls._resolve_backend_type_param(unverified_bound_backend)
         type_param = _validate_typeform(unverified_typeform)
 
@@ -278,29 +284,57 @@ class JSONPointer(str, Generic[T_co, P_co]):
     @staticmethod
     def _resolve_backend_type_param(
         backend_param: object,
-    ) -> type[_PointerClassProtocol]:
+    ) -> type[PointerBackend] | TypeVar:
         if isinstance(backend_param, TypeVar):
-            constraints = cast(
-                tuple[object, ...], getattr(backend_param, "__constraints__", ())
-            )
-            if constraints:
-                return _validate_backend_class(constraints[0])
-
-            bound = getattr(backend_param, "__bound__", None)
-            if bound is None:
-                raise InvalidJSONPointer(
-                    "JSONPointer backend TypeVar must declare constraints "
-                    "or a bound compatible with PointerBackend"
-                )
-            if bound is PointerBackend:
-                return _DEFAULT_POINTER_CLS
-            if isinstance(bound, type) and issubclass(bound, _PointerClassProtocol):
-                return _validate_backend_class(bound)
+            return backend_param
+        if not isinstance(backend_param, type):
             raise InvalidJSONPointer(
-                f"JSONPointer backend TypeVar bound {bound!r} must be PointerBackend "
-                "or a concrete PointerBackend class"
+                f"JSONPointer backend parameter {backend_param!r} must be a class or TypeVar"
             )
-        return _validate_backend_class(backend_param)
+        return cast(type[PointerBackend], backend_param)
+
+    @classmethod
+    def _resolve_runtime_backend_param(
+        cls,
+        backend_param: type[PointerBackend] | TypeVar,
+    ) -> type[PointerBackend]:
+        if not isinstance(backend_param, TypeVar):
+            return backend_param
+        return cls._resolve_runtime_backend_typevar(backend_param)
+
+    @classmethod
+    def _resolve_runtime_backend_typevar(
+        cls,
+        backend_typevar: TypeVar,
+    ) -> type[PointerBackend]:
+        # Only TypeVar defaults are used for unspecialized backend TypeVars.
+        try:
+            has_default = backend_typevar.has_default()
+        except AttributeError:
+            has_default = False
+        if has_default:
+            default_candidate = getattr(backend_typevar, "__default__")
+            default_backend = cls._coerce_runtime_backend_candidate(default_candidate)
+            if default_backend is not None:
+                return default_backend
+
+        raise InvalidJSONPointer(
+            "JSONPointer backend TypeVar must define a default backend "
+            "or be specialized with a concrete backend type"
+        )
+
+    @classmethod
+    def _coerce_runtime_backend_candidate(
+        cls,
+        candidate: object,
+    ) -> type[PointerBackend] | None:
+        if isinstance(candidate, TypeVar):
+            return cls._resolve_runtime_backend_typevar(candidate)
+        if not isinstance(candidate, type):
+            return None
+        if candidate is PointerBackend or isabstract(candidate):
+            return None
+        return candidate
 
     def _validate_target(self, target: object) -> T_co:
         """Strictly validate the ``target`` with this JSONPointer's TypeAdapter."""
@@ -319,7 +353,7 @@ class JSONPointer(str, Generic[T_co, P_co]):
         path: str | Self | PointerBackend,
         *,
         type_param: TypeForm[Any] = JSONValue,
-        backend: type[_PointerClassProtocol] | None = None,
+        backend: type[PointerBackend] | None = None,
     ) -> Self:
         """
         Parse a pointer string or instance using Pydantic validation.

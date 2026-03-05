@@ -4,7 +4,6 @@ import pytest
 from pydantic import ValidationError
 from pytest import Subtests
 
-from jsonpatchx.backend import PointerBackend
 from jsonpatchx.builtins import AddOp, RemoveOp, ReplaceOp
 from jsonpatchx.exceptions import (
     InvalidJSONPointer,
@@ -120,10 +119,6 @@ def test_invalid_operation_registry(subtests: Subtests) -> None:
         with pytest.raises(InvalidOperationRegistry):
             OperationRegistry[FirstOp()]  # type: ignore[misc]
 
-    with subtests.test("GenericOperationRegistry rejects PointerBackend protocol"):
-        with pytest.raises(InvalidJSONPointer):
-            GenericOperationRegistry[PointerBackend, FirstOp]
-
     with subtests.test("OperationRegistry rejects nested registries"):
         nested = OperationRegistry[FirstOp]
         with pytest.raises(InvalidOperationRegistry):
@@ -217,10 +212,6 @@ def test_pointer_backend_binding(subtests: Subtests) -> None:
     with subtests.test("direct instantiation uses backend"):
         op = DotRemoveOp.model_validate({"path": "a.b"})
         assert isinstance(op.path.ptr, DotPointer)
-
-    with subtests.test("registry backend mismatch fails"):
-        with pytest.raises(InvalidOperationRegistry, match="incompatible"):
-            OperationRegistry[DotRemoveOp]
 
     with subtests.test("registry backend match succeeds"):
         registry_2 = GenericOperationRegistry[DotPointer, DotRemoveOp]
