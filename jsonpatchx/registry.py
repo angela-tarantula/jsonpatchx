@@ -148,6 +148,8 @@ _STANDARD_REGISTRY_SPECS = RegistrySpecs(
 )
 STANDARD_OPS = _STANDARD_REGISTRY_SPECS.ordered_ops
 
+_REGISTRY_CACHE: dict[RegistrySpecs, type[AnyRegistry]] = {}
+
 
 class OperationRegistry(Generic[*Ops]):
     """
@@ -176,10 +178,18 @@ class OperationRegistry(Generic[*Ops]):
         except ValidationError as exc:
             raise InvalidOperationRegistry(str(exc)) from exc
 
+        # try cache
+        cached = _REGISTRY_CACHE.get(spec)
+        if cached is not None:
+            return cached
+
         # subtype
         name = cls._registry_type_name(spec)
         namespace = {"_spec": spec}
         registry_type = type(name, (cls,), namespace)
+
+        # cache it
+        _REGISTRY_CACHE[spec] = registry_type
         return registry_type
 
     @staticmethod

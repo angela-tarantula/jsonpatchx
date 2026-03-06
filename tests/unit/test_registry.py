@@ -144,6 +144,26 @@ def test_registry_repr_and_hash() -> None:
     assert isinstance(hash(registry), int)
 
 
+def test_registry_type_cache_reuses_registry_class() -> None:
+    class FirstOp(OperationSchema):
+        op: Literal["cache-first"] = "cache-first"
+
+        @override
+        def apply(self, doc: JSONValue) -> JSONValue:
+            return doc
+
+    class SecondOp(OperationSchema):
+        op: Literal["cache-second"] = "cache-second"
+
+        @override
+        def apply(self, doc: JSONValue) -> JSONValue:
+            return doc
+
+    registry_a = OperationRegistry[FirstOp, SecondOp]
+    registry_b = OperationRegistry[SecondOp, FirstOp]
+    assert registry_a is registry_b
+
+
 def test_jsonpatch_dunders_and_to_string() -> None:
     patch = JsonPatch(
         [
