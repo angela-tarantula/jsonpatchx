@@ -25,7 +25,6 @@ from pydantic import (
 )
 
 from jsonpatchx.builtins import (
-    STANDARD_OPS,
     AddOp,
     CopyOp,
     MoveOp,
@@ -126,13 +125,22 @@ class RegistrySpecs(BaseModel):
         """The Pydantic adapter for validating a full patch array payload."""
         return TypeAdapter(list[self.union])  # type: ignore[name-defined]
 
-    @cached_property
     def is_RFC6902(self) -> bool:
         """Whether or not the operation set is RFC 6902."""
-        return self.ordered_ops == _STANDARD_REGISTRY_SPECS.ordered_ops
+        return self.ordered_ops == STANDARD_OPS
 
 
-_STANDARD_REGISTRY_SPECS = RegistrySpecs(ops=STANDARD_OPS)
+_STANDARD_REGISTRY_SPECS = RegistrySpecs(
+    ops=(
+        AddOp,
+        CopyOp,
+        MoveOp,
+        RemoveOp,
+        ReplaceOp,
+        TestOp,
+    )
+)
+STANDARD_OPS = _STANDARD_REGISTRY_SPECS.ordered_ops
 
 
 class OperationRegistry(Generic[*Ops]):
@@ -161,16 +169,16 @@ class OperationRegistry(Generic[*Ops]):
             raise InvalidOperationRegistry(str(exc)) from exc
 
         # subtype
-        name = cls._registry_type_name(spec.ordered_ops)
+        name = cls._registry_type_name(spec)
         namespace = {"_spec": spec}
         registry_type = type(name, (cls,), namespace)
         return registry_type
 
     @staticmethod
-    def _registry_type_name(ops: tuple[type[OperationSchema], ...]) -> str:
-        if ops == _STANDARD_REGISTRY_SPECS.ordered_ops:
+    def _registry_type_name(spec: RegistrySpecs) -> str:
+        if spec.is_RFC6902():
             return "StandardRegistry"
-        op_names = "_".join(op.__name__ for op in ops)
+        op_names = "_".join(op.__name__ for op in spec.ordered_ops)
         return f"OperationRegistry_{op_names}"
 
     @classmethod
