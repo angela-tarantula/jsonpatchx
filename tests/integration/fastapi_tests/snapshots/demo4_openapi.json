@@ -79,9 +79,9 @@
         "discriminator": {
           "mapping": {
             "add": "#/components/schemas/AddOp",
-            "append": "#/components/schemas/RuneAppendOp___DEFAULT_POINTER_CLSBound",
+            "append": "#/components/schemas/RuneAppendOp",
             "copy": "#/components/schemas/CopyOp",
-            "increment": "#/components/schemas/RuneIncrementOp___DEFAULT_POINTER_CLSBound",
+            "increment": "#/components/schemas/RuneIncrementOp",
             "move": "#/components/schemas/MoveOp",
             "remove": "#/components/schemas/RemoveOp",
             "replace": "#/components/schemas/ReplaceOp",
@@ -94,13 +94,13 @@
             "$ref": "#/components/schemas/AddOp"
           },
           {
-            "$ref": "#/components/schemas/RuneAppendOp___DEFAULT_POINTER_CLSBound"
+            "$ref": "#/components/schemas/RuneAppendOp"
           },
           {
             "$ref": "#/components/schemas/CopyOp"
           },
           {
-            "$ref": "#/components/schemas/RuneIncrementOp___DEFAULT_POINTER_CLSBound"
+            "$ref": "#/components/schemas/RuneIncrementOp"
           },
           {
             "$ref": "#/components/schemas/MoveOp"
@@ -263,7 +263,7 @@
         "title": "Replace operation",
         "type": "object"
       },
-      "RuneAppendOp___DEFAULT_POINTER_CLSBound": {
+      "RuneAppendOp": {
         "additionalProperties": true,
         "description": "Appends a value to an array.",
         "properties": {
@@ -293,10 +293,10 @@
           "path",
           "value"
         ],
-        "title": "Append operation",
+        "title": "Rune append operation",
         "type": "object"
       },
-      "RuneIncrementOp___DEFAULT_POINTER_CLSBound": {
+      "RuneIncrementOp": {
         "additionalProperties": true,
         "description": "Increments a numeric field by a value.",
         "properties": {
@@ -328,7 +328,7 @@
           "path",
           "value"
         ],
-        "title": "Increment operation",
+        "title": "Rune increment operation",
         "type": "object"
       },
       "SpellbookId": {
@@ -344,9 +344,9 @@
         "discriminator": {
           "mapping": {
             "add": "#/components/schemas/AddOp",
-            "append": "#/components/schemas/RuneAppendOp___DEFAULT_POINTER_CLSBound",
+            "append": "#/components/schemas/RuneAppendOp",
             "copy": "#/components/schemas/CopyOp",
-            "increment": "#/components/schemas/RuneIncrementOp___DEFAULT_POINTER_CLSBound",
+            "increment": "#/components/schemas/RuneIncrementOp",
             "move": "#/components/schemas/MoveOp",
             "remove": "#/components/schemas/RemoveOp",
             "replace": "#/components/schemas/ReplaceOp",
@@ -359,13 +359,13 @@
             "$ref": "#/components/schemas/AddOp"
           },
           {
-            "$ref": "#/components/schemas/RuneAppendOp___DEFAULT_POINTER_CLSBound"
+            "$ref": "#/components/schemas/RuneAppendOp"
           },
           {
             "$ref": "#/components/schemas/CopyOp"
           },
           {
-            "$ref": "#/components/schemas/RuneIncrementOp___DEFAULT_POINTER_CLSBound"
+            "$ref": "#/components/schemas/RuneIncrementOp"
           },
           {
             "$ref": "#/components/schemas/MoveOp"

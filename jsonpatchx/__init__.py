@@ -25,7 +25,6 @@ from jsonpatchx.exceptions import (
 from jsonpatchx.pointer import JSONPointer
 from jsonpatchx.pydantic import JsonPatchFor
 from jsonpatchx.registry import (
-    GenericOperationRegistry,
     OperationRegistry,
     StandardRegistry,
 )
@@ -53,7 +52,6 @@ __all__ = [
     "OperationSchema",
     "OperationRegistry",
     "StandardRegistry",
-    "GenericOperationRegistry",
     # pydantic helpers
     "JsonPatchFor",
     # built-ins

@@ -180,23 +180,6 @@ def test_parse_python_op_rejects_other_registry_models() -> None:
         registry.parse_python_op(op_instance)
 
 
-def test_registry_rejects_missing_resolved_field_annotation() -> None:
-    class CorruptedOp(OperationSchema):
-        op: Literal["corrupted"] = "corrupted"
-        path: JSONPointer[JSONValue]
-
-        @override
-        def apply(self, doc: JSONValue) -> JSONValue:
-            return doc
-
-    # Simulate runtime class mutation by external tooling/plugins: model_fields still has
-    # "path", but get_type_hints() no longer resolves it from __annotations__.
-    del CorruptedOp.__annotations__["path"]
-
-    with pytest.raises(InvalidOperationRegistry, match="missing a resolved type"):
-        OperationRegistry[CorruptedOp]
-
-
 def test_registry_backend_rewrite_policies() -> None:
     class DotBackendA(DotPointer):
         pass

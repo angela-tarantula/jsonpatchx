@@ -30,7 +30,7 @@ from typing_extensions import TypeForm, TypeVar
 from jsonpatchx.exceptions import PatchValidationError
 from jsonpatchx.registry import (
     AnyRegistry,
-    GenericOperationRegistry,
+    OperationRegistry,
 )
 from jsonpatchx.schema import OperationSchema
 from jsonpatchx.standard import _apply_ops
@@ -129,7 +129,7 @@ RegistryT = TypeVar("RegistryT", bound=AnyRegistry)
 
 
 def _require_registry_type(registry: object) -> type[AnyRegistry]:
-    if not isclass(registry) or not issubclass(registry, GenericOperationRegistry):
+    if not isclass(registry) or not issubclass(registry, OperationRegistry):
         raise TypeError(
             "JsonPatchFor expects a registry type (OperationRegistry[...]), "
             f"got {registry!r}"

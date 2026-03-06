@@ -2,15 +2,14 @@
 
 from __future__ import annotations
 
-from typing import Annotated, Literal
+from typing import Annotated, Literal, override
 
 from fastapi import HTTPException, Path
+from pydantic import ConfigDict, Field
 
 from examples.fastapi.shared import (
-    AppendOp,
     Apprentice,
     ApprenticeId,
-    IncrementOp,
     RunePointer,
     SpellbookId,
     create_app,
@@ -25,6 +24,7 @@ from jsonpatchx import (
     JSONValue,
     MoveOp,
     OperationRegistry,
+    OperationSchema,
     RemoveOp,
     ReplaceOp,
     TestOp,
@@ -46,12 +46,37 @@ app = create_app(
 )
 
 
-class RuneIncrementOp(IncrementOp):
+class RuneIncrementOp(OperationSchema):
+    model_config = ConfigDict(
+        title="Rune increment operation",
+        json_schema_extra={"description": "Increments a numeric field by a value."},
+    )
+
+    op: Literal["increment"] = "increment"
     path: JSONPointer[JSONNumber, RunePointer]
+    value: JSONNumber = Field(gt=0, multiple_of=5)
+
+    @override
+    def apply(self, doc: JSONValue) -> JSONValue:
+        current = self.path.get(doc)
+        total = current + self.value
+        return self.path.add(doc, total)
 
 
-class RuneAppendOp(AppendOp):
+class RuneAppendOp(OperationSchema):
+    model_config = ConfigDict(
+        title="Rune append operation",
+        json_schema_extra={"description": "Appends a value to an array."},
+    )
+
+    op: Literal["append"] = "append"
     path: JSONPointer[list[JSONValue], RunePointer]
+    value: JSONValue
+
+    @override
+    def apply(self, doc: JSONValue) -> JSONValue:
+        current = self.path.get(doc)
+        return self.path.add(doc, [*current, self.value])
 
 
 registry = OperationRegistry[

@@ -80,8 +80,8 @@
           "mapping": {
             "add": "#/components/schemas/AddOp",
             "copy": "#/components/schemas/CopyOp",
-            "explicit_append": "#/components/schemas/ExplicitRuneAppendOp___DEFAULT_POINTER_CLSBound",
-            "explicit_increment": "#/components/schemas/ExplicitRuneIncrementOp___DEFAULT_POINTER_CLSBound",
+            "explicit_append": "#/components/schemas/ExplicitRuneAppendOp",
+            "explicit_increment": "#/components/schemas/ExplicitRuneIncrementOp",
             "move": "#/components/schemas/MoveOp",
             "remove": "#/components/schemas/RemoveOp",
             "replace": "#/components/schemas/ReplaceOp",
@@ -97,10 +97,10 @@
             "$ref": "#/components/schemas/CopyOp"
           },
           {
-            "$ref": "#/components/schemas/ExplicitRuneAppendOp___DEFAULT_POINTER_CLSBound"
+            "$ref": "#/components/schemas/ExplicitRuneAppendOp"
           },
           {
-            "$ref": "#/components/schemas/ExplicitRuneIncrementOp___DEFAULT_POINTER_CLSBound"
+            "$ref": "#/components/schemas/ExplicitRuneIncrementOp"
           },
           {
             "$ref": "#/components/schemas/MoveOp"
@@ -160,7 +160,7 @@
         "title": "Copy operation",
         "type": "object"
       },
-      "ExplicitRuneAppendOp___DEFAULT_POINTER_CLSBound": {
+      "ExplicitRuneAppendOp": {
         "additionalProperties": true,
         "description": "Appends a value to an array using an explicit rune pointer backend.",
         "properties": {
@@ -193,7 +193,7 @@
         "title": "Explicit rune append operation",
         "type": "object"
       },
-      "ExplicitRuneIncrementOp___DEFAULT_POINTER_CLSBound": {
+      "ExplicitRuneIncrementOp": {
         "additionalProperties": true,
         "description": "Increments a numeric field using an explicit rune pointer backend.",
         "properties": {

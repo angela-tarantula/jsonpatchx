@@ -80,8 +80,8 @@
           "mapping": {
             "add": "#/components/schemas/AddOp",
             "copy": "#/components/schemas/CopyOp",
-            "generic_append": "#/components/schemas/GenericAppendOp_RunePointerV2____DEFAULT_POINTER_CLSBound",
-            "generic_increment": "#/components/schemas/GenericIncrementOp_RunePointerV2____DEFAULT_POINTER_CLSBound",
+            "generic_append": "#/components/schemas/GenericAppendOp_RunePointerV2_",
+            "generic_increment": "#/components/schemas/GenericIncrementOp_RunePointerV2_",
             "move": "#/components/schemas/MoveOp",
             "remove": "#/components/schemas/RemoveOp",
             "replace": "#/components/schemas/ReplaceOp",
@@ -97,10 +97,10 @@
             "$ref": "#/components/schemas/CopyOp"
           },
           {
-            "$ref": "#/components/schemas/GenericAppendOp_RunePointerV2____DEFAULT_POINTER_CLSBound"
+            "$ref": "#/components/schemas/GenericAppendOp_RunePointerV2_"
           },
           {
-            "$ref": "#/components/schemas/GenericIncrementOp_RunePointerV2____DEFAULT_POINTER_CLSBound"
+            "$ref": "#/components/schemas/GenericIncrementOp_RunePointerV2_"
           },
           {
             "$ref": "#/components/schemas/MoveOp"
@@ -160,7 +160,7 @@
         "title": "Copy operation",
         "type": "object"
       },
-      "GenericAppendOp_RunePointerV2____DEFAULT_POINTER_CLSBound": {
+      "GenericAppendOp_RunePointerV2_": {
         "additionalProperties": true,
         "description": "Appends a value to an array using a pointer backend generic type parameter.",
         "properties": {
@@ -193,7 +193,7 @@
         "title": "Append operation",
         "type": "object"
       },
-      "GenericIncrementOp_RunePointerV2____DEFAULT_POINTER_CLSBound": {
+      "GenericIncrementOp_RunePointerV2_": {
         "additionalProperties": true,
         "description": "Increments a numeric field using a pointer backend generic type parameter.",
         "properties": {
