@@ -12,6 +12,7 @@ from typing import (
     TypeAliasType,
     TypeVarTuple,
     Union,
+    override,
 )
 
 from pydantic import (
@@ -43,12 +44,12 @@ class RegistrySpecs(BaseModel):
     """Derived registry artifacts for an ordered set of operation models.
 
     Attributes:
-        ops: Operation models as supplied by the registry declaration.
+        ops: Unique operation models in this registry spec.
     """
 
     model_config = ConfigDict(arbitrary_types_allowed=True, frozen=True)
 
-    ops: tuple[type[OperationSchema], ...]
+    ops: frozenset[type[OperationSchema]]
 
     @model_validator(mode="after")
     def _validate_ops(self) -> RegistrySpecs:
@@ -59,13 +60,13 @@ class RegistrySpecs(BaseModel):
                 "OperationRegistry requires at least one operation model"
             )
 
-        non_concrete_models = [
+        non_concrete_models = sorted(
             model.__name__ for model in self.ops if isabstract(model)
-        ]
+        )
         if non_concrete_models:
             raise InvalidOperationRegistry(
                 "Expected concrete OperationSchema classes, got abstract models: "
-                f"{sorted(non_concrete_models)!r}"
+                f"{non_concrete_models!r}"
             )
 
         def duplicates(values: Iterable[str]) -> list[str]:
@@ -95,6 +96,18 @@ class RegistrySpecs(BaseModel):
     def ordered_ops(self) -> tuple[type[OperationSchema], ...]:
         """Deterministic operation order used for schema and adapter stability."""
         return tuple(sorted(self.ops, key=lambda op: op._op_literals[0]))
+
+    @override
+    def __eq__(self, other: object) -> bool:
+        """Compare specs by canonical operation ordering, not declaration ordering."""
+        if not isinstance(other, RegistrySpecs):
+            return NotImplemented
+        return self.ordered_ops == other.ordered_ops
+
+    @override
+    def __hash__(self) -> int:
+        """Hash specs by canonical operation ordering, not declaration ordering."""
+        return hash(self.ordered_ops)
 
     @cached_property
     def model_map(self) -> Mapping[str, type[OperationSchema]]:
@@ -131,14 +144,7 @@ class RegistrySpecs(BaseModel):
 
 
 _STANDARD_REGISTRY_SPECS = RegistrySpecs(
-    ops=(
-        AddOp,
-        CopyOp,
-        MoveOp,
-        RemoveOp,
-        ReplaceOp,
-        TestOp,
-    )
+    ops=frozenset([AddOp, CopyOp, MoveOp, RemoveOp, ReplaceOp, TestOp])
 )
 STANDARD_OPS = _STANDARD_REGISTRY_SPECS.ordered_ops
 
