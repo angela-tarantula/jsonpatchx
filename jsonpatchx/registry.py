@@ -1,9 +1,9 @@
 from __future__ import annotations
 
 from collections import Counter
-from collections.abc import Mapping, Sequence
+from collections.abc import Iterable, Mapping, Sequence
+from functools import cached_property
 from inspect import isabstract, isclass
-from types import MappingProxyType
 from typing import (
     Annotated,
     Any,
@@ -14,7 +14,7 @@ from typing import (
     Union,
 )
 
-from pydantic import Field, TypeAdapter
+from pydantic import BaseModel, ConfigDict, Field, TypeAdapter, model_validator
 
 from jsonpatchx.builtins import (
     STANDARD_OPS,
@@ -33,6 +33,75 @@ type AnyRegistry = OperationRegistry[*tuple[Any, ...]]
 Ops = TypeVarTuple("Ops")
 
 
+class RegistrySpecs(BaseModel):
+    """Derived registry artifacts for an ordered set of operation models.
+
+    Attributes:
+        ordered_ops: Operation models in evaluation order.
+    """
+
+    model_config = ConfigDict(arbitrary_types_allowed=True, frozen=True)
+
+    ordered_ops: tuple[type[OperationSchema], ...]
+
+    @model_validator(mode="after")
+    def _validate_ops(self) -> RegistrySpecs:
+        """Validates unique model names and op literals across all models."""
+
+        def duplicates(values: Iterable[str]) -> list[str]:
+            """Returns sorted duplicate values for deterministic error output."""
+            return sorted(
+                {value for value, count in Counter(values).items() if count > 1}
+            )
+
+        dupe_names = duplicates(model.__name__ for model in self.ordered_ops)
+        if dupe_names:
+            raise InvalidOperationRegistry(
+                "Expected unique OperationSchema names, got duplicates for these: "
+                f"{dupe_names!r}"
+            )
+
+        dupe_op_literals = duplicates(
+            op_literal
+            for model in self.ordered_ops
+            for op_literal in model._op_literals
+        )
+        if dupe_op_literals:
+            raise InvalidOperationRegistry(
+                f"Unable to discriminate by 'op' due to duplicates: {dupe_op_literals!r}"
+            )
+
+        return self
+
+    @cached_property
+    def model_map(self) -> Mapping[str, type[OperationSchema]]:
+        """The mapping of each op literal to its owning operation model."""
+        return {
+            op_literal: model
+            for model in self.ordered_ops
+            for op_literal in model._op_literals
+        }
+
+    @cached_property
+    def union(self) -> TypeAliasType:
+        """The discriminated union type used for operation parsing."""
+        type RegistryPatchOperation = Annotated[
+            Union[self.ordered_ops],  # type: ignore[name-defined]
+            Field(discriminator="op"),
+        ]
+        return RegistryPatchOperation
+
+    @cached_property
+    def op_adapter(self) -> TypeAdapter[OperationSchema]:
+        """The Pydantic adapter for validating a single operation payload."""
+        return TypeAdapter(self.union)
+
+    @cached_property
+    def patch_adapter(self) -> TypeAdapter[list[OperationSchema]]:
+        """The Pydantic adapter for validating a full patch array payload."""
+        return TypeAdapter(list[self.union])  # type: ignore[name-defined]
+
+
 class OperationRegistry(Generic[*Ops]):
     """
     Registry for JSON Patch operation types.
@@ -47,6 +116,7 @@ class OperationRegistry(Generic[*Ops]):
     _model_map: ClassVar[Mapping[str, type[OperationSchema]]]
     _op_adapter: ClassVar[TypeAdapter[OperationSchema]]
     _patch_adapter: ClassVar[TypeAdapter[list[OperationSchema]]]
+    _spec: ClassVar[RegistrySpecs]
 
     def __new__(cls, *_: object, **__: object) -> OperationRegistry[*Ops]:
         raise TypeError(
@@ -60,21 +130,20 @@ class OperationRegistry(Generic[*Ops]):
 
         # parse
         op_models = cls._validate_op_models(params)
-        cls._validate_op_name_uniqueness(*op_models)
         ordered_ops = cls._deterministic_sort(*op_models)
 
-        # build
-        model_map = cls._build_model_map(*ordered_ops)
-        union_type, op_adapter, patch_adapter = cls._build_adapters(*ordered_ops)
+        # build + validate
+        spec = RegistrySpecs(ordered_ops=ordered_ops)
 
         # subtype
         name = cls._registry_type_name(ordered_ops)
         namespace = {
+            "_spec": spec,
             "ops": ordered_ops,
-            "union": union_type,
-            "_model_map": model_map,
-            "_op_adapter": op_adapter,
-            "_patch_adapter": patch_adapter,
+            "union": spec.union,
+            "_model_map": spec.model_map,
+            "_op_adapter": spec.op_adapter,
+            "_patch_adapter": spec.patch_adapter,
         }
         registry_type = type(name, (cls,), namespace)
         return registry_type
@@ -109,57 +178,6 @@ class OperationRegistry(Generic[*Ops]):
                 f"{param!r} is not a concrete OperationSchema"
             )
         return param
-
-    @staticmethod
-    def _validate_op_name_uniqueness(*op_models: type[OperationSchema]) -> None:
-        duplicates = {
-            name
-            for name, count in Counter(model.__name__ for model in op_models).items()
-            if count > 1
-        }
-        if duplicates:
-            raise InvalidOperationRegistry(
-                "Expected unique OperationSchema names, got duplicates for these: "
-                f"{duplicates!r}"
-            )
-
-    @staticmethod
-    def _build_model_map(
-        *op_models: type[OperationSchema],
-    ) -> Mapping[str, type[OperationSchema]]:
-        model_map: dict[str, type[OperationSchema]] = {}
-        for model in op_models:
-            for op_literal in model._op_literals:
-                if op_literal in model_map:
-                    other = model_map[op_literal]
-                    raise InvalidOperationRegistry(
-                        f"{model.__name__} and {other.__name__} cannot share "
-                        f"'{op_literal}' as an op identifier"
-                    )
-                model_map[op_literal] = model
-        return MappingProxyType(model_map)
-
-    @staticmethod
-    def _build_adapters(
-        *op_models: type[OperationSchema],
-    ) -> tuple[
-        TypeAliasType,
-        TypeAdapter[OperationSchema],
-        TypeAdapter[list[OperationSchema]],
-    ]:
-        ordered_ops_tuple: tuple[type[OperationSchema], ...] = (
-            OperationRegistry._deterministic_sort(*op_models)
-        )
-
-        type RegistryPatchOperation = Annotated[
-            Union[ordered_ops_tuple],  # type: ignore[valid-type]  # dynamic runtime type for Pydantic
-            Field(discriminator="op"),
-        ]
-        op_adapter: TypeAdapter[OperationSchema] = TypeAdapter(RegistryPatchOperation)
-        patch_adapter: TypeAdapter[list[OperationSchema]] = TypeAdapter(
-            list[RegistryPatchOperation]
-        )
-        return RegistryPatchOperation, op_adapter, patch_adapter
 
     @staticmethod
     def _deterministic_sort(
