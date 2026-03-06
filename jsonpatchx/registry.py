@@ -32,11 +32,6 @@ from jsonpatchx.types import JSONValue
 type AnyRegistry = OperationRegistry[*tuple[Any, ...]]
 Ops = TypeVarTuple("Ops")
 
-_REGISTRY_CACHE: dict[
-    tuple[type[OperationSchema], ...],
-    type[AnyRegistry],
-] = {}
-
 
 class OperationRegistry(Generic[*Ops]):
     """
@@ -69,13 +64,11 @@ class OperationRegistry(Generic[*Ops]):
         cls._validate_op_name_uniqueness(*op_models)
         ordered_ops = cls._deterministic_sort(*op_models)
 
-        cached = _REGISTRY_CACHE.get(ordered_ops)
-        if cached is not None:
-            return cached
-
+        # build
         model_map = cls._build_model_map(*ordered_ops)
         union_type, op_adapter, patch_adapter = cls._build_adapters(*ordered_ops)
 
+        # subtype
         name = cls._registry_type_name(ordered_ops)
         namespace = {
             "ops": ordered_ops,
@@ -86,7 +79,6 @@ class OperationRegistry(Generic[*Ops]):
             "_patch_adapter": patch_adapter,
         }
         registry_type = type(name, (cls,), namespace)
-        _REGISTRY_CACHE[ordered_ops] = registry_type
         return registry_type
 
     @staticmethod
