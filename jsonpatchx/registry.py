@@ -12,7 +12,6 @@ from typing import (
     TypeAliasType,
     TypeVarTuple,
     Union,
-    cast,
 )
 
 from pydantic import (
@@ -125,6 +124,7 @@ class RegistrySpecs(BaseModel):
         """The Pydantic adapter for validating a full patch array payload."""
         return TypeAdapter(list[self.union])  # type: ignore[name-defined]
 
+    @cached_property
     def is_RFC6902(self) -> bool:
         """Whether or not the operation set is RFC 6902."""
         return self.ordered_ops == STANDARD_OPS
@@ -163,8 +163,10 @@ class OperationRegistry(Generic[*Ops]):
     def __class_getitem__(cls, args: object) -> type[AnyRegistry]:
         # normalize
         params: tuple[object, ...] = args if isinstance(args, tuple) else (args,)
+
+        # validate
         try:
-            spec = RegistrySpecs(ops=cast(tuple[type[OperationSchema], ...], params))
+            spec = RegistrySpecs(ops=params)
         except ValidationError as exc:
             raise InvalidOperationRegistry(str(exc)) from exc
 
@@ -176,10 +178,18 @@ class OperationRegistry(Generic[*Ops]):
 
     @staticmethod
     def _registry_type_name(spec: RegistrySpecs) -> str:
-        if spec.is_RFC6902():
+        if spec.is_RFC6902:
             return "StandardRegistry"
         op_names = "_".join(op.__name__ for op in spec.ordered_ops)
         return f"OperationRegistry_{op_names}"
+
+    @classmethod
+    def ops(cls) -> tuple[type[OperationSchema], ...]:
+        return cls._spec.ordered_ops
+
+    @classmethod
+    def union(cls) -> TypeAliasType:
+        return cls._spec.union
 
     @classmethod
     def model_for(cls, instruction: str) -> type[OperationSchema]:
@@ -189,14 +199,6 @@ class OperationRegistry(Generic[*Ops]):
                 f"Patch operation '{instruction}' is not allowed in this registry"
             )
         return model
-
-    @classmethod
-    def ops(cls) -> tuple[type[OperationSchema], ...]:
-        return cls._spec.ordered_ops
-
-    @classmethod
-    def union(cls) -> TypeAliasType:
-        return cls._spec.union
 
     @classmethod
     def parse_python_op(
