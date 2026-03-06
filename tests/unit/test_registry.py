@@ -180,6 +180,13 @@ def test_parse_python_op_rejects_other_registry_models() -> None:
         registry.parse_python_op(op_instance)
 
 
+def test_model_for_returns_registered_model_and_rejects_unknown() -> None:
+    registry = OperationRegistry[ToggleOp]
+    assert registry.model_for("toggle") is ToggleOp
+    with pytest.raises(OperationNotRecognized):
+        registry.model_for("not-allowed")
+
+
 def test_registry_backend_rewrite_policies() -> None:
     class DotBackendA(DotPointer):
         pass

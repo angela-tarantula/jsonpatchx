@@ -169,8 +169,13 @@ class OperationRegistry(Generic[*Ops]):
         return tuple(sorted(op_models, key=lambda op: op._op_literals[0]))
 
     @classmethod
-    def ops_by_name(cls) -> Mapping[str, type[OperationSchema]]:
-        return cls._model_map
+    def model_for(cls, instruction: str) -> type[OperationSchema]:
+        model = cls._model_map.get(instruction)
+        if model is None:
+            raise OperationNotRecognized(
+                f"Patch operation '{instruction}' is not allowed in this registry"
+            )
+        return model
 
     @classmethod
     def parse_python_op(
