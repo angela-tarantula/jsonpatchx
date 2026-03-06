@@ -45,24 +45,24 @@ class RegistrySpecs(BaseModel):
     """Derived registry artifacts for an ordered set of operation models.
 
     Attributes:
-        ordered_ops: Operation models in evaluation order.
+        ops: Operation models as supplied by the registry declaration.
     """
 
     model_config = ConfigDict(arbitrary_types_allowed=True, frozen=True)
 
-    ordered_ops: tuple[type[OperationSchema], ...]
+    ops: tuple[type[OperationSchema], ...]
 
     @model_validator(mode="after")
     def _validate_ops(self) -> RegistrySpecs:
         """Validates non-empty, concrete, uniquely named/discriminated models."""
 
-        if not self.ordered_ops:
+        if not self.ops:
             raise InvalidOperationRegistry(
                 "OperationRegistry requires at least one operation model"
             )
 
         non_concrete_models = [
-            model.__name__ for model in self.ordered_ops if isabstract(model)
+            model.__name__ for model in self.ops if isabstract(model)
         ]
         if non_concrete_models:
             raise InvalidOperationRegistry(
@@ -76,7 +76,7 @@ class RegistrySpecs(BaseModel):
                 {value for value, count in Counter(values).items() if count > 1}
             )
 
-        dupe_names = duplicates(model.__name__ for model in self.ordered_ops)
+        dupe_names = duplicates(model.__name__ for model in self.ops)
         if dupe_names:
             raise InvalidOperationRegistry(
                 "Expected unique OperationSchema names, got duplicates for these: "
@@ -84,9 +84,7 @@ class RegistrySpecs(BaseModel):
             )
 
         dupe_op_literals = duplicates(
-            op_literal
-            for model in self.ordered_ops
-            for op_literal in model._op_literals
+            op_literal for model in self.ops for op_literal in model._op_literals
         )
         if dupe_op_literals:
             raise InvalidOperationRegistry(
@@ -94,6 +92,11 @@ class RegistrySpecs(BaseModel):
             )
 
         return self
+
+    @cached_property
+    def ordered_ops(self) -> tuple[type[OperationSchema], ...]:
+        """Deterministic operation order used for schema and adapter stability."""
+        return tuple(sorted(self.ops, key=lambda op: op._op_literals[0]))
 
     @cached_property
     def model_map(self) -> Mapping[str, type[OperationSchema]]:
@@ -123,6 +126,14 @@ class RegistrySpecs(BaseModel):
         """The Pydantic adapter for validating a full patch array payload."""
         return TypeAdapter(list[self.union])  # type: ignore[name-defined]
 
+    @cached_property
+    def is_RFC6902(self) -> bool:
+        """Whether or not the operation set is RFC 6902."""
+        return self.ordered_ops == _STANDARD_REGISTRY_SPECS.ordered_ops
+
+
+_STANDARD_REGISTRY_SPECS = RegistrySpecs(ops=STANDARD_OPS)
+
 
 class OperationRegistry(Generic[*Ops]):
     """
@@ -145,35 +156,22 @@ class OperationRegistry(Generic[*Ops]):
         # normalize
         params: tuple[object, ...] = args if isinstance(args, tuple) else (args,)
         try:
-            raw_spec = RegistrySpecs(
-                ordered_ops=cast(tuple[type[OperationSchema], ...], params)
-            )
+            spec = RegistrySpecs(ops=cast(tuple[type[OperationSchema], ...], params))
         except ValidationError as exc:
             raise InvalidOperationRegistry(str(exc)) from exc
-        ordered_ops = cls._deterministic_sort(*raw_spec.ordered_ops)
-
-        # build + validate
-        spec = RegistrySpecs(ordered_ops=ordered_ops)
 
         # subtype
-        name = cls._registry_type_name(ordered_ops)
+        name = cls._registry_type_name(spec.ordered_ops)
         namespace = {"_spec": spec}
         registry_type = type(name, (cls,), namespace)
         return registry_type
 
     @staticmethod
     def _registry_type_name(ops: tuple[type[OperationSchema], ...]) -> str:
-        if ops == OperationRegistry._deterministic_sort(*STANDARD_OPS):
+        if ops == _STANDARD_REGISTRY_SPECS.ordered_ops:
             return "StandardRegistry"
         op_names = "_".join(op.__name__ for op in ops)
         return f"OperationRegistry_{op_names}"
-
-    @staticmethod
-    def _deterministic_sort(
-        *op_models: type[OperationSchema],
-    ) -> tuple[type[OperationSchema], ...]:
-        """Deterministic sorting of OperationSchemas for OpenAPI reproducibility."""
-        return tuple(sorted(op_models, key=lambda op: op._op_literals[0]))
 
     @classmethod
     def model_for(cls, instruction: str) -> type[OperationSchema]:
