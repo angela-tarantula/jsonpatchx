@@ -44,7 +44,6 @@ class OperationRegistry(Generic[*Ops]):
 
     ops: ClassVar[tuple[type[OperationSchema], ...]]
     union: ClassVar[TypeAliasType]
-    _ops_set: ClassVar[frozenset[type[OperationSchema]]]
     _model_map: ClassVar[Mapping[str, type[OperationSchema]]]
     _op_adapter: ClassVar[TypeAdapter[OperationSchema]]
     _patch_adapter: ClassVar[TypeAdapter[list[OperationSchema]]]
@@ -72,7 +71,6 @@ class OperationRegistry(Generic[*Ops]):
         name = cls._registry_type_name(ordered_ops)
         namespace = {
             "ops": ordered_ops,
-            "_ops_set": frozenset(ordered_ops),
             "union": union_type,
             "_model_map": model_map,
             "_op_adapter": op_adapter,
@@ -175,15 +173,11 @@ class OperationRegistry(Generic[*Ops]):
         return cls._model_map
 
     @classmethod
-    def ops_set(cls) -> frozenset[type[OperationSchema]]:
-        return cls._ops_set
-
-    @classmethod
     def parse_python_op(
         cls, obj: Mapping[str, JSONValue] | OperationSchema
     ) -> OperationSchema:
         if isinstance(obj, OperationSchema):
-            if type(obj) not in cls._ops_set:
+            if type(obj) not in cls.ops:
                 raise OperationNotRecognized(
                     f"Operation {type(obj).__name__} is not allowed in this registry"
                 )
@@ -202,7 +196,7 @@ class OperationRegistry(Generic[*Ops]):
         ops: list[OperationSchema] = []
         for item in python:
             if isinstance(item, OperationSchema):
-                if type(item) not in cls._ops_set:
+                if type(item) not in cls.ops:
                     raise OperationNotRecognized(
                         f"Operation {type(item).__name__} is not allowed in this registry"
                     )
