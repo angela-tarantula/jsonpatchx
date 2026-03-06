@@ -3,7 +3,7 @@ from __future__ import annotations
 from collections import Counter
 from collections.abc import Iterable, Mapping, Sequence
 from functools import cached_property
-from inspect import isabstract, isclass
+from inspect import isabstract
 from typing import (
     Annotated,
     Any,
@@ -12,9 +12,17 @@ from typing import (
     TypeAliasType,
     TypeVarTuple,
     Union,
+    cast,
 )
 
-from pydantic import BaseModel, ConfigDict, Field, TypeAdapter, model_validator
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+    TypeAdapter,
+    ValidationError,
+    model_validator,
+)
 
 from jsonpatchx.builtins import (
     STANDARD_OPS,
@@ -46,7 +54,21 @@ class RegistrySpecs(BaseModel):
 
     @model_validator(mode="after")
     def _validate_ops(self) -> RegistrySpecs:
-        """Validates unique model names and op literals across all models."""
+        """Validates non-empty, concrete, uniquely named/discriminated models."""
+
+        if not self.ordered_ops:
+            raise InvalidOperationRegistry(
+                "OperationRegistry requires at least one operation model"
+            )
+
+        non_concrete_models = [
+            model.__name__ for model in self.ordered_ops if isabstract(model)
+        ]
+        if non_concrete_models:
+            raise InvalidOperationRegistry(
+                "Expected concrete OperationSchema classes, got abstract models: "
+                f"{sorted(non_concrete_models)!r}"
+            )
 
         def duplicates(values: Iterable[str]) -> list[str]:
             """Returns sorted duplicate values for deterministic error output."""
@@ -122,10 +144,13 @@ class OperationRegistry(Generic[*Ops]):
     def __class_getitem__(cls, args: object) -> type[AnyRegistry]:
         # normalize
         params: tuple[object, ...] = args if isinstance(args, tuple) else (args,)
-
-        # parse
-        op_models = cls._validate_op_models(params)
-        ordered_ops = cls._deterministic_sort(*op_models)
+        try:
+            raw_spec = RegistrySpecs(
+                ordered_ops=cast(tuple[type[OperationSchema], ...], params)
+            )
+        except ValidationError as exc:
+            raise InvalidOperationRegistry(str(exc)) from exc
+        ordered_ops = cls._deterministic_sort(*raw_spec.ordered_ops)
 
         # build + validate
         spec = RegistrySpecs(ordered_ops=ordered_ops)
@@ -142,30 +167,6 @@ class OperationRegistry(Generic[*Ops]):
             return "StandardRegistry"
         op_names = "_".join(op.__name__ for op in ops)
         return f"OperationRegistry_{op_names}"
-
-    @staticmethod
-    def _validate_op_models(
-        params: tuple[object, ...],
-    ) -> tuple[type[OperationSchema], ...]:
-        if not params:
-            raise InvalidOperationRegistry(
-                "OperationRegistry requires at least one operation model"
-            )
-
-        validated = tuple(
-            OperationRegistry._validate_op_model(param) for param in params
-        )
-        return validated
-
-    @staticmethod
-    def _validate_op_model(param: object) -> type[OperationSchema]:
-        if not isclass(param):
-            raise InvalidOperationRegistry(f"{param!r} is not a class")
-        if not issubclass(param, OperationSchema) or isabstract(param):
-            raise InvalidOperationRegistry(
-                f"{param!r} is not a concrete OperationSchema"
-            )
-        return param
 
     @staticmethod
     def _deterministic_sort(
