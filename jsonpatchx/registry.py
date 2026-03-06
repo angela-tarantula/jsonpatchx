@@ -111,11 +111,6 @@ class OperationRegistry(Generic[*Ops]):
     >>> type StringRegistry = OperationRegistry[ConcatenateOp, ReplaceSubstringOp, IncrementStringOp]
     """
 
-    ops: ClassVar[tuple[type[OperationSchema], ...]]
-    union: ClassVar[TypeAliasType]
-    _model_map: ClassVar[Mapping[str, type[OperationSchema]]]
-    _op_adapter: ClassVar[TypeAdapter[OperationSchema]]
-    _patch_adapter: ClassVar[TypeAdapter[list[OperationSchema]]]
     _spec: ClassVar[RegistrySpecs]
 
     def __new__(cls, *_: object, **__: object) -> OperationRegistry[*Ops]:
@@ -137,14 +132,7 @@ class OperationRegistry(Generic[*Ops]):
 
         # subtype
         name = cls._registry_type_name(ordered_ops)
-        namespace = {
-            "_spec": spec,
-            "ops": ordered_ops,
-            "union": spec.union,
-            "_model_map": spec.model_map,
-            "_op_adapter": spec.op_adapter,
-            "_patch_adapter": spec.patch_adapter,
-        }
+        namespace = {"_spec": spec}
         registry_type = type(name, (cls,), namespace)
         return registry_type
 
@@ -188,7 +176,7 @@ class OperationRegistry(Generic[*Ops]):
 
     @classmethod
     def model_for(cls, instruction: str) -> type[OperationSchema]:
-        model = cls._model_map.get(instruction)
+        model = cls._spec.model_map.get(instruction)
         if model is None:
             raise OperationNotRecognized(
                 f"Patch operation '{instruction}' is not allowed in this registry"
@@ -196,16 +184,24 @@ class OperationRegistry(Generic[*Ops]):
         return model
 
     @classmethod
+    def ops(cls) -> tuple[type[OperationSchema], ...]:
+        return cls._spec.ordered_ops
+
+    @classmethod
+    def union(cls) -> TypeAliasType:
+        return cls._spec.union
+
+    @classmethod
     def parse_python_op(
         cls, obj: Mapping[str, JSONValue] | OperationSchema
     ) -> OperationSchema:
         if isinstance(obj, OperationSchema):
-            if type(obj) not in cls.ops:
+            if type(obj) not in cls.ops():
                 raise OperationNotRecognized(
                     f"Operation {type(obj).__name__} is not allowed in this registry"
                 )
             return obj
-        return cls._op_adapter.validate_python(
+        return cls._spec.op_adapter.validate_python(
             obj,
             strict=True,
             by_alias=True,
@@ -219,14 +215,14 @@ class OperationRegistry(Generic[*Ops]):
         ops: list[OperationSchema] = []
         for item in python:
             if isinstance(item, OperationSchema):
-                if type(item) not in cls.ops:
+                if type(item) not in cls.ops():
                     raise OperationNotRecognized(
                         f"Operation {type(item).__name__} is not allowed in this registry"
                     )
                 ops.append(item)
             else:
                 ops.append(
-                    cls._op_adapter.validate_python(
+                    cls._spec.op_adapter.validate_python(
                         item,
                         strict=True,
                         by_alias=True,
@@ -237,7 +233,7 @@ class OperationRegistry(Generic[*Ops]):
 
     @classmethod
     def parse_json_op(cls, text: str | bytes | bytearray) -> OperationSchema:
-        return cls._op_adapter.validate_json(
+        return cls._spec.op_adapter.validate_json(
             text,
             strict=True,
             by_alias=True,
@@ -246,7 +242,7 @@ class OperationRegistry(Generic[*Ops]):
 
     @classmethod
     def parse_json_patch(cls, text: str | bytes | bytearray) -> list[OperationSchema]:
-        return cls._patch_adapter.validate_json(
+        return cls._spec.patch_adapter.validate_json(
             text,
             strict=True,
             by_alias=True,

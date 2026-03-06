@@ -250,7 +250,7 @@ class JsonPatchFor(_RegistryBoundPatchRoot, Generic[TargetT, RegistryT]):
         BodyPatchOperation = TypeAliasType(  # type: ignore[misc]
             f"{schema_name}PatchOperation",
             Annotated[
-                registry.union.__value__,
+                registry.union().__value__,
                 Field(
                     title=f"{schema_name} Patch Operation",
                     description=(
@@ -286,7 +286,7 @@ class JsonPatchFor(_RegistryBoundPatchRoot, Generic[TargetT, RegistryT]):
         ModelPatchOperation = TypeAliasType(  # type: ignore[misc]
             f"{model.__name__}PatchOperation",
             Annotated[
-                registry.union.__value__,
+                registry.union().__value__,
                 Field(
                     title=f"{model.__name__} Patch Operation",
                     description=f"Discriminated union of patch operations for {model.__name__}.",
