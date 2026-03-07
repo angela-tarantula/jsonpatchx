@@ -187,8 +187,7 @@ class OperationRegistry(Generic[*Ops]):
 
     def __new__(cls, *_: object, **__: object) -> OperationRegistry[*Ops]:
         raise TypeError(
-            f"{cls.__name__} is a registry type and cannot be instantiated. "
-            "Use it directly via OperationRegistry[Op1, Op2, ...]."
+            f"{cls.__name__} is a registry type and cannot be instantiated."
         )
 
     def __class_getitem__(cls, args: object) -> type[AnyRegistry]:
@@ -228,6 +227,7 @@ class OperationRegistry(Generic[*Ops]):
 
     @classmethod
     def _reject_unparametrized_usage(cls) -> None:
+        """Guard against methods that require the ``_spec`` to be defined."""
         if not hasattr(cls, "_spec"):
             raise TypeError(f"{cls.__name__} is missing patch operations.")
 
