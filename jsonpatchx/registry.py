@@ -227,8 +227,14 @@ class OperationRegistry(Generic[*Ops]):
         return f"OperationRegistry_{op_names}"
 
     @classmethod
+    def _reject_unparametrized_usage(cls) -> None:
+        if not hasattr(cls, "_spec"):
+            raise TypeError(f"{cls.__name__} is missing patch operations.")
+
+    @classmethod
     def ops(cls) -> tuple[type[OperationSchema], ...]:
         """Operation models allowed by this registry."""
+        cls._reject_unparametrized_usage()
         return cls._spec.ordered_ops
 
     @classmethod
@@ -237,6 +243,7 @@ class OperationRegistry(Generic[*Ops]):
 
         Useful for advanced validation and schema-generation workflows.
         """
+        cls._reject_unparametrized_usage()
         return cls._spec.union
 
     @classmethod
@@ -253,6 +260,7 @@ class OperationRegistry(Generic[*Ops]):
             OperationNotRecognized: If the operation is not allowed by this
                 registry.
         """
+        cls._reject_unparametrized_usage()
         model = cls._spec.model_map.get(instruction)
         if model is None:
             raise OperationNotRecognized(
@@ -281,6 +289,7 @@ class OperationRegistry(Generic[*Ops]):
                 this registry.
             ValidationError: If a mapping payload fails validation.
         """
+        cls._reject_unparametrized_usage()
         if isinstance(obj, OperationSchema):
             if type(obj) not in cls.ops():
                 raise OperationNotRecognized(
@@ -315,6 +324,7 @@ class OperationRegistry(Generic[*Ops]):
                 this registry.
             ValidationError: If any payload fails validation.
         """
+        cls._reject_unparametrized_usage()
         ops: list[OperationSchema] = []
         for item in python:
             if isinstance(item, OperationSchema):
@@ -348,6 +358,7 @@ class OperationRegistry(Generic[*Ops]):
             ValidationError: If the JSON is malformed or the payload does not
                 match an allowed operation model.
         """
+        cls._reject_unparametrized_usage()
         return cls._spec.op_adapter.validate_json(
             text,
             strict=True,
@@ -369,6 +380,7 @@ class OperationRegistry(Generic[*Ops]):
             ValidationError: If the JSON is malformed or any operation fails
                 validation.
         """
+        cls._reject_unparametrized_usage()
         return cls._spec.patch_adapter.validate_json(
             text,
             strict=True,

@@ -74,6 +74,29 @@ def test_invalid_operation_registry(subtests: Subtests) -> None:
             OperationRegistry[nested, SecondOp]
 
 
+def test_unparametrized_registry_methods_raise_type_error() -> None:
+    with pytest.raises(TypeError):
+        OperationRegistry.ops()
+
+    with pytest.raises(TypeError):
+        OperationRegistry.union()
+
+    with pytest.raises(TypeError):
+        OperationRegistry.model_for("toggle")
+
+    with pytest.raises(TypeError):
+        OperationRegistry.parse_python_op({"op": "toggle", "path": "/a"})
+
+    with pytest.raises(TypeError):
+        OperationRegistry.parse_python_patch([{"op": "toggle", "path": "/a"}])
+
+    with pytest.raises(TypeError):
+        OperationRegistry.parse_json_op('{"op":"toggle","path":"/a"}')
+
+    with pytest.raises(TypeError):
+        OperationRegistry.parse_json_patch('[{"op":"toggle","path":"/a"}]')
+
+
 def test_patch_schema_parse_happy_path(subtests: Subtests) -> None:
     class IncrementOp(OperationSchema):
         op: Literal["increment"] = "increment"
