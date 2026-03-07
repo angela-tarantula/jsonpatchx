@@ -164,6 +164,27 @@ def test_registry_type_cache_reuses_registry_class() -> None:
     assert registry_a is registry_b
 
 
+def test_registry_of_uses_same_cache_as_bracket_syntax() -> None:
+    class FirstOp(OperationSchema):
+        op: Literal["cache-of-first"] = "cache-of-first"
+
+        @override
+        def apply(self, doc: JSONValue) -> JSONValue:
+            return doc
+
+    class SecondOp(OperationSchema):
+        op: Literal["cache-of-second"] = "cache-of-second"
+
+        @override
+        def apply(self, doc: JSONValue) -> JSONValue:
+            return doc
+
+    from_brackets = OperationRegistry[FirstOp, SecondOp]
+    from_of = OperationRegistry.of(SecondOp, FirstOp)
+
+    assert from_of is from_brackets
+
+
 def test_jsonpatch_dunders_and_to_string() -> None:
     patch = JsonPatch(
         [
