@@ -40,7 +40,7 @@ type AnyRegistry = OperationRegistry[*tuple[Any, ...]]
 Ops = TypeVarTuple("Ops")
 
 
-class RegistrySpecs(BaseModel):
+class _RegistrySpecs(BaseModel):
     """Internal canonical representation of an operation registry.
 
     Normalizes a set of concrete ``OperationSchema`` classes into a stable,
@@ -53,7 +53,7 @@ class RegistrySpecs(BaseModel):
     ops: frozenset[type[OperationSchema]]
 
     @model_validator(mode="after")
-    def _validate_ops(self) -> RegistrySpecs:
+    def _validate_ops(self) -> _RegistrySpecs:
         """Validate registry invariants for ``ops``.
 
         Ensures the registry is non-empty, contains only concrete operation
@@ -106,7 +106,7 @@ class RegistrySpecs(BaseModel):
 
     @override
     def __eq__(self, other: object) -> bool:
-        if not isinstance(other, RegistrySpecs):
+        if not isinstance(other, _RegistrySpecs):
             return NotImplemented
         return self.ordered_ops == other.ordered_ops
 
@@ -152,14 +152,14 @@ class RegistrySpecs(BaseModel):
         return self.ordered_ops == STANDARD_OPS
 
 
-_STANDARD_REGISTRY_SPECS = RegistrySpecs(
+_STANDARD_REGISTRY_SPECS = _RegistrySpecs(
     ops=frozenset([AddOp, CopyOp, MoveOp, RemoveOp, ReplaceOp, TestOp])
 )
 
 STANDARD_OPS = _STANDARD_REGISTRY_SPECS.ordered_ops
 """Standard RFC 6902 patch operations."""
 
-_REGISTRY_CACHE: dict[RegistrySpecs, type[AnyRegistry]] = {}
+_REGISTRY_CACHE: dict[_RegistrySpecs, type[AnyRegistry]] = {}
 
 
 class OperationRegistry(Generic[*Ops]):
@@ -183,7 +183,7 @@ class OperationRegistry(Generic[*Ops]):
         >>> PlayerRegistry = OperationRegistry.of(*enabled_ops)
     """
 
-    _spec: ClassVar[RegistrySpecs]
+    _spec: ClassVar[_RegistrySpecs]
 
     def __new__(cls, *_: object, **__: object) -> OperationRegistry[*Ops]:
         raise TypeError(
@@ -203,7 +203,7 @@ class OperationRegistry(Generic[*Ops]):
         params: tuple[object, ...] = args if isinstance(args, tuple) else (args,)
 
         try:
-            spec = RegistrySpecs(ops=params)
+            spec = _RegistrySpecs(ops=params)
         except ValidationError as exc:
             raise InvalidOperationRegistry(str(exc)) from exc
 
@@ -219,7 +219,7 @@ class OperationRegistry(Generic[*Ops]):
         return registry_type
 
     @staticmethod
-    def _registry_type_name(spec: RegistrySpecs) -> str:
+    def _registry_type_name(spec: _RegistrySpecs) -> str:
         """Return the deterministic runtime name for a registry subtype."""
         if spec.is_RFC6902:
             return "StandardRegistry"
