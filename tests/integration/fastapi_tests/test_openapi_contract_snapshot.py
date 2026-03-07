@@ -57,13 +57,7 @@ class ToggleOp(OperationSchema):
 
 LimitedRegistry = OperationRegistry[ToggleOp]
 ExtendedRegistry = OperationRegistry[
-    AddOp,
-    CopyOp,
-    MoveOp,
-    RemoveOp,
-    ReplaceOp,
-    TestOp,
-    ToggleOp,
+    AddOp | CopyOp | MoveOp | RemoveOp | ReplaceOp | TestOp | ToggleOp
 ]
 UserPatch = JsonPatchFor[User, LimitedRegistry]
 MedicalPatch = JsonPatchFor[MedicalRecord, ExtendedRegistry]

@@ -71,14 +71,14 @@ class ExplicitRuneAppendOp(OperationSchema):
 
 
 registry = OperationRegistry[
-    AddOp,
-    CopyOp,
-    MoveOp,
-    RemoveOp,
-    ReplaceOp,
-    TestOp,
-    ExplicitRuneIncrementOp,
-    ExplicitRuneAppendOp,
+    AddOp
+    | CopyOp
+    | MoveOp
+    | RemoveOp
+    | ReplaceOp
+    | TestOp
+    | ExplicitRuneIncrementOp
+    | ExplicitRuneAppendOp
 ]
 ApprenticePatch = JsonPatchFor[Apprentice, registry]
 apprentice_patch = JsonPatchRoute(

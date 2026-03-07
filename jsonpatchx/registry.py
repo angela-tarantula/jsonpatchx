@@ -1,17 +1,19 @@
 from __future__ import annotations
 
+import types
+from abc import ABCMeta
 from collections import Counter
 from collections.abc import Iterable, Mapping, Sequence
 from functools import cached_property
 from inspect import isabstract
 from typing import (
     Annotated,
-    Any,
     ClassVar,
     Generic,
     TypeAliasType,
-    TypeVarTuple,
+    TypeVar,
     Union,
+    cast,
     override,
 )
 
@@ -21,6 +23,7 @@ from pydantic import (
     Field,
     TypeAdapter,
     ValidationError,
+    field_validator,
     model_validator,
 )
 
@@ -36,8 +39,8 @@ from jsonpatchx.exceptions import InvalidOperationRegistry, OperationNotRecogniz
 from jsonpatchx.schema import OperationSchema
 from jsonpatchx.types import JSONValue
 
-type AnyRegistry = OperationRegistry[*tuple[Any, ...]]
-Ops = TypeVarTuple("Ops")
+TModel = TypeVar("TModel", bound=OperationSchema, covariant=True)
+type AnyRegistry = OperationRegistry[OperationSchema]
 
 
 class _RegistrySpecs(BaseModel):
@@ -50,7 +53,19 @@ class _RegistrySpecs(BaseModel):
 
     model_config = ConfigDict(arbitrary_types_allowed=True, frozen=True)
 
-    ops: frozenset[type[OperationSchema]]
+    ops: frozenset[type[OperationSchema]] = Field(min_length=1)
+
+    @field_validator("ops", mode="before")
+    @classmethod
+    def _normalize_ops(cls, value: object) -> object:
+        if isinstance(value, types.UnionType):
+            return frozenset(value.__args__)
+        if isinstance(value, Iterable):
+            raise TypeError(
+                "OperationRegistry[...] expects a single patch operation class or a union "
+                "expression of them; use OperationRegistry[OpA | OpB | ...]"
+            )
+        return frozenset([value])
 
     @model_validator(mode="after")
     def _validate_ops(self) -> _RegistrySpecs:
@@ -62,11 +77,6 @@ class _RegistrySpecs(BaseModel):
         Raises:
             InvalidOperationRegistry: If the registry definition is unusable.
         """
-
-        if not self.ops:
-            raise InvalidOperationRegistry(
-                "OperationRegistry requires at least one operation model"
-            )
 
         non_concrete_models = sorted(
             model.__name__ for model in self.ops if isabstract(model)
@@ -153,7 +163,7 @@ class _RegistrySpecs(BaseModel):
 
 
 _STANDARD_REGISTRY_SPECS = _RegistrySpecs(
-    ops=frozenset([AddOp, CopyOp, MoveOp, RemoveOp, ReplaceOp, TestOp])
+    ops=AddOp | CopyOp | MoveOp | RemoveOp | ReplaceOp | TestOp
 )
 
 STANDARD_OPS = _STANDARD_REGISTRY_SPECS.ordered_ops
@@ -162,7 +172,37 @@ STANDARD_OPS = _STANDARD_REGISTRY_SPECS.ordered_ops
 _REGISTRY_CACHE: dict[_RegistrySpecs, type[AnyRegistry]] = {}
 
 
-class OperationRegistry(Generic[*Ops]):
+class _RegistryMeta(ABCMeta):
+    @override
+    def __or__(cls, other: object) -> type[AnyRegistry]:
+        if not isinstance(other, _RegistryMeta):
+            return NotImplemented
+
+        left = cast(type[AnyRegistry], cls)
+        right = cast(type[AnyRegistry], other)
+
+        left._reject_unparametrized_usage()
+        right._reject_unparametrized_usage()
+
+        merged_ops = left._spec.ops | right._spec.ops
+        return OperationRegistry.of(*merged_ops)
+
+    @override
+    def __ror__(cls, other: object) -> type[AnyRegistry]:
+        if not isinstance(other, _RegistryMeta):
+            return NotImplemented
+
+        left = cast(type[AnyRegistry], other)
+        right = cast(type[AnyRegistry], cls)
+
+        left._reject_unparametrized_usage()
+        right._reject_unparametrized_usage()
+
+        merged_ops = left._spec.ops | right._spec.ops
+        return OperationRegistry.of(*merged_ops)
+
+
+class OperationRegistry(Generic[TModel], metaclass=_RegistryMeta):
     """Type-level registry of allowed patch operation models.
 
     ``OperationRegistry[...]`` declares which ``OperationSchema`` subclasses are
@@ -175,7 +215,7 @@ class OperationRegistry(Generic[*Ops]):
     Examples:
         Declare a registry statically:
 
-        >>> PlayerRegistry = OperationRegistry[AddOp, ReplaceOp, IncrementOp]
+        >>> PlayerRegistry = OperationRegistry[AddOp | ReplaceOp | IncrementOp]
 
         Build one dynamically:
 
@@ -185,7 +225,7 @@ class OperationRegistry(Generic[*Ops]):
 
     _spec: ClassVar[_RegistrySpecs]
 
-    def __new__(cls, *_: object, **__: object) -> OperationRegistry[*Ops]:
+    def __new__(cls, *_: object, **__: object) -> OperationRegistry[TModel]:
         raise TypeError(
             f"{cls.__name__} is a registry type and cannot be instantiated."
         )
@@ -199,11 +239,9 @@ class OperationRegistry(Generic[*Ops]):
         Raises:
             InvalidOperationRegistry: If the supplied operation set is invalid.
         """
-        params: tuple[object, ...] = args if isinstance(args, tuple) else (args,)
-
         try:
-            spec = _RegistrySpecs(ops=params)
-        except ValidationError as exc:
+            spec = _RegistrySpecs(ops=args)
+        except (ValidationError, TypeError) as exc:
             raise InvalidOperationRegistry(str(exc)) from exc
 
         cached = _REGISTRY_CACHE.get(spec)
@@ -409,8 +447,17 @@ class OperationRegistry(Generic[*Ops]):
             >>> enabled = [AddOp, ReplaceOp, IncrementOp]
             >>> PlayerRegistry = OperationRegistry.of(*enabled)
         """
-        return cls.__class_getitem__(ops)
+        if not ops:
+            raise InvalidOperationRegistry(
+                "OperationRegistry requires at least one operation model"
+            )
+        registry_arg: type[OperationSchema] | types.UnionType = ops[0]
+        for op in ops[1:]:
+            registry_arg = registry_arg | op
+        return cls.__class_getitem__(registry_arg)
 
 
-StandardRegistry = OperationRegistry[AddOp, CopyOp, MoveOp, RemoveOp, ReplaceOp, TestOp]
+StandardRegistry = OperationRegistry[
+    AddOp | CopyOp | MoveOp | RemoveOp | ReplaceOp | TestOp
+]
 """Standard RFC 6902 registry containing the built-in patch operations."""

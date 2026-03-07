@@ -29,14 +29,14 @@ from jsonpatchx.pydantic import JsonPatchFor
 STRICT_JSON_PATCH = True
 
 ConfigRegistry = OperationRegistry[
-    IncrementOp,
-    AppendOp,
-    ExtendOp,
-    ToggleBoolOp,
-    SwapOp,
-    EnsureObjectOp,
-    RemoveNumberOp,
-    SetMessageOp,
+    IncrementOp
+    | AppendOp
+    | ExtendOp
+    | ToggleBoolOp
+    | SwapOp
+    | EnsureObjectOp
+    | RemoveNumberOp
+    | SetMessageOp
 ]
 ConfigPatch = JsonPatchFor[Literal["ServiceConfig"], ConfigRegistry]
 config_patch = JsonPatchRoute(

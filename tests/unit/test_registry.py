@@ -47,7 +47,26 @@ def test_invalid_operation_registry(subtests: Subtests) -> None:
 
     with subtests.test("OperationRegistry requires unique op identifiers"):
         with pytest.raises(InvalidOperationRegistry):
-            OperationRegistry[FirstOp, SecondOp]
+            OperationRegistry[FirstOp | SecondOp]
+
+    with subtests.test("OperationRegistry rejects comma-separated parameters"):
+
+        class UniqueOneOp(OperationSchema):
+            op: Literal["unique-one"] = "unique-one"
+
+            @override
+            def apply(self, doc: JSONValue) -> JSONValue:
+                return None  # pragma: no cover
+
+        class UniqueTwoOp(OperationSchema):
+            op: Literal["unique-two"] = "unique-two"
+
+            @override
+            def apply(self, doc: JSONValue) -> JSONValue:
+                return None  # pragma: no cover
+
+        with pytest.raises(InvalidOperationRegistry):
+            OperationRegistry[UniqueOneOp, UniqueTwoOp]
 
     with subtests.test("OperationRegistry rejects non-OperationSchema input"):
         with pytest.raises(InvalidOperationRegistry):
@@ -71,7 +90,7 @@ def test_invalid_operation_registry(subtests: Subtests) -> None:
     with subtests.test("OperationRegistry rejects nested registries"):
         nested = OperationRegistry[FirstOp]
         with pytest.raises(InvalidOperationRegistry):
-            OperationRegistry[nested, SecondOp]
+            OperationRegistry[nested | SecondOp]
 
 
 def test_unparametrized_registry_methods_raise_type_error() -> None:
@@ -115,7 +134,7 @@ def test_patch_schema_parse_happy_path(subtests: Subtests) -> None:
         def apply(self, doc: JSONValue) -> JSONValue:
             return None  # pragma: no cover
 
-    schema = OperationRegistry[IncrementOp, ToggleByPathOp]
+    schema = OperationRegistry[IncrementOp | ToggleByPathOp]
 
     with subtests.test("parse_op succeeds"):
         op = schema.parse_python_op({"op": "increment", "path": "/foo", "value": 3})
@@ -182,8 +201,8 @@ def test_registry_type_cache_reuses_registry_class() -> None:
         def apply(self, doc: JSONValue) -> JSONValue:
             return doc
 
-    registry_a = OperationRegistry[FirstOp, SecondOp]
-    registry_b = OperationRegistry[SecondOp, FirstOp]
+    registry_a = OperationRegistry[FirstOp | SecondOp]
+    registry_b = OperationRegistry[SecondOp | FirstOp]
     assert registry_a is registry_b
 
 
@@ -202,10 +221,82 @@ def test_registry_of_uses_same_cache_as_bracket_syntax() -> None:
         def apply(self, doc: JSONValue) -> JSONValue:
             return doc
 
-    from_brackets = OperationRegistry[FirstOp, SecondOp]
+    from_brackets = OperationRegistry[FirstOp | SecondOp]
     from_of = OperationRegistry.of(SecondOp, FirstOp)
 
     assert from_of is from_brackets
+
+
+def test_registry_union_param_syntax_uses_same_cache() -> None:
+    class FirstOp(OperationSchema):
+        op: Literal["union-first"] = "union-first"
+
+        @override
+        def apply(self, doc: JSONValue) -> JSONValue:
+            return doc
+
+    class SecondOp(OperationSchema):
+        op: Literal["union-second"] = "union-second"
+
+        @override
+        def apply(self, doc: JSONValue) -> JSONValue:
+            return doc
+
+    from_union = OperationRegistry[FirstOp | SecondOp]
+    from_union_swapped = OperationRegistry[SecondOp | FirstOp]
+
+    assert from_union is from_union_swapped
+
+
+def test_registry_class_or_merges_operation_sets(subtests: Subtests) -> None:
+    class FirstOp(OperationSchema):
+        op: Literal["or-first"] = "or-first"
+
+        @override
+        def apply(self, doc: JSONValue) -> JSONValue:
+            return doc
+
+    class SecondOp(OperationSchema):
+        op: Literal["or-second"] = "or-second"
+
+        @override
+        def apply(self, doc: JSONValue) -> JSONValue:
+            return doc
+
+    class ThirdOp(OperationSchema):
+        op: Literal["or-third"] = "or-third"
+
+        @override
+        def apply(self, doc: JSONValue) -> JSONValue:
+            return doc
+
+    reg_x = OperationRegistry[FirstOp]
+    reg_yz = OperationRegistry[SecondOp | ThirdOp]
+    merged = OperationRegistry[FirstOp | SecondOp | ThirdOp]
+
+    with subtests.test("left-to-right"):
+        assert (reg_x | reg_yz) is merged
+
+    with subtests.test("right-to-left"):
+        assert (reg_yz | reg_x) is merged
+
+    with subtests.test("overlap does not duplicate or error"):
+        overlap = OperationRegistry[FirstOp | SecondOp]
+        assert (overlap | reg_yz) is merged
+
+    with subtests.test("unparametrized left fails"):
+        with pytest.raises(TypeError):
+            _ = OperationRegistry | reg_x
+
+    with subtests.test("unparametrized right fails"):
+        with pytest.raises(TypeError):
+            _ = reg_x | OperationRegistry
+
+    with subtests.test("non-registry fails"):
+        with pytest.raises(TypeError):
+            _ = reg_x | object()
+        with pytest.raises(TypeError):
+            _ = object() | reg_x
 
 
 def test_jsonpatch_dunders_and_to_string() -> None:
@@ -294,7 +385,7 @@ def test_registry_accepts_mixed_backends() -> None:
         def apply(self, doc: JSONValue) -> JSONValue:
             return doc
 
-    registry = OperationRegistry[SlashOp, DotOp]
+    registry = OperationRegistry[SlashOp | DotOp]
 
     slash = cast(Any, registry.parse_python_op({"op": "slash-op", "path": "/a/b"}))
     dot = cast(Any, registry.parse_python_op({"op": "dot-op", "path": "a.b"}))

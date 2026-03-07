@@ -78,14 +78,14 @@ class GenericAppendOp(OperationSchema, Generic[P]):
 
 
 registry = OperationRegistry[
-    AddOp,
-    CopyOp,
-    MoveOp,
-    RemoveOp,
-    ReplaceOp,
-    TestOp,
-    GenericIncrementOp[RunePointerV2],
-    GenericAppendOp[RunePointerV2],
+    AddOp
+    | CopyOp
+    | MoveOp
+    | RemoveOp
+    | ReplaceOp
+    | TestOp
+    | GenericIncrementOp[RunePointerV2]
+    | GenericAppendOp[RunePointerV2]
 ]
 ApprenticePatch = JsonPatchFor[Apprentice, registry]
 apprentice_patch = JsonPatchRoute(

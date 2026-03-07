@@ -41,28 +41,28 @@ from jsonpatchx.pydantic import JsonPatchFor
 STRICT_JSON_PATCH = True
 
 PlayerRegistry = OperationRegistry[
-    AddOp,
-    CopyOp,
-    MoveOp,
-    RemoveOp,
-    ReplaceOp,
-    TestOp,
-    IncrementOp,
-    ToggleBoolOp,
-    RequireMinimumOp,
-    AppendUniqueOp,
-    RemoveValueOp,
+    AddOp
+    | CopyOp
+    | MoveOp
+    | RemoveOp
+    | ReplaceOp
+    | TestOp
+    | IncrementOp
+    | ToggleBoolOp
+    | RequireMinimumOp
+    | AppendUniqueOp
+    | RemoveValueOp
 ]
 GuildRegistry = OperationRegistry[
-    AddOp,
-    CopyOp,
-    MoveOp,
-    RemoveOp,
-    ReplaceOp,
-    TestOp,
-    AppendOp,
-    IncrementOp,
-    EnforceMaxLenOp,
+    AddOp
+    | CopyOp
+    | MoveOp
+    | RemoveOp
+    | ReplaceOp
+    | TestOp
+    | AppendOp
+    | IncrementOp
+    | EnforceMaxLenOp
 ]
 
 PlayerPatch = JsonPatchFor[Player, PlayerRegistry]

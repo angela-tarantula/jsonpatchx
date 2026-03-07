@@ -19,19 +19,14 @@ from examples.fastapi.shared import (
     save_spellbook,
 )
 from jsonpatchx import (
-    AddOp,
-    CopyOp,
     JSONValue,
-    MoveOp,
     OperationRegistry,
     OperationSchema,
-    RemoveOp,
-    ReplaceOp,
-    TestOp,
 )
 from jsonpatchx.fastapi import JsonPatchRoute
 from jsonpatchx.pointer import JSONPointer
 from jsonpatchx.pydantic import JsonPatchFor
+from jsonpatchx.registry import StandardRegistry
 from jsonpatchx.types import JSONNumber
 
 STRICT_JSON_PATCH = True
@@ -79,18 +74,9 @@ class RuneAppendOp(OperationSchema):
         return self.path.add(doc, [*current, self.value])
 
 
-registry = OperationRegistry[
-    AddOp,
-    CopyOp,
-    MoveOp,
-    RemoveOp,
-    ReplaceOp,
-    TestOp,
-    RuneIncrementOp,
-    RuneAppendOp,
-]
-SpellbookPatch = JsonPatchFor[Literal["Spellbook"], registry]
-ApprenticePatch = JsonPatchFor[Apprentice, registry]
+RuneRegistry = OperationRegistry[RuneIncrementOp | RuneAppendOp]
+SpellbookPatch = JsonPatchFor[Literal["Spellbook"], StandardRegistry | RuneRegistry]
+ApprenticePatch = JsonPatchFor[Apprentice, StandardRegistry | RuneRegistry]
 spellbook_patch = JsonPatchRoute(
     SpellbookPatch,
     examples={
