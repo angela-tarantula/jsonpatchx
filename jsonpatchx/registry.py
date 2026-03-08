@@ -482,6 +482,9 @@ class OperationRegistry(Generic[TModel], metaclass=_RegistryMeta):
         Use this when the allowed operation set is assembled dynamically rather
         than written directly as ``OperationRegistry[...]``.
 
+        As this method creates a runtime type, type-checkers will complain
+        that it's not a valid type, but you can ignore that.
+
         Args:
             *ops: Concrete ``OperationSchema`` subclasses to include.
 
@@ -494,7 +497,7 @@ class OperationRegistry(Generic[TModel], metaclass=_RegistryMeta):
 
         Examples:
             >>> enabled = [AddOp, ReplaceOp, IncrementOp]
-            >>> type PlayerRegistry = OperationRegistry.of(*enabled)
+            >>> type PlayerRegistry = OperationRegistry.of(*enabled)  # type: ignore[valid-type]
         """
         if not ops:
             raise InvalidOperationRegistry(
