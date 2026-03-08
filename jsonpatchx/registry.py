@@ -9,7 +9,6 @@ from inspect import isabstract
 from typing import (
     Annotated,
     Any,
-    ClassVar,
     Generic,
     TypeAliasType,
     TypeVar,
@@ -49,10 +48,10 @@ type AnyRegistry = OperationRegistry[OperationSchema]
 
 
 class _RegistrySpecs(BaseModel):
-    """Internal canonical representation of an operation registry.
+    """Internal canonical form of an operation registry.
 
-    Normalizes a set of concrete ``OperationSchema`` classes into a stable,
-    validated form used for registry caching, equality, and Pydantic union
+    Normalizes a registry's operation models into a validated, deterministic
+    representation used for caching, equality, and discriminated-union
     construction.
     """
 
@@ -63,8 +62,18 @@ class _RegistrySpecs(BaseModel):
     @field_validator("ops", mode="before")
     @classmethod
     def _normalize_ops(cls, value: object) -> object:
-        if isinstance(value, types.UnionType):
-            return frozenset(value.__args__)
+        """Normalize ``OperationRegistry[...]`` input into a frozenset of candidates.
+
+        Accepts a single class or a union expression (``OpA | OpB | ...``).
+        Rejects generic iterables so comma/sequence-style inputs are not accepted.
+
+        Note:
+            This validator only normalizes input shape. Pydantic enforces that each
+            resulting member is ``type[OperationSchema]``.
+        """
+        if get_origin(value) in (Union, types.UnionType):
+            # NOTE: in Py3.14+, simplify to isinstance(obj, Union) (https://docs.python.org/3.14/library/typing.html#typing.Union)
+            return frozenset(get_args(value))
         if isinstance(value, Iterable):
             raise TypeError(
                 "OperationRegistry[...] expects a single patch operation class or a union "
@@ -76,8 +85,8 @@ class _RegistrySpecs(BaseModel):
     def _validate_ops(self) -> _RegistrySpecs:
         """Validate registry invariants for ``ops``.
 
-        Ensures the registry is non-empty, contains only concrete operation
-        models, and has no duplicate model names or ``op`` discriminator values.
+        Ensures the registry contains only concrete operation models and that
+        both model names and ``op`` discriminator literals are unique.
 
         Raises:
             InvalidOperationRegistry: If the registry definition is unusable.
@@ -116,7 +125,7 @@ class _RegistrySpecs(BaseModel):
 
     @cached_property
     def ordered_ops(self) -> tuple[type[OperationSchema], ...]:
-        """Canonical tuple of operation models for this registry."""
+        """Canonical ordered tuple of operation models for this registry."""
         return tuple(sorted(self.ops, key=lambda op: op._op_literals[0]))
 
     @override
@@ -131,7 +140,7 @@ class _RegistrySpecs(BaseModel):
 
     @cached_property
     def model_map(self) -> Mapping[str, type[OperationSchema]]:
-        """Mapping from each allowed ``op`` literal to its operation model."""
+        """Mapping of each allowed ``op`` literal to its operation model."""
         return {
             op_literal: model
             for model in self.ordered_ops
@@ -158,7 +167,7 @@ class _RegistrySpecs(BaseModel):
 
     @cached_property
     def patch_adapter(self) -> TypeAdapter[list[OperationSchema]]:
-        """TypeAdapter for validating a full registry-bound patch document."""
+        """TypeAdapter for validating a registry-bound patch document."""
         return _type_adapter_for(list[self.union])  # type: ignore[name-defined]
 
     @cached_property
@@ -167,77 +176,72 @@ class _RegistrySpecs(BaseModel):
         return self.ordered_ops == STANDARD_OPS
 
 
-_STANDARD_REGISTRY_SPECS = _RegistrySpecs(
-    ops=AddOp | CopyOp | MoveOp | RemoveOp | ReplaceOp | TestOp
-)
-
-STANDARD_OPS = _STANDARD_REGISTRY_SPECS.ordered_ops
-"""Standard RFC 6902 patch operations."""
+STANDARD_OPS = (AddOp, CopyOp, MoveOp, RemoveOp, ReplaceOp, TestOp)
+"""Standard RFC 6902 patch operations."""  # in canonical order
 
 _REGISTRY_CACHE: dict[_RegistrySpecs, type[AnyRegistry]] = {}
-
-
-def resolve_registry_typeform(
-    registry: TypeForm[AnyRegistry] | object,
-) -> type[AnyRegistry]:
-    """Resolve a registry TypeForm into a concrete ``OperationRegistry`` class.
-
-    Accepted inputs:
-    - A concrete registry class (``OperationRegistry[...]``).
-    - A type alias to a registry class.
-    - A union of registry types or registry aliases.
-    """
-    if isinstance(registry, TypeAliasType):
-        return resolve_registry_typeform(registry.__value__)
-
-    if get_origin(registry) is Union:
-        args = get_args(registry)
-        merged_ops: frozenset[type[OperationSchema]] = frozenset()
-        for arg in args:
-            resolved = resolve_registry_typeform(arg)
-            merged_ops |= resolved._spec.ops
-        return OperationRegistry.of(*merged_ops)
-
-    if isinstance(registry, _RegistryMeta):
-        resolved = cast(type[AnyRegistry], registry)
-        resolved._reject_unparametrized_usage()
-        return resolved
-
-    raise TypeError(
-        "Expected an OperationRegistry type, a type alias to one, or a union of them; "
-        f"got {registry!r}"
-    )
 
 
 class _RegistryMeta(ABCMeta):
     """Internal metaclass for ``OperationRegistry``.
 
-    Provides type hinting for the ``__or__`` operator used in registry type unions.
-    The ``__or__`` operator must live here and not in the ``OperationRegistry`` class
-    body because it should dictates the | operator's behavior on the class object itself,
-    as opposed to ``OperationRegistry`` instances, which are not meant to exist.
-
-    Behind the scenes, ``OperationRegistry`` is a runtime type factory that produces
-    distinct subtypes for each unique set of registered operations. In order to present
-    the illusion of a single ``OperationRegistry`` type that can be unioned with itself,
-    some guarding logic is necessary to distinguish parametrized usage from unparametrized
-    usage. For example, while ``OperationRegistry[AddOp]`` is legal, it must not be legal
-    to double-parametrize like ``OperationRegistry[AddOp][ReplaceOp]``.
+    Handles class-level registry composition and guards the distinction between
+    the unparameterized factory type and concrete registry subtypes created by
+    ``OperationRegistry[...]``.
     """
 
-    _spec: ClassVar[_RegistrySpecs]
+    _spec: _RegistrySpecs  # Each OperationRegistry subtype has a ClassVar[_RegistrySpecs] defining its operations; the base factory's _spec is undefined
+    """Controversial design choice:
+    Each parametrized registry type is a separate class with its own ``_RegistrySpecs`` class attribute.
+    This means the OperationRegistry class is being overloaded with two distinct responsibilities: when it's unparametrized,
+    it's a factory for creating registries, and when it's parametrized, it's a registry with its own specs.
+
+    This overloading requires some guard logic in each method that checks whether _spec is defined or not, as a proxy for
+    whether the class is parametrized or not, in order to prevent misuse of the base factory as a registry and vice versa.
+    This is admittedly hacky.
+
+    The way out of this pattern would be to avoid relying on parameterized OperationRegistries having their own class attributes.
+    Instead, OperationRegistry[...] would be a hollow data container type, and it would be the responsibility of all consumers to
+    resolve the registry's specs from that data container whenever they need to do something with it.
+
+    Reasons for the current design that actually have strong rebuttals:
+    1. It is preferable to fail fast and reject invalid registry definitions at the point of declaration.
+        - Rebuttal: Considering how registries are likely not passed around much before being passed to official consumers,
+          it's not a big deal to fail later rather than sooner, and the error messages are going to be just as clear anyway.
+    2. It is preferable to cache registries for properties like ``OperationRegistry[OpA | OpB] is OperationRegistry[OpB | OpA]``.
+       In other words, key invariants are emergent from the registry's definition rather than relying on consumers to use the
+       canonical intepretation of registry definitions.
+        - Rebuttal: Consider how ``list[3]`` is valid Python syntax but not a valid type. Just like it's the responsibility of
+          type checkers to reject that, it should be the responsibility of registry consumers to reject invalid registry types.
+          In essence this debate is about how blind the OperationRegistry definition should be to the idea of "registry-ness".
+          The current design encodes the idea of "registry-ness" into the type system and uses that to enforce invariants, while
+          the alternative design treats "registry-ness" as the consumer's responsibility to enforce. The latter is more "Pythonic".
+    3. Caching registries helps with performance.
+       - Rebuttal: Performance is not a concern because registry resolution is neither hot nor expensive (type adapters are
+        already cached with ``_type_adapter_for``). Also this library is not aiming to be the fastest possible implementation,
+        but rather a first-of-its-kind implementation with a strong focus on correctness, usability, and maintainability.
+        Registries are cached for convenience: invariants like ``OperationRegistry[OpA | OpB] is OperationRegistry[OpB | OpA]``
+        become an emergent property of the implementation, which is nice to have for debugging but not strictly necessary.
+
+    So, why not just do something like:
+    type OperationRegistry[Ops: type[OperationSchema]] = Set[Ops]
+
+    And expand _RegistrySpecs to be a standalone class that can be instantiated from an OperationRegistry type alias, and then
+    resolved from the registry type alias whenever needed by official consumers?
+    I think that's what I'm going to do...
+    """
 
     def _reject_unparametrized_usage(self) -> None:
         """Guard against methods that require ``_spec`` to be defined."""
         try:
             self._spec.ordered_ops
-        except Exception as e:
+        except AttributeError as e:
             raise TypeError(f"{self.__name__} is missing patch operations.") from e
 
     def _reject_parametrized_usage(self) -> None:
         """Guard against methods that require ``_spec`` to be undefined."""
         try:
-            self._spec
+            self._spec.ordered_ops
         except AttributeError:
             return
         raise TypeError(f"{self.__name__} is already has patch operations.")
@@ -513,3 +517,45 @@ StandardRegistry = OperationRegistry[
     AddOp | CopyOp | MoveOp | RemoveOp | ReplaceOp | TestOp
 ]
 """Standard RFC 6902 registry containing the built-in patch operations."""
+
+
+def resolve_registry_typeform(
+    registry: TypeForm[AnyRegistry] | object,
+) -> type[AnyRegistry]:
+    """Resolve a registry type expression into a concrete ``OperationRegistry`` class.
+
+    This accepts a concrete registry type, a type alias to one, or a union of
+    registry types. Unions are merged by combining the operations from each
+    registry into a single canonical registry type.
+
+    Args:
+        registry: Registry type expression to resolve.
+
+    Returns:
+        A concrete ``OperationRegistry[...]`` subtype.
+
+    Raises:
+        TypeError: If ``registry`` is not a supported registry type expression.
+    """
+    if isinstance(registry, TypeAliasType):
+        return resolve_registry_typeform(registry.__value__)
+
+    if get_origin(registry) is Union:
+        # Implements the rule that OperationRegistry[A] | OperationRegistry[B] = OperationRegistry[A | B],
+        # as defined in the __or__ operator of _RegistryMeta.
+        args = get_args(registry)
+        merged_ops: frozenset[type[OperationSchema]] = frozenset()
+        for arg in args:
+            resolved = resolve_registry_typeform(arg)
+            merged_ops |= resolved._spec.ops
+        return OperationRegistry.of(*merged_ops)
+
+    if isinstance(registry, _RegistryMeta):
+        resolved = cast(type[AnyRegistry], registry)
+        resolved._reject_unparametrized_usage()
+        return resolved
+
+    raise TypeError(
+        "Expected an OperationRegistry type, a type alias to one, or a union of them; "
+        f"got {registry!r}"
+    )
