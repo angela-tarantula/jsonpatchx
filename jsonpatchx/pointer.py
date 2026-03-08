@@ -368,11 +368,11 @@ class JSONPointer(str, Generic[T_co, P_co]):
         validated_type, validated_backend = cls._parse_pointer_type_args(*pointer_args)
 
         if backend is None:
-            adapter = TypeAdapter(
+            adapter = _type_adapter_for(
                 JSONPointer[validated_type]  # type: ignore[valid-type]
             )
         else:
-            adapter = TypeAdapter(
+            adapter = _type_adapter_for(
                 JSONPointer[validated_type, validated_backend]  # type: ignore[valid-type]
             )
         return adapter.validate_python(path)
