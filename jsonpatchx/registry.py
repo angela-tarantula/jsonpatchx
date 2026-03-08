@@ -42,7 +42,7 @@ from jsonpatchx.builtins import (
 )
 from jsonpatchx.exceptions import InvalidOperationRegistry, OperationNotRecognized
 from jsonpatchx.schema import OperationSchema
-from jsonpatchx.types import JSONValue
+from jsonpatchx.types import JSONValue, _type_adapter_for
 
 TModel = TypeVar("TModel", bound=OperationSchema, covariant=True)
 type AnyRegistry = OperationRegistry[OperationSchema]
@@ -139,13 +139,13 @@ class _RegistrySpecs(BaseModel):
         }
 
     @cached_property
-    def union(self) -> TypeAliasType:
+    def union(self) -> TypeForm[OperationSchema]:
         """Discriminated union alias for this registry's operation models.
 
         Used for Pydantic validation and JSON Schema generation with ``op`` as
         the discriminator.
         """
-        type RegistryPatchOperation = Annotated[
+        RegistryPatchOperation = Annotated[
             Union[self.ordered_ops],  # type: ignore[name-defined]
             Field(discriminator="op"),
         ]
@@ -154,12 +154,12 @@ class _RegistrySpecs(BaseModel):
     @cached_property
     def op_adapter(self) -> TypeAdapter[OperationSchema]:
         """TypeAdapter for validating a single registry-bound operation."""
-        return TypeAdapter(self.union)
+        return _type_adapter_for(self.union)
 
     @cached_property
     def patch_adapter(self) -> TypeAdapter[list[OperationSchema]]:
         """TypeAdapter for validating a full registry-bound patch document."""
-        return TypeAdapter(list[self.union])  # type: ignore[name-defined]
+        return _type_adapter_for(list[self.union])  # type: ignore[name-defined]
 
     @cached_property
     def is_RFC6902(self) -> bool:
@@ -325,7 +325,7 @@ class OperationRegistry(Generic[TModel], metaclass=_RegistryMeta):
         return cls._spec.ordered_ops
 
     @classmethod
-    def union(cls) -> TypeAliasType:
+    def union(cls) -> TypeForm[OperationSchema]:
         """Discriminated union type for this registry's operations.
 
         Useful for advanced validation and schema-generation workflows.
