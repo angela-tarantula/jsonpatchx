@@ -47,13 +47,15 @@ import json
 from collections.abc import Mapping, Sequence
 from typing import Self, overload, override
 
+from typing_extensions import TypeForm
+
 from jsonpatchx.exceptions import (
     PatchError,
     PatchFailureDetail,
     PatchInternalError,
     PatchValidationError,
 )
-from jsonpatchx.registry import AnyRegistry, StandardRegistry
+from jsonpatchx.registry import AnyRegistry, StandardRegistry, resolve_registry_typeform
 from jsonpatchx.schema import OperationSchema
 from jsonpatchx.types import JSONValue, _validate_JSONValue
 
@@ -136,7 +138,7 @@ class JsonPatch(Sequence[OperationSchema]):
         self,
         patch: Sequence[Mapping[str, JSONValue]] | Sequence[OperationSchema],
         *,
-        registry: type[AnyRegistry] | None = None,
+        registry: TypeForm[AnyRegistry] | None = None,
     ):
         """
         Construct a JsonPatch from a sequence of operation dicts.
@@ -146,15 +148,19 @@ class JsonPatch(Sequence[OperationSchema]):
             registry: OperationRegistry to use for parsing/validation. If omitted,
                       the standard RFC 6902 registry is used.
         """
-        self._registry = registry or StandardRegistry
-        self._ops: list[OperationSchema] = self._registry.parse_python_patch(patch)
+        self._registry = (
+            StandardRegistry
+            if registry is None
+            else resolve_registry_typeform(registry)
+        )
+        self._ops = self._registry.parse_python_patch(patch)
 
     @classmethod
     def from_string(
         cls,
         text: str | bytes | bytearray,
         *,
-        registry: type[AnyRegistry] | None = None,
+        registry: TypeForm[AnyRegistry] | None = None,
     ) -> Self:
         """
         Construct a JsonPatch from a JSON-formatted string.
@@ -168,9 +174,13 @@ class JsonPatch(Sequence[OperationSchema]):
                       the standard RFC 6902 registry is used.
         """
         instance = cls.__new__(cls)
-        registry = registry or StandardRegistry
-        instance._registry = registry
-        instance._ops = registry.parse_json_patch(text)
+        resolved = (
+            StandardRegistry
+            if registry is None
+            else resolve_registry_typeform(registry)
+        )
+        instance._registry = resolved
+        instance._ops = resolved.parse_json_patch(text)
         return instance
 
     @property

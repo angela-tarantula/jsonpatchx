@@ -30,7 +30,7 @@ from typing_extensions import TypeForm, TypeVar
 from jsonpatchx.exceptions import PatchValidationError
 from jsonpatchx.registry import (
     AnyRegistry,
-    OperationRegistry,
+    resolve_registry_typeform,
 )
 from jsonpatchx.schema import OperationSchema
 from jsonpatchx.standard import _apply_ops
@@ -128,13 +128,14 @@ TargetT = TypeVar("TargetT", bound=BaseModel | str)
 RegistryT = TypeVar("RegistryT", bound=AnyRegistry)
 
 
-def _require_registry_type(registry: object) -> type[AnyRegistry]:
-    if not isclass(registry) or not issubclass(registry, OperationRegistry):
+def _require_registry_type(registry: TypeForm[AnyRegistry]) -> type[AnyRegistry]:
+    try:
+        return resolve_registry_typeform(registry)
+    except TypeError as exc:
         raise TypeError(
             "JsonPatchFor expects a registry type (OperationRegistry[...]), "
             f"got {registry!r}"
-        )
-    return registry
+        ) from exc
 
 
 def _coerce_schema_name(target: object) -> str | None:
@@ -228,7 +229,7 @@ class JsonPatchFor(_RegistryBoundPatchRoot, Generic[TargetT, RegistryT]):
             )
 
         target, registry = params
-        registry = _require_registry_type(registry)
+        registry = _require_registry_type(cast(TypeForm[AnyRegistry], registry))
 
         schema_name = _coerce_schema_name(target)
         if schema_name is not None:

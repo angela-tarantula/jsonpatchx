@@ -8,12 +8,16 @@ from functools import cached_property
 from inspect import isabstract
 from typing import (
     Annotated,
+    Any,
     ClassVar,
     Generic,
     TypeAliasType,
     TypeVar,
     Union,
     cast,
+    get_args,
+    get_origin,
+    overload,
     override,
 )
 
@@ -26,6 +30,7 @@ from pydantic import (
     field_validator,
     model_validator,
 )
+from typing_extensions import TypeForm
 
 from jsonpatchx.builtins import (
     AddOp,
@@ -172,34 +177,85 @@ STANDARD_OPS = _STANDARD_REGISTRY_SPECS.ordered_ops
 _REGISTRY_CACHE: dict[_RegistrySpecs, type[AnyRegistry]] = {}
 
 
+def resolve_registry_typeform(
+    registry: TypeForm[AnyRegistry] | object,
+) -> type[AnyRegistry]:
+    """Resolve a registry TypeForm into a concrete ``OperationRegistry`` class.
+
+    Accepted inputs:
+    - A concrete registry class (``OperationRegistry[...]``).
+    - A type alias to a registry class.
+    - A union of registry types or registry aliases.
+    """
+    if isinstance(registry, TypeAliasType):
+        return resolve_registry_typeform(registry.__value__)
+
+    if get_origin(registry) is Union:
+        args = get_args(registry)
+        merged_ops: frozenset[type[OperationSchema]] = frozenset()
+        for arg in args:
+            resolved = resolve_registry_typeform(arg)
+            merged_ops |= resolved._spec.ops
+        return OperationRegistry.of(*merged_ops)
+
+    if isinstance(registry, _RegistryMeta):
+        resolved = cast(type[AnyRegistry], registry)
+        resolved._reject_unparametrized_usage()
+        return resolved
+
+    raise TypeError(
+        "Expected an OperationRegistry type, a type alias to one, or a union of them; "
+        f"got {registry!r}"
+    )
+
+
 class _RegistryMeta(ABCMeta):
+    """Internal metaclass for ``OperationRegistry``.
+
+    Provides type hinting for the ``__or__`` operator used in registry type unions.
+    The ``__or__`` operator must live here and not in the ``OperationRegistry`` class
+    body because it should dictates the | operator's behavior on the class object itself,
+    as opposed to ``OperationRegistry`` instances, which are not meant to exist.
+
+    Behind the scenes, ``OperationRegistry`` is a runtime type factory that produces
+    distinct subtypes for each unique set of registered operations. In order to present
+    the illusion of a single ``OperationRegistry`` type that can be unioned with itself,
+    some guarding logic is necessary to distinguish parametrized usage from unparametrized
+    usage. For example, while ``OperationRegistry[AddOp]`` is legal, it must not be legal
+    to double-parametrize like ``OperationRegistry[AddOp][ReplaceOp]``.
+    """
+
+    _spec: ClassVar[_RegistrySpecs]
+
+    def _reject_unparametrized_usage(self) -> None:
+        """Guard against methods that require ``_spec`` to be defined."""
+        try:
+            self._spec.ordered_ops
+        except Exception as e:
+            raise TypeError(f"{self.__name__} is missing patch operations.") from e
+
+    def _reject_parametrized_usage(self) -> None:
+        """Guard against methods that require ``_spec`` to be undefined."""
+        try:
+            self._spec
+        except AttributeError:
+            return
+        raise TypeError(f"{self.__name__} is already has patch operations.")
+
+    @overload
+    def __or__[LModel: OperationSchema, RModel: OperationSchema](  # type: ignore[misc]
+        self: type[OperationRegistry[LModel]],
+        other: type[OperationRegistry[RModel]],
+    ) -> type[OperationRegistry[LModel | RModel]]: ...
+
+    @overload
+    def __or__[L, R](self: L, other: R) -> L | R: ...
+
     @override
-    def __or__(cls, other: object) -> type[AnyRegistry]:
-        if not isinstance(other, _RegistryMeta):
-            return NotImplemented
+    def __or__(self: Any, other: Any) -> Any:
+        return Union[self, other]
 
-        left = cast(type[AnyRegistry], cls)
-        right = cast(type[AnyRegistry], other)
-
-        left._reject_unparametrized_usage()
-        right._reject_unparametrized_usage()
-
-        merged_ops = left._spec.ops | right._spec.ops
-        return OperationRegistry.of(*merged_ops)
-
-    @override
-    def __ror__(cls, other: object) -> type[AnyRegistry]:
-        if not isinstance(other, _RegistryMeta):
-            return NotImplemented
-
-        left = cast(type[AnyRegistry], other)
-        right = cast(type[AnyRegistry], cls)
-
-        left._reject_unparametrized_usage()
-        right._reject_unparametrized_usage()
-
-        merged_ops = left._spec.ops | right._spec.ops
-        return OperationRegistry.of(*merged_ops)
+    __ror__ = __or__
 
 
 class OperationRegistry(Generic[TModel], metaclass=_RegistryMeta):
@@ -215,15 +271,13 @@ class OperationRegistry(Generic[TModel], metaclass=_RegistryMeta):
     Examples:
         Declare a registry statically:
 
-        >>> PlayerRegistry = OperationRegistry[AddOp | ReplaceOp | IncrementOp]
+        >>> type PlayerRegistry = OperationRegistry[AddOp | ReplaceOp | IncrementOp]
 
         Build one dynamically:
 
         >>> enabled_ops = [AddOp, ReplaceOp, IncrementOp]
-        >>> PlayerRegistry = OperationRegistry.of(*enabled_ops)
+        >>> type PlayerRegistry = OperationRegistry.of(*enabled_ops)
     """
-
-    _spec: ClassVar[_RegistrySpecs]
 
     def __new__(cls, *_: object, **__: object) -> OperationRegistry[TModel]:
         raise TypeError(
@@ -239,6 +293,7 @@ class OperationRegistry(Generic[TModel], metaclass=_RegistryMeta):
         Raises:
             InvalidOperationRegistry: If the supplied operation set is invalid.
         """
+        cls._reject_parametrized_usage()
         try:
             spec = _RegistrySpecs(ops=args)
         except (ValidationError, TypeError) as exc:
@@ -262,12 +317,6 @@ class OperationRegistry(Generic[TModel], metaclass=_RegistryMeta):
             return "StandardRegistry"
         op_names = "_".join(op.__name__ for op in spec.ordered_ops)
         return f"OperationRegistry_{op_names}"
-
-    @classmethod
-    def _reject_unparametrized_usage(cls) -> None:
-        """Guard against methods that require the ``_spec`` to be defined."""
-        if not hasattr(cls, "_spec"):
-            raise TypeError(f"{cls.__name__} is missing patch operations.")
 
     @classmethod
     def ops(cls) -> tuple[type[OperationSchema], ...]:
@@ -445,7 +494,7 @@ class OperationRegistry(Generic[TModel], metaclass=_RegistryMeta):
 
         Examples:
             >>> enabled = [AddOp, ReplaceOp, IncrementOp]
-            >>> PlayerRegistry = OperationRegistry.of(*enabled)
+            >>> type PlayerRegistry = OperationRegistry.of(*enabled)
         """
         if not ops:
             raise InvalidOperationRegistry(
