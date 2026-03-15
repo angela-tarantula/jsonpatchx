@@ -25,13 +25,10 @@ from pydantic import (
     create_model,
 )
 from pydantic_core import PydanticUndefined, PydanticUndefinedType
-from typing_extensions import TypeForm, TypeVar
+from typing_extensions import TypeVar
 
 from jsonpatchx.exceptions import PatchValidationError
-from jsonpatchx.registry import (
-    AnyRegistry,
-    _RegistrySpec,
-)
+from jsonpatchx.registry import _RegistrySpec
 from jsonpatchx.schema import OperationSchema
 from jsonpatchx.standard import _apply_ops
 from jsonpatchx.types import JSONValue, _validate_JSONValue
@@ -133,7 +130,7 @@ def _coerce_schema_name(target: object) -> str | None:
         return target
     origin = get_origin(target)
     if origin is Literal:
-        args = cast(tuple[TypeForm[Any], ...], get_args(target))
+        args = get_args(target)
         if len(args) == 1 and isinstance(args[0], str):
             return args[0]
     return None
@@ -220,7 +217,7 @@ class JsonPatchFor(_RegistryBoundPatchRoot, Generic[TargetT, RegistryT]):
             )
 
         target, registry = params
-        registry = _RegistrySpec.from_typeform(cast(AnyRegistry, registry))
+        registry = _RegistrySpec.from_typeform(registry)
 
         schema_name = _coerce_schema_name(target)
         if schema_name is not None:

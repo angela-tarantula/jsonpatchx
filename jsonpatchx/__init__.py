@@ -25,7 +25,6 @@ from jsonpatchx.pointer import JSONPointer
 from jsonpatchx.pydantic import JsonPatchFor
 from jsonpatchx.registry import (
     STANDARD_OPS,
-    AnyRegistry,
     StandardRegistry,
 )
 from jsonpatchx.schema import OperationSchema
@@ -50,7 +49,6 @@ __all__ = [
     "JSONValue",
     # operation specs
     "OperationSchema",
-    "AnyRegistry",
     "StandardRegistry",
     "STANDARD_OPS",
     # pydantic helpers

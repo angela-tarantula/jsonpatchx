@@ -47,13 +47,15 @@ import json
 from collections.abc import Mapping, Sequence
 from typing import Self, overload, override
 
+from typing_extensions import TypeForm
+
 from jsonpatchx.exceptions import (
     PatchError,
     PatchFailureDetail,
     PatchInternalError,
     PatchValidationError,
 )
-from jsonpatchx.registry import _STANDARD_REGISTRY_SPEC, AnyRegistry, _RegistrySpec
+from jsonpatchx.registry import _STANDARD_REGISTRY_SPEC, _RegistrySpec
 from jsonpatchx.schema import OperationSchema
 from jsonpatchx.types import JSONValue, _validate_JSONValue
 
@@ -136,7 +138,7 @@ class JsonPatch(Sequence[OperationSchema]):
         self,
         patch: Sequence[Mapping[str, JSONValue]] | Sequence[OperationSchema],
         *,
-        registry: AnyRegistry | None = None,
+        registry: TypeForm[OperationSchema] | None = None,
     ):
         """
         Construct a JsonPatch from a sequence of operation dicts.
@@ -158,7 +160,7 @@ class JsonPatch(Sequence[OperationSchema]):
         cls,
         text: str | bytes | bytearray,
         *,
-        registry: AnyRegistry | None = None,
+        registry: TypeForm[OperationSchema] | None = None,
     ) -> Self:
         """
         Construct a JsonPatch from a JSON-formatted string.
@@ -255,7 +257,7 @@ class JsonPatch(Sequence[OperationSchema]):
     def __add__(self, other: object) -> Self:
         if not isinstance(other, self.__class__):
             return NotImplemented
-        if self._registry is not other._registry:
+        if self._registry != other._registry:
             raise TypeError("Cannot add JsonPatch instances with different registries")
         instance = self.__class__.__new__(self.__class__)
         instance._registry = self._registry

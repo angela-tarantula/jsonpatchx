@@ -7,6 +7,7 @@ from functools import cached_property
 from inspect import isabstract
 from typing import (
     Annotated,
+    Any,
     TypeAliasType,
     Union,
     cast,
@@ -37,8 +38,6 @@ from jsonpatchx.exceptions import InvalidOperationRegistry, OperationNotRecogniz
 from jsonpatchx.schema import OperationSchema
 from jsonpatchx.types import JSONValue, _type_adapter_for
 
-type AnyRegistry = TypeForm[OperationSchema]
-
 
 def _iter_union_members[T](value: TypeForm[T]) -> Generator[type[T]]:
     """Yield leaf members from an operation type expression.
@@ -53,6 +52,7 @@ def _iter_union_members[T](value: TypeForm[T]) -> Generator[type[T]]:
     if isinstance(value, TypeAliasType):
         yield from _iter_union_members(value.__value__)
     elif get_origin(value) in (Union, types.UnionType):
+        # Update for Py3.14+: https://docs.python.org/3/library/typing.html#:~:text=For%20compatibility%20with%20earlier%20versions%20of%20Python%2C%20use%20get_origin(obj)%20is%20typing.Union%20or%20get_origin(obj)%20is%20types.UnionType
         for arg in get_args(value):
             yield from _iter_union_members(arg)
     elif get_origin(value) is Annotated:
@@ -78,7 +78,7 @@ class _RegistrySpec(BaseModel):
     ops: frozenset[type[OperationSchema]] = Field(min_length=1)
 
     @classmethod
-    def from_typeform(cls, typeform: TypeForm[OperationSchema]) -> _RegistrySpec:
+    def from_typeform(cls, typeform: TypeForm[OperationSchema] | Any) -> _RegistrySpec:
         """Build a validated spec from a type-form operation declaration.
 
         Args:
