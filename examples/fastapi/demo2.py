@@ -30,7 +30,6 @@ from jsonpatchx import (
     AddOp,
     CopyOp,
     MoveOp,
-    OperationRegistry,
     RemoveOp,
     ReplaceOp,
     TestOp,
@@ -40,7 +39,7 @@ from jsonpatchx.pydantic import JsonPatchFor
 
 STRICT_JSON_PATCH = True
 
-PlayerRegistry = OperationRegistry[
+type PlayerRegistry = (
     AddOp
     | CopyOp
     | MoveOp
@@ -52,8 +51,8 @@ PlayerRegistry = OperationRegistry[
     | RequireMinimumOp
     | AppendUniqueOp
     | RemoveValueOp
-]
-GuildRegistry = OperationRegistry[
+)
+type GuildRegistry = (
     AddOp
     | CopyOp
     | MoveOp
@@ -63,7 +62,7 @@ GuildRegistry = OperationRegistry[
     | AppendOp
     | IncrementOp
     | EnforceMaxLenOp
-]
+)
 
 PlayerPatch = JsonPatchFor[Player, PlayerRegistry]
 GuildPatch = JsonPatchFor[Guild, GuildRegistry]

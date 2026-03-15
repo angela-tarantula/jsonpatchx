@@ -21,7 +21,6 @@ from jsonpatchx import (
     CopyOp,
     JSONValue,
     MoveOp,
-    OperationRegistry,
     RemoveOp,
     ReplaceOp,
     TestOp,
@@ -77,7 +76,7 @@ class GenericAppendOp(OperationSchema, Generic[P]):
         return self.path.add(doc, [*current, self.value])
 
 
-registry = OperationRegistry[
+type ApprenticeRegistry = (
     AddOp
     | CopyOp
     | MoveOp
@@ -86,8 +85,8 @@ registry = OperationRegistry[
     | TestOp
     | GenericIncrementOp[RunePointerV2]
     | GenericAppendOp[RunePointerV2]
-]
-ApprenticePatch = JsonPatchFor[Apprentice, registry]
+)
+ApprenticePatch = JsonPatchFor[Apprentice, ApprenticeRegistry]
 apprentice_patch = JsonPatchRoute(
     ApprenticePatch,
     examples={

@@ -20,7 +20,6 @@ from examples.fastapi.shared import (
 )
 from jsonpatchx import (
     JSONValue,
-    OperationRegistry,
     OperationSchema,
 )
 from jsonpatchx.fastapi import JsonPatchRoute
@@ -74,7 +73,7 @@ class RuneAppendOp(OperationSchema):
         return self.path.add(doc, [*current, self.value])
 
 
-RuneRegistry = OperationRegistry[RuneIncrementOp | RuneAppendOp]
+type RuneRegistry = RuneIncrementOp | RuneAppendOp
 SpellbookPatch = JsonPatchFor[Literal["Spellbook"], StandardRegistry | RuneRegistry]
 ApprenticePatch = JsonPatchFor[Apprentice, StandardRegistry | RuneRegistry]
 spellbook_patch = JsonPatchRoute(

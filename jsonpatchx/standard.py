@@ -47,15 +47,13 @@ import json
 from collections.abc import Mapping, Sequence
 from typing import Self, overload, override
 
-from typing_extensions import TypeForm
-
 from jsonpatchx.exceptions import (
     PatchError,
     PatchFailureDetail,
     PatchInternalError,
     PatchValidationError,
 )
-from jsonpatchx.registry import AnyRegistry, StandardRegistry, resolve_registry_typeform
+from jsonpatchx.registry import _STANDARD_REGISTRY_SPEC, AnyRegistry, _RegistrySpec
 from jsonpatchx.schema import OperationSchema
 from jsonpatchx.types import JSONValue, _validate_JSONValue
 
@@ -115,11 +113,11 @@ def _apply_ops(
 
 class JsonPatch(Sequence[OperationSchema]):
     """
-    A parsed JSON Patch document (RFC 6902-style) bound to an OperationRegistry.
+    A parsed JSON Patch document (RFC 6902-style) bound to a registry declaration.
 
     ``JsonPatch`` is a convenience wrapper that:
 
-    - parses and validates an input patch document using an ``OperationRegistry``,
+    - parses and validates an input patch document using a registry of ``OperationSchema`` models,
     - stores the resulting typed ``OperationSchema`` instances,
     - applies them to JSON documents via the shared patch engine.
 
@@ -138,21 +136,21 @@ class JsonPatch(Sequence[OperationSchema]):
         self,
         patch: Sequence[Mapping[str, JSONValue]] | Sequence[OperationSchema],
         *,
-        registry: TypeForm[AnyRegistry] | None = None,
+        registry: AnyRegistry | None = None,
     ):
         """
         Construct a JsonPatch from a sequence of operation dicts.
 
         Args:
             patch: A sequence of JSON Patch operations as dicts.
-            registry: OperationRegistry to use for parsing/validation. If omitted,
-                      the standard RFC 6902 registry is used.
+            registry: A union of concrete OperationSchemas used for parsing and
+                validation (``OpA | OpB | ...``). If omitted, the standard RFC
+                6902 operations are used.
         """
-        self._registry = (
-            StandardRegistry
-            if registry is None
-            else resolve_registry_typeform(registry)
-        )
+        if registry is None:
+            self._registry = _STANDARD_REGISTRY_SPEC
+        else:
+            self._registry = _RegistrySpec.from_typeform(registry)
         self._ops = self._registry.parse_python_patch(patch)
 
     @classmethod
@@ -160,7 +158,7 @@ class JsonPatch(Sequence[OperationSchema]):
         cls,
         text: str | bytes | bytearray,
         *,
-        registry: TypeForm[AnyRegistry] | None = None,
+        registry: AnyRegistry | None = None,
     ) -> Self:
         """
         Construct a JsonPatch from a JSON-formatted string.
@@ -170,15 +168,15 @@ class JsonPatch(Sequence[OperationSchema]):
 
         Args:
             text: JSON-formatted string/bytes/bytearray for a JSON Patch document.
-            registry: OperationRegistry to use for parsing/validation. If omitted,
-                      the standard RFC 6902 registry is used.
+            registry: A union of concrete OperationSchemas used for parsing and
+                validation (``OpA | OpB | ...``). If omitted, the standard RFC
+                6902 operations are used.
         """
         instance = cls.__new__(cls)
-        resolved = (
-            StandardRegistry
-            if registry is None
-            else resolve_registry_typeform(registry)
-        )
+        if registry is None:
+            resolved = _STANDARD_REGISTRY_SPEC
+        else:
+            resolved = _RegistrySpec.from_typeform(registry)
         instance._registry = resolved
         instance._ops = resolved.parse_json_patch(text)
         return instance
@@ -259,7 +257,10 @@ class JsonPatch(Sequence[OperationSchema]):
             return NotImplemented
         if self._registry is not other._registry:
             raise TypeError("Cannot add JsonPatch instances with different registries")
-        return self.__class__(self._ops + other._ops, registry=self._registry)
+        instance = self.__class__.__new__(self.__class__)
+        instance._registry = self._registry
+        instance._ops = self._ops + other._ops
+        return instance
 
 
 def apply_patch(
@@ -283,23 +284,3 @@ def apply_patch(
         The patched document.
     """
     return JsonPatch(patch).apply(doc, inplace=inplace)
-
-
-if __name__ == "__main__":
-    raw: list[dict[str, JSONValue]] = [
-        {"op": "add", "path": "/foo", "value": "bar"},
-        {"op": "add", "path": "/baz", "value": [1, 2, 3]},
-        {"op": "remove", "path": "/baz/1"},
-        {"op": "test", "path": "/baz", "value": [1, 3]},
-        {"op": "replace", "path": "/baz/0", "value": 42},
-        {"op": "remove", "path": "/baz/1"},
-    ]
-    patch = JsonPatch(raw)
-    patch2 = JsonPatch.from_string(
-        '[{"op": "add", "path": "/foo", "value": "bar"}, {"op": "add", "path": "/baz", "value": [1, 2, 3]}, {"op": "remove", "path": "/baz/1"}, {"op": "test", "path": "/baz", "value": [1, 3]}, {"op": "replace", "path": "/baz/0", "value": 42}, {"op": "remove", "path": "/baz/1"}]'
-    )
-    assert patch._ops == patch2._ops
-
-    doc: dict[str, JSONValue] = {}
-    result = patch.apply(doc)
-    assert result == apply_patch(doc, raw)

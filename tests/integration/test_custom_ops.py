@@ -4,7 +4,6 @@ import pytest
 
 from jsonpatchx.exceptions import PatchInternalError
 from jsonpatchx.pointer import JSONPointer
-from jsonpatchx.registry import OperationRegistry
 from jsonpatchx.schema import OperationSchema
 from jsonpatchx.standard import JsonPatch
 from jsonpatchx.types import JSONNumber, JSONValue
@@ -31,17 +30,17 @@ class ExplodeOp(OperationSchema):
 
 
 def test_custom_op_apply() -> None:
-    registry = OperationRegistry[IncrementOp]
+    type Registry = IncrementOp
     patch = JsonPatch(
-        [{"op": "increment", "path": "/count", "amount": 2}], registry=registry
+        [{"op": "increment", "path": "/count", "amount": 2}], registry=Registry
     )
     result = patch.apply({"count": 1})
     assert result == {"count": 3}
 
 
 def test_custom_op_internal_error_wrapped() -> None:
-    registry = OperationRegistry[ExplodeOp]
-    patch = JsonPatch([{"op": "explode", "path": "/"}], registry=registry)
+    type Registry = ExplodeOp
+    patch = JsonPatch([{"op": "explode", "path": "/"}], registry=Registry)
     with pytest.raises(PatchInternalError) as exc:
         patch.apply({"a": 1})
     assert exc.value.detail.index == 0

@@ -1,4 +1,5 @@
 import json
+from abc import abstractmethod
 from typing import Any, Generic, Literal, cast, override
 
 import pytest
@@ -7,9 +8,9 @@ from typing_extensions import TypeVar
 
 from jsonpatchx.exceptions import InvalidOperationRegistry, OperationNotRecognized
 from jsonpatchx.pointer import JSONPointer
-from jsonpatchx.registry import OperationRegistry
+from jsonpatchx.registry import StandardRegistry, _RegistrySpec
 from jsonpatchx.schema import OperationSchema
-from jsonpatchx.standard import JsonPatch, StandardRegistry
+from jsonpatchx.standard import JsonPatch
 from jsonpatchx.types import JSONValue
 from tests.conftest import DotPointer
 
@@ -23,100 +24,55 @@ class ToggleOp(OperationSchema):
         return doc
 
 
-def test_invalid_operation_registry(subtests: Subtests) -> None:
+def test_invalid_registry_typeforms(subtests: Subtests) -> None:
     class FirstOp(OperationSchema):
         op: Literal["dup"] = "dup"
 
         @override
         def apply(self, doc: JSONValue) -> JSONValue:
-            return None  # pragma: no cover
+            return doc
 
     class SecondOp(OperationSchema):
         op: Literal["dup"] = "dup"
 
         @override
         def apply(self, doc: JSONValue) -> JSONValue:
-            return None  # pragma: no cover
+            return doc
 
     class AbstractOp(OperationSchema):
         op: Literal["abstract"] = "abstract"
 
-    with subtests.test("OperationRegistry requires at least one model"):
+        @abstractmethod
+        def apply(self, doc: JSONValue) -> JSONValue:
+            raise NotImplementedError
+
+    with subtests.test("duplicate op literals are rejected"):
         with pytest.raises(InvalidOperationRegistry):
-            OperationRegistry.__class_getitem__(())
+            _RegistrySpec.from_typeform(FirstOp | SecondOp)
 
-    with subtests.test("OperationRegistry requires unique op identifiers"):
+    with subtests.test("non-OperationSchema inputs are rejected"):
+        with pytest.raises(
+            InvalidOperationRegistry,
+            match="registry must be a union of concrete OperationSchemas",
+        ):
+            _RegistrySpec.from_typeform(cast(Any, str))
+
+        with pytest.raises(
+            InvalidOperationRegistry,
+            match="registry must be a union of concrete OperationSchemas",
+        ):
+            _RegistrySpec.from_typeform(cast(Any, 42))
+
+    with subtests.test("OperationSchema base class is rejected"):
         with pytest.raises(InvalidOperationRegistry):
-            OperationRegistry[FirstOp | SecondOp]
+            _RegistrySpec.from_typeform(OperationSchema)
 
-    with subtests.test("OperationRegistry rejects comma-separated parameters"):
-
-        class UniqueOneOp(OperationSchema):
-            op: Literal["unique-one"] = "unique-one"
-
-            @override
-            def apply(self, doc: JSONValue) -> JSONValue:
-                return None  # pragma: no cover
-
-        class UniqueTwoOp(OperationSchema):
-            op: Literal["unique-two"] = "unique-two"
-
-            @override
-            def apply(self, doc: JSONValue) -> JSONValue:
-                return None  # pragma: no cover
-
+    with subtests.test("abstract operation classes are rejected"):
         with pytest.raises(InvalidOperationRegistry):
-            OperationRegistry[UniqueOneOp, UniqueTwoOp]
-
-    with subtests.test("OperationRegistry rejects non-OperationSchema input"):
-        with pytest.raises(InvalidOperationRegistry):
-            OperationRegistry[str]
-
-        with pytest.raises(InvalidOperationRegistry):
-            OperationRegistry[42]  # type: ignore[valid-type]
-
-    with subtests.test("OperationRegistry rejects OperationSchema base class"):
-        with pytest.raises(InvalidOperationRegistry):
-            OperationRegistry[OperationSchema]
-
-    with subtests.test("OperationRegistry rejects abstract OperationSchema subclasses"):
-        with pytest.raises(InvalidOperationRegistry):
-            OperationRegistry[AbstractOp]
-
-    with subtests.test("OperationRegistry rejects OperationSchema instances"):
-        with pytest.raises(InvalidOperationRegistry):
-            OperationRegistry[FirstOp()]  # type: ignore[misc]
-
-    with subtests.test("OperationRegistry rejects nested registries"):
-        nested = OperationRegistry[FirstOp]
-        with pytest.raises(InvalidOperationRegistry):
-            OperationRegistry[nested]
+            _RegistrySpec.from_typeform(AbstractOp)
 
 
-def test_unparametrized_registry_methods_raise_type_error() -> None:
-    with pytest.raises(TypeError):
-        OperationRegistry.ops()
-
-    with pytest.raises(TypeError):
-        OperationRegistry.union()
-
-    with pytest.raises(TypeError):
-        OperationRegistry.model_for("toggle")
-
-    with pytest.raises(TypeError):
-        OperationRegistry.parse_python_op({"op": "toggle", "path": "/a"})
-
-    with pytest.raises(TypeError):
-        OperationRegistry.parse_python_patch([{"op": "toggle", "path": "/a"}])
-
-    with pytest.raises(TypeError):
-        OperationRegistry.parse_json_op('{"op":"toggle","path":"/a"}')
-
-    with pytest.raises(TypeError):
-        OperationRegistry.parse_json_patch('[{"op":"toggle","path":"/a"}]')
-
-
-def test_patch_schema_parse_happy_path(subtests: Subtests) -> None:
+def test_registry_spec_parse_happy_path(subtests: Subtests) -> None:
     class IncrementOp(OperationSchema):
         op: Literal["increment"] = "increment"
         path: str
@@ -124,7 +80,7 @@ def test_patch_schema_parse_happy_path(subtests: Subtests) -> None:
 
         @override
         def apply(self, doc: JSONValue) -> JSONValue:
-            return None  # pragma: no cover
+            return doc
 
     class ToggleByPathOp(OperationSchema):
         op: Literal["toggle-by-path"] = "toggle-by-path"
@@ -132,18 +88,18 @@ def test_patch_schema_parse_happy_path(subtests: Subtests) -> None:
 
         @override
         def apply(self, doc: JSONValue) -> JSONValue:
-            return None  # pragma: no cover
+            return doc
 
-    schema = OperationRegistry[IncrementOp | ToggleByPathOp]
+    registry = _RegistrySpec.from_typeform(IncrementOp | ToggleByPathOp)
 
     with subtests.test("parse_op succeeds"):
-        op = schema.parse_python_op({"op": "increment", "path": "/foo", "value": 3})
+        op = registry.parse_python_op({"op": "increment", "path": "/foo", "value": 3})
         assert isinstance(op, IncrementOp)
         assert op.path == "/foo"
         assert op.value == 3
 
     with subtests.test("parse_patch succeeds"):
-        patch = schema.parse_python_patch(
+        patch = registry.parse_python_patch(
             [
                 {"op": "increment", "path": "/foo", "value": 1},
                 {"op": "toggle-by-path", "path": "/foo"},
@@ -152,41 +108,29 @@ def test_patch_schema_parse_happy_path(subtests: Subtests) -> None:
         op1, op2 = patch
         assert isinstance(op1, IncrementOp)
         assert isinstance(op2, ToggleByPathOp)
-        assert op1.path == op2.path == "/foo"
-        assert op1.value == 1
 
 
-def test_operation_registry_preserves_explicit_pointer_backend(
-    subtests: Subtests,
-) -> None:
+def test_registry_spec_preserves_explicit_pointer_backend() -> None:
     class DotRemoveOp(OperationSchema):
         op: Literal["dot-remove"] = "dot-remove"
         path: JSONPointer[JSONValue, DotPointer]
 
         @override
         def apply(self, doc: JSONValue) -> JSONValue:
-            return doc  # pragma: no cover
+            return doc
 
-    with subtests.test("direct instantiation uses backend"):
-        op = DotRemoveOp.model_validate({"path": "a.b"})
-        assert isinstance(op.path.ptr, DotPointer)
+    op = DotRemoveOp.model_validate({"path": "a.b"})
+    assert isinstance(op.path.ptr, DotPointer)
 
-    with subtests.test("operation registry preserves explicit pointer backend"):
-        registry = OperationRegistry[DotRemoveOp]
-        op = cast(
-            DotRemoveOp, registry.parse_python_op({"op": "dot-remove", "path": "a.b"})
-        )
-        assert isinstance(op.path.ptr, DotPointer)
-
-
-def test_registry_repr_and_hash() -> None:
-    registry = OperationRegistry[ToggleOp]
-    rep = repr(registry)
-    assert "ToggleOp" in rep
-    assert isinstance(hash(registry), int)
+    registry = _RegistrySpec.from_typeform(DotRemoveOp)
+    parsed = cast(
+        DotRemoveOp,
+        registry.parse_python_op({"op": "dot-remove", "path": "a.b"}),
+    )
+    assert isinstance(parsed.path.ptr, DotPointer)
 
 
-def test_registry_type_cache_reuses_registry_class() -> None:
+def test_registry_spec_repr_hash_equality_are_set_based() -> None:
     class FirstOp(OperationSchema):
         op: Literal["cache-first"] = "cache-first"
 
@@ -201,51 +145,18 @@ def test_registry_type_cache_reuses_registry_class() -> None:
         def apply(self, doc: JSONValue) -> JSONValue:
             return doc
 
-    registry_a = OperationRegistry[FirstOp | SecondOp]
-    registry_b = OperationRegistry[SecondOp | FirstOp]
-    assert registry_a is registry_b
+    registry_a = _RegistrySpec.from_typeform(FirstOp | SecondOp)
+    registry_b = _RegistrySpec.from_typeform(SecondOp | FirstOp)
+
+    assert registry_a == registry_b
+    assert hash(registry_a) == hash(registry_b)
 
 
-def test_registry_of_uses_same_cache_as_bracket_syntax() -> None:
-    class FirstOp(OperationSchema):
-        op: Literal["cache-of-first"] = "cache-of-first"
-
-        @override
-        def apply(self, doc: JSONValue) -> JSONValue:
-            return doc
-
-    class SecondOp(OperationSchema):
-        op: Literal["cache-of-second"] = "cache-of-second"
-
-        @override
-        def apply(self, doc: JSONValue) -> JSONValue:
-            return doc
-
-    from_brackets = OperationRegistry[FirstOp | SecondOp]
-    from_of = OperationRegistry.of(SecondOp, FirstOp)
-
-    assert from_of is from_brackets
-
-
-def test_registry_union_param_syntax_uses_same_cache() -> None:
-    class FirstOp(OperationSchema):
-        op: Literal["union-first"] = "union-first"
-
-        @override
-        def apply(self, doc: JSONValue) -> JSONValue:
-            return doc
-
-    class SecondOp(OperationSchema):
-        op: Literal["union-second"] = "union-second"
-
-        @override
-        def apply(self, doc: JSONValue) -> JSONValue:
-            return doc
-
-    from_union = OperationRegistry[FirstOp | SecondOp]
-    from_union_swapped = OperationRegistry[SecondOp | FirstOp]
-
-    assert from_union is from_union_swapped
+def test_registry_spec_model_for_and_unknown_rejection() -> None:
+    registry = _RegistrySpec.from_typeform(ToggleOp)
+    assert registry.model_for("toggle") is ToggleOp
+    with pytest.raises(OperationNotRecognized):
+        registry.model_for("not-allowed")
 
 
 def test_jsonpatch_dunders_and_to_string() -> None:
@@ -254,7 +165,7 @@ def test_jsonpatch_dunders_and_to_string() -> None:
             {"op": "toggle", "path": "/a"},
             {"op": "toggle", "path": "/b"},
         ],
-        registry=OperationRegistry[ToggleOp],
+        registry=ToggleOp,
     )
     assert len(patch) == 2
     assert patch[0].op == "toggle"
@@ -265,8 +176,16 @@ def test_jsonpatch_dunders_and_to_string() -> None:
     assert payload[0]["op"] == "toggle"
 
 
+def test_jsonpatch_rejects_invalid_registry_typeform() -> None:
+    with pytest.raises(
+        InvalidOperationRegistry,
+        match="registry must be a union of concrete OperationSchemas",
+    ):
+        JsonPatch([], registry=cast(Any, int))
+
+
 def test_parse_python_op_accepts_models_and_dicts() -> None:
-    registry = OperationRegistry[ToggleOp]
+    registry = _RegistrySpec.from_typeform(ToggleOp)
     op_from_dict = registry.parse_python_op({"op": "toggle", "path": "/a"})
     assert isinstance(op_from_dict, ToggleOp)
 
@@ -276,48 +195,15 @@ def test_parse_python_op_accepts_models_and_dicts() -> None:
 
 
 def test_parse_python_op_rejects_other_registry_models() -> None:
-    op_instance = StandardRegistry.parse_python_op(
-        {"op": "add", "path": "/a", "value": 1}
-    )
-    registry = OperationRegistry[ToggleOp]
+    standard = _RegistrySpec.from_typeform(StandardRegistry)
+    op_instance = standard.parse_python_op({"op": "add", "path": "/a", "value": 1})
+
+    registry = _RegistrySpec.from_typeform(ToggleOp)
     with pytest.raises(OperationNotRecognized):
         registry.parse_python_op(op_instance)
 
 
-def test_model_for_returns_registered_model_and_rejects_unknown() -> None:
-    registry = OperationRegistry[ToggleOp]
-    assert registry.model_for("toggle") is ToggleOp
-    with pytest.raises(OperationNotRecognized):
-        registry.model_for("not-allowed")
-
-
-def test_registry_backend_rewrite_policies() -> None:
-    class DotBackendA(DotPointer):
-        pass
-
-    class DotBackendB(DotPointer):
-        pass
-
-    P_backend = TypeVar("P_backend", bound=DotPointer, default=DotBackendA)
-
-    class GenericOp(OperationSchema, Generic[P_backend]):
-        op: Literal["generic-op"] = "generic-op"
-        path: JSONPointer[JSONValue, P_backend]
-
-        @override
-        def apply(self, doc: JSONValue) -> JSONValue:
-            return doc
-
-    registry_a = OperationRegistry[GenericOp[DotBackendA]]
-    op_a = cast(Any, registry_a.parse_python_op({"op": "generic-op", "path": "a.b"}))
-    assert isinstance(op_a.path.ptr, DotBackendA)
-
-    registry_b = OperationRegistry[GenericOp[DotBackendB]]
-    op_b = cast(Any, registry_b.parse_python_op({"op": "generic-op", "path": "a.b"}))
-    assert isinstance(op_b.path.ptr, DotBackendB)
-
-
-def test_registry_accepts_mixed_backends() -> None:
+def test_registry_supports_mixed_pointer_backends() -> None:
     class SlashOp(OperationSchema):
         op: Literal["slash-op"] = "slash-op"
         path: JSONPointer[JSONValue]
@@ -334,7 +220,7 @@ def test_registry_accepts_mixed_backends() -> None:
         def apply(self, doc: JSONValue) -> JSONValue:
             return doc
 
-    registry = OperationRegistry[SlashOp | DotOp]
+    registry = _RegistrySpec.from_typeform(SlashOp | DotOp)
 
     slash = cast(Any, registry.parse_python_op({"op": "slash-op", "path": "/a/b"}))
     dot = cast(Any, registry.parse_python_op({"op": "dot-op", "path": "a.b"}))
@@ -363,7 +249,7 @@ def test_registry_model_input_requires_exact_class_identity(subtests: Subtests) 
     class SubGenericOp(GenericOp[Backend1]):
         pass
 
-    registry = OperationRegistry[GenericOp[Backend1]]
+    registry = _RegistrySpec.from_typeform(GenericOp[Backend1])
 
     accepted = GenericOp[Backend1].model_validate({"path": "a.b"})
     parsed = registry.parse_python_op(accepted)

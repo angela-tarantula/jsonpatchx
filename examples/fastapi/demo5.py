@@ -20,7 +20,6 @@ from jsonpatchx import (
     CopyOp,
     JSONValue,
     MoveOp,
-    OperationRegistry,
     RemoveOp,
     ReplaceOp,
     TestOp,
@@ -70,7 +69,7 @@ class ExplicitRuneAppendOp(OperationSchema):
         return self.path.add(doc, [*current, self.value])
 
 
-registry = OperationRegistry[
+type ApprenticeRegistry = (
     AddOp
     | CopyOp
     | MoveOp
@@ -79,8 +78,8 @@ registry = OperationRegistry[
     | TestOp
     | ExplicitRuneIncrementOp
     | ExplicitRuneAppendOp
-]
-ApprenticePatch = JsonPatchFor[Apprentice, registry]
+)
+ApprenticePatch = JsonPatchFor[Apprentice, ApprenticeRegistry]
 apprentice_patch = JsonPatchRoute(
     ApprenticePatch,
     examples={
