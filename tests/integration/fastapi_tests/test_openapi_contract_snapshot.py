@@ -27,7 +27,6 @@ from jsonpatchx import (
     TestOp,
 )
 from jsonpatchx.pointer import JSONPointer
-from jsonpatchx.registry import OperationRegistry
 from jsonpatchx.schema import OperationSchema
 from jsonpatchx.types import JSONBoolean, JSONValue
 
@@ -55,16 +54,10 @@ class ToggleOp(OperationSchema):
         return doc  # pragma: no cover
 
 
-LimitedRegistry = OperationRegistry[ToggleOp]
-ExtendedRegistry = OperationRegistry[
-    AddOp,
-    CopyOp,
-    MoveOp,
-    RemoveOp,
-    ReplaceOp,
-    TestOp,
-    ToggleOp,
-]
+type LimitedRegistry = ToggleOp
+type ExtendedRegistry = (
+    AddOp | CopyOp | MoveOp | RemoveOp | ReplaceOp | TestOp | ToggleOp
+)
 UserPatch = JsonPatchFor[User, LimitedRegistry]
 MedicalPatch = JsonPatchFor[MedicalRecord, ExtendedRegistry]
 JsonPatch = JsonPatchFor[Literal["Config"], ExtendedRegistry]

@@ -8,7 +8,7 @@ pytestmark = pytest.mark.anyio
 
 async def test_demo4_spellbook_midnight_runes(demo4_client: AsyncClient) -> None:
     patch = [
-        {"op": "replace", "path": "rituals.summon.enabled", "value": True},
+        {"op": "replace", "path": "/rituals/summon/enabled", "value": True},
         {"op": "increment", "path": "ingredients.moon_salt", "value": 5},
     ]
 
@@ -22,6 +22,7 @@ async def test_demo4_spellbook_midnight_runes(demo4_client: AsyncClient) -> None
 
 async def test_demo4_apprentice_sparkle_sprint(demo4_client: AsyncClient) -> None:
     patch = [
+        {"op": "replace", "path": "/name", "value": "Morgan Vale"},
         {"op": "increment", "path": "mana", "value": 20},
         {"op": "append", "path": "sigils", "value": "aurora"},
     ]
@@ -30,13 +31,14 @@ async def test_demo4_apprentice_sparkle_sprint(demo4_client: AsyncClient) -> Non
 
     assert response.status_code == 200
     payload = response.json()
+    assert payload["name"] == "Morgan Vale"
     assert payload["mana"] == 140
     assert payload["sigils"][-1] == "aurora"
 
 
 async def test_demo4_apprentice_lantern_lesson(demo4_client: AsyncClient) -> None:
     patch = [
-        {"op": "replace", "path": "name", "value": "Nova"},
+        {"op": "replace", "path": "/name", "value": "Nova"},
         {"op": "append", "path": "sigils", "value": "ember"},
     ]
 

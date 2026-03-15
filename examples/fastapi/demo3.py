@@ -22,22 +22,22 @@ from examples.fastapi.shared import (
     get_config,
     save_config,
 )
-from jsonpatchx import JSONValue, OperationRegistry
+from jsonpatchx import JSONValue
 from jsonpatchx.fastapi import JsonPatchRoute
 from jsonpatchx.pydantic import JsonPatchFor
 
 STRICT_JSON_PATCH = True
 
-ConfigRegistry = OperationRegistry[
-    IncrementOp,
-    AppendOp,
-    ExtendOp,
-    ToggleBoolOp,
-    SwapOp,
-    EnsureObjectOp,
-    RemoveNumberOp,
-    SetMessageOp,
-]
+type ConfigRegistry = (
+    IncrementOp
+    | AppendOp
+    | ExtendOp
+    | ToggleBoolOp
+    | SwapOp
+    | EnsureObjectOp
+    | RemoveNumberOp
+    | SetMessageOp
+)
 ConfigPatch = JsonPatchFor[Literal["ServiceConfig"], ConfigRegistry]
 config_patch = JsonPatchRoute(
     ConfigPatch,

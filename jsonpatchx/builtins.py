@@ -1,5 +1,5 @@
 import copy
-from typing import Final, Generic, Literal, Self, override
+from typing import Generic, Literal, Self, override
 
 from pydantic import ConfigDict, Field, model_validator
 from typing_extensions import TypeVar
@@ -142,13 +142,3 @@ class TestOp(OperationSchema, Generic[T]):
                 f"test at path {self.path!r} failed, got {actual!r} but expected {self.value!r}"
             )
         return doc
-
-
-STANDARD_OPS: Final[tuple[type[OperationSchema], ...]] = (
-    AddOp,
-    CopyOp,
-    MoveOp,
-    RemoveOp,
-    ReplaceOp,
-    TestOp,
-)

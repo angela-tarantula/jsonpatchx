@@ -1,10 +1,8 @@
 from abc import ABC, abstractmethod
 from typing import (
-    Any,
     ClassVar,
     Literal,
     Unpack,
-    cast,
     get_args,
     get_origin,
     get_type_hints,  # NOTE: For Py3.14+, this is enhanced for deferred annotations
@@ -14,7 +12,6 @@ from typing import (
 from pydantic import BaseModel, ConfigDict, GetJsonSchemaHandler
 from pydantic.json_schema import JsonSchemaValue
 from pydantic_core import core_schema as cs
-from typing_extensions import TypeForm
 
 from jsonpatchx.exceptions import InvalidOperationDefinition
 from jsonpatchx.types import JSONValue
@@ -106,21 +103,16 @@ class OperationSchema(BaseModel, ABC):
         Returns an empty tuple if the subclass does not declare a valid ``Literal[str, ...]``
         annotation for ``op``.
         """
-        hints = cast(dict[str, TypeForm[Any]], get_type_hints(cls, include_extras=True))
-        op_anno = hints.get("op")
-        if op_anno is None:
-            return ()
+        annotations = get_type_hints(cls, include_extras=True)
 
-        origin = get_origin(op_anno)
-
-        if origin is not Literal:
-            return ()
-
-        literal_vals = cast(tuple[TypeForm[Any], ...], get_args(op_anno))
-        if not literal_vals or not all(isinstance(v, str) for v in literal_vals):
-            return ()
-
-        return cast(tuple[str, ...], literal_vals)
+        if (
+            (op_annotation := annotations.get("op")) is not None
+            and (get_origin(op_annotation) is Literal)
+            and (op_literals := get_args(op_annotation))
+            and all(isinstance(v, str) for v in op_literals)
+        ):
+            return op_literals
+        return ()
 
     @abstractmethod
     def apply(self, doc: JSONValue) -> JSONValue:
