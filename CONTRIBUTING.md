@@ -32,7 +32,7 @@ python -m pip install --upgrade pip uv
    cd json-patch-x
    ```
 
-2. Initialize git [submodules](https://git-scm.com/book/en/v2/Git-Tools-Submodules) (required for the external compliance suite)
+2. Initialize Git [submodules](https://git-scm.com/book/en/v2/Git-Tools-Submodules) (required for the external compliance suite)
 
    ```sh
    git submodule update --init

@@ -21,16 +21,33 @@ def _write_snapshot(path: Path, schema: object) -> None:
     print(f"wrote {path}")
 
 
-def _format_with_biome(snapshot_dir: Path) -> None:
-    target = str(snapshot_dir.relative_to(ROOT))
+def _format_with_biome(snapshot_paths: list[Path]) -> None:
+    targets = [str(path.relative_to(ROOT)) for path in snapshot_paths]
 
     biome = shutil.which("biome")
     if biome is not None:
-        cmd = [biome, "format", "--write", target]
+        cmd = [biome, "format", "--write", *targets]
     elif shutil.which("npx") is not None:
-        cmd = ["npx", "--yes", "@biomejs/biome", "format", "--write", target]
+        cmd = ["npx", "--yes", "@biomejs/biome", "format", "--write", *targets]
     else:
         print("warning: skipped biome formatting (no 'biome' or 'npx' found in PATH)")
+        return
+
+    subprocess.run(cmd, cwd=ROOT, check=True)
+
+
+def _format_with_prettier(snapshot_paths: list[Path]) -> None:
+    targets = [str(path.relative_to(ROOT)) for path in snapshot_paths]
+
+    prettier = shutil.which("prettier")
+    if prettier is not None:
+        cmd = [prettier, "--write", *targets]
+    elif shutil.which("npx") is not None:
+        cmd = ["npx", "--yes", "prettier", "--write", *targets]
+    else:
+        print(
+            "warning: skipped prettier formatting (no 'prettier' or 'npx' found in PATH)"
+        )
         return
 
     subprocess.run(cmd, cwd=ROOT, check=True)
@@ -62,7 +79,8 @@ def main() -> None:
     for path, schema in zip(snapshot_paths, snapshot_schemas, strict=True):
         _write_snapshot(path, schema)
 
-    _format_with_biome(snapshot_dir)
+    _format_with_biome(snapshot_paths)
+    _format_with_prettier(snapshot_paths)
 
 
 if __name__ == "__main__":
