@@ -723,7 +723,7 @@
                   "summary": "Add a member, then trim to max size",
                   "value": [
                     {
-                      "op": "append_unique",
+                      "op": "append",
                       "path": "/members",
                       "value": "Nova"
                     },

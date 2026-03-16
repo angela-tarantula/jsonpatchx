@@ -117,7 +117,7 @@ guild_patch = JsonPatchRoute(
         "snug-fit": {
             "summary": "Add a member, then trim to max size",
             "value": [
-                {"op": "append_unique", "path": "/members", "value": "Nova"},
+                {"op": "append", "path": "/members", "value": "Nova"},
                 {
                     "op": "enforce_max_len",
                     "path": "/members",

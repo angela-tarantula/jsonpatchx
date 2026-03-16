@@ -1,3 +1,5 @@
+"""Regenerate FastAPI OpenAPI snapshot fixtures for integration tests."""
+
 from __future__ import annotations
 
 import json
@@ -9,6 +11,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
+# pylint: disable=wrong-import-position
 from examples.fastapi import demo1, demo2, demo3, demo4, demo5, demo6  # noqa: E402
 from tests.integration.fastapi_tests.test_openapi_contract_snapshot import (  # noqa: E402
     SNAPSHOT_PATH,
@@ -54,6 +57,7 @@ def _format_with_prettier(snapshot_paths: list[Path]) -> None:
 
 
 def main() -> None:
+    """Write and format all generated OpenAPI snapshot files."""
     snapshot_dir = ROOT / "tests" / "integration" / "fastapi_tests" / "snapshots"
     snapshot_dir.mkdir(parents=True, exist_ok=True)
 
