@@ -79,7 +79,7 @@ def main() -> None:
     for path, schema in zip(snapshot_paths, snapshot_schemas, strict=True):
         _write_snapshot(path, schema)
 
-    _format_with_biome(snapshot_paths)
+    # _format_with_biome(snapshot_paths)
     _format_with_prettier(snapshot_paths)
 
 

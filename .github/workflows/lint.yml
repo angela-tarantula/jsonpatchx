@@ -37,5 +37,6 @@ jobs:
           JSCPD_CONFIG_FILE: ".jscpd.json"
           MARKDOWN_CONFIG_FILE: ".markdownlint.yml"
           YAML_CONFIG_FILE: ".yamllint.yml"
+          VALIDATE_BIOME_FORMAT: false
           VALIDATE_ALL_CODEBASE: false
           MULTI_STATUS: false

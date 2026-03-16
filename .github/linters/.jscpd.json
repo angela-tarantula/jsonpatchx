@@ -2,10 +2,7 @@
   "threshold": 5,
   "minLines": 20,
   "minTokens": 120,
-  "path": [
-    "jsonpatchx",
-    "scripts"
-  ],
+  "path": ["jsonpatchx", "scripts"],
   "ignore": [
     "**/tests/**",
     "**/examples/**",
