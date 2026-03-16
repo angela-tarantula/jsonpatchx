@@ -1,34 +1,32 @@
-import copy
+from __future__ import annotations
+
+import types
 from collections import Counter
-from collections.abc import Mapping, Sequence
-from inspect import isabstract, isclass
-from types import MappingProxyType
+from collections.abc import Generator, Iterable, Mapping, Sequence
+from functools import cached_property
+from inspect import isabstract
 from typing import (
-    TYPE_CHECKING,
     Annotated,
     Any,
-    ClassVar,
-    Generic,
     TypeAliasType,
-    TypeVarTuple,
     Union,
     cast,
     get_args,
     get_origin,
-    get_type_hints,
     override,
 )
 
-from pydantic import Field, TypeAdapter, create_model
-from pydantic.fields import FieldInfo
-from typing_extensions import TypeForm, TypeVar
-
-from jsonpatchx.backend import (
-    _DEFAULT_POINTER_CLS,
-    PointerBackend,
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+    TypeAdapter,
+    ValidationError,
+    model_validator,
 )
+from typing_extensions import TypeForm
+
 from jsonpatchx.builtins import (
-    STANDARD_OPS,
     AddOp,
     CopyOp,
     MoveOp,
@@ -37,348 +35,198 @@ from jsonpatchx.builtins import (
     TestOp,
 )
 from jsonpatchx.exceptions import InvalidOperationRegistry, OperationNotRecognized
-from jsonpatchx.pointer import (
-    JSONPointer,
-)
 from jsonpatchx.schema import OperationSchema
-from jsonpatchx.types import JSONValue
-
-type AnyRegistry = GenericOperationRegistry[PointerBackend, *tuple[Any, ...]]
-Ops = TypeVarTuple("Ops")  # bound=type[OperationSchema]
-PBT = TypeVar("PBT", bound=PointerBackend, covariant=True)
-
-_REGISTRY_CACHE: dict[
-    tuple[tuple[type[OperationSchema], ...], type[PointerBackend]],
-    type[AnyRegistry],
-] = {}
+from jsonpatchx.types import JSONValue, _type_adapter_for
 
 
-class _RegistryMeta(type):
-    @override
-    def __call__(cls, *args: object, **kwargs: object) -> None:
-        raise TypeError(
-            f"{cls.__name__} is a registry type and cannot be instantiated. "
-            "Use it directly or via OperationRegistry[Op1, Op2, ...]."
+def _iter_union_members[T](value: TypeForm[T]) -> Generator[type[T]]:
+    """Yield leaf members from an operation type expression.
+
+    This performs structural unpacking only:
+    - unwraps type aliases
+    - flattens unions
+
+    It intentionally does not validate member types or forward references.
+    Pydantic enforces that in ``_RegistrySpec.ops``.
+    """
+    if isinstance(value, TypeAliasType):
+        yield from _iter_union_members(value.__value__)
+    elif get_origin(value) in (Union, types.UnionType):
+        # Update for Py3.14+: https://docs.python.org/3/library/typing.html#:~:text=For%20compatibility%20with%20earlier%20versions%20of%20Python%2C%20use%20get_origin(obj)%20is%20typing.Union%20or%20get_origin(obj)%20is%20types.UnionType
+        for arg in get_args(value):
+            yield from _iter_union_members(arg)
+    elif get_origin(value) is Annotated:
+        yield from _iter_union_members(get_args(value)[0])
+    elif get_origin(value) is None:
+        yield cast(type[T], value)
+    else:
+        raise InvalidOperationRegistry(
+            f"Unsupported type expression {get_origin(value)!r} in registry declaration: {value!r}"
         )
 
-    @staticmethod
-    def _registry_type_name(
-        ops: tuple[type[OperationSchema], ...],
-        pointer_cls: type[PointerBackend],
-    ) -> str:
-        if (
-            ops == GenericOperationRegistry._deterministic_sort(*STANDARD_OPS)
-            and pointer_cls is _DEFAULT_POINTER_CLS
-        ):
-            return "StandardRegistry"
-        op_names = "_".join(op.__name__ for op in ops)
-        if pointer_cls is _DEFAULT_POINTER_CLS:
-            return f"OperationRegistry_{op_names}"
-        return f"GenericOperationRegistry_{pointer_cls.__name__}__{op_names}"
 
-    @staticmethod
-    def _registry_display_name(
-        ops: tuple[type[OperationSchema], ...],
-        pointer_cls: type[PointerBackend],
-    ) -> str:
-        op_names = ", ".join(op.__name__ for op in ops)
-        if pointer_cls is _DEFAULT_POINTER_CLS:
-            return f"OperationRegistry[{op_names}]"
-        return f"GenericOperationRegistry[{pointer_cls.__name__}, {op_names}]"
+class _RegistrySpec(BaseModel):
+    """Internal canonical form of an operation registry.
 
-    @override
-    def __repr__(cls) -> str:
-        if cls is GenericOperationRegistry or cls is OperationRegistry:
-            return cls.__name__
-        assert hasattr(cls, "ops"), "internal error: OperationRegistry"
-        assert hasattr(cls, "_pointer_cls"), "internal error: OperationRegistry"
-        return _RegistryMeta._registry_display_name(cls.ops, cls._pointer_cls)
-
-
-class GenericOperationRegistry(Generic[PBT, *Ops], metaclass=_RegistryMeta):
-    """
-    Registry for JSON Patch operation types with a custom JSON Pointer.
-
-    >>> DotPointerRegistry = GenericOperationRegistry[DotPointer, AddOp, RemoveOp]
-    >>> LogRegistry = GenericOperationRegistry[LogPointer, AddOp, IncrementOp]
+    Normalizes a registry's operation models into a validated, deterministic
+    representation used for caching, equality, and discriminated-union
+    construction.
     """
 
-    # Normally, ClassVars can't be generic (https://github.com/python/typing/discussions/1424#discussioncomment-7989934)
-    # But in this case, GenericOperationRegistry[A] and GenericOperationRegistry[B] are different runtime objects.
-    ops: ClassVar[tuple[type[OperationSchema], ...]]
-    _pointer_cls: ClassVar[type[PointerBackend]]
-    union: ClassVar[TypeAliasType]
-    _bound_ops_set: ClassVar[frozenset[type[OperationSchema]]]
-    _accepted_ops_set: ClassVar[frozenset[type[OperationSchema]]]
-    _model_map: ClassVar[Mapping[str, type[OperationSchema]]]
-    _op_adapter: ClassVar[TypeAdapter[OperationSchema]]
-    _patch_adapter: ClassVar[TypeAdapter[list[OperationSchema]]]
+    model_config = ConfigDict(arbitrary_types_allowed=True, frozen=True)
 
-    def __class_getitem__(cls, params: object) -> type[AnyRegistry]:
-        op_models, pointer_cls = cls._split_ops_and_pointer(params)
-        ordered_ops = cls._deterministic_sort(*op_models)
-        bound_ops = cls._bind_op_models(pointer_cls, *ordered_ops)
-        cache_key = (ordered_ops, pointer_cls)
-        cached = _REGISTRY_CACHE.get(cache_key)
-        if cached is not None:
-            return cached
-
-        model_map = cls._build_model_map(*bound_ops)
-        union_type, op_adapter, patch_adapter = cls._build_adapters(*bound_ops)
-
-        name = cls._registry_type_name(ordered_ops, pointer_cls)
-        namespace = {
-            "ops": ordered_ops,
-            "_bound_ops_set": frozenset(bound_ops),
-            "_accepted_ops_set": frozenset((*ordered_ops, *bound_ops)),
-            "_pointer_cls": pointer_cls,
-            "union": union_type,
-            "_model_map": model_map,
-            "_op_adapter": op_adapter,
-            "_patch_adapter": patch_adapter,
-        }
-        registry_type = type(name, (cls,), namespace)
-        _REGISTRY_CACHE[cache_key] = registry_type
-        return registry_type
+    ops: frozenset[type[OperationSchema]] = Field(min_length=1)
 
     @classmethod
-    def _split_ops_and_pointer(
-        cls,
-        params: object,
-    ) -> tuple[tuple[type[OperationSchema], ...], type[PointerBackend]]:
-        if not isinstance(params, tuple) or len(params) < 2:
-            raise InvalidOperationRegistry(f"Invalid registry params: {params!r}")
-        first_param = cast(object, params[0])
-        variadic_params = cast(tuple[object, ...], params[1:])
+    def from_typeform(cls, typeform: TypeForm[OperationSchema] | Any) -> _RegistrySpec:
+        """Build a validated spec from a type-form operation declaration.
 
-        if not isclass(first_param):
+        Args:
+            typeform: A single operation model or union of models, including
+                nested type aliases of those forms.
+
+        Raises:
+            InvalidOperationRegistry: If the declaration cannot define a valid
+                operation registry.
+        """
+        try:
+            return cls(ops=frozenset(_iter_union_members(typeform)))
+        except ValidationError as exc:
             raise InvalidOperationRegistry(
-                f"Registry backend parameter {first_param!r} must be a class"
-            )
-        pointer_cls = cast(type[PointerBackend], first_param)
-        op_models = cls._validate_op_models(variadic_params)
-        cls._validate_op_name_uniqueness(*op_models)
-        return op_models, pointer_cls
+                "Invalid registry declaration: registry must be a union of concrete OperationSchemas "
+                f"(OpA | OpB | ...). Details: {exc}"
+            ) from exc
 
-    @staticmethod
-    def _validate_op_models(
-        unverified_params: tuple[object, ...],
-    ) -> tuple[type[OperationSchema], ...]:
-        for param in unverified_params:
-            if not isclass(param):
-                raise InvalidOperationRegistry(f"{param!r} is not a class")
+    @model_validator(mode="after")
+    def _validate_ops(self) -> _RegistrySpec:
+        """Validate registry invariants for ``ops``.
 
-            if not issubclass(param, OperationSchema) or isabstract(param):
-                raise InvalidOperationRegistry(
-                    f"{param!r} is not a concrete OperationSchema"
-                )
-        return cast(tuple[type[OperationSchema], ...], unverified_params)
+        Ensures the registry contains only concrete operation models and that
+        both model names and ``op`` discriminator literals are unique.
 
-    @staticmethod
-    def _validate_op_name_uniqueness(*op_models: type[OperationSchema]) -> None:
-        """The __name__ of every op must be unique for the Registry's type name."""
-        name_counts = Counter(op_model.__name__ for op_model in op_models)
-        non_unique_names = {name for name, cnt in name_counts.items() if cnt > 1}
-        if non_unique_names:
-            raise InvalidOperationRegistry(
-                f"Expected unique OperationSchema names, got duplicates for these: {non_unique_names!r}"
-            )
+        Raises:
+            InvalidOperationRegistry: If the registry definition is unusable.
+        """
 
-    @staticmethod
-    def _build_model_map(
-        *op_models: type[OperationSchema],
-    ) -> Mapping[str, type[OperationSchema]]:
-        model_map: dict[str, type[OperationSchema]] = {}
-        for model in op_models:
-            for op_literal in model._op_literals:
-                if op_literal in model_map:
-                    other = model_map[op_literal]
-                    raise InvalidOperationRegistry(
-                        f"{model.__name__} and {other.__name__} cannot share "
-                        f"'{op_literal}' as an op identifier"
-                    )
-                model_map[op_literal] = model
-        return MappingProxyType(model_map)
-
-    @staticmethod
-    def _build_adapters(
-        *op_models: type[OperationSchema],
-    ) -> tuple[
-        TypeAliasType,
-        TypeAdapter[OperationSchema],
-        TypeAdapter[list[OperationSchema]],
-    ]:
-        ordered_ops_tuple: tuple[type[OperationSchema], ...] = (
-            GenericOperationRegistry._deterministic_sort(*op_models)
+        non_concrete_models = sorted(
+            model.__name__ for model in self.ops if isabstract(model)
         )
+        if non_concrete_models:
+            raise InvalidOperationRegistry(
+                "Expected concrete OperationSchema classes, got abstract models: "
+                f"{non_concrete_models!r}"
+            )
 
-        type RegistryPatchOperation = Annotated[
-            Union[ordered_ops_tuple],  # type: ignore[valid-type]  # dynamic runtime type for Pydantic
+        def duplicates(values: Iterable[str]) -> list[str]:
+            return sorted(
+                {value for value, count in Counter(values).items() if count > 1}
+            )
+
+        dupe_names = duplicates(model.__name__ for model in self.ops)
+        if dupe_names:
+            raise InvalidOperationRegistry(
+                "Expected unique OperationSchema names, got duplicates for these: "
+                f"{dupe_names!r}"
+            )
+
+        dupe_op_literals = duplicates(
+            op_literal for model in self.ops for op_literal in model._op_literals
+        )
+        if dupe_op_literals:
+            raise InvalidOperationRegistry(
+                f"Unable to discriminate by 'op' due to duplicates: {dupe_op_literals!r}"
+            )
+
+        return self
+
+    @cached_property
+    def ordered_ops(self) -> tuple[type[OperationSchema], ...]:
+        """Canonical ordered tuple of operation models for this registry."""
+        return tuple(sorted(self.ops, key=lambda op: min(op._op_literals)))
+
+    @override
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, _RegistrySpec):
+            return NotImplemented
+        return self.ops == other.ops
+
+    @override
+    def __hash__(self) -> int:
+        return hash((self.__class__, self.ops))
+
+    @cached_property
+    def model_map(self) -> Mapping[str, type[OperationSchema]]:
+        """Mapping of each allowed ``op`` literal to its operation model."""
+        return {
+            op_literal: model
+            for model in self.ordered_ops
+            for op_literal in model._op_literals
+        }
+
+    @cached_property
+    def union_type(self) -> TypeForm[OperationSchema]:
+        """Discriminated union alias for this registry's operation models.
+
+        Used for Pydantic validation and JSON Schema generation with ``op`` as
+        the discriminator.
+        """
+        RegistryPatchOperation = Annotated[
+            Union[self.ordered_ops],  # type: ignore[name-defined]
             Field(discriminator="op"),
         ]
-        op_adapter: TypeAdapter[OperationSchema] = TypeAdapter(RegistryPatchOperation)
-        patch_adapter: TypeAdapter[list[OperationSchema]] = TypeAdapter(
-            list[RegistryPatchOperation]
-        )
-        return RegistryPatchOperation, op_adapter, patch_adapter
+        return RegistryPatchOperation
 
-    @staticmethod
-    def _deterministic_sort(
-        *op_models: type[OperationSchema],
-    ) -> tuple[type[OperationSchema], ...]:
-        """Deterministic sorting of OperationSchemas for OpenAPI reproducibility."""
-        return tuple(sorted(op_models, key=lambda op: op._op_literals[0]))
+    @cached_property
+    def op_adapter(self) -> TypeAdapter[OperationSchema]:
+        """TypeAdapter for validating a single registry-bound operation."""
+        return _type_adapter_for(self.union_type)
 
-    @classmethod
-    def _bind_op_models(
-        cls,
-        pointer_cls: type[PointerBackend],
-        *op_models: type[OperationSchema],
-    ) -> tuple[type[OperationSchema], ...]:
-        return tuple(
-            cls._bind_op_model_pointer_backend(op_model, pointer_cls)
-            for op_model in op_models
-        )
+    @cached_property
+    def patch_adapter(self) -> TypeAdapter[list[OperationSchema]]:
+        """TypeAdapter for validating a registry-bound patch document."""
+        return _type_adapter_for(list[self.union_type])  # type: ignore[name-defined]
 
-    @classmethod
-    def _bind_op_model_pointer_backend(
-        cls,
-        op_model: type[OperationSchema],
-        pointer_cls: type[PointerBackend],
-    ) -> type[OperationSchema]:
-        type_hints = cast(
-            dict[str, TypeForm[Any]], get_type_hints(op_model, include_extras=True)
-        )
-        field_overrides: dict[str, tuple[TypeForm[Any], FieldInfo]] = {}
-
-        for field_name, field_info in op_model.model_fields.items():
-            annotation = type_hints.get(field_name)
-            if annotation is None:
-                raise InvalidOperationRegistry(
-                    f"{op_model.__name__}.{field_name} is missing a resolved type annotation; "
-                    "cannot specialize pointer backend"
-                )
-            specialized_annotation = cls._specialize_pointer_annotation(
-                annotation,
-                pointer_cls,
-                op_model=op_model,
-                field_name=field_name,
+    def model_for(self, instruction: str) -> type[OperationSchema]:
+        """Resolve an ``op`` literal to its registered operation model."""
+        model = self.model_map.get(instruction)
+        if model is None:
+            raise OperationNotRecognized(
+                f"Patch operation '{instruction}' is not allowed in this registry"
             )
-            if specialized_annotation == annotation:
-                continue
-            field_overrides[field_name] = (
-                specialized_annotation,
-                copy.deepcopy(field_info),
-            )
+        return model
 
-        if not field_overrides:
-            return op_model
-
-        bound_op_model = create_model(
-            f"{op_model.__name__}__{pointer_cls.__name__}Bound",
-            __base__=op_model,
-            # Cast only for mypy: Pydantic create_model stubs are too narrow here
-            **cast(dict[str, Any], field_overrides),
-        )
-        return bound_op_model
-
-    @classmethod
-    def _specialize_pointer_annotation(
-        cls,
-        annotation: TypeForm[Any],
-        pointer_cls: type[PointerBackend],
-        *,
-        op_model: type[OperationSchema],
-        field_name: str,
-    ) -> TypeForm[Any]:
-        origin = get_origin(annotation)
-        if isinstance(origin, type) and issubclass(origin, JSONPointer):
-            pointer_args = cast(tuple[TypeForm[Any], ...], get_args(annotation))
-            # NOTE: what about 0 args? test on subclasses
-            if len(pointer_args) == 1:  # NOTE: test on subclasses
-                # JSONPointer[T]
-                type_param = pointer_args[0]
-                return cast(TypeForm[Any], origin[type_param, pointer_cls])  # type: ignore[index]
-            else:
-                # JSONPointer[T, P] or a subclass with T, P, and more args # NOTE: test on subclasses
-                type_param, _, *extra_args = pointer_args
-                rewritten_args = (type_param, pointer_cls, *extra_args)
-                return cast(TypeForm[Any], origin[rewritten_args])  # type: ignore[index]
-
-        if origin is Annotated:
-            annotation_args = cast(tuple[TypeForm[Any], ...], get_args(annotation))
-            if not annotation_args:
-                return annotation
-            base_annotation, *metadata = annotation_args
-            specialized_base = cls._specialize_pointer_annotation(
-                base_annotation,
-                pointer_cls,
-                op_model=op_model,
-                field_name=field_name,
-            )
-            if specialized_base == base_annotation:
-                return annotation
-            return cast(TypeForm[Any], Annotated[specialized_base, *metadata])
-
-        return annotation
-
-    @classmethod
-    def ops_by_name(cls) -> Mapping[str, type[OperationSchema]]:
-        return cls._model_map
-
-    @classmethod
-    def ops_set(cls) -> frozenset[type[OperationSchema]]:
-        return cls._accepted_ops_set
-
-    @classmethod
     def parse_python_op(
-        cls, obj: Mapping[str, JSONValue] | OperationSchema
+        self, obj: Mapping[str, JSONValue] | OperationSchema
     ) -> OperationSchema:
+        """Validate one Python operation payload against this registry."""
         if isinstance(obj, OperationSchema):
-            if type(obj) not in cls._accepted_ops_set:
+            if type(obj) not in self.ops:
                 raise OperationNotRecognized(
                     f"Operation {type(obj).__name__} is not allowed in this registry"
                 )
-            if type(obj) in cls._bound_ops_set:
-                return obj
-            return cls._op_adapter.validate_python(
-                obj.model_dump(mode="json", by_alias=True),
-                strict=True,
-                by_alias=True,
-                by_name=False,
-            )
-        return cls._op_adapter.validate_python(
+            return obj
+        return self.op_adapter.validate_python(
             obj,
             strict=True,
             by_alias=True,
             by_name=False,
         )
 
-    @classmethod
     def parse_python_patch(
-        cls, python: Sequence[OperationSchema | Mapping[str, JSONValue]]
+        self, python: Sequence[OperationSchema | Mapping[str, JSONValue]]
     ) -> list[OperationSchema]:
+        """Validate a Python patch document against this registry."""
         ops: list[OperationSchema] = []
         for item in python:
             if isinstance(item, OperationSchema):
-                if type(item) not in cls._accepted_ops_set:
+                if type(item) not in self.ops:
                     raise OperationNotRecognized(
                         f"Operation {type(item).__name__} is not allowed in this registry"
                     )
-                if type(item) in cls._bound_ops_set:
-                    ops.append(item)
-                else:
-                    ops.append(
-                        cls._op_adapter.validate_python(
-                            item.model_dump(mode="json", by_alias=True),
-                            strict=True,
-                            by_alias=True,
-                            by_name=False,
-                        )
-                    )
+                ops.append(item)
             else:
                 ops.append(
-                    cls._op_adapter.validate_python(
+                    self.op_adapter.validate_python(
                         item,
                         strict=True,
                         by_alias=True,
@@ -387,59 +235,35 @@ class GenericOperationRegistry(Generic[PBT, *Ops], metaclass=_RegistryMeta):
                 )
         return ops
 
-    @classmethod
-    def parse_json_op(cls, text: str | bytes | bytearray) -> OperationSchema:
-        return cls._op_adapter.validate_json(
+    def parse_json_op(self, text: str | bytes | bytearray) -> OperationSchema:
+        """Validate one JSON-encoded operation against this registry."""
+        return self.op_adapter.validate_json(
             text,
             strict=True,
             by_alias=True,
             by_name=False,
         )
 
-    @classmethod
-    def parse_json_patch(cls, text: str | bytes | bytearray) -> list[OperationSchema]:
-        return cls._patch_adapter.validate_json(
+    def parse_json_patch(self, text: str | bytes | bytearray) -> list[OperationSchema]:
+        """Validate a JSON-encoded patch document against this registry."""
+        return self.patch_adapter.validate_json(
             text,
             strict=True,
             by_alias=True,
             by_name=False,
         )
 
-
-# A statement like ``type OperationRegistry[*Ops] = GenericOperationRegistry[_DEFAULT_POINTER_CLS, *Ops]``
-# creates a typing.TypeAliasType at runtime, not an actual class, so it would lack the metaclass
-# machinery (__class_getitem__, registry caching, etc.) that the runtime relies on.
-if TYPE_CHECKING:
-    # Mypy only needs a generic alias form, but at runtime a concrete class is necessary to inject the
-    # default pointer backend into __class_getitem__.
-    class OperationRegistry(GenericOperationRegistry[_DEFAULT_POINTER_CLS, *Ops]):
-        """
-        Registry for JSON Patch operation types.
-
-        >>> LimitedRegistry = OperationRegistry[AddOp, RemoveOp]
-        >>> ExpandedRegistry = OperationRegistry[AddOp, RemoveOp, ToggleOp]
-        """
-else:
-
-    class OperationRegistry(GenericOperationRegistry):
-        @override
-        @classmethod
-        def _split_ops_and_pointer(
-            cls,
-            params: object,
-        ) -> tuple[tuple[type[OperationSchema], ...], type[PointerBackend]]:
-            if not isinstance(params, tuple):
-                params = (_DEFAULT_POINTER_CLS, params)
-            else:
-                params = (_DEFAULT_POINTER_CLS, *params)
-            return super()._split_ops_and_pointer(params)
+    @cached_property
+    def is_rfc6902(self) -> bool:
+        """Whether this registry is exactly the built-in RFC 6902 registry."""
+        return self.ops == _STANDARD_REGISTRY_SPEC.ops
 
 
-StandardRegistry = OperationRegistry[AddOp, CopyOp, MoveOp, RemoveOp, ReplaceOp, TestOp]
+type StandardRegistry = AddOp | CopyOp | MoveOp | RemoveOp | ReplaceOp | TestOp
+"""Standard RFC 6902 registry declaration typeform."""
 
-if TYPE_CHECKING:
-    _dont_raise_mypy_error_1 = GenericOperationRegistry[_DEFAULT_POINTER_CLS, AddOp]
+_STANDARD_REGISTRY_SPEC = _RegistrySpec.from_typeform(StandardRegistry)
+"""Resolved RFC 6902 registry spec."""
 
-    # from jsonpath import JSONPointer as ExtendedJsonPointer
-
-    # _dont_raise_mypy_error_2 = GenericOperationRegistry[ExtendedJsonPointer, AddOp]
+STANDARD_OPS = _STANDARD_REGISTRY_SPEC.ordered_ops
+"""Standard RFC 6902 patch operations."""

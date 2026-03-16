@@ -1,7 +1,6 @@
 """Typed JSON Patch (RFC 6902) utilities powered by Pydantic."""
 
 from jsonpatchx.builtins import (
-    STANDARD_OPS,
     AddOp,
     CopyOp,
     MoveOp,
@@ -25,8 +24,7 @@ from jsonpatchx.exceptions import (
 from jsonpatchx.pointer import JSONPointer
 from jsonpatchx.pydantic import JsonPatchFor
 from jsonpatchx.registry import (
-    GenericOperationRegistry,
-    OperationRegistry,
+    STANDARD_OPS,
     StandardRegistry,
 )
 from jsonpatchx.schema import OperationSchema
@@ -51,13 +49,11 @@ __all__ = [
     "JSONValue",
     # operation specs
     "OperationSchema",
-    "OperationRegistry",
     "StandardRegistry",
-    "GenericOperationRegistry",
+    "STANDARD_OPS",
     # pydantic helpers
     "JsonPatchFor",
     # built-ins
-    "STANDARD_OPS",
     "AddOp",
     "RemoveOp",
     "ReplaceOp",

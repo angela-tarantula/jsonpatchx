@@ -25,13 +25,10 @@ from pydantic import (
     create_model,
 )
 from pydantic_core import PydanticUndefined, PydanticUndefinedType
-from typing_extensions import TypeForm, TypeVar
+from typing_extensions import TypeVar
 
 from jsonpatchx.exceptions import PatchValidationError
-from jsonpatchx.registry import (
-    AnyRegistry,
-    GenericOperationRegistry,
-)
+from jsonpatchx.registry import _RegistrySpec
 from jsonpatchx.schema import OperationSchema
 from jsonpatchx.standard import _apply_ops
 from jsonpatchx.types import JSONValue, _validate_JSONValue
@@ -42,7 +39,7 @@ class _RegistryBoundPatchRoot(RootModel[Any]):
     Internal base for registry-backed JSON Patch RootModels.
 
     Notes:
-        - ``root`` is a JSON Patch document: ``list[registry.union]`` built dynamically via
+        - ``root`` is a JSON Patch document: ``list[registry.union_type]`` built dynamically via
           ``create_model``.
         - ``__registry__`` is set on subclasses.
     """
@@ -51,16 +48,15 @@ class _RegistryBoundPatchRoot(RootModel[Any]):
     # Why: The concrete root type (list[registry.union]) is supplied dynamically
     #      by factories via create_model(). Making this generic would either lie
     #      to the type checker or require pervasive casting with no real benefit.
+    #      (``registry.union_type`` in current implementation.)
 
     model_config = ConfigDict(frozen=True, strict=True)
 
-    __registry__: ClassVar[type[AnyRegistry] | PydanticUndefinedType] = (
-        PydanticUndefined
-    )
+    __registry__: ClassVar[_RegistrySpec | PydanticUndefinedType] = PydanticUndefined
 
     @property
     def ops(self) -> list[OperationSchema]:
-        # Assumption: subclasses will set root to list[registry.union]
+        # Assumption: subclasses will set root to list[registry.union_type]
         return cast(list[OperationSchema], self.root)
 
 
@@ -125,16 +121,7 @@ class _BasePatchBody(_RegistryBoundPatchRoot):
 
 
 TargetT = TypeVar("TargetT", bound=BaseModel | str)
-RegistryT = TypeVar("RegistryT", bound=AnyRegistry)
-
-
-def _require_registry_type(registry: object) -> type[AnyRegistry]:
-    if not isclass(registry) or not issubclass(registry, GenericOperationRegistry):
-        raise TypeError(
-            "JsonPatchFor expects a registry type (OperationRegistry[...]), "
-            f"got {registry!r}"
-        )
-    return registry
+RegistryT = TypeVar("RegistryT", bound=OperationSchema)
 
 
 def _coerce_schema_name(target: object) -> str | None:
@@ -143,7 +130,7 @@ def _coerce_schema_name(target: object) -> str | None:
         return target
     origin = get_origin(target)
     if origin is Literal:
-        args = cast(tuple[TypeForm[Any], ...], get_args(target))
+        args = get_args(target)
         if len(args) == 1 and isinstance(args[0], str):
             return args[0]
     return None
@@ -151,10 +138,11 @@ def _coerce_schema_name(target: object) -> str | None:
 
 class JsonPatchFor(_RegistryBoundPatchRoot, Generic[TargetT, RegistryT]):
     """
-    Factory for creating typed JSON Patch models bound to a registry type.
+    Factory for creating typed JSON Patch models bound to a registry declaration.
 
-    ``JsonPatchFor[Target, R]`` produces a patch model.
+    ``JsonPatchFor[Target, Registry]`` produces a patch model.
     ``Target`` is either a Pydantic model or a string name for JSON documents.
+    ``Registry`` is a union of concrete OperationSchemas (``OpA | OpB | ...``).
     """
 
     if TYPE_CHECKING:
@@ -223,12 +211,13 @@ class JsonPatchFor(_RegistryBoundPatchRoot, Generic[TargetT, RegistryT]):
         if not isinstance(params, tuple) or len(params) != 2:
             raise TypeError(
                 "JsonPatchFor expects JsonPatchFor[Target, Registry] where "
-                "Target is a BaseModel subclass or schema name string. "
+                "Target is a BaseModel subclass or schema name string and "
+                "Registry is a union of concrete OperationSchemas. "
                 f"Got: {params!r}."
             )
 
         target, registry = params
-        registry = _require_registry_type(registry)
+        registry = _RegistrySpec.from_typeform(registry)
 
         schema_name = _coerce_schema_name(target)
         if schema_name is not None:
@@ -245,12 +234,12 @@ class JsonPatchFor(_RegistryBoundPatchRoot, Generic[TargetT, RegistryT]):
     @staticmethod
     def _create_json_patch_body(
         schema_name: str,
-        registry: type[AnyRegistry],
+        registry: _RegistrySpec,
     ) -> type[_BasePatchBody]:
         BodyPatchOperation = TypeAliasType(  # type: ignore[misc]
             f"{schema_name}PatchOperation",
             Annotated[
-                registry.union.__value__,
+                registry.union_type,
                 Field(
                     title=f"{schema_name} Patch Operation",
                     description=(
@@ -281,12 +270,12 @@ class JsonPatchFor(_RegistryBoundPatchRoot, Generic[TargetT, RegistryT]):
     @staticmethod
     def _create_model_patch_body(
         model: type[ModelT],
-        registry: type[AnyRegistry],
+        registry: _RegistrySpec,
     ) -> type[_BasePatchModel[ModelT]]:
         ModelPatchOperation = TypeAliasType(  # type: ignore[misc]
             f"{model.__name__}PatchOperation",
             Annotated[
-                registry.union.__value__,
+                registry.union_type,
                 Field(
                     title=f"{model.__name__} Patch Operation",
                     description=f"Discriminated union of patch operations for {model.__name__}.",

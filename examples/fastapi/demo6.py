@@ -19,7 +19,6 @@ from examples.fastapi.shared import (
 from jsonpatchx import (
     AddOp,
     CopyOp,
-    GenericOperationRegistry,
     JSONValue,
     MoveOp,
     RemoveOp,
@@ -38,7 +37,7 @@ P = TypeVar("P", bound=RunePointer, covariant=True, default=RunePointer)
 
 
 class RunePointerV2(RunePointer):
-    """Marker subclass to show registry-scoped backend replacement on explicit backends."""
+    """Marker subclass used when specializing generic backend parameter P."""
 
 
 class GenericIncrementOp(OperationSchema, Generic[P]):
@@ -77,18 +76,17 @@ class GenericAppendOp(OperationSchema, Generic[P]):
         return self.path.add(doc, [*current, self.value])
 
 
-registry = GenericOperationRegistry[
-    RunePointerV2,
-    AddOp,
-    CopyOp,
-    MoveOp,
-    RemoveOp,
-    ReplaceOp,
-    TestOp,
-    GenericIncrementOp,
-    GenericAppendOp,
-]
-ApprenticePatch = JsonPatchFor[Apprentice, registry]
+type ApprenticeRegistry = (
+    AddOp
+    | CopyOp
+    | MoveOp
+    | RemoveOp
+    | ReplaceOp
+    | TestOp
+    | GenericIncrementOp[RunePointerV2]
+    | GenericAppendOp[RunePointerV2]
+)
+ApprenticePatch = JsonPatchFor[Apprentice, ApprenticeRegistry]
 apprentice_patch = JsonPatchRoute(
     ApprenticePatch,
     examples={
@@ -106,7 +104,7 @@ apprentice_patch = JsonPatchRoute(
 app = create_app(
     title="Demo 6: Generic backend-parameterized ops",
     description=(
-        "Registry-scoped rune-pointer backend with operations authored as "
+        "Rune-pointer operations authored as "
         "JSONPointer[..., P] where P is a backend TypeVar."
     ),
 )

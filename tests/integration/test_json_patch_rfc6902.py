@@ -10,6 +10,7 @@ from pydantic import BaseModel, ConfigDict, ValidationError, model_validator
 
 from jsonpatchx import JsonPatch, JSONValue, StandardRegistry
 from jsonpatchx.exceptions import PatchError
+from jsonpatchx.registry import _RegistrySpec
 
 JSON_PATCH_TESTS_DIR = resources.files("tests") / "cts"
 
@@ -21,6 +22,8 @@ SKIPPED_CASES: Final = {
         "If you need strict duplicate-key rejection, decode JSON yourself and pass the result to JsonPatch()."
     )
 }
+
+STANDARD_SPEC = _RegistrySpec.from_typeform(StandardRegistry)
 
 
 MISSING = "__MISSING__"
@@ -240,7 +243,7 @@ def test_json_patch_compliance_with_instantiated_models(case: Case) -> None:
         pytest.skip(reason=SKIPPED_CASES[case.comment])
 
     try:
-        ops = StandardRegistry.parse_python_patch(case.patch)
+        ops = STANDARD_SPEC.parse_python_patch(case.patch)
         patch = JsonPatch(ops, registry=StandardRegistry)
     except Exception as exc:
         if case.error is not None:
