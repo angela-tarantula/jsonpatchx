@@ -48,7 +48,7 @@ need to be made:
   the provided list.
 - [x] Update the `<License name>` placeholder in this file to reflect the name
   of the license you selected above.
-- [ ] Replace `<INSERT_CONTACT_METHOD>` in
+- [x] Replace `<INSERT_CONTACT_METHOD>` in
   [`CODE_OF_CONDUCT.md`](CODE_OF_CONDUCT.md) with a suitable communication
   channel.
 - [ ] Change references to `org_name` to the name of the org your repository belongs
