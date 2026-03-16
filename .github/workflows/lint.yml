@@ -33,6 +33,8 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           LINTER_RULES_PATH: ".github/linters"
+          CHECKOV_FILE_NAME: ".checkov.yaml"
+          JSCPD_CONFIG_FILE: ".jscpd.json"
           MARKDOWN_CONFIG_FILE: ".markdownlint.yml"
           YAML_CONFIG_FILE: ".yamllint.yml"
           VALIDATE_ALL_CODEBASE: false
