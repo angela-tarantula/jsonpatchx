@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import json
+import shutil
+import subprocess
 import sys
 from pathlib import Path
 
@@ -19,17 +21,48 @@ def _write_snapshot(path: Path, schema: object) -> None:
     print(f"wrote {path}")
 
 
+def _format_with_biome(snapshot_dir: Path) -> None:
+    target = str(snapshot_dir.relative_to(ROOT))
+
+    biome = shutil.which("biome")
+    if biome is not None:
+        cmd = [biome, "format", "--write", target]
+    elif shutil.which("npx") is not None:
+        cmd = ["npx", "--yes", "@biomejs/biome", "format", "--write", target]
+    else:
+        print("warning: skipped biome formatting (no 'biome' or 'npx' found in PATH)")
+        return
+
+    subprocess.run(cmd, cwd=ROOT, check=True)
+
+
 def main() -> None:
     snapshot_dir = ROOT / "tests" / "integration" / "fastapi_tests" / "snapshots"
     snapshot_dir.mkdir(parents=True, exist_ok=True)
 
-    _write_snapshot(snapshot_dir / "demo1_openapi.json", demo1.app.openapi())
-    _write_snapshot(snapshot_dir / "demo2_openapi.json", demo2.app.openapi())
-    _write_snapshot(snapshot_dir / "demo3_openapi.json", demo3.app.openapi())
-    _write_snapshot(snapshot_dir / "demo4_openapi.json", demo4.app.openapi())
-    _write_snapshot(snapshot_dir / "demo5_openapi.json", demo5.app.openapi())
-    _write_snapshot(snapshot_dir / "demo6_openapi.json", demo6.app.openapi())
-    _write_snapshot(SNAPSHOT_PATH, _build_openapi())
+    snapshot_paths = [
+        snapshot_dir / "demo1_openapi.json",
+        snapshot_dir / "demo2_openapi.json",
+        snapshot_dir / "demo3_openapi.json",
+        snapshot_dir / "demo4_openapi.json",
+        snapshot_dir / "demo5_openapi.json",
+        snapshot_dir / "demo6_openapi.json",
+        SNAPSHOT_PATH,
+    ]
+    snapshot_schemas = [
+        demo1.app.openapi(),
+        demo2.app.openapi(),
+        demo3.app.openapi(),
+        demo4.app.openapi(),
+        demo5.app.openapi(),
+        demo6.app.openapi(),
+        _build_openapi(),
+    ]
+
+    for path, schema in zip(snapshot_paths, snapshot_schemas, strict=True):
+        _write_snapshot(path, schema)
+
+    _format_with_biome(snapshot_dir)
 
 
 if __name__ == "__main__":
