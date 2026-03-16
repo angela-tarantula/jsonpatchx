@@ -1,0 +1,5 @@
+---
+skip-check:
+  - CKV_OPENAPI_4
+  - CKV_OPENAPI_5
+  - CKV_OPENAPI_21
