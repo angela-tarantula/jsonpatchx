@@ -14,16 +14,16 @@ Please note that all of your interactions in the project are subject to our
 requests, commenting on issues or pull requests, and extends to all interactions
 in any real-time space e.g., Slack, Discord, etc.
 
+## Prerequisites
 
-### Prerequisites
-
-Install [uv](https://docs.astral.sh/uv/getting-started/installation/#installing-uv)
+Install
+[uv](https://docs.astral.sh/uv/getting-started/installation/#installing-uv)
 
 ```sh
 python -m pip install --upgrade pip uv
 ```
 
-### Installation
+## Installation
 
 1. Clone the repository
 
@@ -32,7 +32,9 @@ python -m pip install --upgrade pip uv
    cd json-patch-x
    ```
 
-2. Initialize Git [submodules](https://git-scm.com/book/en/v2/Git-Tools-Submodules) (required for the external compliance suite)
+2. Initialize Git
+   [submodules](https://git-scm.com/book/en/v2/Git-Tools-Submodules)
+   (required for the external compliance suite)
 
    ```sh
    git submodule update --init
@@ -51,7 +53,7 @@ python -m pip install --upgrade pip uv
    prek install
    ```
 
-### Development
+## Development
 
 1. Run type checks with [mypy](https://www.mypy-lang.org/)
 
@@ -65,7 +67,8 @@ python -m pip install --upgrade pip uv
    uv run pytest -v
    ```
 
-3. View test coverage with [pytest-cov](https://github.com/pytest-dev/pytest-cov)
+3. View test coverage with
+   [pytest-cov](https://github.com/pytest-dev/pytest-cov)
 
    ```sh
    uv run pytest --cov=jsonpatchx --cov-report=html

@@ -1,3 +1,4 @@
+<!-- markdownlint-disable MD033 MD013 -->
 <h1 align="center">json-patch-x</h1>
 
 <p align="center">
@@ -22,7 +23,7 @@
     <img src="https://img.shields.io/badge/Contributor%20Covenant-2.1-fbab2c.svg" alt="Contributor Covenant">
   </a>
 </p>
-
+<!-- markdownlint-enable MD033 MD013 -->
 
 ## Before You Start
 
@@ -51,8 +52,8 @@ need to be made:
 - [x] Replace `<INSERT_CONTACT_METHOD>` in
   [`CODE_OF_CONDUCT.md`](CODE_OF_CONDUCT.md) with a suitable communication
   channel.
-- [ ] Change references to `org_name` to the name of the org your repository belongs
-  to e.g., `bloomberg`:
+- [ ] Change references to `org_name` to the name of the org your repository
+  belongs to e.g., `bloomberg`:
   - [ ] In [`README.md`](README.md)
   - [ ] In [`CONTRIBUTING.md`](CONTRIBUTING.md)
 - [ ] Change references to `repo_name` to the name of your new repository:
@@ -60,14 +61,13 @@ need to be made:
   - [ ] In [`CONTRIBUTING.md`](CONTRIBUTING.md)
 - [ ] Update the Release and Lint `README` badges to point to your project URL.
 - [ ] Update the links to `CONTRIBUTING.md` to point to your project URL:
+  - [ ] In [`.github/ISSUE_TEMPLATE/bug_report.yml`][bug-report-template]
   - [ ] In
-    [`.github/ISSUE_TEMPLATE/bug_report.yml`](.github/ISSUE_TEMPLATE/bug_report.yml)
-  - [ ] In
-    [`.github/ISSUE_TEMPLATE/feature_request.yml`](.github/ISSUE_TEMPLATE/feature_request.yml)
+    [`.github/ISSUE_TEMPLATE/feature_request.yml`][feature-request-template]
   - [ ] In
     [`.github/pull_request_template.md`](.github/pull_request_template.md)
 - [ ] Update the `Affected Version` tags in
-  [`.github/ISSUE_TEMPLATE/bug_report.yml`](.github/ISSUE_TEMPLATE/bug_report.yml)
+  [`.github/ISSUE_TEMPLATE/bug_report.yml`][bug-report-template]
   if applicable.
 - [ ] Replace the `<project name>` placeholder with the name of your project:
   - [ ] In [`CONTRIBUTING.md`](CONTRIBUTING.md)
@@ -79,12 +79,14 @@ need to be made:
   `<maintainer-team-name>` and `<admin-team-name>` entries.
 - [ ] Delete the release placeholder content in [`CHANGELOG.md`](CHANGELOG.md).
   We encourage you to [keep a changelog](https://keepachangelog.com/en/1.0.0/).
-- [ ] Configure [`.github/dependabot.yml`](.github/dependabot.yml) for your project's
-  language and tooling dependencies.
-- [ ] In [`.github/settings.yml`](.github/settings.yml), update the following fields:
+- [ ] Configure [`.github/dependabot.yml`](.github/dependabot.yml) for your
+  project's language and tooling dependencies.
+- [ ] In [`.github/settings.yml`](.github/settings.yml), update the following
+  fields:
   - [ ] `name`: Replace with the repository name for your project
   - [ ] `description`: A short, 1-2 sentence description of your project
-  - [ ] `teams`: Uncomment and update the GitHub team names and permissions as appropriate
+  - [ ] `teams`: Uncomment and update the GitHub team names and permissions as
+    appropriate
   - [ ] `branches`: Uncomment and enable branch protection settings for your
     project _(please **do not** disable branch protection entirely!)_
 - [ ] Replace the generic content in this file with the relevant details about
@@ -141,4 +143,8 @@ Project Link:
 ## Acknowledgements
 
 This template was adapted from
-[https://github.com/othneildrew/Best-README-Template](https://github.com/othneildrew/Best-README-Template).
+[Best README Template][best-readme-template].
+
+[best-readme-template]: https://github.com/othneildrew/Best-README-Template
+[bug-report-template]: /.github/ISSUE_TEMPLATE/bug_report.yml
+[feature-request-template]: /.github/ISSUE_TEMPLATE/feature_request.yml

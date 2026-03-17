@@ -1,4 +1,6 @@
 ---
+# Purpose: Non-Python lint/security/docs checks via Super-Linter.
+# Python lint/type/test checks run in .github/workflows/python-app.yml.
 name: lint
 
 on:
@@ -34,16 +36,20 @@ jobs:
           JSCPD_CONFIG_FILE: ".jscpd.json"
           MARKDOWN_CONFIG_FILE: ".markdownlint.yml"
           YAML_CONFIG_FILE: ".yamllint.yml"
-          VALIDATE_BIOME_LINT: false
-          VALIDATE_BIOME_FORMAT: false
-          VALIDATE_JUPYTER_NBQA_MYPY: false
-          VALIDATE_PYTHON_BLACK: false
-          VALIDATE_PYTHON_FLAKE8: false
-          VALIDATE_PYTHON_ISORT: false
-          VALIDATE_PYTHON_MYPY: false
-          VALIDATE_PYTHON_PYLINT: false
-          VALIDATE_PYTHON_RUFF: false
-          VALIDATE_PYTHON_RUFF_FORMAT: false
-          VALIDATE_TRIVY: false
+          VALIDATE_CHECKOV: true
+          VALIDATE_GITHUB_ACTIONS: true
+          VALIDATE_GITHUB_ACTIONS_ZIZMOR: true
+          VALIDATE_GITLEAKS: true
+          VALIDATE_GIT_MERGE_CONFLICT_MARKERS: true
+          VALIDATE_JSCPD: true
+          VALIDATE_JSON: true
+          VALIDATE_JSON_PRETTIER: true
+          VALIDATE_MARKDOWN: true
+          VALIDATE_MARKDOWN_PRETTIER: true
+          VALIDATE_NATURAL_LANGUAGE: true
+          VALIDATE_OPENAPI: true
+          VALIDATE_SPELL_CODESPELL: true
+          VALIDATE_YAML: true
+          VALIDATE_YAML_PRETTIER: true
           VALIDATE_ALL_CODEBASE: true
           MULTI_STATUS: false

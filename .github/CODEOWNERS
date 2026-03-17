@@ -1,0 +1,19 @@
+####################################################
+# Default reviewers for this repository
+####################################################
+#
+# Learn about CODEOWNERS format:
+# https://docs.github.com/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners
+#
+
+# Default owner for all paths.
+* @angela-tarantula
+
+# Stronger protection for CI and linter configuration.
+.github/workflows/* @angela-tarantula
+.github/linters/* @angela-tarantula
+
+# Enforce admin protections for repository configuration managed by probot/settings.
+# Ref: https://github.com/probot/settings#security-implications
+.github/CODEOWNERS @angela-tarantula
+.github/settings.yml @angela-tarantula

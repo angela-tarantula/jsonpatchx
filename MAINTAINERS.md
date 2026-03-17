@@ -1,3 +1,3 @@
 # Maintainers
 
-- [Angela](https://github.com/angela-tarantula)
+- [angela-tarantula](https://github.com/angela-tarantula)
