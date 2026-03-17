@@ -28,23 +28,32 @@ jobs:
         with:
           fetch-depth: 0
           persist-credentials: false
+      - name: Setup uv
+        uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78 # v7.6.0
+        with:
+          python-version: "3.12"
+          enable-cache: true
+          cache-dependency-glob: |
+            pyproject.toml
+            uv.lock
+      - name: Install Python dependencies
+        run: uv sync --all-groups
+      - name: Run mypy (project environment)
+        run: uv run mypy .
       - name: 🧹 run superlinter
         uses: super-linter/super-linter@61abc07d755095a68f4987d1c2c3d1d64408f1f9 # v8.5.0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           LINTER_RULES_PATH: ".github/linters"
-          OS_PACKAGES_CONFIG_FILE_NAME: "os-packages.json"
           CHECKOV_FILE_NAME: ".checkov.yaml"
           JSCPD_CONFIG_FILE: ".jscpd.json"
           MARKDOWN_CONFIG_FILE: ".markdownlint.yml"
           YAML_CONFIG_FILE: ".yamllint.yml"
-          PYTHON_MYPY_CONFIG_FILE: "../../pyproject.toml"
           VALIDATE_BIOME_FORMAT: false
+          VALIDATE_JUPYTER_NBQA_MYPY: false
           VALIDATE_PYTHON_BLACK: false
           VALIDATE_PYTHON_FLAKE8: false
-          VALIDATE_PYTHON_MYPY: true
+          VALIDATE_PYTHON_MYPY: false
           VALIDATE_PYTHON_PYLINT: false
-          VALIDATE_PYTHON_RUFF: true
-          VALIDATE_PYTHON_RUFF_FORMAT: true
           VALIDATE_ALL_CODEBASE: true
           MULTI_STATUS: false

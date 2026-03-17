@@ -1,3 +1,4 @@
+---
 name: Python CI
 
 on:
@@ -60,7 +61,8 @@ jobs:
           title: Coverage for Python ${{ matrix.python-version }}
 
   # https://github.com/marketplace/actions/alls-green#why
-  check:  # For branch protection
+  # For branch protection
+  check:
     if: always()
     needs:
       - build

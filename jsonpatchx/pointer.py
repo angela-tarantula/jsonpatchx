@@ -105,7 +105,7 @@ class JSONPointer(str, Generic[T_co, P_co]):
     - ``add`` and ``remove`` may mutate the document object they are given (or containers reachable
       from it). The root pointer ``""`` is the exception: setting the root returns a new document
       value rather than mutating an existing container. Removing the root sets it to JSONNull (None)
-      so that all standard operations are closed over JSONValue. If you wan't for forbid root removal,
+      so that all standard operations are closed over JSONValue. If you want to forbid root removal,
       it's easy to make a custom op!
     - Whether these mutations affect the original caller-owned document is determined by the patch
       engine (see ``_apply_ops(..., inplace=...)``), which may deep-copy the input document.

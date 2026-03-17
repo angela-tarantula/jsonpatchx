@@ -198,7 +198,7 @@ if TYPE_CHECKING:
     type JSONValue = Annotated[
         JSONScalar | JSONContainer[JSONValue],
         Field(),
-    ]  # NOTE: document somewhere tha you can't do isinstance because these are type aliases
+    ]  # NOTE: document somewhere that you can't do isinstance because these are type aliases
     """
     Pydantic-friendly type representing a strict JSON value.
 
