@@ -35,10 +35,10 @@ jobs:
           LINTER_RULES_PATH: ".github/linters"
           CHECKOV_FILE_NAME: ".checkov.yaml"
           JSCPD_CONFIG_FILE: ".jscpd.json"
-          PYTHON_MYPY_CONFIG_FILE: "../pyproject.toml"
+          PYTHON_MYPY_CONFIG_FILE: "../../pyproject.toml"
           VALIDATE_JUPYTER_NBQA_MYPY: false
           MARKDOWN_CONFIG_FILE: ".markdownlint.yml"
           YAML_CONFIG_FILE: ".yamllint.yml"
-          VALIDATE_BIOME_FORMAT: false # Conflicts with JSON_PRETTIER
+          VALIDATE_BIOME_FORMAT: false
           VALIDATE_ALL_CODEBASE: false
           MULTI_STATUS: false
