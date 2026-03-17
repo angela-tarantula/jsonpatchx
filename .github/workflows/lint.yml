@@ -3,13 +3,10 @@ name: lint
 
 on:
   push:
-    # Run superlinter on pushes to default branch
     branches:
       - main
-  # Run superlinter on pull request events
   pull_request:
 
-# Declare default permissions as read-only
 permissions: read-all
 
 jobs:
@@ -41,7 +38,10 @@ jobs:
           VALIDATE_JUPYTER_NBQA_MYPY: false
           VALIDATE_PYTHON_BLACK: false
           VALIDATE_PYTHON_FLAKE8: false
+          VALIDATE_PYTHON_ISORT: false
           VALIDATE_PYTHON_MYPY: false
           VALIDATE_PYTHON_PYLINT: false
+          VALIDATE_PYTHON_RUFF: false
+          VALIDATE_PYTHON_RUFF_FORMAT: false
           VALIDATE_ALL_CODEBASE: true
           MULTI_STATUS: false

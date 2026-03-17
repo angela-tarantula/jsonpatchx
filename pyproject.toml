@@ -22,7 +22,7 @@ dev = [
     "pytest>=9.0.1",
     "pytest-cov>=7.0.0",
     "python-jsonpath>=2.0.2",
-    "ruff>=0.14.7",
+    "ruff>=0.15.6",
     "typing-extensions>=4.15.0",
     "uvicorn>=0.40.0",
 ]
