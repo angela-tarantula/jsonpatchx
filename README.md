@@ -47,7 +47,7 @@ need to be made:
 - [ ] Change references to `repo_name` to the name of your new repository:
   - [ ] In [`README.md`](README.md)
   - [ ] In [`CONTRIBUTING.md`](CONTRIBUTING.md)
-- [ ] Update the Release and Lint `README` badges to point to your project URL.
+- [ ] Update the Release and Lint `readme` badges to point to your project URL.
 - [ ] Update the links to `CONTRIBUTING.md` to point to your project URL:
   - [ ] In [`.github/ISSUE_TEMPLATE/bug_report.yml`][bug-report-template]
   - [ ] In
@@ -79,7 +79,7 @@ need to be made:
     project _(please **do not** disable branch protection entirely!)_
 - [ ] Replace the generic content in this file with the relevant details about
   your project.
-- [ ] 🚨 Delete this section of the `README`!
+- [ ] 🚨 Delete this section of the `readme`!
 
 ## About The Project
 
@@ -131,7 +131,7 @@ Project Link:
 ## Acknowledgements
 
 This template was adapted from
-[Best README Template][best-readme-template].
+[Best readme template][best-readme-template].
 
 [best-readme-template]: https://github.com/othneildrew/Best-README-Template
 [bug-report-template]: /.github/ISSUE_TEMPLATE/bug_report.yml
