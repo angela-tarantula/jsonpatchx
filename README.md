@@ -34,9 +34,9 @@ tweaking. Before you begin developing in earnest, there are a few changes that
 need to be made:
 
 - [x] ✅ Select an [OSI-approved license](https://opensource.org/licenses) for
-      your project. This can easily be achieved through the 'Add File' button on the
-      GitHub UI, naming the file `LICENSE`, and selecting your desired license from
-      the provided list.
+      your project. This can easily be achieved through the 'Add File'
+      button on the GitHub UI, naming the file `LICENSE`, and selecting
+      your desired license from the provided list.
 - [x] Update the `<License name>` placeholder in this file to reflect the name
       of the license you selected above.
 - [x] Replace `<INSERT_CONTACT_METHOD>` in
