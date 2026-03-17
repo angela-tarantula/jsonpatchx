@@ -245,7 +245,7 @@ class JSONPointer(str, Generic[T_co, P_co]):
             ),
             metadata={  # wire to the json_schema
                 "type_param": type_param,
-                "pointer_backend_param": concrete_backend,
+                "pointer_backend_param": concrete_backend,  # NOTE: enable customization
             },
         )
 
@@ -267,7 +267,7 @@ class JSONPointer(str, Generic[T_co, P_co]):
             pointer_format = "json-pointer"
             pointer_description = "JSON Pointer (RFC 6901) string"
         else:
-            pointer_format = "custom-json-pointer"
+            pointer_format = "x-json-pointer"
             pointer_description = "JSON Pointer string (custom backend syntax)"
 
         json_schema = handler(schema)

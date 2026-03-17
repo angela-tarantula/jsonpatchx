@@ -3,13 +3,16 @@
 ####################################################
 #
 # Learn about CODEOWNERS format:
-# https://docs.github.com/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners
+# https://help.github.com/en/articles/about-code-owners
 #
 
-# Default owner for all paths.
+# These owners will be the default owners for everything in
+# the repository. Unless a later match takes precedence,
+# the following users/teams will be requested for
+# review when someone opens a pull request.
 * @angela-tarantula
 
-# Stronger protection for CI and linter configuration.
+# Stronger protection for CI.
 .github/workflows/* @angela-tarantula
 .github/linters/* @angela-tarantula
 

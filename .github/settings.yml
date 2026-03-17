@@ -58,24 +58,6 @@ repository:
   # vulnerability alerts.
   enable_vulnerability_alerts: true
 
-  # TODO: Enable this section once GitHub teams have been created & granted access to this repository
-  # See https://developer.github.com/v3/teams/#add-or-update-team-repository for options
-  # teams:
-  #   # The permission to grant the team. Can be one of:
-  #   # * `pull` - can pull, but not push to or administer this repository.
-  #   # * `push` - can pull and push, but not administer this repository.
-  #   # * `admin` - can pull, push and administer this repository.
-  #   # * `maintain` - Recommended for project managers who need to manage the
-  #   #   repository without access to sensitive or destructive actions.
-  #   # * `triage` - Recommended for contributors who need to proactively manage
-  #   #   issues and pull requests without write access.
-  #   - name: <project-name-admins>
-  #     permission: admin
-  #   - name: <project-name-maintainers>
-  #     permission: maintain
-  #   - name: <project-name>
-  #     permission: triage
-
   # TODO: Enable this section once repository has been created & no further modifications are needed
   # branches:
   #   - name: main

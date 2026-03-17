@@ -1,29 +1,17 @@
-<!-- markdownlint-disable MD033 MD013 -->
-<h1 align="center">json-patch-x</h1>
+# json-patch-x
 
-<p align="center">
-  <strong>PATCH is an API contract, not just a transport format.</strong>
-  <br>
-  A framework for <strong>governed, type-safe, and versionable</strong> partial updates in Python.
-</p>
+**PATCH is an API contract, not just a transport format.**
+A framework for **governed, type-safe, and versionable** partial updates in
+Python.
 
-<p align="center">
-  <a href="CHANGELOG.md">
-    <img src="https://img.shields.io/github/v/release/bloomberg/oss-template?display_name=tag" alt="Release">
-  </a>
-  <a href="https://github.com/angela-tarantula/json-patch-x/actions">
-    <img src="https://img.shields.io/github/actions/workflow/status/angela-tarantula/json-patch-x/python-app.yml?branch=main&label=CI&style=flat" alt="Tests">
-  </a>
-  <img src="https://img.shields.io/badge/RFC-6902-blue" alt="RFC 6902 compatible core">
-  <img src="https://img.shields.io/badge/FastAPI-First%20Class-009688" alt="FastAPI ready">
-  <a href="https://scorecard.dev/viewer/?uri=github.com/bloomberg/oss-template">
-    <img src="https://api.scorecard.dev/projects/github.com/bloomberg/oss-template/badge" alt="OpenSSF Scorecard">
-  </a>
-  <a href="CODE_OF_CONDUCT.md">
-    <img src="https://img.shields.io/badge/Contributor%20Covenant-2.1-fbab2c.svg" alt="Contributor Covenant">
-  </a>
-</p>
-<!-- markdownlint-enable MD033 MD013 -->
+<!-- markdownlint-disable MD013 -->
+[![Release](https://img.shields.io/github/v/release/bloomberg/oss-template?display_name=tag)](CHANGELOG.md)
+[![Tests](https://img.shields.io/github/actions/workflow/status/angela-tarantula/json-patch-x/python-app.yml?branch=main&label=CI&style=flat)](https://github.com/angela-tarantula/json-patch-x/actions)
+![RFC 6902 compatible core](https://img.shields.io/badge/RFC-6902-blue)
+![FastAPI ready](https://img.shields.io/badge/FastAPI-First%20Class-009688)
+[![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/bloomberg/oss-template/badge)](https://scorecard.dev/viewer/?uri=github.com/bloomberg/oss-template)
+[![Contributor Covenant](https://img.shields.io/badge/Contributor%20Covenant-2.1-fbab2c.svg)](CODE_OF_CONDUCT.md)
+<!-- markdownlint-enable MD013 -->
 
 ## Before You Start
 

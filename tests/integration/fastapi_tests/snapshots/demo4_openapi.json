@@ -251,7 +251,7 @@
           },
           "path": {
             "description": "JSON Pointer string (custom backend syntax)",
-            "format": "custom-json-pointer",
+            "format": "x-json-pointer",
             "title": "Path",
             "type": "string",
             "x-pointer-type-schema": {
@@ -280,7 +280,7 @@
           },
           "path": {
             "description": "JSON Pointer string (custom backend syntax)",
-            "format": "custom-json-pointer",
+            "format": "x-json-pointer",
             "title": "Path",
             "type": "string",
             "x-pointer-type-schema": {

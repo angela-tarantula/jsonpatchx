@@ -36,20 +36,31 @@ jobs:
           JSCPD_CONFIG_FILE: ".jscpd.json"
           MARKDOWN_CONFIG_FILE: ".markdownlint.yml"
           YAML_CONFIG_FILE: ".yamllint.yml"
-          VALIDATE_CHECKOV: true
-          VALIDATE_GITHUB_ACTIONS: true
-          VALIDATE_GITHUB_ACTIONS_ZIZMOR: true
-          VALIDATE_GITLEAKS: true
-          VALIDATE_GIT_MERGE_CONFLICT_MARKERS: true
-          VALIDATE_JSCPD: true
-          VALIDATE_JSON: true
-          VALIDATE_JSON_PRETTIER: true
-          VALIDATE_MARKDOWN: true
-          VALIDATE_MARKDOWN_PRETTIER: true
-          VALIDATE_NATURAL_LANGUAGE: true
-          VALIDATE_OPENAPI: true
-          VALIDATE_SPELL_CODESPELL: true
-          VALIDATE_YAML: true
-          VALIDATE_YAML_PRETTIER: true
-          VALIDATE_ALL_CODEBASE: true
+
+          # Security and workflow hardening.
+          VALIDATE_CHECKOV: true # policy/security checks for repo config and API specs
+          VALIDATE_GITHUB_ACTIONS: true # workflow syntax/expression validation
+          VALIDATE_GITHUB_ACTIONS_ZIZMOR: true # GitHub Actions security audits
+          VALIDATE_GITLEAKS: true # secrets detection
+          VALIDATE_GIT_MERGE_CONFLICT_MARKERS: true # blocks unresolved merge markers
+
+          # Duplicate logic detection.
+          VALIDATE_JSCPD: true # catches duplicated Python blocks (see .jscpd.json)
+
+          # API/schema and structured data quality.
+          VALIDATE_OPENAPI: true # validates OpenAPI snapshots in integration tests
+          VALIDATE_JSON: true # JSON correctness for snapshots and config files
+          VALIDATE_JSON_PRETTIER: true # JSON formatting consistency
+
+          # Documentation and language quality.
+          VALIDATE_MARKDOWN: true # markdownlint for docs and templates
+          VALIDATE_MARKDOWN_PRETTIER: true # markdown formatting consistency
+          VALIDATE_NATURAL_LANGUAGE: true # terminology/style checks in docs
+          VALIDATE_SPELL_CODESPELL: true # typo detection in code/docs/comments
+
+          # YAML hygiene for workflows, templates, and repo config.
+          VALIDATE_YAML: true # yamllint rules
+          VALIDATE_YAML_PRETTIER: true # YAML formatting consistency
+
+          VALIDATE_ALL_CODEBASE: true # REMEMBER TO DISABLE
           MULTI_STATUS: false

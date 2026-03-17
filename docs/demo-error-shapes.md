@@ -51,6 +51,7 @@ curl -s -X PATCH http://127.0.0.1:8000/users/1 -H 'Content-Type: application/jso
 ```
 
 Status: 409
+
 ### 409 test failed
 
 ```sh

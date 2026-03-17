@@ -16,9 +16,9 @@ and this project adheres to
 
 ### Added
 
-* Change one
-* Change two
-* Change three
+- Change one
+- Change two
+- Change three
 
 [unreleased]: https://github.com/bloomberg/oss-template/compare/v1.0.0...HEAD
 [1.0.0]: https://github.com/bloomberg/oss-template/releases/tag/v1.0.0
