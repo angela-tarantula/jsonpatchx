@@ -39,5 +39,5 @@ jobs:
           YAML_CONFIG_FILE: ".yamllint.yml"
           PYTHON_MYPY_CONFIG_FILE: "../../pyproject.toml"
           VALIDATE_BIOME_FORMAT: false
-          VALIDATE_ALL_CODEBASE: false
+          VALIDATE_ALL_CODEBASE: true
           MULTI_STATUS: false
