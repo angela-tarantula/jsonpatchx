@@ -5,7 +5,7 @@ Six focused FastAPI demos. Each demo is a standalone file that reads cleanly in 
 ## Setup (once)
 
 - Install demo deps: `uv sync`
-- Run commands from the repo root.
+- Run commands from the repository root.
 
 ## Quick links
 
