@@ -250,8 +250,8 @@
             "type": "string"
           },
           "path": {
-            "description": "JSON Pointer (RFC 6901) string",
-            "format": "json-pointer",
+            "description": "JSON Pointer string (custom backend syntax)",
+            "format": "custom-json-pointer",
             "title": "Path",
             "type": "string",
             "x-pointer-type-schema": {
@@ -279,8 +279,8 @@
             "type": "string"
           },
           "path": {
-            "description": "JSON Pointer (RFC 6901) string",
-            "format": "json-pointer",
+            "description": "JSON Pointer string (custom backend syntax)",
+            "format": "custom-json-pointer",
             "title": "Path",
             "type": "string",
             "x-pointer-type-schema": {
