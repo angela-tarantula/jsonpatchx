@@ -9,10 +9,10 @@ repository:
   private: true
 
   # A URL with more information about the repository
-  #homepage: https://example.github.io/
+  # homepage: https://example.github.io/
 
   # A comma-separated list of topics to set on the repository
-  #topics: github, probot
+  # topics: github, probot
 
   has_issues: true
   has_projects: true
@@ -29,9 +29,10 @@ repository:
   enable_automated_security_fixes: true
   enable_vulnerability_alerts: true
 
+# Branch protection API reference:
+# https://developer.github.com/v3/repos/branches/#update-branch-protection
 branches:
   - name: main
-  # https://developer.github.com/v3/repos/branches/#update-branch-protection
     protection:
       required_pull_request_reviews:
         required_approving_review_count: 1
@@ -48,6 +49,6 @@ branches:
           # - Analyze (actions)
           # - dependency-review
 
-
+      required_conversation_resolution: true
       required_linear_history: true
       restrictions: null

@@ -5,12 +5,14 @@ A framework for **governed, type-safe, and versionable** partial updates in
 Python.
 
 <!-- markdownlint-disable MD013 -->
+
 [![Release](https://img.shields.io/github/v/release/bloomberg/oss-template?display_name=tag)](CHANGELOG.md)
 [![Tests](https://img.shields.io/github/actions/workflow/status/angela-tarantula/json-patch-x/python-app.yml?branch=main&label=CI&style=flat)](https://github.com/angela-tarantula/json-patch-x/actions)
 ![RFC 6902 compatible core](https://img.shields.io/badge/RFC-6902-blue)
 ![FastAPI ready](https://img.shields.io/badge/FastAPI-First%20Class-009688)
 [![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/bloomberg/oss-template/badge)](https://scorecard.dev/viewer/?uri=github.com/bloomberg/oss-template)
 [![Contributor Covenant](https://img.shields.io/badge/Contributor%20Covenant-2.1-fbab2c.svg)](CODE_OF_CONDUCT.md)
+
 <!-- markdownlint-enable MD013 -->
 
 ## Before You Start
@@ -32,16 +34,16 @@ tweaking. Before you begin developing in earnest, there are a few changes that
 need to be made:
 
 - [x] ✅ Select an [OSI-approved license](https://opensource.org/licenses) for
-  your project. This can easily be achieved through the 'Add File' button on the
-  GitHub UI, naming the file `LICENSE`, and selecting your desired license from
-  the provided list.
+      your project. This can easily be achieved through the 'Add File' button on the
+      GitHub UI, naming the file `LICENSE`, and selecting your desired license from
+      the provided list.
 - [x] Update the `<License name>` placeholder in this file to reflect the name
-  of the license you selected above.
+      of the license you selected above.
 - [x] Replace `<INSERT_CONTACT_METHOD>` in
-  [`CODE_OF_CONDUCT.md`](CODE_OF_CONDUCT.md) with a suitable communication
-  channel.
+      [`CODE_OF_CONDUCT.md`](CODE_OF_CONDUCT.md) with a suitable communication
+      channel.
 - [ ] Change references to `org_name` to the name of the org your repository
-  belongs to e.g., `bloomberg`:
+      belongs to e.g., `bloomberg`:
   - [ ] In [`README.md`](README.md)
   - [ ] In [`CONTRIBUTING.md`](CONTRIBUTING.md)
 - [ ] Change references to `repo_name` to the name of your new repository:
@@ -51,34 +53,34 @@ need to be made:
 - [ ] Update the links to `CONTRIBUTING.md` to point to your project URL:
   - [ ] In [`.github/ISSUE_TEMPLATE/bug_report.yml`][bug-report-template]
   - [ ] In
-    [`.github/ISSUE_TEMPLATE/feature_request.yml`][feature-request-template]
+        [`.github/ISSUE_TEMPLATE/feature_request.yml`][feature-request-template]
   - [ ] In
-    [`.github/pull_request_template.md`](.github/pull_request_template.md)
+        [`.github/pull_request_template.md`](.github/pull_request_template.md)
 - [ ] Update the `Affected Version` tags in
-  [`.github/ISSUE_TEMPLATE/bug_report.yml`][bug-report-template]
-  if applicable.
+      [`.github/ISSUE_TEMPLATE/bug_report.yml`][bug-report-template]
+      if applicable.
 - [ ] Replace the `<project name>` placeholder with the name of your project:
   - [ ] In [`CONTRIBUTING.md`](CONTRIBUTING.md)
   - [ ] In [`SECURITY.md`](SECURITY.md)
 - [ ] Add names and contact information for the project maintainers to
-  [`MAINTAINERS.md`](MAINTAINERS.md).
+      [`MAINTAINERS.md`](MAINTAINERS.md).
 - [ ] Update the `<project-name>` placeholder in
-  [`.github/CODEOWNERS`](.github/CODEOWNERS) as well as the
-  `<maintainer-team-name>` and `<admin-team-name>` entries.
+      [`.github/CODEOWNERS`](.github/CODEOWNERS) as well as the
+      `<maintainer-team-name>` and `<admin-team-name>` entries.
 - [ ] Delete the release placeholder content in [`CHANGELOG.md`](CHANGELOG.md).
-  We encourage you to [keep a changelog](https://keepachangelog.com/en/1.0.0/).
+      We encourage you to [keep a changelog](https://keepachangelog.com/en/1.0.0/).
 - [ ] Configure [`.github/dependabot.yml`](.github/dependabot.yml) for your
-  project's language and tooling dependencies.
+      project's language and tooling dependencies.
 - [ ] In [`.github/settings.yml`](.github/settings.yml), update the following
-  fields:
+      fields:
   - [ ] `name`: Replace with the repository name for your project
   - [ ] `description`: A short, 1-2 sentence description of your project
   - [ ] `teams`: Uncomment and update the GitHub team names and permissions as
-    appropriate
+        appropriate
   - [ ] `branches`: Uncomment and enable branch protection settings for your
-    project _(please **do not** disable branch protection entirely!)_
+        project _(please **do not** disable branch protection entirely!)_
 - [ ] Replace the generic content in this file with the relevant details about
-  your project.
+      your project.
 - [ ] 🚨 Delete this section of the `readme`!
 
 ## About The Project
