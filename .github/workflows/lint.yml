@@ -33,6 +33,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           LINTER_RULES_PATH: ".github/linters"
+          OS_PACKAGES_CONFIG_FILE_NAME: "os-packages.json"
           CHECKOV_FILE_NAME: ".checkov.yaml"
           JSCPD_CONFIG_FILE: ".jscpd.json"
           MARKDOWN_CONFIG_FILE: ".markdownlint.yml"
