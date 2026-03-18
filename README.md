@@ -27,27 +27,27 @@
       channel.
 - [x] Change references to `org_name` to the name of the org your repository
       belongs to e.g., `bloomberg`:
-  - [ ] In [`README.md`](README.md)
-  - [ ] In [`CONTRIBUTING.md`](CONTRIBUTING.md)
-- [ ] Change references to `repo_name` to the name of your new repository:
-  - [ ] In [`README.md`](README.md)
-  - [ ] In [`CONTRIBUTING.md`](CONTRIBUTING.md)
-- [ ] Update the Release and Lint `readme` badges to point to your project URL.
-- [ ] Update the links to `CONTRIBUTING.md` to point to your project URL:
-  - [ ] In [`.github/ISSUE_TEMPLATE/bug_report.yml`][bug-report-template]
-  - [ ] In
+  - [x] In [`README.md`](README.md)
+  - [x] In [`CONTRIBUTING.md`](CONTRIBUTING.md)
+- [x] Change references to `repo_name` to the name of your new repository:
+  - [x] In [`README.md`](README.md)
+  - [x] In [`CONTRIBUTING.md`](CONTRIBUTING.md)
+- [x] Update the Release and Lint `readme` badges to point to your project URL.
+- [x] Update the links to `CONTRIBUTING.md` to point to your project URL:
+  - [x] In [`.github/ISSUE_TEMPLATE/bug_report.yml`][bug-report-template]
+  - [x] In
         [`.github/ISSUE_TEMPLATE/feature_request.yml`][feature-request-template]
-  - [ ] In
+  - [x] In
         [`.github/pull_request_template.md`](.github/pull_request_template.md)
-- [ ] Update the `Affected Version` tags in
+- [x] Update the `Affected Version` tags in
       [`.github/ISSUE_TEMPLATE/bug_report.yml`][bug-report-template] if
       applicable.
-- [ ] Replace the `<project name>` placeholder with the name of your project:
-  - [ ] In [`CONTRIBUTING.md`](CONTRIBUTING.md)
-  - [ ] In [`SECURITY.md`](SECURITY.md)
-- [ ] Add names and contact information for the project maintainers to
+- [x] Replace the `<project name>` placeholder with the name of your project:
+  - [x] In [`CONTRIBUTING.md`](CONTRIBUTING.md)
+  - [x] In [`SECURITY.md`](SECURITY.md)
+- [x] Add names and contact information for the project maintainers to
       [`MAINTAINERS.md`](MAINTAINERS.md).
-- [ ] Update the `<project-name>` placeholder in
+- [x] Update the `<project-name>` placeholder in
       [`.github/CODEOWNERS`](.github/CODEOWNERS) as well as the
       `<maintainer-team-name>` and `<admin-team-name>` entries.
 - [ ] Delete the release placeholder content in [`CHANGELOG.md`](CHANGELOG.md).
@@ -108,7 +108,7 @@ Distributed under the MIT License. See [LICENSE](LICENSE) for more information.
 
 ## Contact
 
-Your Name - [@twitter_handle](https://twitter.com/twitter_handle) - email
+Anglea Liss - [chamsester@gmail.com](mailto:chamsester@gmail.com)
 
 Project Link:
 [https://github.com/angela-tarantula/json-patch-x](https://github.com/angela-tarantula/json-patch-x)

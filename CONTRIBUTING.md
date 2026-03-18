@@ -1,7 +1,7 @@
 # How to Contribute
 
-Thanks for your interest in contributing to `<project name>`! Here are a few
-general guidelines on contributing and reporting bugs that we ask you to review.
+Thanks for your interest in contributing to json-patch-x! Here are a few general
+guidelines on contributing and reporting bugs that we ask you to review.
 Following these guidelines helps to communicate that you respect the time of the
 contributors managing and developing this open source project. In return, they
 should reciprocate that respect in addressing your issue, assessing changes, and
@@ -147,9 +147,9 @@ major version release.
 
 ## Other Ways to Contribute
 
-We welcome anyone that wants to contribute to `<project name>` to triage and
-reply to open issues to help troubleshoot and fix existing bugs. Here is what
-you can do:
+We welcome anyone that wants to contribute to json-patch-x to triage and reply
+to open issues to help troubleshoot and fix existing bugs. Here is what you can
+do:
 
 - Help ensure that existing issues follows the recommendations from the
   _[Reporting Issues](#reporting-issues)_ section, providing feedback to the
@@ -158,9 +158,9 @@ you can do:
   [Wiki](https://github.com/angela-tarantula/json-patch-x/wiki) with up-to-date
   instructions and code samples.
 - Review existing pull requests, and testing patches against real existing
-  applications that use `<project name>`.
+  applications that use json-patch-x.
 - Write a test, or add a missing test case to an existing test.
 
-Thanks again for your interest on contributing to `<project name>`!
+Thanks again for your interest on contributing to json-patch-x!
 
 :heart:
