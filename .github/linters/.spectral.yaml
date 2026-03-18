@@ -1,0 +1,5 @@
+---
+# Local Spectral ruleset for the `prek` OpenAPI hook.
+# CI OPENAPI validation is still handled by Super-Linter.
+extends:
+  - spectral:oas

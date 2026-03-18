@@ -81,6 +81,47 @@ python -m pip install --upgrade pip uv
    uv run ruff format
    ```
 
+## Prek quick reference
+
+- Run all configured hooks manually:
+
+  ```sh
+  prek run --all-files
+  ```
+
+- List available hook IDs:
+
+  ```sh
+  prek list
+  ```
+
+- Run one specific hook:
+
+  ```sh
+  prek run checkov --all-files
+  ```
+
+- Skip one hook for one commit:
+
+  ```sh
+  PREK_SKIP=checkov git commit -m "message"
+  ```
+
+- Skip multiple hooks for one commit:
+
+  ```sh
+  PREK_SKIP=checkov,openapi git commit -m "message"
+  ```
+
+- Skip all hooks for one commit:
+
+  ```sh
+  git commit --no-verify -m "message"
+  ```
+
+CI still runs required checks on pushes and pull requests, so skipping local
+hooks does not bypass CI requirements.
+
 ## Reporting Issues
 
 Before reporting a new issue, please ensure that the issue was not already
