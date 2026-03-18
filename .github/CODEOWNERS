@@ -6,15 +6,7 @@
 # https://help.github.com/en/articles/about-code-owners
 #
 
-# These owners will be the default owners for everything in
-# the repository. Unless a later match takes precedence,
-# the following users/teams will be requested for
-# review when someone opens a pull request.
 * @angela-tarantula
-
-# Stronger protection for CI.
-.github/workflows/* @angela-tarantula
-.github/linters/* @angela-tarantula
 
 # Enforce admin protections for repository configuration managed by probot/settings.
 # Ref: https://github.com/probot/settings#security-implications
