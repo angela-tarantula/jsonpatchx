@@ -1,4 +1,4 @@
-# json-patch-x
+# jsonpatchx
 
 **PATCH is an API contract, not just a transport format.** A framework for
 **governed, type-safe, and versionable** partial updates in Python.
@@ -16,11 +16,22 @@
 
 ## About The Project
 
-Provide some information about what the project is/does.
+`jsonpatchx` is a Python framework for governed partial updates using JSON Patch
+(RFC 6902).
+
+It is designed for teams that want PATCH behavior to be explicit, typed, and
+documented, not just loosely validated request payloads.
+
+In practice, it gives you:
+
+- RFC 6902-compatible core operations (`add`, `remove`, `replace`, etc.)
+- Pydantic-backed validation for operations and target value types
+- Extensible operation registries for domain-specific patch operations
+- FastAPI integration that keeps request enforcement and OpenAPI docs aligned
 
 ## Getting Started
 
-To get a local copy up and running follow these simple steps.
+Install from PyPI:
 
 ### Installation
 
@@ -30,12 +41,30 @@ pip install jsonpatchx
 
 ## Usage
 
-Use this space to show useful examples of how a project can be used. Additional
-screenshots, code examples and demos work well in this space. You may also link
-to more resources.
+Basic patch application:
 
-_For more examples, please refer to the [Documentation](https://example.com) or
-the [Wiki](https://github.com/angela-tarantula/json-patch-x/wiki)_
+```python
+from jsonpatchx import JsonPatch
+
+doc = {"name": "Ada", "roles": ["engineer"]}
+
+patch = JsonPatch.from_string(
+    """
+    [
+      {"op": "replace", "path": "/name", "value": "Ada Lovelace"},
+      {"op": "add", "path": "/roles/-", "value": "maintainer"}
+    ]
+    """
+)
+
+updated = patch.apply(doc)
+```
+
+For practical end-to-end examples:
+
+- FastAPI demos: [examples/fastapi/README.md](examples/fastapi/README.md)
+- Operation recipes: [examples/recipes.py](examples/recipes.py)
+- Error payload shapes: [docs/demo-error-shapes.md](docs/demo-error-shapes.md)
 
 ## Roadmap
 

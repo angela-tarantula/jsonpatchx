@@ -37,7 +37,7 @@ class Case(BaseModel):
     expected: JSONValue = MISSING
     error: str | None = None
     comment: str
-    # disregard the 'disabled' flag because json-patch-x implements handling of these cases
+    # disregard the 'disabled' flag because jsonpatchx implements handling of these cases
 
     @model_validator(mode="before")
     @classmethod
