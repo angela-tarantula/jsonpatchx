@@ -5,32 +5,16 @@
 
 <!-- markdownlint-disable MD013 -->
 
-[![Release](https://img.shields.io/github/v/release/bloomberg/oss-template?display_name=tag)](CHANGELOG.md)
+[![Release](https://img.shields.io/github/v/release/angela-tarantula/json-patch-x?display_name=tag)](CHANGELOG.md)
 [![Tests](https://img.shields.io/github/actions/workflow/status/angela-tarantula/json-patch-x/python-app.yml?branch=main&label=CI&style=flat)](https://github.com/angela-tarantula/json-patch-x/actions)
 ![RFC 6902 compatible core](https://img.shields.io/badge/RFC-6902-blue)
 ![FastAPI ready](https://img.shields.io/badge/FastAPI-First%20Class-009688)
-[![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/bloomberg/oss-template/badge)](https://scorecard.dev/viewer/?uri=github.com/bloomberg/oss-template)
+[![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/angela-tarantula/json-patch-x/badge)](https://scorecard.dev/viewer/?uri=github.com/angela-tarantula/json-patch-x)
 [![Contributor Covenant](https://img.shields.io/badge/Contributor%20Covenant-3.0-fbab2c.svg)](CODE_OF_CONDUCT.md)
 
 <!-- markdownlint-enable MD013 -->
 
 ## Before You Start
-
-As much as possible, we have tried to provide enough tooling to get you up and
-running quickly and with a minimum of effort. This includes sane defaults for
-documentation; templates for bug reports, feature requests, and pull requests;
-and [GitHub Actions](https://github.com/features/actions) that will
-automatically manage stale issues and pull requests. This latter defaults to
-labeling issues and pull requests as stale after 60 days of inactivity, and
-closing them after 7 additional days of inactivity. These
-[defaults](.github/workflows/stale.yml) and more can be configured. For
-configuration options, please consult the documentation for the
-[stale action](https://github.com/actions/stale).
-
-In trying to keep this template as generic and reusable as possible, there are
-some things that were omitted out of necessity and others that need a little
-tweaking. Before you begin developing in earnest, there are a few changes that
-need to be made:
 
 - [x] ✅ Select an [OSI-approved license](https://opensource.org/licenses) for
       your project. This can easily be achieved through the 'Add File' button on
@@ -41,7 +25,7 @@ need to be made:
 - [x] Replace `<INSERT_CONTACT_METHOD>` in
       [`CODE_OF_CONDUCT.md`](CODE_OF_CONDUCT.md) with a suitable communication
       channel.
-- [ ] Change references to `org_name` to the name of the org your repository
+- [x] Change references to `org_name` to the name of the org your repository
       belongs to e.g., `bloomberg`:
   - [ ] In [`README.md`](README.md)
   - [ ] In [`CONTRIBUTING.md`](CONTRIBUTING.md)
@@ -104,12 +88,12 @@ screenshots, code examples and demos work well in this space. You may also link
 to more resources.
 
 _For more examples, please refer to the [Documentation](https://example.com) or
-the [Wiki](https://github.com/org_name/repo_name/wiki)_
+the [Wiki](https://github.com/angela-tarantula/json-patch-x/wiki)_
 
 ## Roadmap
 
-See the [open issues](https://github.com/org_name/repo_name/issues) for a list
-of proposed features (and known issues).
+See the [open issues](https://github.com/angela-tarantula/json-patch-x/issues)
+for a list of proposed features (and known issues).
 
 ## Contributing
 
@@ -127,7 +111,7 @@ Distributed under the MIT License. See [LICENSE](LICENSE) for more information.
 Your Name - [@twitter_handle](https://twitter.com/twitter_handle) - email
 
 Project Link:
-[https://github.com/org_name/repo_name](https://github.com/org_name/repo_name)
+[https://github.com/angela-tarantula/json-patch-x](https://github.com/angela-tarantula/json-patch-x)
 
 ## Acknowledgements
 
