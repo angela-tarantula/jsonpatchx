@@ -14,59 +14,6 @@
 
 <!-- markdownlint-enable MD013 -->
 
-## Before You Start
-
-- [x] ✅ Select an [OSI-approved license](https://opensource.org/licenses) for
-      your project. This can easily be achieved through the 'Add File' button on
-      the GitHub UI, naming the file `LICENSE`, and selecting your desired
-      license from the provided list.
-- [x] Update the `<License name>` placeholder in this file to reflect the name
-      of the license you selected above.
-- [x] Replace `<INSERT_CONTACT_METHOD>` in
-      [`CODE_OF_CONDUCT.md`](CODE_OF_CONDUCT.md) with a suitable communication
-      channel.
-- [x] Change references to `org_name` to the name of the org your repository
-      belongs to e.g., `bloomberg`:
-  - [x] In [`README.md`](README.md)
-  - [x] In [`CONTRIBUTING.md`](CONTRIBUTING.md)
-- [x] Change references to `repo_name` to the name of your new repository:
-  - [x] In [`README.md`](README.md)
-  - [x] In [`CONTRIBUTING.md`](CONTRIBUTING.md)
-- [x] Update the Release and Lint `readme` badges to point to your project URL.
-- [x] Update the links to `CONTRIBUTING.md` to point to your project URL:
-  - [x] In [`.github/ISSUE_TEMPLATE/bug_report.yml`][bug-report-template]
-  - [x] In
-        [`.github/ISSUE_TEMPLATE/feature_request.yml`][feature-request-template]
-  - [x] In
-        [`.github/pull_request_template.md`](.github/pull_request_template.md)
-- [x] Update the `Affected Version` tags in
-      [`.github/ISSUE_TEMPLATE/bug_report.yml`][bug-report-template] if
-      applicable.
-- [x] Replace the `<project name>` placeholder with the name of your project:
-  - [x] In [`CONTRIBUTING.md`](CONTRIBUTING.md)
-  - [x] In [`SECURITY.md`](SECURITY.md)
-- [x] Add names and contact information for the project maintainers to
-      [`MAINTAINERS.md`](MAINTAINERS.md).
-- [x] Update the `<project-name>` placeholder in
-      [`.github/CODEOWNERS`](.github/CODEOWNERS) as well as the
-      `<maintainer-team-name>` and `<admin-team-name>` entries.
-- [ ] Delete the release placeholder content in [`CHANGELOG.md`](CHANGELOG.md).
-      We encourage you to
-      [keep a changelog](https://keepachangelog.com/en/1.0.0/).
-- [ ] Configure [`.github/dependabot.yml`](.github/dependabot.yml) for your
-      project's language and tooling dependencies.
-- [ ] In [`.github/settings.yml`](.github/settings.yml), update the following
-      fields:
-  - [ ] `name`: Replace with the repository name for your project
-  - [ ] `description`: A short, 1-2 sentence description of your project
-  - [ ] `teams`: Uncomment and update the GitHub team names and permissions as
-        appropriate
-  - [ ] `branches`: Uncomment and enable branch protection settings for your
-        project _(please **do not** disable branch protection entirely!)_
-- [ ] Replace the generic content in this file with the relevant details about
-      your project.
-- [ ] 🚨 Delete this section of the `readme`!
-
 ## About The Project
 
 Provide some information about what the project is/does.
@@ -118,5 +65,3 @@ Project Link:
 This template was adapted from [Best readme template][best-readme-template].
 
 [best-readme-template]: https://github.com/othneildrew/Best-README-Template
-[bug-report-template]: /.github/ISSUE_TEMPLATE/bug_report.yml
-[feature-request-template]: /.github/ISSUE_TEMPLATE/feature_request.yml
