@@ -105,7 +105,7 @@ class JSONPointer(str, Generic[T_co, P_co]):
     - ``add`` and ``remove`` may mutate the document object they are given (or containers reachable
       from it). The root pointer ``""`` is the exception: setting the root returns a new document
       value rather than mutating an existing container. Removing the root sets it to JSONNull (None)
-      so that all standard operations are closed over JSONValue. If you wan't for forbid root removal,
+      so that all standard operations are closed over JSONValue. If you want to forbid root removal,
       it's easy to make a custom op!
     - Whether these mutations affect the original caller-owned document is determined by the patch
       engine (see ``_apply_ops(..., inplace=...)``), which may deep-copy the input document.
@@ -243,19 +243,39 @@ class JSONPointer(str, Generic[T_co, P_co]):
                     cs.is_instance_schema(PointerBackend),
                 ]
             ),
-            metadata={"type_param": type_param},  # wire to the json_schema
+            metadata={  # wire to the json_schema
+                "type_param": type_param,
+                "pointer_backend_param": concrete_backend,  # NOTE: enable customization
+            },
         )
 
     @classmethod
     def __get_pydantic_json_schema__(
         cls, schema: cs.CoreSchema, handler: GetJsonSchemaHandler
     ) -> JsonSchemaValue:
+        pointer_backend_param = schema["metadata"]["pointer_backend_param"]
+        if isinstance(pointer_backend_param, TypeVar):
+            try:
+                pointer_backend = cls._resolve_runtime_backend_param(
+                    pointer_backend_param
+                )
+            except InvalidJSONPointer:
+                pointer_backend = None
+        else:
+            pointer_backend = pointer_backend_param
+        if pointer_backend is _DEFAULT_POINTER_CLS:
+            pointer_format = "json-pointer"
+            pointer_description = "JSON Pointer (RFC 6901) string"
+        else:
+            pointer_format = "x-json-pointer"
+            pointer_description = "JSON Pointer string (custom backend syntax)"
+
         json_schema = handler(schema)
         json_schema.update(
             {
                 "type": "string",
-                "format": "json-pointer",
-                "description": "JSON Pointer (RFC 6901) string",  # NOTE: let it be overridable
+                "format": pointer_format,
+                "description": pointer_description,  # NOTE: let it be overridable
             }
         )
 

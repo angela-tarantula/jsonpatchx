@@ -23,11 +23,7 @@
             "title": "Value"
           }
         },
-        "required": [
-          "op",
-          "path",
-          "value"
-        ],
+        "required": ["op", "path", "value"],
         "title": "Add operation",
         "type": "object"
       },
@@ -59,18 +55,12 @@
             "type": "array"
           }
         },
-        "required": [
-          "id",
-          "name"
-        ],
+        "required": ["id", "name"],
         "title": "Apprentice",
         "type": "object"
       },
       "ApprenticeId": {
-        "enum": [
-          1,
-          2
-        ],
+        "enum": [1, 2],
         "title": "ApprenticeId",
         "type": "integer"
       },
@@ -152,11 +142,7 @@
             "x-pointer-type-schema": {}
           }
         },
-        "required": [
-          "from",
-          "op",
-          "path"
-        ],
+        "required": ["from", "op", "path"],
         "title": "Copy operation",
         "type": "object"
       },
@@ -172,8 +158,8 @@
             "type": "string"
           },
           "path": {
-            "description": "JSON Pointer (RFC 6901) string",
-            "format": "json-pointer",
+            "description": "JSON Pointer string (custom backend syntax)",
+            "format": "x-json-pointer",
             "title": "Path",
             "type": "string",
             "x-pointer-type-schema": {
@@ -185,11 +171,7 @@
             "title": "Value"
           }
         },
-        "required": [
-          "op",
-          "path",
-          "value"
-        ],
+        "required": ["op", "path", "value"],
         "title": "Append operation",
         "type": "object"
       },
@@ -205,8 +187,8 @@
             "type": "string"
           },
           "path": {
-            "description": "JSON Pointer (RFC 6901) string",
-            "format": "json-pointer",
+            "description": "JSON Pointer string (custom backend syntax)",
+            "format": "x-json-pointer",
             "title": "Path",
             "type": "string",
             "x-pointer-type-schema": {
@@ -218,11 +200,7 @@
             "type": "number"
           }
         },
-        "required": [
-          "op",
-          "path",
-          "value"
-        ],
+        "required": ["op", "path", "value"],
         "title": "Increment operation",
         "type": "object"
       },
@@ -265,11 +243,7 @@
             "x-pointer-type-schema": {}
           }
         },
-        "required": [
-          "from",
-          "op",
-          "path"
-        ],
+        "required": ["from", "op", "path"],
         "title": "Move operation",
         "type": "object"
       },
@@ -292,10 +266,7 @@
             "x-pointer-type-schema": {}
           }
         },
-        "required": [
-          "op",
-          "path"
-        ],
+        "required": ["op", "path"],
         "title": "Remove operation",
         "type": "object"
       },
@@ -321,11 +292,7 @@
             "title": "Value"
           }
         },
-        "required": [
-          "op",
-          "path",
-          "value"
-        ],
+        "required": ["op", "path", "value"],
         "title": "Replace operation",
         "type": "object"
       },
@@ -351,11 +318,7 @@
             "title": "Value"
           }
         },
-        "required": [
-          "op",
-          "path",
-          "value"
-        ],
+        "required": ["op", "path", "value"],
         "title": "Test operation",
         "type": "object"
       },
@@ -384,11 +347,7 @@
             "type": "string"
           }
         },
-        "required": [
-          "loc",
-          "msg",
-          "type"
-        ],
+        "required": ["loc", "msg", "type"],
         "title": "ValidationError",
         "type": "object"
       }
@@ -438,9 +397,7 @@
           }
         },
         "summary": "Get an apprentice",
-        "tags": [
-          "apprentices"
-        ]
+        "tags": ["apprentices"]
       },
       "patch": {
         "description": "Apply ops authored with a generic pointer backend type parameter.",
@@ -506,10 +463,7 @@
                         {
                           "properties": {
                             "cause_type": {
-                              "type": [
-                                "string",
-                                "null"
-                              ]
+                              "type": ["string", "null"]
                             },
                             "index": {
                               "type": "integer"
@@ -521,19 +475,13 @@
                               "type": "object"
                             }
                           },
-                          "required": [
-                            "index",
-                            "op",
-                            "message"
-                          ],
+                          "required": ["index", "op", "message"],
                           "type": "object"
                         }
                       ]
                     }
                   },
-                  "required": [
-                    "detail"
-                  ],
+                  "required": ["detail"],
                   "type": "object"
                 }
               }
@@ -553,10 +501,7 @@
                         {
                           "properties": {
                             "cause_type": {
-                              "type": [
-                                "string",
-                                "null"
-                              ]
+                              "type": ["string", "null"]
                             },
                             "index": {
                               "type": "integer"
@@ -568,19 +513,13 @@
                               "type": "object"
                             }
                           },
-                          "required": [
-                            "index",
-                            "op",
-                            "message"
-                          ],
+                          "required": ["index", "op", "message"],
                           "type": "object"
                         }
                       ]
                     }
                   },
-                  "required": [
-                    "detail"
-                  ],
+                  "required": ["detail"],
                   "type": "object"
                 }
               }
@@ -602,10 +541,7 @@
                             {
                               "properties": {
                                 "cause_type": {
-                                  "type": [
-                                    "string",
-                                    "null"
-                                  ]
+                                  "type": ["string", "null"]
                                 },
                                 "index": {
                                   "type": "integer"
@@ -617,19 +553,13 @@
                                   "type": "object"
                                 }
                               },
-                              "required": [
-                                "index",
-                                "op",
-                                "message"
-                              ],
+                              "required": ["index", "op", "message"],
                               "type": "object"
                             }
                           ]
                         }
                       },
-                      "required": [
-                        "detail"
-                      ],
+                      "required": ["detail"],
                       "type": "object"
                     },
                     {
@@ -654,10 +584,7 @@
                         {
                           "properties": {
                             "cause_type": {
-                              "type": [
-                                "string",
-                                "null"
-                              ]
+                              "type": ["string", "null"]
                             },
                             "index": {
                               "type": "integer"
@@ -669,19 +596,13 @@
                               "type": "object"
                             }
                           },
-                          "required": [
-                            "index",
-                            "op",
-                            "message"
-                          ],
+                          "required": ["index", "op", "message"],
                           "type": "object"
                         }
                       ]
                     }
                   },
-                  "required": [
-                    "detail"
-                  ],
+                  "required": ["detail"],
                   "type": "object"
                 }
               }
@@ -690,9 +611,7 @@
           }
         },
         "summary": "Patch apprentice (generic P ops)",
-        "tags": [
-          "apprentices"
-        ]
+        "tags": ["apprentices"]
       }
     }
   }

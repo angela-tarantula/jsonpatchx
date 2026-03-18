@@ -1,536 +1,140 @@
-<h1 align="center">json-patch-x</h1>
-
-<p align="center">
-<strong>PATCH is a dialogue, not just a diff.</strong><br>
-A framework for <strong>governed, type-safe, and evolvable</strong> partial updates in Python.
-</p>
-
-
-<p align="center">
-    <a href="https://github.com/angela-tarantula/json-patch-x/actions">
-        <img src="https://img.shields.io/github/actions/workflow/status/angela-tarantula/json-patch-x/python-app.yml?branch=main&label=CI&style=flat" alt="Tests">
-    </a>
-    <img src="https://img.shields.io/badge/RFC-6902-blue" alt="RFC 6902 Compliant">
-    <img src="https://img.shields.io/badge/FastAPI-First%20Class-009688" alt="FastAPI Ready">
-</p>
-
-
-## Overview
-
-**json-patch-x treats `PATCH` as a dialogue, not just a diff.**
-
-In modern distributed systems, a partial update is more than just a document edit. It's a **state transition** that crosses process, service, and trust boundaries. When PATCH becomes a public contract, a mechanical applicator isn’t enough.
-
-json-patch-x turns PATCH into a governed, typed contract:
-
-- Each operation is a **Pydantic model** with explicit semantics
-- Pointers are **typed contracts** that fail fast on invalid targets
-- Define **custom operations** that encode API meaning directly (`toggle`, `increment`, `replace_substring`, etc.)
-- Operations are schemas, so OpenAPI stays in sync **automatically**
-- Operations can be **allow-listed per route**
-- Plug in your own JSON Pointer implementation for **advanced pointer semantics** (e.g. JSON Path selectors and relative pointers)
-
-The result is PATCH requests that are **predictable**, **reviewable**, and **safe to evolve** without breaking clients.
-
-Here’s what failure looks like when a client targets the wrong type:
-
-```json
-{
-  "detail": [
-    {
-      "loc": ["body", 0, "path"],
-      "msg": "Pointer type mismatch. Expected JSONBoolean at /active, got JSONString.",
-      "type": "jsonpatchx.pointer_type_mismatch"
-    }
-  ]
-}
-```
-
-And here’s how easy it is to define and evolve your own operations:
-
-```python
-class ReplaceSubstringOp(OperationSchema):
-    op: Literal["replace_substring"] = "replace_substring"
-    path: JSONPointer[JSONString]
-    old: JSONString
-    new: JSONString
-
-    @override
-    def apply(self, doc: JSONValue) -> JSONValue:
-        current = self.path.get(doc)
-        if self.old not in current:
-            raise PatchConflictError(f"'{self.old}' is not in '{current}'")
-        return ReplaceOp(path=self.path, value=current.replace(self.old, self.new)).apply(doc)
-```
-
-Add a feature later? Just extend the schema:
-
-```python
-class ReplaceSubstringOp(OperationSchema):
-    op: Literal["replace_substring"] = "replace_substring"
-    path: JSONPointer[JSONString]
-    old: JSONString
-    new: JSONString
-    strict: JSONBoolean = True
-
-    @override
-    def apply(self, doc: JSONValue) -> JSONValue:
-        current = self.path.get(doc)
-        if self.strict and self.old not in current:
-            raise PatchConflictError(f"strict mode is enabled and '{self.old}' is not in '{current}'")
-        return ReplaceOp(path=self.path, value=current.replace(self.old, self.new)).apply(doc)
-```
-
-Define your FastAPI route with minimal boilerplate:
-
-```python
-from fastapi import FastAPI
-
-app = FastAPI()
-
-UserRegistry = OperationRegistry[AddOp, RemoveOp, ReplaceOp, ReplaceSubstringOp]
-UserPatch = JsonPatchFor[User, UserRegistry]
-
-@app.patch("/users/{user_id}")
-def patch_user(user_id: str, patch: UserPatch) -> User:
-    user = load_user(user_id)
-    return patch.apply(user)
-```
-
-FastAPI validates the request body against UserRegistry, and OpenAPI documents exactly which operations are allowed.
-
-(assume there's an image of swagger API here)
-
-Want to see it live? Run the [fastapi demos](#demos).
-
-
-## Fit and Alternatives
-
-json-patch-x is a good fit for:
-
-- **PATCH as a real API contract:** You need safe, expressive, and evolvable operations for your application.
-- **Teams generating SDKs or relying on OpenAPI tooling:** Your documentation must reflect exactly which operations are allowed.
-- **Automated or AI-assisted workflows:** Your patches are generated, reviewed, or routed by LLMs or other untrusted tooling.
-- **High-safety or regulated endpoints:** You need strong mutation guarantees and allow-listed operations.
-- **Straightforward RFC 6902 patching:** You just want a correct patch engine without extra ceremony.
-
-But if you primarily need speed or a minimal RFC 6902 applicator and you trust your patches, use [py_yyjson](https://tkte.ch/py_yyjson/#py-yyjson). It's high-performance and also supports JSON Merge Patch ([RFC 7386](https://datatracker.ietf.org/doc/html/rfc7386)) if you prefer "last-write-wins" simplicity.
-
----
-
-## Table of Contents
-
-- [Core Concepts](#core-concepts)
-- [FastAPI Integration](#fastapi-integration)
-- [Demos](#demos)
-- [Advanced: Pointer Backends](#advanced-pointer-backends)
-- [Limitations](#limitations)
-- [Contributing](#contributing)
-
-## Core Concepts
-
-### Operations as Schemas
-
-In json-patch-x, every operation is a Pydantic model. This elevates a patch
-from a "dictionary of strings" to a **validated command**. You get structural
-validation, field-level constraints, and clear `apply()` logic in a single,
-testable unit.
-
-```py
-class ReplaceOp(OperationSchema):
-    op: Literal["replace"] = "replace"
-    path: JSONPointer[JSONValue]
-    value: JSONValue
-
-    @override
-    def apply(self, doc: JSONValue) -> JSONValue:
-        # Internal logic delegates to atomic operations
-        doc = RemoveOp(path=self.path).apply(doc)
-        return AddOp(path=self.path, value=self.value).apply(doc)
-```
-
-### Typed JSON Pointers: The Contract Layer
-
-The most common failure in JSON Patch is a "Path Not Found" or a type mismatch
-at runtime. `JSONPointer[T]` addresses this by enforcing **what** a path may point
-to, not just **where** it points.
-
-By binding a pointer to a type `T`, the operation gains a runtime contract.
-
-```py
-from jsonpatchx.types import JSONBoolean
-
-class ToggleOp(OperationSchema):
-    op: Literal["toggle"] = "toggle"
-    path: JSONPointer[JSONBoolean] # Strict contract: Target MUST be a JSONBoolean
-
-    @override
-    def apply(self, doc: JSONValue) -> JSONValue:
-        current = self.path.get(doc) # Returns a JSONBoolean or raises
-        return ReplaceOp(path=self.path, value=not current).apply(doc)
-```
-
-Why this matters architecturally:
-
-- **Fail Fast:** Pointer resolution validates target types before mutation.
-
-- **Modular Code:** Operations can be composed of other Operations while preserving type contracts.
-
-- **Self-Documenting Code:** Your type hints tell other developers exactly what structure your patcher expects.
-
-- **Refinement over Time:** You can tighten pointer types in custom ops while keeping the engine unchanged.
-
-### Supported Type Guards
-
-We provide a suite of helper types so you can reason about JSON rather than Python's types:
-
-- `JSONNumber` (`int` or `float`, but explicitly excludes `bool`)
-
-- `JSONString`, `JSONBoolean`, `JSONNull`
-
-- `JSONArray[T]`, `JSONObject[T]`
-
-- `JSONValue`
-
-### Operation Registries
-
-An `OperationRegistry` acts as the **vocabulary** of your PATCH API. Instead of
-allowing any arbitrary operation, you explicitly define which verbs are "legal"
-in your domain.
-
-```py
-from jsonpatchx import AddOp, CopyOp, MoveOp, OperationRegistry, RemoveOp, ReplaceOp, StandardRegistry, TestOp
-
-# Create a restricted vocabulary for high-security endpoints
-AdminRegistry = StandardRegistry
-UserRegistry = OperationRegistry[AddOp, MoveOp]
-
-# Extend the language with domain-specific verbs
-DevRegistry = OperationRegistry[AddOp, CopyOp, MoveOp, RemoveOp, ReplaceOp, TestOp, ToggleOp, SwapOp]
-```
-
-The registry ensures that your API doesn't just "apply patches"; it speaks your
-application's specific language.
-
-### Applying a Patch
-
-The `JsonPatch` class handles the parsing and execution.
-
-```py
-from jsonpatchx import JsonPatch, JSONValue
-
-doc = {"title": "Example", "active": False}
-
-# 1. Using dictionaries
-patch_ops = [{"op": "replace", "path": "/title", "value": "Updated"}]
-
-# 2. Using instantiated models
-# patch_ops = [ReplaceOp(path="/title", value="Updated")]
-
-# 3. From a JSON string
-# patch = JsonPatch.from_string('[{"op": "toggle", "path": "/active"}]')
-
-patch = JsonPatch(patch_ops, registry=DevRegistry)
-updated = patch.apply(doc)
-```
-
-## FastAPI Integration
-
-FastAPI integration in json-patch-x is built around a simple idea:
-
-> First, define what a patch means. Then, decide how much help you want wiring it into a route.
-
-At the center of this is `JsonPatchFor`, which turns an operation registry into a
-**concrete request-body schema** that FastAPI and OpenAPI understand.
-
-### Step 1: Define a Patch Schema with JsonPatchFor
-
-`JsonPatchFor[Model, Registry]` binds three things together:
-
-1. the shape of the document being patched (usually a Pydantic model)
-2. the allowed operation vocabulary (an `OperationRegistry`)
-3. the JSON Patch execution engine
-
-The result is a Pydantic model that represents a valid PATCH request body.
-
-```py
-from jsonpatchx import AddOp, CopyOp, JsonPatchFor, MoveOp, OperationRegistry, RemoveOp, ReplaceOp, TestOp
-
-UserRegistry = OperationRegistry[AddOp, CopyOp, MoveOp, RemoveOp, ReplaceOp, TestOp, ToggleOp]
-UserPatch = JsonPatchFor[User, UserRegistry]
-```
-
-`UserPatch` is a Pydantic model representing a validated list of operations.
-It can now be used anywhere FastAPI expects a request body.
-
-### Step 2: Use the Patch Schema in a FastAPI Route
-
-At its simplest, you can plug the patch schema directly into a route:
-
-```py
-from fastapi import FastAPI
-
-app = FastAPI()
-
-@app.patch("/users/{user_id}")
-def patch_user(user_id: str, patch: UserPatch) -> User:
-    user = load_user(user_id)
-    return patch.apply(user)
-```
-
-With just this:
-
-- FastAPI validates incoming patches against your registry.
-- OpenAPI documents exactly which operations are allowed.
-- Pointer targets are type-checked at runtime.
-- Invalid operations fail *before* any mutation occurs.
-
-No helpers required.
-
-### Step 3: Improving OpenAPI and Content-Type Handling with JsonPatchRoute
-
-`JsonPatchRoute` is an optional helper that keeps your route signature clean
-while adding a few niceties:
-
-- `application/json-patch+json` content-type enforcement
-- reusable request-body metadata
-- examples that stay aligned with your registry
-
-```py
-from typing import Annotated, Literal
-from fastapi import FastAPI
-from jsonpatchx import AddOp, CopyOp, JsonPatchFor, JSONValue, MoveOp, OperationRegistry, RemoveOp, ReplaceOp, TestOp
-from jsonpatchx.fastapi import JsonPatchRoute
-
-app = FastAPI()
-UserRegistry = OperationRegistry[AddOp, CopyOp, MoveOp, RemoveOp, ReplaceOp, TestOp, DeduplicateOp, IncrementOp]
-UserPatch = JsonPatchFor[User, UserRegistry]
-
-user_patch = JsonPatchRoute(
-    UserPatch,
-    examples={
-        "increment-balance": {
-            "summary": "Increase savings account balance",
-            "value": [{"op": "increment", "path": "/accounts/savings/balance", "value": 100}],
-        },
-    },
-    strict_content_type=True,
-)
-
-@app.patch(
-    "/users/{user_id}",
-    **user_patch.route_kwargs(),
-)
-def patch_user(
-    user_id: str,
-    patch: Annotated[UserPatch, user_patch.Body()],
-) -> User:
-    doc = load_user(user_id)
-    return patch.apply(doc)
-```
-
-Use `JsonPatchRoute` when you want stricter HTTP semantics and richer docs; skip it for a minimal route signature.
-
-### Binding Patches to Pydantic Models vs. Plain JSON
-
-When patching a Pydantic model, use the model type directly:
-
-```py
-UserPatch = JsonPatchFor[User, UserRegistry]
-```
-
-If you are patching plain JSON documents instead, bind the schema to a named
-target using `Literal[...]`:
-
-```py
-ConfigPatch = JsonPatchFor[Literal["Database Config"], ConfigRegistry]
-```
-
-This name appears in OpenAPI docs and error messages, even though no concrete
-model is enforced.
-
-### OpenAPI Customization
-
-Because every operation is a Pydantic model, you can customize titles,
-descriptions, and validation logic using standard Pydantic features.
-
-```py
-from typing import Literal, Self, override
-from pydantic import ConfigDict, model_validator
-from jsonpatchx import AddOp, JSONPointer, JSONValue, OperationSchema, OperationValidationError
-
-class SwapOp(OperationSchema):
-    model_config = ConfigDict(
-        title="Swap operation",
-        json_schema_extra={"description": "Swaps values at paths a and b."}
-    )
-
-    op: Literal["swap"] = "swap"
-    a: JSONPointer[JSONValue]
-    b: JSONPointer[JSONValue]
-
-    @model_validator(mode="after")
-    def _reject_proper_prefixes(self) -> Self:
-        if self.a.is_parent_of(self.b) or self.b.is_parent_of(self.a):
-            raise OperationValidationError("Paths cannot be prefixes of each other.")
-        return self
-
-    @override
-    def apply(self, doc: JSONValue) -> JSONValue:
-        val_a, val_b = self.a.get(doc), self.b.get(doc)
-        doc = AddOp(path=self.a, value=val_b).apply(doc)
-        return AddOp(path=self.b, value=val_a).apply(doc)
-```
-
-These details flow automatically into your OpenAPI schema.
-
----
-
-## Demos
-
-See [`examples/recipes.py`](./examples/recipes.py) for a catalog of custom operation recipes.
-
-See [`examples/fastapi/README.md`](./examples/fastapi/README.md) for the FastAPI demo suite, including:
-
-- demo 1: typed model patching with standard RFC operations
-- demo 2: model-bound custom operation registries
-- demo 3: custom operations on plain JSON documents
-- demo 4: registry-scoped custom pointer backend
-- demo 5: registry-scoped backend with explicit backend annotations on ops
-- demo 6: registry-scoped backend for ops generic in backend type `P`
-
----
-
-## Advanced: Pointer Backends
-
-Path parsing is pluggable. The default backend follows [RFC 6901](https://datatracker.ietf.org/doc/html/rfc6901), but you can supply your own `PointerBackend` to change how pointers are interpreted.
-
-Custom backends let you implement:
-
-- **Alternative Syntaxes:** dot-separated paths, [JSONPath](https://www.rfc-editor.org/rfc/rfc9535)-style selectors, or [relative pointers](https://json-schema.org/draft/2020-12/relative-json-pointer).
-
-- **Specialized Escaping:** Domain-specific key encoding or escaping.
-
-- **Contextual Resolution:** Resolving pointers against external state (e.g. database lookups).
-
-- **Path Materialization:** Creating missing segments during traversal instead of failing.
-
-```py
-from typing import Any
-from jsonpatchx import AddOp, CopyOp, GenericOperationRegistry, MoveOp, RemoveOp, ReplaceOp, TestOp
-from jsonpatchx.backend import PointerBackend
-
-class DotPointer(PointerBackend):
-    """A backend for dot-separated paths (e.g., 'metadata.tags.0')."""
-    def __init__(self, pointer: str) -> None: ...
-    def resolve(self, data: Any) -> Any: ...
-    # ... implement required interface ...
-
-# Bind the backend to a registry
-registry = GenericOperationRegistry[DotPointer, AddOp, CopyOp, MoveOp, RemoveOp, ReplaceOp, TestOp, ToggleOp]
-```
-
-The first param of `GenericOperationRegistry` must be the custom pointer class.
-
-An `OperationRegistry` is just a `GenericOperationRegistry` with a default PointerBackend.
-
-### Backend Binding
-
-`JSONPointer[T, Backend]` allows you to bind a specific backend at the type
-level, so operations can require a particular pointer syntax when needed.
-For advanced use cases, `JSONPointer.ptr` exposes the backend instance so you
-can call custom helper APIs (e.g., [JsonPath expressions](https://www.rfc-editor.org/rfc/rfc9535), domain-specific helpers, etc).
-
-```py
-from typing import Literal
-from jsonpatchx import JSONPointer, JSONValue, OperationSchema, ReplaceOp
-from your-next-OS-project import JsonPathPointer
-
-class JsonPathReplaceOp(OperationSchema):
-    op: Literal["jsonpath_replace"] = "jsonpath_replace"
-    path: JSONPointer[JSONValue, JsonPathPointer]
-    value: JSONValue
-
-    def apply(self, doc: JSONValue) -> JSONValue:
-        # JsonPathPointer could expose richer APIs (e.g. resolve_jsonpath) for multi-target ops
-        targets = self.path.ptr.resolve_jsonpath(doc)
-        for target in targets:
-            ReplaceOp(path=target, value=self.value).apply(doc)
-        return doc
-```
-
-Ops that require a custom pointer backend can only live in registries that bind
-that backend for all ops.
-
----
-
-### Limitations
-
----
-
-## Contributing
-
-Thank you for your interest in contributing! To get a local copy up and running follow these simple steps.
-
-### Prerequisites
-
-[Install uv](https://docs.astral.sh/uv/getting-started/installation/#installing-uv)
-
-```sh
-python -m pip install --upgrade pip uv
-```
+# json-patch-x
+
+**PATCH is an API contract, not just a transport format.**
+A framework for **governed, type-safe, and versionable** partial updates in
+Python.
+
+<!-- markdownlint-disable MD013 -->
+
+[![Release](https://img.shields.io/github/v/release/bloomberg/oss-template?display_name=tag)](CHANGELOG.md)
+[![Tests](https://img.shields.io/github/actions/workflow/status/angela-tarantula/json-patch-x/python-app.yml?branch=main&label=CI&style=flat)](https://github.com/angela-tarantula/json-patch-x/actions)
+![RFC 6902 compatible core](https://img.shields.io/badge/RFC-6902-blue)
+![FastAPI ready](https://img.shields.io/badge/FastAPI-First%20Class-009688)
+[![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/bloomberg/oss-template/badge)](https://scorecard.dev/viewer/?uri=github.com/bloomberg/oss-template)
+[![Contributor Covenant](https://img.shields.io/badge/Contributor%20Covenant-2.1-fbab2c.svg)](CODE_OF_CONDUCT.md)
+
+<!-- markdownlint-enable MD013 -->
+
+## Before You Start
+
+As much as possible, we have tried to provide enough tooling to get you up and
+running quickly and with a minimum of effort. This includes sane defaults for
+documentation; templates for bug reports, feature requests, and pull requests;
+and [GitHub Actions](https://github.com/features/actions) that will
+automatically manage stale issues and pull requests. This latter defaults to
+labeling issues and pull requests as stale after 60 days of inactivity, and
+closing them after 7 additional days of inactivity. These
+[defaults](.github/workflows/stale.yml) and more can be configured. For
+configuration options, please consult the documentation for the [stale
+action](https://github.com/actions/stale).
+
+In trying to keep this template as generic and reusable as possible, there are
+some things that were omitted out of necessity and others that need a little
+tweaking. Before you begin developing in earnest, there are a few changes that
+need to be made:
+
+- [x] ✅ Select an [OSI-approved license](https://opensource.org/licenses) for
+      your project. This can easily be achieved through the 'Add File'
+      button on the GitHub UI, naming the file `LICENSE`, and selecting
+      your desired license from the provided list.
+- [x] Update the `<License name>` placeholder in this file to reflect the name
+      of the license you selected above.
+- [x] Replace `<INSERT_CONTACT_METHOD>` in
+      [`CODE_OF_CONDUCT.md`](CODE_OF_CONDUCT.md) with a suitable communication
+      channel.
+- [ ] Change references to `org_name` to the name of the org your repository
+      belongs to e.g., `bloomberg`:
+  - [ ] In [`README.md`](README.md)
+  - [ ] In [`CONTRIBUTING.md`](CONTRIBUTING.md)
+- [ ] Change references to `repo_name` to the name of your new repository:
+  - [ ] In [`README.md`](README.md)
+  - [ ] In [`CONTRIBUTING.md`](CONTRIBUTING.md)
+- [ ] Update the Release and Lint `readme` badges to point to your project URL.
+- [ ] Update the links to `CONTRIBUTING.md` to point to your project URL:
+  - [ ] In [`.github/ISSUE_TEMPLATE/bug_report.yml`][bug-report-template]
+  - [ ] In
+        [`.github/ISSUE_TEMPLATE/feature_request.yml`][feature-request-template]
+  - [ ] In
+        [`.github/pull_request_template.md`](.github/pull_request_template.md)
+- [ ] Update the `Affected Version` tags in
+      [`.github/ISSUE_TEMPLATE/bug_report.yml`][bug-report-template]
+      if applicable.
+- [ ] Replace the `<project name>` placeholder with the name of your project:
+  - [ ] In [`CONTRIBUTING.md`](CONTRIBUTING.md)
+  - [ ] In [`SECURITY.md`](SECURITY.md)
+- [ ] Add names and contact information for the project maintainers to
+      [`MAINTAINERS.md`](MAINTAINERS.md).
+- [ ] Update the `<project-name>` placeholder in
+      [`.github/CODEOWNERS`](.github/CODEOWNERS) as well as the
+      `<maintainer-team-name>` and `<admin-team-name>` entries.
+- [ ] Delete the release placeholder content in [`CHANGELOG.md`](CHANGELOG.md).
+      We encourage you to [keep a changelog](https://keepachangelog.com/en/1.0.0/).
+- [ ] Configure [`.github/dependabot.yml`](.github/dependabot.yml) for your
+      project's language and tooling dependencies.
+- [ ] In [`.github/settings.yml`](.github/settings.yml), update the following
+      fields:
+  - [ ] `name`: Replace with the repository name for your project
+  - [ ] `description`: A short, 1-2 sentence description of your project
+  - [ ] `teams`: Uncomment and update the GitHub team names and permissions as
+        appropriate
+  - [ ] `branches`: Uncomment and enable branch protection settings for your
+        project _(please **do not** disable branch protection entirely!)_
+- [ ] Replace the generic content in this file with the relevant details about
+      your project.
+- [ ] 🚨 Delete this section of the `readme`!
+
+## About The Project
+
+Provide some information about what the project is/does.
+
+## Getting Started
+
+To get a local copy up and running follow these simple steps.
 
 ### Installation
 
-1. Clone the repository
-
 ```sh
-git clone https://github.com/angela-tarantula/json-patch-x
-cd json-patch-x
+pip install jsonpatchx
 ```
 
-2. Initialize [git submodules](https://git-scm.com/book/en/v2/Git-Tools-Submodules) (required for the external compliance suite)
+## Usage
 
-```sh
-git submodule update --init
-```
+Use this space to show useful examples of how a project can be used. Additional
+screenshots, code examples and demos work well in this space. You may also link
+to more resources.
 
-3. Install the dependencies
+_For more examples, please refer to the [Documentation](https://example.com) or
+the [Wiki](https://github.com/org_name/repo_name/wiki)_
 
-```sh
-uv sync
-```
+## Roadmap
 
-4. Install [prek](https://github.com/j178/prek) (pre-commit runner):
+See the [open issues](https://github.com/org_name/repo_name/issues) for a list
+of proposed features (and known issues).
 
-```sh
-uv tool install prek
-prek install
-```
+## Contributing
 
-### Development
+Contributions are what make the open source community such an amazing place to
+learn, inspire, and create. Any contributions you make are **greatly
+appreciated**. For detailed contributing guidelines, please see
+[CONTRIBUTING.md](CONTRIBUTING.md)
 
-Run type checks with [mypy](https://www.mypy-lang.org/):
+## License
 
-```sh
-uv run mypy .
-```
+Distributed under the MIT License. See [LICENSE](LICENSE) for more
+information.
 
-Run tests with [pytest](https://docs.pytest.org/en/stable/):
+## Contact
 
-```sh
-uv run pytest -v
-```
+Your Name - [@twitter_handle](https://twitter.com/twitter_handle) - email
 
-Generate and view the coverage report with [pytest-cov](https://github.com/pytest-dev/pytest-cov):
+Project Link:
+[https://github.com/org_name/repo_name](https://github.com/org_name/repo_name)
 
-```sh
-uv run pytest --cov=jsonpatchx --cov-report=html
-open htmlcov/index.html
-```
+## Acknowledgements
 
-Lint with [ruff](https://docs.astral.sh/ruff/):
+This template was adapted from
+[Best readme template][best-readme-template].
 
-```sh
-uv run ruff format
-```
+[best-readme-template]: https://github.com/othneildrew/Best-README-Template
+[bug-report-template]: /.github/ISSUE_TEMPLATE/bug_report.yml
+[feature-request-template]: /.github/ISSUE_TEMPLATE/feature_request.yml

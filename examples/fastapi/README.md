@@ -1,11 +1,12 @@
 # Examples: jsonpatchx demo suite
 
-Six focused FastAPI demos. Each demo is a standalone file that reads cleanly in Swagger UI.
+Six focused FastAPI demos. Each demo is a standalone file that reads cleanly in
+Swagger UI.
 
 ## Setup (once)
 
 - Install demo deps: `uv sync`
-- Run commands from the repo root.
+- Run commands from the repository root.
 
 ## Quick links
 
@@ -23,21 +24,23 @@ FastAPI docs already include example requests and payloads.
 
 ## Demo 1: Support desk corrections
 
-Standard JSON Patch on customer profiles using `JsonPatchFor[Model, StandardRegistry]`.
+Standard JSON Patch on customer profiles using
+`JsonPatchFor[Model, StandardRegistry]`.
 
 **File:** `examples/fastapi/demo1.py`
 
-**Run**
+### Run
 
 - `uv run uvicorn examples.fastapi.demo1:app --reload --port 8000`
 
 ## Demo 2: Player and guild progression
 
-Custom registries per model (players vs guilds) using `JsonPatchFor[Model, CustomRegistry]`.
+Custom registries per model (players vs guilds) using
+`JsonPatchFor[Model, CustomRegistry]`.
 
 **File:** `examples/fastapi/demo2.py`
 
-**Run**
+### Run
 
 - `uv run uvicorn examples.fastapi.demo2:app --reload --port 8001`
 
@@ -47,7 +50,7 @@ Plain JSON patching for service configs using `JsonPatchFor[Name, Registry]`.
 
 **File:** `examples/fastapi/demo3.py`
 
-**Run**
+### Run
 
 - `uv run uvicorn examples.fastapi.demo3:app --reload --port 8002`
 
@@ -58,7 +61,7 @@ custom operations.
 
 **File:** `examples/fastapi/demo4.py`
 
-**Run**
+### Run
 
 - `uv run uvicorn examples.fastapi.demo4:app --reload --port 8003`
 
@@ -69,7 +72,7 @@ backend override).
 
 **File:** `examples/fastapi/demo5.py`
 
-**Run**
+### Run
 
 - `uv run uvicorn examples.fastapi.demo5:app --reload --port 8004`
 
@@ -80,6 +83,6 @@ generic backend parameterization.
 
 **File:** `examples/fastapi/demo6.py`
 
-**Run**
+### Run
 
 - `uv run uvicorn examples.fastapi.demo6:app --reload --port 8005`

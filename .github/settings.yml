@@ -1,0 +1,54 @@
+---
+# These settings are synced to GitHub by https://probot.github.io/apps/settings/
+
+repository:
+  # See https://developer.github.com/v3/repos/#edit for all available settings.
+
+  name: json-patch-x
+  description: A PATCH framework for Python.
+  private: true
+
+  # A URL with more information about the repository
+  # homepage: https://example.github.io/
+
+  # A comma-separated list of topics to set on the repository
+  # topics: github, probot
+
+  has_issues: true
+  has_projects: true
+  has_wiki: true
+  has_downloads: true
+
+  default_branch: main
+
+  allow_squash_merge: true
+  allow_merge_commit: true
+  allow_rebase_merge: true
+  delete_branch_on_merge: true
+
+  enable_automated_security_fixes: true
+  enable_vulnerability_alerts: true
+
+# Branch protection API reference:
+# https://developer.github.com/v3/repos/branches/#update-branch-protection
+branches:
+  - name: main
+    protection:
+      required_pull_request_reviews:
+        required_approving_review_count: 1
+        dismiss_stale_reviews: true
+        require_code_owner_reviews: true
+      enforce_admins: null
+      required_status_checks:
+        strict: true
+        contexts:
+          - check
+          - super-linter
+          # Add only after confirming exact check names in branch protection UI:
+          # - Analyze (python)
+          # - Analyze (actions)
+          # - dependency-review
+
+      required_conversation_resolution: true
+      required_linear_history: true
+      restrictions: null

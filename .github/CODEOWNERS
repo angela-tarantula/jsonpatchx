@@ -1,0 +1,14 @@
+####################################################
+# Default reviewers for this repository
+####################################################
+#
+# Learn about CODEOWNERS format:
+# https://help.github.com/en/articles/about-code-owners
+#
+
+* @angela-tarantula
+
+# Enforce admin protections for repository configuration managed by probot/settings.
+# Ref: https://github.com/probot/settings#security-implications
+.github/CODEOWNERS @angela-tarantula
+.github/settings.yml @angela-tarantula
