@@ -617,6 +617,43 @@ def test_backend_typevar_explicit_policy_cases(subtests: Subtests) -> None:
         assert isinstance(model.path.ptr, OtherDotPointer)
 
 
+def test_jsonpointer_json_schema_backend_resolution(subtests: Subtests) -> None:
+    with subtests.test("default backend reports RFC json-pointer format"):
+        schema = TypeAdapter(JSONPointer[JSONValue]).json_schema()
+        assert schema["format"] == "json-pointer"
+
+    with subtests.test("concrete custom backend reports custom format"):
+        schema = TypeAdapter(JSONPointer[JSONValue, DotPointer]).json_schema()
+        assert schema["format"] == "x-json-pointer"
+
+    with subtests.test("backend TypeVar without default cannot produce JSON schema"):
+        P_backend = TypeVar("P_backend", bound=PointerBackend)
+        with pytest.raises(InvalidJSONPointer):
+            TypeAdapter(JSONPointer[JSONValue, P_backend]).json_schema()
+
+    with subtests.test("backend TypeVar defaulting to RFC backend reports RFC format"):
+        P_default_default_ptr = TypeVar(
+            "P_default_default_ptr",
+            bound=PointerBackend,
+            default=_DEFAULT_POINTER_CLS,
+        )
+        schema = TypeAdapter(
+            JSONPointer[JSONValue, P_default_default_ptr]
+        ).json_schema()
+        assert schema["format"] == "json-pointer"
+
+    with subtests.test(
+        "backend TypeVar defaulting to custom backend reports custom format"
+    ):
+        P_default_custom_ptr = TypeVar(
+            "P_default_custom_ptr",
+            bound=PointerBackend,
+            default=DotPointer,
+        )
+        schema = TypeAdapter(JSONPointer[JSONValue, P_default_custom_ptr]).json_schema()
+        assert schema["format"] == "x-json-pointer"
+
+
 def test_jsonpointer_path_validation(subtests: Subtests) -> None:
     adapter = TypeAdapter(JSONPointer[JSONValue, DotPointer])
     with subtests.test("accept strings"):
