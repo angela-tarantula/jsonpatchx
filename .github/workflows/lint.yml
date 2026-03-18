@@ -62,5 +62,5 @@ jobs:
           VALIDATE_YAML: true # yamllint rules
           VALIDATE_YAML_PRETTIER: true # YAML formatting consistency
 
-          VALIDATE_ALL_CODEBASE: true # REMEMBER TO DISABLE
+          VALIDATE_ALL_CODEBASE: false
           MULTI_STATUS: false
