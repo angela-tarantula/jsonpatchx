@@ -29,7 +29,7 @@ repos:
     rev: v0.48.0
     hooks:
       - id: markdownlint
-        args: [--config, .github/linters/.markdownlint.yml]
+        args: [--config, .github/linters/.markdownlint.yml, --fix]
 
   - repo: https://github.com/adrienverge/yamllint.git
     rev: v1.38.0
@@ -88,7 +88,7 @@ repos:
 
       - id: markdown-prettier
         name: markdown prettier
-        entry: npx --yes prettier --check
+        entry: npx --yes prettier --write --prose-wrap always
         language: system
         files: \.(md|markdown)$
 

@@ -1,8 +1,7 @@
 # json-patch-x
 
-**PATCH is an API contract, not just a transport format.**
-A framework for **governed, type-safe, and versionable** partial updates in
-Python.
+**PATCH is an API contract, not just a transport format.** A framework for
+**governed, type-safe, and versionable** partial updates in Python.
 
 <!-- markdownlint-disable MD013 -->
 
@@ -11,7 +10,7 @@ Python.
 ![RFC 6902 compatible core](https://img.shields.io/badge/RFC-6902-blue)
 ![FastAPI ready](https://img.shields.io/badge/FastAPI-First%20Class-009688)
 [![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/bloomberg/oss-template/badge)](https://scorecard.dev/viewer/?uri=github.com/bloomberg/oss-template)
-[![Contributor Covenant](https://img.shields.io/badge/Contributor%20Covenant-2.1-fbab2c.svg)](CODE_OF_CONDUCT.md)
+[![Contributor Covenant](https://img.shields.io/badge/Contributor%20Covenant-3.0-fbab2c.svg)](CODE_OF_CONDUCT.md)
 
 <!-- markdownlint-enable MD013 -->
 
@@ -25,8 +24,8 @@ automatically manage stale issues and pull requests. This latter defaults to
 labeling issues and pull requests as stale after 60 days of inactivity, and
 closing them after 7 additional days of inactivity. These
 [defaults](.github/workflows/stale.yml) and more can be configured. For
-configuration options, please consult the documentation for the [stale
-action](https://github.com/actions/stale).
+configuration options, please consult the documentation for the
+[stale action](https://github.com/actions/stale).
 
 In trying to keep this template as generic and reusable as possible, there are
 some things that were omitted out of necessity and others that need a little
@@ -34,9 +33,9 @@ tweaking. Before you begin developing in earnest, there are a few changes that
 need to be made:
 
 - [x] ✅ Select an [OSI-approved license](https://opensource.org/licenses) for
-      your project. This can easily be achieved through the 'Add File'
-      button on the GitHub UI, naming the file `LICENSE`, and selecting
-      your desired license from the provided list.
+      your project. This can easily be achieved through the 'Add File' button on
+      the GitHub UI, naming the file `LICENSE`, and selecting your desired
+      license from the provided list.
 - [x] Update the `<License name>` placeholder in this file to reflect the name
       of the license you selected above.
 - [x] Replace `<INSERT_CONTACT_METHOD>` in
@@ -57,8 +56,8 @@ need to be made:
   - [ ] In
         [`.github/pull_request_template.md`](.github/pull_request_template.md)
 - [ ] Update the `Affected Version` tags in
-      [`.github/ISSUE_TEMPLATE/bug_report.yml`][bug-report-template]
-      if applicable.
+      [`.github/ISSUE_TEMPLATE/bug_report.yml`][bug-report-template] if
+      applicable.
 - [ ] Replace the `<project name>` placeholder with the name of your project:
   - [ ] In [`CONTRIBUTING.md`](CONTRIBUTING.md)
   - [ ] In [`SECURITY.md`](SECURITY.md)
@@ -68,7 +67,8 @@ need to be made:
       [`.github/CODEOWNERS`](.github/CODEOWNERS) as well as the
       `<maintainer-team-name>` and `<admin-team-name>` entries.
 - [ ] Delete the release placeholder content in [`CHANGELOG.md`](CHANGELOG.md).
-      We encourage you to [keep a changelog](https://keepachangelog.com/en/1.0.0/).
+      We encourage you to
+      [keep a changelog](https://keepachangelog.com/en/1.0.0/).
 - [ ] Configure [`.github/dependabot.yml`](.github/dependabot.yml) for your
       project's language and tooling dependencies.
 - [ ] In [`.github/settings.yml`](.github/settings.yml), update the following
@@ -120,8 +120,7 @@ appreciated**. For detailed contributing guidelines, please see
 
 ## License
 
-Distributed under the MIT License. See [LICENSE](LICENSE) for more
-information.
+Distributed under the MIT License. See [LICENSE](LICENSE) for more information.
 
 ## Contact
 
@@ -132,8 +131,7 @@ Project Link:
 
 ## Acknowledgements
 
-This template was adapted from
-[Best readme template][best-readme-template].
+This template was adapted from [Best readme template][best-readme-template].
 
 [best-readme-template]: https://github.com/othneildrew/Best-README-Template
 [bug-report-template]: /.github/ISSUE_TEMPLATE/bug_report.yml
