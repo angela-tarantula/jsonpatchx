@@ -17,8 +17,8 @@ jobs:
 
     env:
       STALE_LABEL: stale
-      EXEMPT_ISSUE_LABELS: "help-wanted,good-first-issue,keep-open"
-      EXEMPT_PR_LABELS: "help-wanted,keep-open"
+      EXEMPT_ISSUE_LABELS: "help-wanted,good-first-issue,keep-open,wontfix"
+      EXEMPT_PR_LABELS: "help-wanted,keep-open,wontfix"
       DAYS_BEFORE_ISSUE_STALE: "60"
       DAYS_BEFORE_ISSUE_CLOSE: "14"
       DAYS_BEFORE_PR_STALE: "30"
