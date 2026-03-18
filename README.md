@@ -5,11 +5,11 @@
 
 <!-- markdownlint-disable MD013 -->
 
-[![Release](https://img.shields.io/github/v/release/angela-tarantula/json-patch-x?display_name=tag)](CHANGELOG.md)
-[![Tests](https://img.shields.io/github/actions/workflow/status/angela-tarantula/json-patch-x/python-app.yml?branch=main&label=CI&style=flat)](https://github.com/angela-tarantula/json-patch-x/actions)
+[![Release](https://img.shields.io/github/v/release/angela-tarantula/jsonpatchx?display_name=tag)](CHANGELOG.md)
+[![Tests](https://img.shields.io/github/actions/workflow/status/angela-tarantula/jsonpatchx/python-app.yml?branch=main&label=CI&style=flat)](https://github.com/angela-tarantula/jsonpatchx/actions)
 ![RFC 6902 compatible core](https://img.shields.io/badge/RFC-6902-blue)
 ![FastAPI ready](https://img.shields.io/badge/FastAPI-First%20Class-009688)
-[![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/angela-tarantula/json-patch-x/badge)](https://scorecard.dev/viewer/?uri=github.com/angela-tarantula/json-patch-x)
+[![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/angela-tarantula/jsonpatchx/badge)](https://scorecard.dev/viewer/?uri=github.com/angela-tarantula/jsonpatchx)
 [![Contributor Covenant](https://img.shields.io/badge/Contributor%20Covenant-3.0-fbab2c.svg)](CODE_OF_CONDUCT.md)
 
 <!-- markdownlint-enable MD013 -->
@@ -68,8 +68,8 @@ For practical end-to-end examples:
 
 ## Roadmap
 
-See the [open issues](https://github.com/angela-tarantula/json-patch-x/issues)
-for a list of proposed features (and known issues).
+See the [open issues](https://github.com/angela-tarantula/jsonpatchx/issues) for
+a list of proposed features (and known issues).
 
 ## Contributing
 
@@ -87,7 +87,7 @@ Distributed under the MIT License. See [LICENSE](LICENSE) for more information.
 Anglea Liss - [chamsester@gmail.com](mailto:chamsester@gmail.com)
 
 Project Link:
-[https://github.com/angela-tarantula/json-patch-x](https://github.com/angela-tarantula/json-patch-x)
+[https://github.com/angela-tarantula/jsonpatchx](https://github.com/angela-tarantula/jsonpatchx)
 
 ## Acknowledgements
 

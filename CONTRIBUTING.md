@@ -28,8 +28,8 @@ python -m pip install --upgrade pip uv
 1. Clone the repository
 
    ```sh
-   git clone https://github.com/angela-tarantula/json-patch-x
-   cd json-patch-x
+   git clone https://github.com/angela-tarantula/jsonpatchx
+   cd jsonpatchx
    ```
 
 2. Initialize Git
@@ -126,7 +126,7 @@ hooks does not bypass CI requirements.
 
 Before reporting a new issue, please ensure that the issue was not already
 reported or fixed by searching through our
-[issues list](https://github.com/angela-tarantula/json-patch-x/issues).
+[issues list](https://github.com/angela-tarantula/jsonpatchx/issues).
 
 When creating a new issue, please be sure to include a **title and clear
 description**, as much relevant information as possible, and, if possible, a
@@ -154,7 +154,7 @@ open issues to help troubleshoot and fix existing bugs. Here is what you can do:
   _[Reporting Issues](#reporting-issues)_ section, providing feedback to the
   issue's author on what might be missing.
 - Review and update the existing content of our
-  [Wiki](https://github.com/angela-tarantula/json-patch-x/wiki) with up-to-date
+  [Wiki](https://github.com/angela-tarantula/jsonpatchx/wiki) with up-to-date
   instructions and code samples.
 - Review existing pull requests, and testing patches against real existing
   applications that use jsonpatchx.

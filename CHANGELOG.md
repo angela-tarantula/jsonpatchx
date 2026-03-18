@@ -21,7 +21,7 @@ and this project adheres to
 - Change three
 
 [unreleased]:
-  https://github.com/angela-tarantula/json-patch-x/compare/v1.0.0...HEAD
-[1.0.0]: https://github.com/angela-tarantula/json-patch-x/releases/tag/v1.0.0
+  https://github.com/angela-tarantula/jsonpatchx/compare/v1.0.0...HEAD
+[1.0.0]: https://github.com/angela-tarantula/jsonpatchx/releases/tag/v1.0.0
 
 <!-- textlint-enable -->

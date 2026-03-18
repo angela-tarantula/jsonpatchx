@@ -4,7 +4,7 @@
 repository:
   # See https://developer.github.com/v3/repos/#edit for all available settings.
 
-  name: json-patch-x
+  name: jsonpatchx
   description: A PATCH framework for Python.
   private: true
 
