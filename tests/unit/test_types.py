@@ -437,42 +437,37 @@ def test_pointer_backend_binding(subtests: Subtests) -> None:
 
 
 def test_jsonpointer_backend_reuse(subtests: Subtests) -> None:
-    dot_ptr_adapter = TypeAdapter(JSONPointer[JSONValue, DotPointer])
-    ptr1a = dot_ptr_adapter.validate_python("a.b")
-    ptr1b = dot_ptr_adapter.validate_python(ptr1a)
-    ptr2a = dot_ptr_adapter.validate_python(DotPointer("a.b"))
-    ptr2b = dot_ptr_adapter.validate_python(ptr2a)
+    ptr1a = JSONPointer.parse("a.b", backend=DotPointer)
+    ptr1b = JSONPointer.parse(ptr1a, backend=DotPointer)
+    ptr2a = JSONPointer.parse(DotPointer("a.b"), backend=DotPointer)
+    ptr2b = JSONPointer.parse(ptr2a, backend=DotPointer)
 
     class DotPointerSubclass(DotPointer):
         pass
 
-    ptr3a = dot_ptr_adapter.validate_python(DotPointerSubclass("c.d"))
-    ptr3b = dot_ptr_adapter.validate_python(ptr3a)
+    ptr3a = JSONPointer.parse(DotPointerSubclass("c.d"), backend=DotPointer)
+    ptr3b = JSONPointer.parse(ptr3a, backend=DotPointer)
 
     with subtests.test("reuse compatible backend instances"):
         assert ptr1a.ptr is ptr1b.ptr
         assert ptr2a.ptr is ptr2b.ptr
         assert ptr3a.ptr is ptr3b.ptr
 
-    narrower_dot_ptr_adapter = TypeAdapter(JSONPointer[JSONValue, DotPointerSubclass])
-
     with subtests.test("don't coerce backend superclass instances"):
         with pytest.raises(InvalidJSONPointer):
-            narrower_dot_ptr_adapter.validate_python(DotPointer("e.f"))
+            JSONPointer.parse(DotPointer("e.f"), backend=DotPointerSubclass)
 
     with subtests.test("reject incompatible backend instances"):
         with pytest.raises(InvalidJSONPointer):
-            dot_ptr_adapter.validate_python(CustomJsonPointer("/hello"))
+            JSONPointer.parse(CustomJsonPointer("/hello"), backend=DotPointer)
 
     class AlternateDotPointer(DotPointer):
         pass
 
-    alternate_dot_ptr_adapter = TypeAdapter(JSONPointer[JSONValue, AlternateDotPointer])
-
     with subtests.test(
         "reparse JSONPointer into different but compatible-syntax backend"
     ):
-        reparsed = alternate_dot_ptr_adapter.validate_python(ptr1a)
+        reparsed = JSONPointer.parse(ptr1a, backend=AlternateDotPointer)
         assert isinstance(reparsed.ptr, AlternateDotPointer)
         assert reparsed.ptr is not ptr1a.ptr
 
@@ -655,38 +650,32 @@ def test_jsonpointer_json_schema_backend_resolution(subtests: Subtests) -> None:
 
 
 def test_jsonpointer_path_validation(subtests: Subtests) -> None:
-    adapter = TypeAdapter(JSONPointer[JSONValue, DotPointer])
     with subtests.test("accept strings"):
-        adapter.validate_python("a.b")
+        JSONPointer.parse("a.b", backend=DotPointer)
     with subtests.test("accept compatible PointerBackend instances"):
-        adapter.validate_python(DotPointer("a.b"))
+        JSONPointer.parse(DotPointer("a.b"), backend=DotPointer)
     with subtests.test("accept other JSONPointers"):
-        ptr = adapter.validate_python("a.b")
-        adapter.validate_python(ptr)
+        ptr = JSONPointer.parse(DotPointer("a.b"), backend=DotPointer)
+        JSONPointer.parse(ptr, backend=DotPointer)
     with subtests.test("reject incompatible PointerBackends"):
         with pytest.raises(InvalidJSONPointer):
-            adapter.validate_python(CustomJsonPointer("/hello"))
+            JSONPointer.parse(CustomJsonPointer("/a/b"), backend=DotPointer)
         with pytest.raises(InvalidJSONPointer):
-            adapter.validate_python(ExtendedJsonPointer("/hello"))
+            JSONPointer.parse(ExtendedJsonPointer("/hello"), backend=DotPointer)
     with subtests.test("accepts narrower PointerBackends"):
 
         class DotPointerSubclass(DotPointer):
             pass
 
-        adapter.validate_python(DotPointerSubclass("a.b"))
+        JSONPointer.parse(DotPointerSubclass("a.b"), backend=DotPointer)
 
 
 def test_jsonpointer_covariance_narrow_to_wide(subtests: Subtests) -> None:
-    adapter_bool = TypeAdapter(JSONPointer[bool])
-    adapter_int = TypeAdapter(JSONPointer[int])
-    adapter_number = TypeAdapter(JSONPointer[JSONNumber])
-    adapter_value = TypeAdapter(JSONPointer[JSONValue])
-
     with subtests.test("narrow to wide passes"):
-        p_bool = adapter_bool.validate_python("/x")
-        assert adapter_int.validate_python(p_bool) == p_bool
-        assert adapter_number.validate_python(p_bool) == p_bool
-        assert adapter_value.validate_python(p_bool) == p_bool
+        p_bool = JSONPointer.parse("/x", type_param=bool)
+        assert JSONPointer.parse(p_bool, type_param=int) == p_bool
+        assert JSONPointer.parse(p_bool, type_param=JSONNumber) == p_bool
+        assert JSONPointer.parse(p_bool, type_param=JSONValue) == p_bool
     # currently wide-to-narrow is also allowed, but that's not guaranteed in the future
     # type hints already forbid non-covariant assignment
     # NOTE: add tests that simply showcase that ``type: ignore`` is required to disobey the documentation
