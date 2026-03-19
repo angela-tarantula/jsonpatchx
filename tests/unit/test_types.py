@@ -26,6 +26,7 @@ from tests.conftest import (
     AnotherIncompletePointerBackend,
     BadDotPointer,
     DotPointer,
+    DotPointerSubclass,
     IncompletePointerBackend,
     PointerMissingParts,
     TypeSuite,
@@ -441,10 +442,6 @@ def test_jsonpointer_backend_reuse(subtests: Subtests) -> None:
     ptr1b = JSONPointer.parse(ptr1a, backend=DotPointer)
     ptr2a = JSONPointer.parse(DotPointer("a.b"), backend=DotPointer)
     ptr2b = JSONPointer.parse(ptr2a, backend=DotPointer)
-
-    class DotPointerSubclass(DotPointer):
-        pass
-
     ptr3a = JSONPointer.parse(DotPointerSubclass("c.d"), backend=DotPointer)
     ptr3b = JSONPointer.parse(ptr3a, backend=DotPointer)
 
@@ -461,14 +458,11 @@ def test_jsonpointer_backend_reuse(subtests: Subtests) -> None:
         with pytest.raises(InvalidJSONPointer):
             JSONPointer.parse(CustomJsonPointer("/hello"), backend=DotPointer)
 
-    class AlternateDotPointer(DotPointer):
-        pass
-
     with subtests.test(
         "reparse JSONPointer into different but compatible-syntax backend"
     ):
-        reparsed = JSONPointer.parse(ptr1a, backend=AlternateDotPointer)
-        assert isinstance(reparsed.ptr, AlternateDotPointer)
+        reparsed = JSONPointer.parse(ptr1a, backend=DotPointerSubclass)
+        assert isinstance(reparsed.ptr, DotPointerSubclass)
         assert reparsed.ptr is not ptr1a.ptr
 
 
@@ -663,10 +657,6 @@ def test_jsonpointer_path_validation(subtests: Subtests) -> None:
         with pytest.raises(InvalidJSONPointer):
             JSONPointer.parse(ExtendedJsonPointer("/hello"), backend=DotPointer)
     with subtests.test("accepts narrower PointerBackends"):
-
-        class DotPointerSubclass(DotPointer):
-            pass
-
         JSONPointer.parse(DotPointerSubclass("a.b"), backend=DotPointer)
 
 
