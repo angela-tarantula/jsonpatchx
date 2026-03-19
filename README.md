@@ -19,36 +19,39 @@ interoperability, but in modern distributed systems, PATCH crosses trust
 boundaries: browser clients, internal services, third-party integrations, and
 increasingly LLM-generated patch payloads.
 
-`jsonpatchx` provides the RFC core and adds an API contract layer:
+### jsonpatchx provides the RFC core and adds an API contract layer
 
-- `Input Safety`: patch operations are **Pydantic models**, so invalid payloads
+- **Input Safety**: patch operations are Pydantic models, so invalid payloads
   fail early with clear errors.
-- `Surface Control`: operations can be **allow-listed** per route to limit what
+- **Surface Control**: operations can be allow-listed per route to limit what
   clients can do.
 
-It also provides extensibilty beyond the RFC:
+### It also provides extensibilty beyond the RFC
 
-- `API Meaning`: define **custom patch operations** (`toggle`, `increment`,
-  etc.) so updates target intent, not brittle positional assumptions.
-- `Typed Targeting`: operations are explicit, so pointers can participate in
-  **typed contracts** with clear failure modes when a resolved path violates
+- **API Meaning**: define custom patch operations (toggle, increment, etc.) so
+  updates target intent, not brittle positional assumptions.
+- **Typed Targeting**: operations are explicit, so pointers can participate in
+  typed contracts with clear failure modes when a resolved path violates
   expected structure or type.
-- `Advanced Path Selection`: choose your path strategy
+- **Advanced Path Selection**: choose your path strategy
   ([JSON Pointer](https://datatracker.ietf.org/doc/html/rfc9535),
   [JSONPath](https://datatracker.ietf.org/doc/html/rfc6901), or your custom
   resolver) so you can enable non-positional selection such as filtering,
   matching, or multi-target updates.
 
-And it treats the patch layer as a first-class contract:
+### And it treats the patch layer as a first-class contract
 
-- `Contract Drift`: OpenAPI is generated from the same runtime patch models, so
-  documentation stays aligned automatically.
-- `Versioning`: evolve operation contracts over time with schema changes rather
-  than protocol rewrites.
+- **Contract Drift**: OpenAPI is generated from the same runtime patch models,
+  so documentation stays aligned automatically.
+- **Versioning**: evolve operation contracts over time with schema changes
+  rather than protocol rewrites.
+- **FastAPI Integration**: set up PATCH routes quickly with minimal boilerplate.
 
-This is intentionally designed as a safe experimentation surface: teams can
-introduce richer operations, compare patterns in production, and let the best
-designs emerge. With JSONPath now standardized in
+### This is a Safe Space
+
+jsonpatchx is intentionally designed as a safe experimentation surface: teams
+can introduce richer operations, compare patterns in production, and let the
+best designs emerge. With JSONPath now standardized in
 [RFC 9535](https://datatracker.ietf.org/doc/html/rfc9535), custom pointer
 backends make it practical to explore more expressive targeting while preserving
 an RFC 6902-compatible core.
