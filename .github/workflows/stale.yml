@@ -43,19 +43,20 @@ jobs:
 
           stale-issue-message: >
             Thank you for your contribution! This issue has been automatically
-            marked as `stale` because it has no recent activity in the last
-            ${{ env.DAYS_BEFORE_ISSUE_STALE }} days. It will be closed in
-            ${{ env.DAYS_BEFORE_ISSUE_CLOSE }} days if no further activity
-            occurs. If this issue is still relevant, please leave a comment to
-            let us know, and the `stale` label will be automatically removed.
+            marked as `stale` because it has no recent activity in the last ${{
+            env.DAYS_BEFORE_ISSUE_STALE }} days. It will be closed in ${{
+            env.DAYS_BEFORE_ISSUE_CLOSE }} days if no further activity occurs.
+            If this issue is still relevant, please leave a comment to let us
+            know, and the `stale` label will be automatically removed.
           close-issue-message: >
-            This issue has been marked `stale` for ${{ env.DAYS_BEFORE_ISSUE_CLOSE }}
-            days, and is now closed due to inactivity. If the issue is still
-            relevant, please re-open this issue or file a new one. Thank you!
+            This issue has been marked `stale` for ${{
+            env.DAYS_BEFORE_ISSUE_CLOSE }} days, and is now closed due to
+            inactivity. If the issue is still relevant, please re-open this
+            issue or file a new one. Thank you!
           stale-pr-message: >
             Thank you for your contribution! This PR has been automatically
-            marked as `stale` because it has no recent activity in the last
-            ${{ env.DAYS_BEFORE_PR_STALE }} days. If this pull request is still
+            marked as `stale` because it has no recent activity in the last ${{
+            env.DAYS_BEFORE_PR_STALE }} days. If this pull request is still
             relevant, please leave a comment to let us know, and the `stale`
             label will be automatically removed.
 

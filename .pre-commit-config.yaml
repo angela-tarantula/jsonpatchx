@@ -99,7 +99,7 @@ repos:
       - id: yaml-prettier
         name: yaml prettier
         entry:
-          npx --yes prettier --check --config .github/linters/.prettierrc.json
+          npx --yes prettier --write --config .github/linters/.prettierrc.json
         language: system
         files: \.ya?ml$
 
