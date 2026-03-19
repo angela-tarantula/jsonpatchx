@@ -6,7 +6,7 @@ repository:
 
   name: jsonpatchx
   description: A PATCH framework for Python.
-  private: true
+  private: false
 
   # A URL with more information about the repository
   # homepage: https://example.github.io/
