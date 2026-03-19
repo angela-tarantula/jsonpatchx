@@ -56,12 +56,17 @@ class OperationSchema(BaseModel, ABC):
     """
 
     model_config = ConfigDict(
-        frozen=True,
-        strict=True,
-        extra="allow",
-        revalidate_instances="always",  # necessary for converting custom PointerBackends
-        # NOTE: validators may run multiple times; guide users to write idempotent validators.
-        populate_by_name=True,  # Allow Python-side construction with field names (e.g., from_), while JSON parsing stays alias-only via by_name=False in registries
+        frozen=True,  # Patch operations are not stateful
+        strict=True,  # Flexible validation can still be provided per field as desired
+        extra="allow",  # Standard JSON Patch allows extras
+        validate_by_alias=True,  # Some JSON Patch keys are protected keywords in Python, such as 'from', and require aliases to bypass.
+        serialize_by_alias=True,  # Consistent with validation
+        loc_by_alias=True,  #  So error messages also use alias. For example, when 'from' is an alias of 'from_', errors should say, "error at: from".
+        validate_default=True,  # Validate default values against their intended type annotations
+        validate_return=True,  # For extra correctness. Also ensures that 'apply()' always results in valid JSON.
+        use_enum_values=True,  # For consistent serialization when values are Enums
+        allow_inf_nan=False,  # infinite values are not valid JSON
+        validation_error_cause=False,  # Consider enabling when Pydantic guarantees a stable error structure. Useful to flip when debugging locally.
     )
 
     _op_literals: ClassVar[tuple[str, ...]]
