@@ -82,16 +82,10 @@ class OperationSchema(BaseModel, ABC):
         identifiers for registry dispatch.
         """
         super().__init_subclass__(**kwargs)
-
-        if not (literals := cls._extract_op_literals()):
-            raise InvalidOperationDefinition(
-                f"OperationSchema '{cls.__name__}'.op must be annotated as Literal of string(s). "
-                "op must be declared as a model field (not ClassVar)."
-            )
-        cls._op_literals = literals
+        cls._op_literals = cls._get_op_literals()
 
     @classmethod
-    def _extract_op_literals(cls) -> tuple[str, ...]:
+    def _get_op_literals(cls) -> tuple[str, ...]:
         """
         Internal: extract the string literal values from the subclass' ``op`` annotation.
 
@@ -100,19 +94,22 @@ class OperationSchema(BaseModel, ABC):
         - ``op: Literal["add"]``
         - ``op: Literal["add", "create"]``
 
-        Returns an empty tuple if the subclass does not declare a valid ``Literal[str, ...]``
+        Raises ``InvalidOperationDefinition`` if the subclass does not declare a valid ``Literal[str, ...]``
         annotation for ``op``.
         """
-        annotations = get_type_hints(cls, include_extras=True)
-
         if (
-            (op_annotation := annotations.get("op")) is not None
+            (annotations := get_type_hints(cls, include_extras=True))
+            and (op_annotation := annotations.get("op"))
             and (get_origin(op_annotation) is Literal)
             and (op_literals := get_args(op_annotation))
             and all(isinstance(v, str) for v in op_literals)
         ):
             return op_literals
-        return ()
+        else:
+            raise InvalidOperationDefinition(
+                f"OperationSchema '{cls.__name__}' is missing valid type hints for required 'op' field. "
+                "'op' must be an instance field annotated as a Literal[...] of strings."
+            )
 
     @abstractmethod
     def apply(self, doc: JSONValue) -> JSONValue:
