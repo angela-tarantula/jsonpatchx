@@ -131,13 +131,13 @@ class OperationSchema(BaseModel, ABC):
         cls, schema: cs.CoreSchema, handler: GetJsonSchemaHandler
     ) -> JsonSchemaValue:
         json_schema = handler(schema)
-        # 1. allow users to set "op" defaults, but tell OpenAPI it's required
-        # 2. tell OpenAPI that additionalProperties are forbidden
-        assert json_schema["type"] == "object", "internal error"
+
+        # Allow users to set "op" defaults, but tell OpenAPI it's required
         required = set(json_schema.get("required", []))
         required.add("op")
         json_schema["required"] = sorted(required)
-        json_schema.setdefault("additionalProperties", True)
+
+        # Add description to 'op' for consistency across models
         json_schema["properties"]["op"].setdefault(
             "description", "The operation to perform."
         )
