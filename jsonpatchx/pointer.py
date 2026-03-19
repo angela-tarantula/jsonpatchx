@@ -255,12 +255,7 @@ class JSONPointer(str, Generic[T_co, P_co]):
     ) -> JsonSchemaValue:
         pointer_backend_param = schema["metadata"]["pointer_backend_param"]
         if isinstance(pointer_backend_param, TypeVar):
-            try:
-                pointer_backend = cls._resolve_runtime_backend_param(
-                    pointer_backend_param
-                )
-            except InvalidJSONPointer:
-                pointer_backend = None
+            pointer_backend = cls._resolve_runtime_backend_param(pointer_backend_param)
         else:
             pointer_backend = pointer_backend_param
         if pointer_backend is _DEFAULT_POINTER_CLS:

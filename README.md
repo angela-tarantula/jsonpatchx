@@ -1,95 +1,61 @@
-# json-patch-x
-
-**PATCH is an API contract, not just a transport format.**
-A framework for **governed, type-safe, and versionable** partial updates in
-Python.
+# jsonpatchx
 
 <!-- markdownlint-disable MD013 -->
 
-[![Release](https://img.shields.io/github/v/release/bloomberg/oss-template?display_name=tag)](CHANGELOG.md)
-[![Tests](https://img.shields.io/github/actions/workflow/status/angela-tarantula/json-patch-x/python-app.yml?branch=main&label=CI&style=flat)](https://github.com/angela-tarantula/json-patch-x/actions)
+[![Release](https://img.shields.io/github/v/release/angela-tarantula/jsonpatchx?display_name=tag)](CHANGELOG.md)
+[![Tests](https://img.shields.io/github/actions/workflow/status/angela-tarantula/jsonpatchx/python-app.yml?branch=main&label=CI&style=flat)](https://github.com/angela-tarantula/jsonpatchx/actions)
 ![RFC 6902 compatible core](https://img.shields.io/badge/RFC-6902-blue)
 ![FastAPI ready](https://img.shields.io/badge/FastAPI-First%20Class-009688)
-[![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/bloomberg/oss-template/badge)](https://scorecard.dev/viewer/?uri=github.com/bloomberg/oss-template)
-[![Contributor Covenant](https://img.shields.io/badge/Contributor%20Covenant-2.1-fbab2c.svg)](CODE_OF_CONDUCT.md)
+[![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/angela-tarantula/jsonpatchx/badge)](https://scorecard.dev/viewer/?uri=github.com/angela-tarantula/jsonpatchx)
+[![Contributor Covenant](https://img.shields.io/badge/Contributor%20Covenant-3.0-fbab2c.svg)](CODE_OF_CONDUCT.md)
 
 <!-- markdownlint-enable MD013 -->
 
-## Before You Start
-
-As much as possible, we have tried to provide enough tooling to get you up and
-running quickly and with a minimum of effort. This includes sane defaults for
-documentation; templates for bug reports, feature requests, and pull requests;
-and [GitHub Actions](https://github.com/features/actions) that will
-automatically manage stale issues and pull requests. This latter defaults to
-labeling issues and pull requests as stale after 60 days of inactivity, and
-closing them after 7 additional days of inactivity. These
-[defaults](.github/workflows/stale.yml) and more can be configured. For
-configuration options, please consult the documentation for the [stale
-action](https://github.com/actions/stale).
-
-In trying to keep this template as generic and reusable as possible, there are
-some things that were omitted out of necessity and others that need a little
-tweaking. Before you begin developing in earnest, there are a few changes that
-need to be made:
-
-- [x] ✅ Select an [OSI-approved license](https://opensource.org/licenses) for
-      your project. This can easily be achieved through the 'Add File'
-      button on the GitHub UI, naming the file `LICENSE`, and selecting
-      your desired license from the provided list.
-- [x] Update the `<License name>` placeholder in this file to reflect the name
-      of the license you selected above.
-- [x] Replace `<INSERT_CONTACT_METHOD>` in
-      [`CODE_OF_CONDUCT.md`](CODE_OF_CONDUCT.md) with a suitable communication
-      channel.
-- [ ] Change references to `org_name` to the name of the org your repository
-      belongs to e.g., `bloomberg`:
-  - [ ] In [`README.md`](README.md)
-  - [ ] In [`CONTRIBUTING.md`](CONTRIBUTING.md)
-- [ ] Change references to `repo_name` to the name of your new repository:
-  - [ ] In [`README.md`](README.md)
-  - [ ] In [`CONTRIBUTING.md`](CONTRIBUTING.md)
-- [ ] Update the Release and Lint `readme` badges to point to your project URL.
-- [ ] Update the links to `CONTRIBUTING.md` to point to your project URL:
-  - [ ] In [`.github/ISSUE_TEMPLATE/bug_report.yml`][bug-report-template]
-  - [ ] In
-        [`.github/ISSUE_TEMPLATE/feature_request.yml`][feature-request-template]
-  - [ ] In
-        [`.github/pull_request_template.md`](.github/pull_request_template.md)
-- [ ] Update the `Affected Version` tags in
-      [`.github/ISSUE_TEMPLATE/bug_report.yml`][bug-report-template]
-      if applicable.
-- [ ] Replace the `<project name>` placeholder with the name of your project:
-  - [ ] In [`CONTRIBUTING.md`](CONTRIBUTING.md)
-  - [ ] In [`SECURITY.md`](SECURITY.md)
-- [ ] Add names and contact information for the project maintainers to
-      [`MAINTAINERS.md`](MAINTAINERS.md).
-- [ ] Update the `<project-name>` placeholder in
-      [`.github/CODEOWNERS`](.github/CODEOWNERS) as well as the
-      `<maintainer-team-name>` and `<admin-team-name>` entries.
-- [ ] Delete the release placeholder content in [`CHANGELOG.md`](CHANGELOG.md).
-      We encourage you to [keep a changelog](https://keepachangelog.com/en/1.0.0/).
-- [ ] Configure [`.github/dependabot.yml`](.github/dependabot.yml) for your
-      project's language and tooling dependencies.
-- [ ] In [`.github/settings.yml`](.github/settings.yml), update the following
-      fields:
-  - [ ] `name`: Replace with the repository name for your project
-  - [ ] `description`: A short, 1-2 sentence description of your project
-  - [ ] `teams`: Uncomment and update the GitHub team names and permissions as
-        appropriate
-  - [ ] `branches`: Uncomment and enable branch protection settings for your
-        project _(please **do not** disable branch protection entirely!)_
-- [ ] Replace the generic content in this file with the relevant details about
-      your project.
-- [ ] 🚨 Delete this section of the `readme`!
-
 ## About The Project
 
-Provide some information about what the project is/does.
+[RFC 6902](https://datatracker.ietf.org/doc/html/rfc6902) (JSON Patch) is
+intentionally minimal and transport-focused. That minimalism is great for
+interoperability, but in modern distributed systems, PATCH crosses trust
+boundaries: browser clients, internal services, third-party integrations, and
+increasingly LLM-generated patch payloads.
+
+`jsonpatchx` provides the RFC core and adds an API contract layer:
+
+- `Input Safety`: patch operations are **Pydantic models**, so invalid payloads
+  fail early with clear errors.
+- `Surface Control`: operations can be **allow-listed** per route to limit what
+  clients can do.
+
+It also provides extensibilty beyond the RFC:
+
+- `API Meaning`: define **custom patch operations** (`toggle`, `increment`,
+  etc.) so updates target intent, not brittle positional assumptions.
+- `Typed Targeting`: operations are explicit, so pointers can participate in
+  **typed contracts** with clear failure modes when a resolved path violates
+  expected structure or type.
+- `Advanced Path Selection`: choose your path strategy
+  ([JSON Pointer](https://datatracker.ietf.org/doc/html/rfc9535),
+  [JSONPath](https://datatracker.ietf.org/doc/html/rfc6901), or your custom
+  resolver) so you can enable non-positional selection such as filtering,
+  matching, or multi-target updates.
+
+And it treats the patch layer as a first-class contract:
+
+- `Contract Drift`: OpenAPI is generated from the same runtime patch models, so
+  documentation stays aligned automatically.
+- `Versioning`: evolve operation contracts over time with schema changes rather
+  than protocol rewrites.
+
+This is intentionally designed as a safe experimentation surface: teams can
+introduce richer operations, compare patterns in production, and let the best
+designs emerge. With JSONPath now standardized in
+[RFC 9535](https://datatracker.ietf.org/doc/html/rfc9535), custom pointer
+backends make it practical to explore more expressive targeting while preserving
+an RFC 6902-compatible core.
 
 ## Getting Started
 
-To get a local copy up and running follow these simple steps.
+Install from PyPI:
 
 ### Installation
 
@@ -99,17 +65,35 @@ pip install jsonpatchx
 
 ## Usage
 
-Use this space to show useful examples of how a project can be used. Additional
-screenshots, code examples and demos work well in this space. You may also link
-to more resources.
+Basic patch application:
 
-_For more examples, please refer to the [Documentation](https://example.com) or
-the [Wiki](https://github.com/org_name/repo_name/wiki)_
+```python
+from jsonpatchx import JsonPatch
+
+doc = {"name": "Ada", "roles": ["engineer"]}
+
+patch = JsonPatch.from_string(
+    """
+    [
+      {"op": "replace", "path": "/name", "value": "Ada Lovelace"},
+      {"op": "add", "path": "/roles/-", "value": "maintainer"}
+    ]
+    """
+)
+
+updated = patch.apply(doc)
+```
+
+For practical end-to-end examples:
+
+- FastAPI demos: [examples/fastapi/README.md](examples/fastapi/README.md)
+- Operation recipes: [examples/recipes.py](examples/recipes.py)
+- Error payload shapes: [docs/demo-error-shapes.md](docs/demo-error-shapes.md)
 
 ## Roadmap
 
-See the [open issues](https://github.com/org_name/repo_name/issues) for a list
-of proposed features (and known issues).
+See the [open issues](https://github.com/angela-tarantula/jsonpatchx/issues) for
+a list of proposed features (and known issues).
 
 ## Contributing
 
@@ -120,21 +104,26 @@ appreciated**. For detailed contributing guidelines, please see
 
 ## License
 
-Distributed under the MIT License. See [LICENSE](LICENSE) for more
-information.
+Distributed under the MIT License. See [LICENSE](LICENSE) for more information.
 
 ## Contact
 
-Your Name - [@twitter_handle](https://twitter.com/twitter_handle) - email
+Anglea Liss - [chamsester@gmail.com](mailto:chamsester@gmail.com)
 
 Project Link:
-[https://github.com/org_name/repo_name](https://github.com/org_name/repo_name)
+[https://github.com/angela-tarantula/jsonpatchx](https://github.com/angela-tarantula/jsonpatchx)
 
 ## Acknowledgements
 
-This template was adapted from
-[Best readme template][best-readme-template].
+Thanks to these foundational projects:
 
-[best-readme-template]: https://github.com/othneildrew/Best-README-Template
-[bug-report-template]: /.github/ISSUE_TEMPLATE/bug_report.yml
-[feature-request-template]: /.github/ISSUE_TEMPLATE/feature_request.yml
+- [Pydantic](https://docs.pydantic.dev/latest/)
+- [FastAPI](https://fastapi.tiangolo.com/)
+- [python-json-pointer](https://github.com/stefankoegl/python-json-pointer)
+- [python-jsonpath](https://github.com/jg-rp/python-jsonpath)
+
+And to these excellent alternatives:
+
+- [py_yyjson](https://tkte.ch/py_yyjson/#patch-a-document)
+- [json-merge-patch](https://github.com/OpenDataServices/json-merge-patch)
+- [python-json-patch](https://github.com/stefankoegl/python-json-patch)

@@ -4,9 +4,9 @@
 repository:
   # See https://developer.github.com/v3/repos/#edit for all available settings.
 
-  name: json-patch-x
+  name: jsonpatchx
   description: A PATCH framework for Python.
-  private: true
+  private: false
 
   # A URL with more information about the repository
   # homepage: https://example.github.io/
@@ -28,6 +28,71 @@ repository:
 
   enable_automated_security_fixes: true
   enable_vulnerability_alerts: true
+
+labels:
+  - name: bug
+    color: D73A4A
+    description: "Something is broken 🐛"
+
+  - name: enhancement
+    color: A2EEEF
+    description: "New feature or improvement ✨"
+
+  - name: documentation
+    color: 0075CA
+    description: "Docs updates or clarifications 📚"
+
+  - name: chore
+    color: BFD4F2
+    description: "Maintenance or cleanup work 🔧"
+
+  - name: question
+    color: D876E3
+    description: "Further information is requested ❓"
+
+  - name: help-wanted
+    color: 008672
+    description: "Needs extra contributor attention 🙌"
+
+  - name: keep-open
+    color: F9D0C4
+    description: "Exempt from stale automation for active tracking 📌"
+
+  - name: good-first-issue
+    color: 7057FF
+    description: "Good starter task for new contributors 🌱"
+
+  - name: duplicate
+    color: CFD3D7
+    description: "Already reported elsewhere 🔁"
+
+  - name: invalid
+    color: E4E669
+    description: "Not actionable as filed 🚫"
+
+  - name: wontfix
+    color: FFFFFF
+    description: "Will not be worked on (for now) 🛑"
+
+  - name: json patch
+    color: 1D76DB
+    description: "Core RFC 6902 behavior/op semantics 🧩"
+
+  - name: json pointer
+    color: 5319E7
+    description: "Pointer parsing/typing/backends 📍"
+
+  - name: fastapi/openapi
+    color: 0E8A16
+    description: "FastAPI integration or OpenAPI schema work 🌐"
+
+  - name: typing/mypy
+    color: FBCA04
+    description: "Type-system and static typing topics 🔤"
+
+  - name: security
+    color: B60205
+    description: "Security-sensitive issue or hardening 🔒"
 
 # Branch protection API reference:
 # https://developer.github.com/v3/repos/branches/#update-branch-protection

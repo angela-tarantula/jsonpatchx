@@ -18,3 +18,25 @@ updates:
           - "github/*"
     schedule:
       interval: "weekly"
+
+  - package-ecosystem: "uv"
+    directory: "/"
+    cooldown:
+      default-days: 7
+    groups:
+      python-dependencies:
+        patterns:
+          - "*"
+    schedule:
+      interval: "weekly"
+
+  - package-ecosystem: "pre-commit"
+    directory: "/"
+    cooldown:
+      default-days: 7
+    groups:
+      pre-commit-hooks:
+        patterns:
+          - "*"
+    schedule:
+      interval: "weekly"

@@ -56,12 +56,17 @@ class OperationSchema(BaseModel, ABC):
     """
 
     model_config = ConfigDict(
-        frozen=True,
-        strict=True,
-        extra="allow",
-        revalidate_instances="always",  # necessary for converting custom PointerBackends
-        # NOTE: validators may run multiple times; guide users to write idempotent validators.
-        populate_by_name=True,  # Allow Python-side construction with field names (e.g., from_), while JSON parsing stays alias-only via by_name=False in registries
+        frozen=True,  # Patch operations are not stateful
+        strict=True,  # Flexible validation can still be provided per field as desired
+        extra="allow",  # Standard JSON Patch allows extras
+        validate_by_alias=True,  # Some JSON Patch keys are protected keywords in Python, such as 'from', and require aliases to bypass.
+        serialize_by_alias=True,  # Consistent with validation
+        loc_by_alias=True,  #  So error messages also use alias. For example, when 'from' is an alias of 'from_', errors should say, "error at: from".
+        validate_default=True,  # Validate default values against their intended type annotations
+        validate_return=True,  # For extra correctness. Also ensures that 'apply()' always results in valid JSON.
+        use_enum_values=True,  # For consistent serialization when values are Enums
+        allow_inf_nan=False,  # infinite values are not valid JSON
+        validation_error_cause=False,  # Consider enabling when Pydantic guarantees a stable error structure. Useful to flip when debugging locally.
     )
 
     _op_literals: ClassVar[tuple[str, ...]]
@@ -82,16 +87,10 @@ class OperationSchema(BaseModel, ABC):
         identifiers for registry dispatch.
         """
         super().__init_subclass__(**kwargs)
-
-        if not (literals := cls._extract_op_literals()):
-            raise InvalidOperationDefinition(
-                f"OperationSchema '{cls.__name__}'.op must be annotated as Literal of string(s). "
-                "op must be declared as a model field (not ClassVar)."
-            )
-        cls._op_literals = literals
+        cls._op_literals = cls._get_op_literals()
 
     @classmethod
-    def _extract_op_literals(cls) -> tuple[str, ...]:
+    def _get_op_literals(cls) -> tuple[str, ...]:
         """
         Internal: extract the string literal values from the subclass' ``op`` annotation.
 
@@ -100,19 +99,22 @@ class OperationSchema(BaseModel, ABC):
         - ``op: Literal["add"]``
         - ``op: Literal["add", "create"]``
 
-        Returns an empty tuple if the subclass does not declare a valid ``Literal[str, ...]``
+        Raises ``InvalidOperationDefinition`` if the subclass does not declare a valid ``Literal[str, ...]``
         annotation for ``op``.
         """
-        annotations = get_type_hints(cls, include_extras=True)
-
         if (
-            (op_annotation := annotations.get("op")) is not None
+            (annotations := get_type_hints(cls, include_extras=True))
+            and (op_annotation := annotations.get("op"))
             and (get_origin(op_annotation) is Literal)
             and (op_literals := get_args(op_annotation))
             and all(isinstance(v, str) for v in op_literals)
         ):
             return op_literals
-        return ()
+        else:
+            raise InvalidOperationDefinition(
+                f"OperationSchema '{cls.__name__}' is missing valid type hints for required 'op' field. "
+                "'op' must be an instance field annotated as a Literal[...] of strings."
+            )
 
     @abstractmethod
     def apply(self, doc: JSONValue) -> JSONValue:
@@ -134,13 +136,13 @@ class OperationSchema(BaseModel, ABC):
         cls, schema: cs.CoreSchema, handler: GetJsonSchemaHandler
     ) -> JsonSchemaValue:
         json_schema = handler(schema)
-        # 1. allow users to set "op" defaults, but tell OpenAPI it's required
-        # 2. tell OpenAPI that additionalProperties are forbidden
-        assert json_schema["type"] == "object", "internal error"
+
+        # Allow users to set "op" defaults, but tell OpenAPI it's required
         required = set(json_schema.get("required", []))
         required.add("op")
         json_schema["required"] = sorted(required)
-        json_schema.setdefault("additionalProperties", True)
+
+        # Add description to 'op' for consistency across models
         json_schema["properties"]["op"].setdefault(
             "description", "The operation to perform."
         )

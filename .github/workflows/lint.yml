@@ -36,6 +36,8 @@ jobs:
           JSCPD_CONFIG_FILE: ".jscpd.json"
           MARKDOWN_CONFIG_FILE: ".markdownlint.yml"
           YAML_CONFIG_FILE: ".yamllint.yml"
+          PRETTIER_COMMAND_OPTIONS:
+            "--config /github/workspace/.github/linters/.prettierrc.json"
 
           # Security and workflow hardening.
           VALIDATE_CHECKOV: true # policy/security checks for repo config and API specs

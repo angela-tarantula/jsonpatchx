@@ -68,6 +68,12 @@ class DotPointer(IncompletePointerBackend):
         return cur
 
 
+class DotPointerSubclass(DotPointer):
+    """Narrower DotPointer variant reused across pointer covariance tests."""
+
+    pass
+
+
 class BadDotPointer(DotPointer):
     """Looks like a valid DotPointer until runtime."""
 
