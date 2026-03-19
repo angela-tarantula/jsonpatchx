@@ -1,8 +1,5 @@
 # jsonpatchx
 
-**PATCH is an API contract, not just a transport format.** A framework for
-**governed, type-safe, and versionable** partial updates in Python.
-
 <!-- markdownlint-disable MD013 -->
 
 [![Release](https://img.shields.io/github/v/release/angela-tarantula/jsonpatchx?display_name=tag)](CHANGELOG.md)
@@ -16,18 +13,45 @@
 
 ## About The Project
 
-`jsonpatchx` is a Python framework for governed partial updates using JSON Patch
-(RFC 6902).
+[RFC 6902](https://datatracker.ietf.org/doc/html/rfc6902) (JSON Patch) is
+intentionally minimal and transport-focused. That minimalism is great for
+interoperability, but in modern distributed systems, PATCH crosses trust
+boundaries: browser clients, internal services, third-party integrations, and
+increasingly LLM-generated patch payloads.
 
-It is designed for teams that want PATCH behavior to be explicit, typed, and
-documented, not just loosely validated request payloads.
+`jsonpatchx` provides the RFC core and adds an API contract layer:
 
-In practice, it gives you:
+- `Input Safety`: patch operations are **Pydantic models**, so invalid payloads
+  fail early with clear errors.
+- `Surface Control`: operations can be **allow-listed** per route to limit what
+  clients can do.
 
-- RFC 6902-compatible core operations (`add`, `remove`, `replace`, etc.)
-- Pydantic-backed validation for operations and target value types
-- Extensible operation registries for domain-specific patch operations
-- FastAPI integration that keeps request enforcement and OpenAPI docs aligned
+It also provides extensibilty beyond the RFC:
+
+- `API Meaning`: define **custom patch operations** (`toggle`, `increment`,
+  etc.) so updates target intent, not brittle positional assumptions.
+- `Typed Targeting`: operations are explicit, so pointers can participate in
+  **typed contracts** with clear failure modes when a resolved path violates
+  expected structure or type.
+- `Advanced Path Selection`: choose your path strategy
+  ([JSON Pointer](https://datatracker.ietf.org/doc/html/rfc9535),
+  [JSONPath](https://datatracker.ietf.org/doc/html/rfc6901), or your custom
+  resolver) so you can enable non-positional selection such as filtering,
+  matching, or multi-target updates.
+
+And it treats the patch layer as a first-class contract:
+
+- `Contract Drift`: OpenAPI is generated from the same runtime patch models, so
+  documentation stays aligned automatically.
+- `Versioning`: evolve operation contracts over time with schema changes rather
+  than protocol rewrites.
+
+This is intentionally designed as a safe experimentation surface: teams can
+introduce richer operations, compare patterns in production, and let the best
+designs emerge. With JSONPath now standardized in
+[RFC 9535](https://datatracker.ietf.org/doc/html/rfc9535), custom pointer
+backends make it practical to explore more expressive targeting while preserving
+an RFC 6902-compatible core.
 
 ## Getting Started
 
