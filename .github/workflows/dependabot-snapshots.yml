@@ -9,7 +9,6 @@ on:
     paths:
       - pyproject.toml
       - uv.lock
-  workflow_dispatch:
 
 permissions: read-all
 
