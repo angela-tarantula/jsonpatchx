@@ -17,6 +17,7 @@ jobs:
   update-openapi-snapshots:
     if: startsWith(github.ref_name, 'dependabot/')
     runs-on: ubuntu-latest
+    environment: dependabot-automation
     permissions:
       contents: write
     steps:
@@ -41,14 +42,29 @@ jobs:
       - name: Regenerate OpenAPI snapshots
         run: uv run python scripts/update_openapi_snapshots.py
 
+      - name: Create GitHub App token
+        id: app-token
+        uses: actions/create-github-app-token@f8d387b68d61c58ab83c6c016672934102569859 # v3.0.0
+        with:
+          app-id: ${{ vars.SNAPSHOT_APP_ID }}
+          private-key: ${{ secrets.SNAPSHOT_APP_PRIVATE_KEY }}
+          owner: ${{ github.repository_owner }}
+          permission-contents: write
+
       - name: Commit and push snapshot updates
         env:
           BRANCH: ${{ github.ref_name }}
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          APP_TOKEN: ${{ steps.app-token.outputs.token }}
         run: |
           if git diff --quiet -- tests/integration/fastapi_tests/snapshots; then
             echo "No snapshot updates needed."
             exit 0
+          fi
+
+          if [ -z "${APP_TOKEN}" ]; then
+            echo "Missing app installation token."
+            echo "Set repository variable SNAPSHOT_APP_ID and Dependabot secret SNAPSHOT_APP_PRIVATE_KEY."
+            exit 1
           fi
 
           git config user.name "github-actions[bot]"
@@ -56,5 +72,5 @@ jobs:
           git add tests/integration/fastapi_tests/snapshots
           git commit -m "chore: refresh OpenAPI snapshots"
 
-          git remote set-url origin "https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          git remote set-url origin "https://x-access-token:${APP_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
           git push origin "HEAD:${BRANCH}"
