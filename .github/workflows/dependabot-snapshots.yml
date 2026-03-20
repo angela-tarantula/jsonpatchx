@@ -17,7 +17,8 @@ jobs:
   update-openapi-snapshots:
     if: startsWith(github.ref_name, 'dependabot/')
     runs-on: ubuntu-latest
-    environment: dependabot-automation
+    environment:
+      name: "dependabot-automation"
     permissions:
       contents: write
     steps:
