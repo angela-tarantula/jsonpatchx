@@ -78,8 +78,8 @@ backend override).
 
 ## Demo 6: Generic P backend ops
 
-Operations authored as `JSONPointer[..., P]` and specialized per-op via
-generic backend parameterization.
+Operations authored as `JSONPointer[..., P]` and specialized per-op via generic
+backend parameterization.
 
 **File:** `examples/fastapi/demo6.py`
 
