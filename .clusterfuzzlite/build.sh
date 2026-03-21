@@ -7,9 +7,9 @@ python --version
 python -m pip install .
 
 compile_python_fuzzer fuzzers/jsonpatchx_fuzzer.py \
-  --output_name jsonpatchx_fuzzer
+  jsonpatchx_fuzzer
 compile_python_fuzzer fuzzers/jsonpatchx_custom_backend_fuzzer.py \
-  --output_name jsonpatchx_custom_backend_fuzzer
+  jsonpatchx_custom_backend_fuzzer
 
 cp fuzzers/jsonpatchx_fuzzer.dict "$OUT/jsonpatchx_fuzzer.dict"
 cp fuzzers/jsonpatchx_custom_backend_fuzzer.dict \
