@@ -1,0 +1,49 @@
+---
+# Purpose: Run ClusterFuzzLite on pull requests to fuzz core patch/pointer paths.
+name: clusterfuzzlite pr
+
+on:
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions: read-all
+
+jobs:
+  clusterfuzzlite-pr:
+    runs-on: ubuntu-latest
+    permissions:
+      security-events: write
+    steps:
+      - name: 🔒 harden runner
+        uses: step-security/harden-runner@5ef0c079ce82195b2a36a210272d6b661572d83e # v2.14.2
+        with:
+          egress-policy: audit
+
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+
+      - name: Build fuzzers
+        uses: google/clusterfuzzlite/actions/build_fuzzers@884713a6c30a92e5e8544c39945cd7cb630abcd1 # v1
+        with:
+          language: python
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          sanitizer: address
+
+      - name: Run fuzzers (changed code)
+        uses: google/clusterfuzzlite/actions/run_fuzzers@884713a6c30a92e5e8544c39945cd7cb630abcd1 # v1
+        # with:
+        #   github-token: ${{ secrets.GITHUB_TOKEN }}
+        #   language: python
+        #   sanitizer: address
+        #   # PR-focused mode: fuzzes code reachable from changed files.
+        #   mode: code-change
+        #   fuzz-seconds: 300
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          language: python
+          sanitizer: address
+          mode: batch
+          fuzz-seconds: 3600
