@@ -1,6 +1,10 @@
 #!/bin/bash -eu
 
-# Install harness dependency + this package into the builder image.
+# CFLite invokes this script as /src/build.sh; switch to repo root first
+REPO_DIR="${SRC:-/src}/jsonpatchx"
+cd "$REPO_DIR"
+
+# Install harness dependency + this package into the builder image
 python -m pip install --upgrade pip
 python -m pip install atheris
 python -m pip install .
