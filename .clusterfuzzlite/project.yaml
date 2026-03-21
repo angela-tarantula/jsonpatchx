@@ -1,0 +1,8 @@
+# ClusterFuzzLite project metadata consumed by the CFLite actions.
+language: python
+main_repo: https://github.com/angela-tarantula/jsonpatchx
+fuzzing_engines:
+  - libfuzzer
+sanitizers:
+  # Keep address sanitizer first for early memory/corruption signal.
+  - address
