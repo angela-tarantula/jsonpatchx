@@ -8,6 +8,6 @@ RUN python3 -m pip install --upgrade uv && \
 
 ENV PATH="/opt/python313/bin:${PATH}"
 
-COPY . $SRC/jsonpatchx                          # Copy the project source code
-WORKDIR $SRC/jsonpatchx                         # Working directory for build.sh
-COPY ./.clusterfuzzlite/build.sh $SRC/          # Copy build.sh into $SRC dir
+COPY . $SRC/jsonpatchx
+WORKDIR $SRC/jsonpatchx
+COPY ./.clusterfuzzlite/build.sh $SRC/
