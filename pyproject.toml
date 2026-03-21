@@ -43,6 +43,7 @@ python_version = "3.12"
 strict = true
 enable_incomplete_feature = ["TypeForm"]
 exclude = "temp.py|tests"
+exclude_gitignore = true
 
 warn_unused_configs = true
 warn_unused_ignores = true
