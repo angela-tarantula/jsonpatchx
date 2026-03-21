@@ -28,9 +28,9 @@ jobs:
           allow-licenses:
             "Apache-2.0, MIT, MIT-0, BSD-2-Clause, BSD-3-Clause, ISC, MPL-2.0,
             Python-2.0, PSF-2.0, Unlicense, Zlib, 0BSD, CC0-1.0"
-          allow-dependencies-licenses:
-            "pkg:pypi/pyinstaller@6.19.0,
-            pkg:pypi/pyinstaller-hooks-contrib@2026.3"
+          # allow-dependencies-licenses:
+          #   "pkg:pypi/pyinstaller@6.19.0,
+          #   pkg:pypi/pyinstaller-hooks-contrib@2026.3"
           # deny-licenses: "AGPL-1.0, AGPL-3.0"
           comment-summary-in-pr: true
           warn-on-openssf-scorecard-level: 3
