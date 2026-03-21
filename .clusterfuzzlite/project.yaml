@@ -1,3 +1,4 @@
+---
 # ClusterFuzzLite project metadata consumed by the CFLite actions.
 language: python
 main_repo: https://github.com/angela-tarantula/jsonpatchx

@@ -4,7 +4,12 @@
 REPO_DIR="${SRC:-/src}/jsonpatchx"
 cd "$REPO_DIR"
 
-# Install harness dependency + this package into the builder image
+python -m pip install --upgrade uv
+uv python install 3.13
+PYTHON_BIN="$(uv python find 3.13)"
+export PATH="$(dirname "$PYTHON_BIN"):$PATH"
+
+python --version
 python -m pip install --upgrade pip
 python -m pip install atheris
 python -m pip install .
