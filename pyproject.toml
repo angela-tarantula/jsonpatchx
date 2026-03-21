@@ -9,6 +9,13 @@ dependencies = [
     "pydantic>=2.12.5",
 ]
 
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["jsonpatchx*"]
+
 [project.optional-dependencies]
 fastapi = [
     "fastapi>=0.128.0",
@@ -25,6 +32,9 @@ dev = [
     "ruff>=0.15.6",
     "typing-extensions>=4.15.0",
     "uvicorn>=0.40.0",
+]
+fuzz = [
+    "atheris>=3.0.0",
 ]
 
 [tool.mypy]

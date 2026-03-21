@@ -9,6 +9,15 @@ wheels/
 # Tests / Coverage
 .coverage
 
+# Local fuzzing artifacts (libFuzzer/Atheris)
+crash-*
+leak-*
+timeout-*
+oom-*
+slow-unit-*
+# Generated libFuzzer corpus entries (keep only curated seed_* files in repo)
+fuzzers/corpus/**/[0-9a-f][0-9a-f][0-9a-f][0-9a-f]*
+
 # Virtual environments
 .venv
 
