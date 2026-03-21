@@ -1,8 +1,5 @@
 #!/bin/bash -eu
 
-REPO_DIR="${SRC:-/src}/jsonpatchx"
-cd "$REPO_DIR"
-
 python --version
 python -m pip install .
 
