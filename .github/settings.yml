@@ -110,6 +110,7 @@ branches:
         contexts:
           - check
           - super-linter
+          - clusterfuzzlite-pr
           # Add only after confirming exact check names in branch protection UI:
           # - Analyze (python)
           # - Analyze (actions)
