@@ -89,7 +89,7 @@ uv run --python 3.13 python -m fuzzers.jsonpatchx_fuzzer crash-...
 find fuzzers/corpus -type f ! -name 'seed_*' -delete
 ```
 
-## ClusterFuzzLite CI workflows
+## [ClusterFuzzLite](https://google.github.io/clusterfuzzlite/) CI workflows
 
 This repository uses three workflows so PR signal is fast, while deeper fuzzing
 still happens regularly:
