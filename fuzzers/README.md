@@ -14,7 +14,7 @@ This project has two Atheris fuzz targets:
 
 ## One-time setup for fuzzing
 
-Install the fuzz-only dependency group:
+Install the fuzz-only dependency group (defined in `pyproject.toml`):
 
 ```bash
 uv sync --python 3.13 --group fuzz
