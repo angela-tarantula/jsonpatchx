@@ -95,13 +95,13 @@ class ByteCursor:
     def u32(self) -> int:
         chunk = self.take(4)
         if len(chunk) < 4:
-            chunk = chunk.ljust(4, b"\\x00")
+            chunk = chunk.ljust(4, b"\x00")
         return int.from_bytes(chunk, byteorder="little", signed=False)
 
     def i32(self) -> int:
         chunk = self.take(4)
         if len(chunk) < 4:
-            chunk = chunk.ljust(4, b"\\x00")
+            chunk = chunk.ljust(4, b"\x00")
         return int.from_bytes(chunk, byteorder="little", signed=True)
 
     def bool(self) -> bool:
