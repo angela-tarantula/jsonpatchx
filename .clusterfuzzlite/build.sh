@@ -6,10 +6,8 @@ cd "$REPO_DIR"
 python --version
 python -m pip install .
 
-compile_python_fuzzer fuzzers/jsonpatchx_fuzzer.py \
-  jsonpatchx_fuzzer
-compile_python_fuzzer fuzzers/jsonpatchx_custom_backend_fuzzer.py \
-  jsonpatchx_custom_backend_fuzzer
+compile_python_fuzzer fuzzers/jsonpatchx_fuzzer.py
+compile_python_fuzzer fuzzers/jsonpatchx_custom_backend_fuzzer.py
 
 cp fuzzers/jsonpatchx_fuzzer.dict "$OUT/jsonpatchx_fuzzer.dict"
 cp fuzzers/jsonpatchx_custom_backend_fuzzer.dict \
