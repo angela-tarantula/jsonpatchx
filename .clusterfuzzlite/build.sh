@@ -7,7 +7,8 @@ cd "$REPO_DIR"
 python -m pip install --upgrade uv
 uv python install 3.13
 PYTHON_BIN="$(uv python find 3.13)"
-export PATH="$(dirname "$PYTHON_BIN"):$PATH"
+"$PYTHON_BIN" -m venv /tmp/cfl-venv
+export PATH="/tmp/cfl-venv/bin:$PATH"
 
 python --version
 python -m pip install --upgrade pip
