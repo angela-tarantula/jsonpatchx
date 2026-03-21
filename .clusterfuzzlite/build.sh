@@ -4,7 +4,6 @@ REPO_DIR="${SRC:-/src}/jsonpatchx"
 cd "$REPO_DIR"
 
 python --version
-python -m pip install atheris
 python -m pip install .
 
 compile_python_fuzzer fuzzers/jsonpatchx_fuzzer.py \
