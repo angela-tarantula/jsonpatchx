@@ -30,6 +30,19 @@ updates:
     schedule:
       interval: "weekly"
 
+  # Dependabot pip scans .txt requirement files in this directory, including
+  # .clusterfuzzlite/requirements-bootstrap.txt.
+  - package-ecosystem: "pip"
+    directory: "/.clusterfuzzlite"
+    cooldown:
+      default-days: 7
+    groups:
+      clusterfuzzlite-pip:
+        patterns:
+          - "*"
+    schedule:
+      interval: "weekly"
+
   - package-ecosystem: "pre-commit"
     directory: "/"
     cooldown:

@@ -6,6 +6,11 @@ on:
   pull_request:
     branches:
       - main
+    paths-ignore:
+      - "**/*.md"
+      - "docs/**"
+      - ".github/ISSUE_TEMPLATE/**"
+      - "site/**"
   workflow_dispatch:
 
 permissions: read-all
@@ -13,6 +18,11 @@ permissions: read-all
 jobs:
   clusterfuzzlite-pr:
     runs-on: ubuntu-latest
+    concurrency:
+      group:
+        cflite-pr-${{ github.event.pull_request.head.repo.full_name ||
+        github.repository }}-${{ github.head_ref || github.ref_name }}
+      cancel-in-progress: true
     permissions:
       security-events: write
     steps:
@@ -32,6 +42,11 @@ jobs:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           sanitizer: address
           keep-unaffected-fuzz-targets: false
+          storage-repo:
+            https://${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository
+            }}.git
+          storage-repo-branch: gh-pages
+          storage-repo-branch-coverage: gh-pages
 
       - name: Run fuzzers (changed code)
         uses: google/clusterfuzzlite/actions/run_fuzzers@884713a6c30a92e5e8544c39945cd7cb630abcd1 # v1
@@ -41,3 +56,8 @@ jobs:
           sanitizer: address
           mode: code-change
           fuzz-seconds: 300
+          storage-repo:
+            https://${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository
+            }}.git
+          storage-repo-branch: gh-pages
+          storage-repo-branch-coverage: gh-pages

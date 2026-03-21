@@ -13,6 +13,7 @@ jobs:
   clusterfuzzlite-coverage:
     runs-on: ubuntu-latest
     permissions:
+      contents: write
       security-events: write
     steps:
       - name: 🔒 harden runner
@@ -31,6 +32,11 @@ jobs:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           sanitizer: coverage
           keep-unaffected-fuzz-targets: true
+          storage-repo:
+            https://${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository
+            }}.git
+          storage-repo-branch: gh-pages
+          storage-repo-branch-coverage: gh-pages
 
       - name: Run fuzzers (coverage)
         uses: google/clusterfuzzlite/actions/run_fuzzers@884713a6c30a92e5e8544c39945cd7cb630abcd1 # v1
@@ -39,3 +45,8 @@ jobs:
           language: python
           sanitizer: coverage
           mode: coverage
+          storage-repo:
+            https://${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository
+            }}.git
+          storage-repo-branch: gh-pages
+          storage-repo-branch-coverage: gh-pages

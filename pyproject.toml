@@ -7,6 +7,7 @@ requires-python = ">=3.12"
 dependencies = [
     "jsonpointer>=3.0.0",
     "pydantic>=2.12.5",
+    "typing-extensions>=4.15.0",
 ]
 
 [build-system]
@@ -30,11 +31,11 @@ dev = [
     "pytest-cov>=7.0.0",
     "python-jsonpath>=2.0.2",
     "ruff>=0.15.6",
-    "typing-extensions>=4.15.0",
     "uvicorn>=0.40.0",
 ]
 fuzz = [
-    "atheris>=3.0.0",
+    "atheris>=3.0.0; python_version >= '3.11' and python_version < '3.14'",
+    "pyinstaller>=6.10.0",
 ]
 
 [tool.mypy]
@@ -43,6 +44,7 @@ python_version = "3.12"
 strict = true
 enable_incomplete_feature = ["TypeForm"]
 exclude = "temp.py|tests"
+exclude_gitignore = true
 
 warn_unused_configs = true
 warn_unused_ignores = true
