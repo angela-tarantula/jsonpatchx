@@ -30,6 +30,7 @@ jobs:
             Python-2.0, Unlicense, Zlib, 0BSD, CC0-1.0"
           allow-dependencies-licenses:
             "pkg:pypi/pyinstaller@6.10.0,
-            pkg:pypi/pyinstaller-hooks-contrib@2024.8"
+            pkg:pypi/pyinstaller-hooks-contrib@2024.8,
+            pkg:pypi/typing-extensions@4.15.0"
           comment-summary-in-pr: true
           warn-on-openssf-scorecard-level: 3
