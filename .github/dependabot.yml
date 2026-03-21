@@ -30,6 +30,17 @@ updates:
     schedule:
       interval: "weekly"
 
+  - package-ecosystem: "pip"
+    directory: "/.clusterfuzzlite"
+    cooldown:
+      default-days: 7
+    groups:
+      clusterfuzzlite-pip:
+        patterns:
+          - "*"
+    schedule:
+      interval: "weekly"
+
   - package-ecosystem: "pre-commit"
     directory: "/"
     cooldown:

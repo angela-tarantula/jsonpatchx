@@ -1,7 +1,5 @@
 #!/bin/bash -eu
 
-python -m pip install .
-
 compile_python_fuzzer fuzzers/jsonpatchx_fuzzer.py
 compile_python_fuzzer fuzzers/jsonpatchx_custom_backend_fuzzer.py
 
