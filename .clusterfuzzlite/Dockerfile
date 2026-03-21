@@ -10,4 +10,4 @@ ENV PATH="/opt/python313/bin:${PATH}"
 
 COPY . $SRC/jsonpatchx
 WORKDIR $SRC/jsonpatchx
-COPY ./.clusterfuzzlite/build.sh $SRC/
+COPY .clusterfuzzlite/build.sh $SRC/

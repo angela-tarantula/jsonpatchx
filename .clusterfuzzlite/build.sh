@@ -1,6 +1,5 @@
 #!/bin/bash -eu
 
-python --version
 python -m pip install .
 
 compile_python_fuzzer fuzzers/jsonpatchx_fuzzer.py
