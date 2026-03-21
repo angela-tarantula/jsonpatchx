@@ -31,20 +31,13 @@ jobs:
           language: python
           github-token: ${{ secrets.GITHUB_TOKEN }}
           sanitizer: address
-          keep-unaffected-fuzz-targets: true
+          keep-unaffected-fuzz-targets: false
 
-      - name: Run fuzzers # (changed code)
+      - name: Run fuzzers (changed code)
         uses: google/clusterfuzzlite/actions/run_fuzzers@884713a6c30a92e5e8544c39945cd7cb630abcd1 # v1
-        # with:
-        #   github-token: ${{ secrets.GITHUB_TOKEN }}
-        #   language: python
-        #   sanitizer: address
-        #   # PR-focused mode: fuzzes code reachable from changed files.
-        #   mode: code-change
-        #   fuzz-seconds: 300
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           language: python
           sanitizer: address
-          mode: batch
-          fuzz-seconds: 3600
+          mode: code-change
+          fuzz-seconds: 300
