@@ -70,7 +70,7 @@ jobs:
 
   # https://github.com/marketplace/actions/alls-green#why
   # For branch protection
-  check:
+  python-check:
     if: always()
     needs:
       - build

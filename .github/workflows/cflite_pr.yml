@@ -1,6 +1,6 @@
 ---
 # Purpose: Run ClusterFuzzLite on pull requests to fuzz core patch/pointer paths.
-name: clusterfuzzlite pr
+name: clusterfuzzlite PR
 
 on:
   pull_request:
@@ -16,7 +16,7 @@ on:
 permissions: read-all
 
 jobs:
-  clusterfuzzlite-pr:
+  fuzz-code-changes:
     runs-on: ubuntu-latest
     concurrency:
       group:

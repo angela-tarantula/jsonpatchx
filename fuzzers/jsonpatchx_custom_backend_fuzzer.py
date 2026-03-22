@@ -1,14 +1,11 @@
 """Structured ClusterFuzzLite harness for custom pointer backends and registries."""
 
-from __future__ import annotations
-
 import copy
 import json
 import sys
 from collections.abc import Iterable
 from dataclasses import dataclass
-from typing import cast
-from typing import Literal, Self, override
+from typing import Literal, Self, cast, override
 
 import atheris  # type: ignore[import-not-found]
 
@@ -24,9 +21,9 @@ with atheris.instrument_imports():
     from pydantic import ValidationError
 
     from jsonpatchx import (
+        JsonPatch,
         JSONPointer,
         JSONValue,
-        JsonPatch,
         StandardRegistry,
         apply_patch,
     )

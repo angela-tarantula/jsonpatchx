@@ -10,7 +10,7 @@ on:
 permissions: read-all
 
 jobs:
-  clusterfuzzlite-weekly:
+  fuzz-weekly:
     runs-on: ubuntu-latest
     permissions:
       contents: write

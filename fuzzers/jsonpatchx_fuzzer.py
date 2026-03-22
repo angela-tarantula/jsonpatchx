@@ -1,7 +1,5 @@
 """Structured ClusterFuzzLite harness for core RFC6902 behavior in jsonpatchx."""
 
-from __future__ import annotations
-
 import copy
 import json
 import sys
@@ -21,7 +19,7 @@ from fuzzers._fuzz_shared import (
 with atheris.instrument_imports():
     from pydantic import ValidationError
 
-    from jsonpatchx import JSONPointer, JSONValue, JsonPatch, apply_patch
+    from jsonpatchx import JsonPatch, JSONPointer, JSONValue, apply_patch
     from jsonpatchx.exceptions import (
         PatchConflictError,
         PatchInputError,

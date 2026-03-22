@@ -1,6 +1,6 @@
 # Local Fuzzing
 
-This project has two Atheris fuzz targets:
+This project has two [Atheris](https://github.com/google/atheris) fuzz targets:
 
 - `fuzzers/jsonpatchx_fuzzer.py`
 - `fuzzers/jsonpatchx_custom_backend_fuzzer.py`

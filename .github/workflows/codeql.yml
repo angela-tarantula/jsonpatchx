@@ -9,7 +9,8 @@ on:
   schedule:
     - cron: "33 19 * * 4"
 
-permissions: read-all
+permissions:
+  contents: read
 
 jobs:
   analyze:
@@ -44,3 +45,16 @@ jobs:
         uses: github/codeql-action/analyze@b1bff81932f5cdfc8695c7752dcee935dcd061c8 # v4.33.0
         with:
           category: "/language:${{matrix.language}}"
+
+  # https://github.com/marketplace/actions/alls-green#why
+  # For branch protection
+  codeql-check:
+    if: always()
+    needs:
+      - analyze
+    runs-on: ubuntu-latest
+    steps:
+      - name: Decide whether the needed jobs succeeded or failed
+        uses: re-actors/alls-green@05ac9388f0aebcb5727afa17fcccfecd6f8ec5fe # v1.2.2
+        with:
+          jobs: ${{ toJSON(needs) }}
