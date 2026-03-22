@@ -31,6 +31,17 @@ This keeps write operations explicit and reduces default token blast radius.
 - Environment permissions are not a token-scope model. `GITHUB_TOKEN` scopes are
   still controlled by workflow/job `permissions`.
 
+## Codecov Coverage Model
+
+- Coverage uploads run once per supported runtime in the Python matrix (`3.12`,
+  `3.13`, `3.14`), with runtime flags:
+  - `py-3.12`
+  - `py-3.13`
+  - `py-3.14`
+- This is intentional: repository coverage represents "covered in any supported
+  runtime", while still allowing per-runtime inspection via flags.
+- Codecov behavior is configured in root `codecov.yml`.
+
 ## Dependency Review (`dependency-action.yml`)
 
 Normal PR behavior:
