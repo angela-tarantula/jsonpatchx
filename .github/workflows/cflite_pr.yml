@@ -6,11 +6,6 @@ on:
   pull_request:
     branches:
       - main
-    paths-ignore:
-      - "**/*.md"
-      - "docs/**"
-      - ".github/ISSUE_TEMPLATE/**"
-      - "site/**"
   workflow_dispatch:
 
 permissions: read-all

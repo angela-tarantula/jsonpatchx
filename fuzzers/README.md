@@ -1,5 +1,12 @@
 # Local Fuzzing
 
+Primary fuzzing for this repository runs in CI via ClusterFuzzLite. Workflow
+modes, schedules, storage, and permissions are documented in:
+
+- [`../.clusterfuzzlite/README.md`](../.clusterfuzzlite/README.md)
+
+Use the steps below when you want to run or debug fuzzers locally.
+
 This project has two [Atheris](https://github.com/google/atheris) fuzz targets:
 
 - `fuzzers/jsonpatchx_fuzzer.py`
@@ -88,10 +95,3 @@ uv run --python 3.13 python -m fuzzers.jsonpatchx_fuzzer crash-...
 ```bash
 find fuzzers/corpus -type f ! -name 'seed_*' -delete
 ```
-
-## ClusterFuzzLite CI
-
-ClusterFuzzLite CI behavior (PR/coverage/weekly modes, schedules, `gh-pages`
-storage, and permissions) is documented in the canonical runbook:
-
-- [`../.clusterfuzzlite/README.md`](../.clusterfuzzlite/README.md)

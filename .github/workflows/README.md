@@ -23,6 +23,14 @@ writes:
 
 This keeps write operations explicit and reduces default token blast radius.
 
+## Environment-Scoped Secrets
+
+- `python-app.yml` uses `environment: codecov-automation` on the `build` job.
+- `CODECOV_TOKEN` should be stored as an environment secret in
+  `codecov-automation` (instead of a repository secret).
+- Environment permissions are not a token-scope model. `GITHUB_TOKEN` scopes are
+  still controlled by workflow/job `permissions`.
+
 ## Dependency Review (`dependency-action.yml`)
 
 Normal PR behavior:
@@ -35,8 +43,6 @@ Manual full-graph check behavior:
 - On `workflow_dispatch`, `base-ref` is set to the repository root commit and
   `head-ref` is set to `github.sha`.
 - This forces a one-off review of the full dependency graph in the branch.
-- `|| ''` is intentional so non-dispatch events pass empty strings instead of
-  boolean `false`.
 
 License policy behavior:
 
