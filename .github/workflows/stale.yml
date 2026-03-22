@@ -1,4 +1,5 @@
 ---
+# Purpose: Mark and close stale issues and pull requests after inactivity.
 name: stale
 
 on:

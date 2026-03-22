@@ -1,7 +1,7 @@
 """Regenerate FastAPI OpenAPI snapshot fixtures used as API contract artifacts.
 
 This repository treats generated OpenAPI as part of the product surface of
-``jsonpatchx``. Committed snapshots make contract changes explicit in each PR
+``JsonPatchX``. Committed snapshots make contract changes explicit in each PR
 and commit, so reviewers can see exactly what API/schema behavior changed.
 
 The snapshot files are derived artifacts, so they must be refreshed whenever

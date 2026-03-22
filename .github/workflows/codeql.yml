@@ -1,4 +1,5 @@
 ---
+# Purpose: Run CodeQL static analysis for Python and GitHub Actions changes.
 name: "CodeQL"
 
 on:

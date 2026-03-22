@@ -89,23 +89,9 @@ uv run --python 3.13 python -m fuzzers.jsonpatchx_fuzzer crash-...
 find fuzzers/corpus -type f ! -name 'seed_*' -delete
 ```
 
-## [ClusterFuzzLite](https://google.github.io/clusterfuzzlite/) CI workflows
+## ClusterFuzzLite CI
 
-This repository uses three workflows so PR signal is fast, while deeper fuzzing
-still happens regularly:
+ClusterFuzzLite CI behavior (PR/coverage/weekly modes, schedules, `gh-pages`
+storage, and permissions) is documented in the canonical runbook:
 
-1. PR workflow: `.github/workflows/cflite_pr.yml`
-   - `sanitizer: address`, `mode: code-change`, `fuzz-seconds: 300`
-   - `keep-unaffected-fuzz-targets: false`
-   - Why: fail quickly on bugs introduced by the PR without spending CI time on
-     unchanged areas.
-2. Weekly batch workflow: `.github/workflows/cflite_weekly.yml`
-   - `sanitizer: address`, `mode: batch`, `fuzz-seconds: 3600`
-   - `keep-unaffected-fuzz-targets: true`
-   - Why: whole-repo exploration to catch issues that PR-focused fuzzing can
-     miss.
-3. Weekly coverage workflow: `.github/workflows/cflite_coverage.yml`
-   - `sanitizer: coverage`, `mode: coverage`
-   - `keep-unaffected-fuzz-targets: true`
-   - Why: maintain baseline coverage data used by ClusterFuzzLite code-change
-     comparisons.
+- [`../.clusterfuzzlite/README.md`](../.clusterfuzzlite/README.md)

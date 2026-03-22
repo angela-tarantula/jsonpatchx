@@ -1,4 +1,4 @@
-"""Shared structured data generators for jsonpatchx fuzz targets."""
+"""Shared structured data generators for JsonPatchX fuzz targets."""
 
 from __future__ import annotations
 
