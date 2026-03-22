@@ -1,5 +1,5 @@
 ---
-name: dependency
+name: dependency analysis
 
 on:
   pull_request:

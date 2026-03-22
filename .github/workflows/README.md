@@ -57,44 +57,18 @@ License policy behavior:
 
 ## ClusterFuzzLite
 
-- `cflite_pr.yml` runs `code-change` mode for fast PR feedback.
-- `cflite_coverage.yml` and `cflite_weekly.yml` provide broader coverage and
-  longer fuzz windows.
+Canonical runbook:
 
-### How the Three Modes Work Together
+- `.clusterfuzzlite/README.md`
 
-- `cflite_pr.yml` is the fast gate on pull requests. It runs `mode: code-change`
-  for a short window (`fuzz-seconds: 300`) and focuses effort around code
-  touched by the PR.
-- `cflite_coverage.yml` is the scheduled coverage baseline run. It runs with
-  `sanitizer: coverage` and `mode: coverage` to refresh corpus and coverage
-  artifacts used as guidance for future fuzzing.
-- `cflite_weekly.yml` is the deeper bug-hunting run. It runs `mode: batch` with
-  a longer time budget (`fuzz-seconds: 3600`) across all configured targets to
-  find issues outside the immediate PR surface.
+Quick trigger/permission summary:
 
-Practical mental model:
-
-- PR = quick, targeted safety net for changed code.
-- Coverage = baseline and visibility into explored code paths.
-- Weekly = slower, broader sweep for latent defects.
-
-### ClusterFuzzLite `gh-pages` Storage
-
-ClusterFuzzLite uses `gh-pages` as a Git-backed storage branch.
-
-- Configured workflows:
-  - `cflite_pr.yml`
-  - `cflite_coverage.yml`
-  - `cflite_weekly.yml`
-- Workflows that can write:
-  - `cflite_coverage.yml` (`contents: write`)
-  - `cflite_weekly.yml` (`contents: write`)
-- PR fuzzing (`cflite_pr.yml`) points at the same storage branch for corpus
-  reuse, but does not request `contents: write`.
-
-What is stored there:
-
-- Fuzzer corpus state used to seed future runs.
-- Coverage report artifacts produced by coverage mode.
-- ClusterFuzzLite run metadata used to improve subsequent runs.
+- `cflite_pr.yml`
+  - Triggers: `pull_request` and `workflow_dispatch`
+  - Write scopes: `security-events: write` only
+- `cflite_coverage.yml`
+  - Triggers: weekly schedule and `workflow_dispatch`
+  - Write scopes: `contents: write`, `security-events: write`
+- `cflite_weekly.yml`
+  - Triggers: weekly schedule and `workflow_dispatch`
+  - Write scopes: `contents: write`, `security-events: write`
