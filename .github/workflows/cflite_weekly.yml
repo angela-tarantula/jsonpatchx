@@ -33,8 +33,8 @@ jobs:
           sanitizer: address
           keep-unaffected-fuzz-targets: true
           storage-repo:
-            https://${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository
-            }}.git
+            https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{
+            github.repository }}.git
           storage-repo-branch: gh-pages
           storage-repo-branch-coverage: gh-pages
 
@@ -47,7 +47,7 @@ jobs:
           mode: batch
           fuzz-seconds: 3600
           storage-repo:
-            https://${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository
-            }}.git
+            https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{
+            github.repository }}.git
           storage-repo-branch: gh-pages
           storage-repo-branch-coverage: gh-pages
