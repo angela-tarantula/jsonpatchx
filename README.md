@@ -2,11 +2,8 @@
 
 <!-- markdownlint-disable MD013 -->
 
-[![Release](https://img.shields.io/github/v/release/angela-tarantula/jsonpatchx?display_name=tag)](CHANGELOG.md)
-[![Tests](https://img.shields.io/github/actions/workflow/status/angela-tarantula/jsonpatchx/python-app.yml?branch=main&label=CI&style=flat)](https://github.com/angela-tarantula/jsonpatchx/actions)
+[![Tests](https://img.shields.io/github/actions/workflow/status/angela-tarantula/jsonpatchx/python-app.yml?branch=main&label=Tests&style=flat)](https://github.com/angela-tarantula/jsonpatchx/actions)
 [![Codecov](https://codecov.io/github/angela-tarantula/jsonpatchx/graph/badge.svg)](https://codecov.io/github/angela-tarantula/jsonpatchx)
-![RFC 6902 compatible core](https://img.shields.io/badge/RFC-6902-blue)
-![FastAPI ready](https://img.shields.io/badge/FastAPI-First%20Class-009688)
 [![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/angela-tarantula/jsonpatchx/badge)](https://scorecard.dev/viewer/?uri=github.com/angela-tarantula/jsonpatchx)
 [![Contributor Covenant](https://img.shields.io/badge/Contributor%20Covenant-3.0-fbab2c.svg)](CODE_OF_CONDUCT.md)
 

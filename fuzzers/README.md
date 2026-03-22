@@ -3,14 +3,14 @@
 Primary fuzzing for this repository runs in CI via ClusterFuzzLite. Workflow
 modes, schedules, storage, and permissions are documented in:
 
-- [`../.clusterfuzzlite/README.md`](../.clusterfuzzlite/README.md)
+- [`.clusterfuzzlite`](../.clusterfuzzlite/README.md)
 
 Use the steps below when you want to run or debug fuzzers locally.
 
 This project has two [Atheris](https://github.com/google/atheris) fuzz targets:
 
-- `fuzzers/jsonpatchx_fuzzer.py`
-- `fuzzers/jsonpatchx_custom_backend_fuzzer.py`
+- [`jsonpatchx_fuzzer.py`](jsonpatchx_fuzzer.py)
+- [`jsonpatchx_custom_backend_fuzzer.py`](jsonpatchx_custom_backend_fuzzer.py)
 
 ## Prerequisites
 
@@ -21,7 +21,8 @@ This project has two [Atheris](https://github.com/google/atheris) fuzz targets:
 
 ## One-time setup for fuzzing
 
-Install the fuzz-only dependency group (defined in `pyproject.toml`):
+Install the fuzz-only dependency group (defined in
+[`pyproject.toml`](../pyproject.toml)):
 
 ```bash
 uv sync --python 3.13 --group fuzz

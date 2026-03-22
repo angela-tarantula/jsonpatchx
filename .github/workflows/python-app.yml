@@ -53,32 +53,17 @@ jobs:
 
       - name: Test
         run: |
-          set -o pipefail
-          uv run pytest -o addopts="" \
-            --junitxml=pytest.xml \
+          uv run pytest \
             --cov=jsonpatchx \
-            --cov-report=term-missing:skip-covered \
-            --cov-report=xml:coverage.xml \
-            -vv | tee pytest-coverage.txt
+            --cov-report=xml:coverage.xml
 
       - name: Upload coverage to Codecov
-        if:
-          matrix.python-version == '3.14' && (github.event_name !=
-          'pull_request' || !github.event.pull_request.head.repo.fork)
         uses: codecov/codecov-action@1af58845a975a7985b0beb0cbe6fbbb71a41dbad # v5.5.3
         with:
           files: ./coverage.xml
+          flags: py-${{ matrix.python-version }}
           token: ${{ secrets.CODECOV_TOKEN }}
           fail_ci_if_error: true
-
-      - name: Coverage Comment (PRs only)
-        if: github.event_name == 'pull_request'
-        uses: MishaKav/pytest-coverage-comment@287292879eaaff04116f36d3eb1a670f6e5df1a4 # v1.7.1
-        with:
-          pytest-coverage-path: ./pytest-coverage.txt
-          junitxml-path: ./pytest.xml
-          unique-id-for-comment: ${{ matrix.python-version }}
-          title: Coverage for Python ${{ matrix.python-version }}
 
   # https://github.com/marketplace/actions/alls-green#why
   # For branch protection

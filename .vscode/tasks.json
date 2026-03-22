@@ -23,8 +23,11 @@
     {
       "label": "pytest",
       "type": "shell",
-      "command": "uv",
-      "args": ["run", "pytest", "-v"],
+      "command": "bash",
+      "args": [
+        "-c",
+        "uv run pytest -v --cov=jsonpatchx --cov=tests --cov-report=term-missing --cov-report=html; status=$?; echo \"See HTML coverage here: file://${PWD}/htmlcov/index.html\"; exit $status"
+      ],
       "group": "test",
       "problemMatcher": []
     },
