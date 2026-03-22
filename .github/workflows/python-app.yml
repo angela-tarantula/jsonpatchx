@@ -80,8 +80,8 @@ jobs:
         with:
           pytest-coverage-path: ./pytest-coverage.txt
           junitxml-path: ./pytest.xml
-          unique-id-for-comment: ${{ matrix.python-version }}
-          title: Coverage for Python ${{ matrix.python-version }}
+          unique-id-for-comment: Coverage
+          title: Code Coverage
 
   # https://github.com/marketplace/actions/alls-green#why
   # For branch protection
