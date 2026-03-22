@@ -28,6 +28,7 @@ allow-dependencies-licenses:
   - pkg:pypi/pyinstaller-hooks-contrib@2026.3 # GPL-2.0-or-later
   - pkg:pypi/uv@0.10.12 # Apache-2.0 OR MIT
 
+
 # Allow-lists are preferred over deny-lists.
 # Super-linter will be deprecated deny-licenses lists.
 # deny-licenses:

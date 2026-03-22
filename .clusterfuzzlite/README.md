@@ -7,8 +7,8 @@ This is the canonical documentation for ClusterFuzzLite in this repository.
 - `Dockerfile`: build image and Python runtime for OSS-Fuzz/ClusterFuzzLite.
 - `build.sh`: compiles fuzzer targets and packages seed corpora/dictionaries.
 - `project.yml`: ClusterFuzzLite project metadata (`language: python`).
-- `requirements-bootstrap.txt`: pinned bootstrap dependencies used by the
-  Docker build.
+- `requirements-bootstrap.txt`: pinned bootstrap dependencies used by the Docker
+  build.
 
 ## Fuzz Targets Built
 
@@ -69,8 +69,8 @@ Write permissions:
 - `cflite_coverage.yml`: has `contents: write` and can push coverage/corpus
   updates.
 - `cflite_weekly.yml`: has `contents: write` and can push corpus updates.
-- `cflite_pr.yml`: does not request `contents: write`; it reuses stored data
-  for guidance but is not expected to publish updates.
+- `cflite_pr.yml`: does not request `contents: write`; it reuses stored data for
+  guidance but is not expected to publish updates.
 
 Stored artifacts include seed/corpus state, coverage reports, and run metadata
 used by subsequent runs.
