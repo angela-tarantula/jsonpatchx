@@ -27,8 +27,8 @@ jobs:
         with:
           fail-on-severity: "high"
           allow-licenses:
-            "Apache-2.0, MIT, BSD-2-Clause, BSD-3-Clause,
-            Python-2.0, Python-2.0.1"
+            "Apache-2.0, MIT, BSD-2-Clause, BSD-3-Clause, MPL-2.0, Python-2.0,
+            Python-2.0.1"
           allow-dependencies-licenses:
             "pkg:pypi/jsonpointer@3.1.0, pkg:pypi/pytest-cov@7.1.0,
             pkg:pypi/ruff@0.15.7, pkg:pypi/uvicorn@0.42.0"
