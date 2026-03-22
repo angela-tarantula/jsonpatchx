@@ -115,6 +115,6 @@ repos:
         name: openapi (spectral)
         entry:
           npx --yes @stoplight/spectral-cli lint --ruleset
-          .github/linters/.spectral.yaml
+          .github/linters/.openapirc.yml
         language: system
         files: ^tests/integration/fastapi_tests/snapshots/.*\.json$
