@@ -1,4 +1,4 @@
-"""Structured ClusterFuzzLite harness for core RFC6902 behavior in jsonpatchx."""
+"""Structured ClusterFuzzLite harness for core RFC6902 behavior in JsonPatchX."""
 
 import copy
 import json

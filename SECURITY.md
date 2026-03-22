@@ -1,7 +1,7 @@
 # Security Policies and Procedures
 
 This document outlines security procedures and general policies for the
-jsonpatchx project.
+JsonPatchX project.
 
 - [Disclosing a security issue](#disclosing-a-security-issue)
 - [Vulnerability management](#vulnerability-management)
@@ -9,12 +9,12 @@ jsonpatchx project.
 
 ## Disclosing a security issue
 
-The jsonpatchx maintainers take all security issues in the project seriously.
-Thank you for improving the security of jsonpatchx. We appreciate your
+The JsonPatchX maintainers take all security issues in the project seriously.
+Thank you for improving the security of JsonPatchX. We appreciate your
 dedication to responsible disclosure and will make every effort to acknowledge
 your contributions.
 
-jsonpatchx leverages GitHub's private vulnerability reporting.
+JsonPatchX leverages GitHub's private vulnerability reporting.
 
 To learn more about this feature and how to submit a vulnerability report,
 review

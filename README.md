@@ -1,4 +1,4 @@
-# jsonpatchx
+# JsonPatchX
 
 <!-- markdownlint-disable MD013 -->
 
@@ -19,7 +19,7 @@ interoperability, but in modern distributed systems, PATCH crosses trust
 boundaries: browser clients, internal services, third-party integrations, and
 increasingly LLM-generated patch payloads.
 
-### jsonpatchx provides the RFC core and adds an API contract layer
+### JsonPatchX provides the RFC core and adds an API contract layer
 
 - **Input Safety**: patch operations are Pydantic models, so invalid payloads
   fail early with clear errors.
@@ -49,7 +49,7 @@ increasingly LLM-generated patch payloads.
 
 ### This is a Safe Space
 
-jsonpatchx is intentionally designed as a safe experimentation surface: teams
+JsonPatchX is intentionally designed as a safe experimentation surface: teams
 can introduce richer operations, compare patterns in production, and let the
 best designs emerge. With JSONPath now standardized in
 [RFC 9535](https://datatracker.ietf.org/doc/html/rfc9535), custom pointer

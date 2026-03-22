@@ -389,7 +389,7 @@
     }
   },
   "info": {
-    "title": "jsonpatchx openapi snapshot",
+    "title": "JsonPatchX openapi snapshot",
     "version": "0.1.0"
   },
   "openapi": "3.1.0",

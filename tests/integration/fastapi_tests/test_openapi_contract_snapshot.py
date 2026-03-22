@@ -67,7 +67,7 @@ MedicalPatchAlt = JsonPatchFor[MedicalRecord, ExtendedRegistry]
 
 def _build_openapi() -> dict[str, object]:
     app = FastAPI(
-        title="jsonpatchx openapi snapshot",
+        title="JsonPatchX openapi snapshot",
         version="0.1.0",
         separate_input_output_schemas=False,
     )

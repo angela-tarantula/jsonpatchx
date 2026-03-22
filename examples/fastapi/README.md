@@ -1,4 +1,4 @@
-# Examples: jsonpatchx demo suite
+# Examples: JsonPatchX demo suite
 
 Six focused FastAPI demos. Each demo is a standalone file that reads cleanly in
 Swagger UI.

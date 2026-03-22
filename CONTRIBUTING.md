@@ -1,6 +1,6 @@
 # How to Contribute
 
-Thanks for your interest in contributing to jsonpatchx! Here are a few general
+Thanks for your interest in contributing to JsonPatchX! Here are a few general
 guidelines on contributing and reporting bugs that we ask you to review.
 Following these guidelines helps to communicate that you respect the time of the
 contributors managing and developing this open source project. In return, they
@@ -147,7 +147,7 @@ major version release.
 
 ## Other Ways to Contribute
 
-We welcome anyone that wants to contribute to jsonpatchx to triage and reply to
+We welcome anyone that wants to contribute to JsonPatchX to triage and reply to
 open issues to help troubleshoot and fix existing bugs. Here is what you can do:
 
 - Help ensure that existing issues follows the recommendations from the
@@ -157,9 +157,9 @@ open issues to help troubleshoot and fix existing bugs. Here is what you can do:
   [Wiki](https://github.com/angela-tarantula/jsonpatchx/wiki) with up-to-date
   instructions and code samples.
 - Review existing pull requests, and testing patches against real existing
-  applications that use jsonpatchx.
+  applications that use JsonPatchX.
 - Write a test, or add a missing test case to an existing test.
 
-Thanks again for your interest on contributing to jsonpatchx!
+Thanks again for your interest on contributing to JsonPatchX!
 
 :heart:
