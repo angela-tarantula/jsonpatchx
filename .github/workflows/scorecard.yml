@@ -1,4 +1,5 @@
 ---
+# Purpose: Run OpenSSF Scorecard checks and upload SARIF security results.
 name: scorecard
 
 on:

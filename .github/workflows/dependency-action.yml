@@ -1,4 +1,5 @@
 ---
+# Purpose: Review dependency changes for vulnerabilities, license policy, and scorecard risk.
 name: dependency analysis
 
 on:

@@ -94,4 +94,4 @@ find fuzzers/corpus -type f ! -name 'seed_*' -delete
 ClusterFuzzLite CI behavior (PR/coverage/weekly modes, schedules, `gh-pages`
 storage, and permissions) is documented in the canonical runbook:
 
-- `.clusterfuzzlite/README.md`
+- [`../.clusterfuzzlite/README.md`](../.clusterfuzzlite/README.md)
