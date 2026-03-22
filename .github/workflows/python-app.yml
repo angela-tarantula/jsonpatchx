@@ -53,7 +53,9 @@ jobs:
 
       - name: Test
         run: |
-          uv run pytest --cov-report=xml:coverage.xml
+          uv run pytest \
+            --cov=jsonpatchx \
+            --cov-report=xml:coverage.xml
 
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@1af58845a975a7985b0beb0cbe6fbbb71a41dbad # v5.5.3
