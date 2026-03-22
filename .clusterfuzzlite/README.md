@@ -17,7 +17,7 @@ From `.clusterfuzzlite/build.sh`:
 - `fuzzers/jsonpatchx_fuzzer.py`
 - `fuzzers/jsonpatchx_custom_backend_fuzzer.py`
 
-Associated dictionaries and seed corpus zip files are copied into `$OUT`.
+Associated dictionaries and seed corpus ZIP files are copied into `$OUT`.
 
 ## CI Workflows and Responsibilities
 
