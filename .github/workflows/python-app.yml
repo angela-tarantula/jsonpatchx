@@ -74,15 +74,6 @@ jobs:
           token: ${{ secrets.CODECOV_TOKEN }}
           fail_ci_if_error: true
 
-      - name: Coverage Comment (PRs only)
-        if: github.event_name == 'pull_request'
-        uses: MishaKav/pytest-coverage-comment@287292879eaaff04116f36d3eb1a670f6e5df1a4 # v1.7.1
-        with:
-          pytest-coverage-path: ./pytest-coverage.txt
-          junitxml-path: ./pytest.xml
-          unique-id-for-comment: Coverage
-          title: Code Coverage
-
   # https://github.com/marketplace/actions/alls-green#why
   # For branch protection
   python-check:
