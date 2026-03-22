@@ -1,7 +1,5 @@
 """Structured ClusterFuzzLite harness for core RFC6902 behavior in jsonpatchx."""
 
-from __future__ import annotations
-
 import copy
 import json
 import sys

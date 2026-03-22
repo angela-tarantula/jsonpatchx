@@ -1,7 +1,5 @@
 """Structured ClusterFuzzLite harness for custom pointer backends and registries."""
 
-from __future__ import annotations
-
 import copy
 import json
 import sys
