@@ -26,12 +26,18 @@
             "title": "Value"
           }
         },
-        "required": ["op", "path", "value"],
+        "required": [
+          "op",
+          "path",
+          "value"
+        ],
         "title": "Append operation",
         "type": "object"
       },
       "ConfigId": {
-        "enum": ["service"],
+        "enum": [
+          "service"
+        ],
         "title": "ConfigId",
         "type": "string"
       },
@@ -57,7 +63,10 @@
             }
           }
         },
-        "required": ["op", "path"],
+        "required": [
+          "op",
+          "path"
+        ],
         "title": "Ensure object operation",
         "type": "object"
       },
@@ -88,7 +97,11 @@
             "type": "array"
           }
         },
-        "required": ["op", "path", "values"],
+        "required": [
+          "op",
+          "path",
+          "values"
+        ],
         "title": "Extend operation",
         "type": "object"
       },
@@ -132,7 +145,11 @@
             "type": "number"
           }
         },
-        "required": ["op", "path", "value"],
+        "required": [
+          "op",
+          "path",
+          "value"
+        ],
         "title": "Increment operation",
         "type": "object"
       },
@@ -157,7 +174,10 @@
             }
           }
         },
-        "required": ["op", "path"],
+        "required": [
+          "op",
+          "path"
+        ],
         "title": "Remove number operation",
         "type": "object"
       },
@@ -251,7 +271,11 @@
             }
           }
         },
-        "required": ["message", "op", "path"],
+        "required": [
+          "message",
+          "op",
+          "path"
+        ],
         "title": "Set message operation",
         "type": "object"
       },
@@ -281,7 +305,11 @@
             "type": "string"
           }
         },
-        "required": ["a", "b", "op"],
+        "required": [
+          "a",
+          "b",
+          "op"
+        ],
         "title": "Swap operation",
         "type": "object"
       },
@@ -306,7 +334,10 @@
             }
           }
         },
-        "required": ["op", "path"],
+        "required": [
+          "op",
+          "path"
+        ],
         "title": "Toggle operation",
         "type": "object"
       },
@@ -342,7 +373,11 @@
             "type": "string"
           }
         },
-        "required": ["loc", "msg", "type"],
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
         "title": "ValidationError",
         "type": "object"
       }
@@ -392,7 +427,9 @@
           }
         },
         "summary": "Get a service config",
-        "tags": ["configs"]
+        "tags": [
+          "configs"
+        ]
       },
       "patch": {
         "description": "Apply standard RFC 6902 ops plus custom ops to a service config.",
@@ -508,7 +545,10 @@
                         {
                           "properties": {
                             "cause_type": {
-                              "type": ["string", "null"]
+                              "type": [
+                                "string",
+                                "null"
+                              ]
                             },
                             "index": {
                               "type": "integer"
@@ -520,13 +560,19 @@
                               "type": "object"
                             }
                           },
-                          "required": ["index", "op", "message"],
+                          "required": [
+                            "index",
+                            "op",
+                            "message"
+                          ],
                           "type": "object"
                         }
                       ]
                     }
                   },
-                  "required": ["detail"],
+                  "required": [
+                    "detail"
+                  ],
                   "type": "object"
                 }
               }
@@ -546,7 +592,10 @@
                         {
                           "properties": {
                             "cause_type": {
-                              "type": ["string", "null"]
+                              "type": [
+                                "string",
+                                "null"
+                              ]
                             },
                             "index": {
                               "type": "integer"
@@ -558,13 +607,19 @@
                               "type": "object"
                             }
                           },
-                          "required": ["index", "op", "message"],
+                          "required": [
+                            "index",
+                            "op",
+                            "message"
+                          ],
                           "type": "object"
                         }
                       ]
                     }
                   },
-                  "required": ["detail"],
+                  "required": [
+                    "detail"
+                  ],
                   "type": "object"
                 }
               }
@@ -586,7 +641,10 @@
                             {
                               "properties": {
                                 "cause_type": {
-                                  "type": ["string", "null"]
+                                  "type": [
+                                    "string",
+                                    "null"
+                                  ]
                                 },
                                 "index": {
                                   "type": "integer"
@@ -598,13 +656,19 @@
                                   "type": "object"
                                 }
                               },
-                              "required": ["index", "op", "message"],
+                              "required": [
+                                "index",
+                                "op",
+                                "message"
+                              ],
                               "type": "object"
                             }
                           ]
                         }
                       },
-                      "required": ["detail"],
+                      "required": [
+                        "detail"
+                      ],
                       "type": "object"
                     },
                     {
@@ -629,7 +693,10 @@
                         {
                           "properties": {
                             "cause_type": {
-                              "type": ["string", "null"]
+                              "type": [
+                                "string",
+                                "null"
+                              ]
                             },
                             "index": {
                               "type": "integer"
@@ -641,13 +708,19 @@
                               "type": "object"
                             }
                           },
-                          "required": ["index", "op", "message"],
+                          "required": [
+                            "index",
+                            "op",
+                            "message"
+                          ],
                           "type": "object"
                         }
                       ]
                     }
                   },
-                  "required": ["detail"],
+                  "required": [
+                    "detail"
+                  ],
                   "type": "object"
                 }
               }
@@ -656,7 +729,9 @@
           }
         },
         "summary": "Patch a service config",
-        "tags": ["configs"]
+        "tags": [
+          "configs"
+        ]
       }
     }
   }

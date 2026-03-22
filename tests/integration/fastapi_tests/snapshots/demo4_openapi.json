@@ -23,7 +23,11 @@
             "title": "Value"
           }
         },
-        "required": ["op", "path", "value"],
+        "required": [
+          "op",
+          "path",
+          "value"
+        ],
         "title": "Add operation",
         "type": "object"
       },
@@ -55,12 +59,18 @@
             "type": "array"
           }
         },
-        "required": ["id", "name"],
+        "required": [
+          "id",
+          "name"
+        ],
         "title": "Apprentice",
         "type": "object"
       },
       "ApprenticeId": {
-        "enum": [1, 2],
+        "enum": [
+          1,
+          2
+        ],
         "title": "ApprenticeId",
         "type": "integer"
       },
@@ -142,7 +152,11 @@
             "x-pointer-type-schema": {}
           }
         },
-        "required": ["from", "op", "path"],
+        "required": [
+          "from",
+          "op",
+          "path"
+        ],
         "title": "Copy operation",
         "type": "object"
       },
@@ -185,7 +199,11 @@
             "x-pointer-type-schema": {}
           }
         },
-        "required": ["from", "op", "path"],
+        "required": [
+          "from",
+          "op",
+          "path"
+        ],
         "title": "Move operation",
         "type": "object"
       },
@@ -208,7 +226,10 @@
             "x-pointer-type-schema": {}
           }
         },
-        "required": ["op", "path"],
+        "required": [
+          "op",
+          "path"
+        ],
         "title": "Remove operation",
         "type": "object"
       },
@@ -234,7 +255,11 @@
             "title": "Value"
           }
         },
-        "required": ["op", "path", "value"],
+        "required": [
+          "op",
+          "path",
+          "value"
+        ],
         "title": "Replace operation",
         "type": "object"
       },
@@ -263,7 +288,11 @@
             "title": "Value"
           }
         },
-        "required": ["op", "path", "value"],
+        "required": [
+          "op",
+          "path",
+          "value"
+        ],
         "title": "Rune append operation",
         "type": "object"
       },
@@ -294,12 +323,19 @@
             "type": "number"
           }
         },
-        "required": ["op", "path", "value"],
+        "required": [
+          "op",
+          "path",
+          "value"
+        ],
         "title": "Rune increment operation",
         "type": "object"
       },
       "SpellbookId": {
-        "enum": ["grimoire", "coven"],
+        "enum": [
+          "grimoire",
+          "coven"
+        ],
         "title": "SpellbookId",
         "type": "string"
       },
@@ -376,7 +412,11 @@
             "title": "Value"
           }
         },
-        "required": ["op", "path", "value"],
+        "required": [
+          "op",
+          "path",
+          "value"
+        ],
         "title": "Test operation",
         "type": "object"
       },
@@ -412,7 +452,11 @@
             "type": "string"
           }
         },
-        "required": ["loc", "msg", "type"],
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
         "title": "ValidationError",
         "type": "object"
       }
@@ -462,7 +506,9 @@
           }
         },
         "summary": "Get an apprentice",
-        "tags": ["apprentices"]
+        "tags": [
+          "apprentices"
+        ]
       },
       "patch": {
         "description": "Use slash pointers for built-ins and rune pointers for custom ops.",
@@ -548,7 +594,10 @@
                         {
                           "properties": {
                             "cause_type": {
-                              "type": ["string", "null"]
+                              "type": [
+                                "string",
+                                "null"
+                              ]
                             },
                             "index": {
                               "type": "integer"
@@ -560,13 +609,19 @@
                               "type": "object"
                             }
                           },
-                          "required": ["index", "op", "message"],
+                          "required": [
+                            "index",
+                            "op",
+                            "message"
+                          ],
                           "type": "object"
                         }
                       ]
                     }
                   },
-                  "required": ["detail"],
+                  "required": [
+                    "detail"
+                  ],
                   "type": "object"
                 }
               }
@@ -586,7 +641,10 @@
                         {
                           "properties": {
                             "cause_type": {
-                              "type": ["string", "null"]
+                              "type": [
+                                "string",
+                                "null"
+                              ]
                             },
                             "index": {
                               "type": "integer"
@@ -598,13 +656,19 @@
                               "type": "object"
                             }
                           },
-                          "required": ["index", "op", "message"],
+                          "required": [
+                            "index",
+                            "op",
+                            "message"
+                          ],
                           "type": "object"
                         }
                       ]
                     }
                   },
-                  "required": ["detail"],
+                  "required": [
+                    "detail"
+                  ],
                   "type": "object"
                 }
               }
@@ -626,7 +690,10 @@
                             {
                               "properties": {
                                 "cause_type": {
-                                  "type": ["string", "null"]
+                                  "type": [
+                                    "string",
+                                    "null"
+                                  ]
                                 },
                                 "index": {
                                   "type": "integer"
@@ -638,13 +705,19 @@
                                   "type": "object"
                                 }
                               },
-                              "required": ["index", "op", "message"],
+                              "required": [
+                                "index",
+                                "op",
+                                "message"
+                              ],
                               "type": "object"
                             }
                           ]
                         }
                       },
-                      "required": ["detail"],
+                      "required": [
+                        "detail"
+                      ],
                       "type": "object"
                     },
                     {
@@ -669,7 +742,10 @@
                         {
                           "properties": {
                             "cause_type": {
-                              "type": ["string", "null"]
+                              "type": [
+                                "string",
+                                "null"
+                              ]
                             },
                             "index": {
                               "type": "integer"
@@ -681,13 +757,19 @@
                               "type": "object"
                             }
                           },
-                          "required": ["index", "op", "message"],
+                          "required": [
+                            "index",
+                            "op",
+                            "message"
+                          ],
                           "type": "object"
                         }
                       ]
                     }
                   },
-                  "required": ["detail"],
+                  "required": [
+                    "detail"
+                  ],
                   "type": "object"
                 }
               }
@@ -696,7 +778,9 @@
           }
         },
         "summary": "Patch an apprentice (mixed pointer backends)",
-        "tags": ["apprentices"]
+        "tags": [
+          "apprentices"
+        ]
       }
     },
     "/spellbooks/{spellbook_id}": {
@@ -736,7 +820,9 @@
           }
         },
         "summary": "Get a spellbook",
-        "tags": ["spellbooks"]
+        "tags": [
+          "spellbooks"
+        ]
       },
       "patch": {
         "description": "Use slash pointers for built-ins and rune pointers for custom ops.",
@@ -802,7 +888,10 @@
                         {
                           "properties": {
                             "cause_type": {
-                              "type": ["string", "null"]
+                              "type": [
+                                "string",
+                                "null"
+                              ]
                             },
                             "index": {
                               "type": "integer"
@@ -814,13 +903,19 @@
                               "type": "object"
                             }
                           },
-                          "required": ["index", "op", "message"],
+                          "required": [
+                            "index",
+                            "op",
+                            "message"
+                          ],
                           "type": "object"
                         }
                       ]
                     }
                   },
-                  "required": ["detail"],
+                  "required": [
+                    "detail"
+                  ],
                   "type": "object"
                 }
               }
@@ -840,7 +935,10 @@
                         {
                           "properties": {
                             "cause_type": {
-                              "type": ["string", "null"]
+                              "type": [
+                                "string",
+                                "null"
+                              ]
                             },
                             "index": {
                               "type": "integer"
@@ -852,13 +950,19 @@
                               "type": "object"
                             }
                           },
-                          "required": ["index", "op", "message"],
+                          "required": [
+                            "index",
+                            "op",
+                            "message"
+                          ],
                           "type": "object"
                         }
                       ]
                     }
                   },
-                  "required": ["detail"],
+                  "required": [
+                    "detail"
+                  ],
                   "type": "object"
                 }
               }
@@ -880,7 +984,10 @@
                             {
                               "properties": {
                                 "cause_type": {
-                                  "type": ["string", "null"]
+                                  "type": [
+                                    "string",
+                                    "null"
+                                  ]
                                 },
                                 "index": {
                                   "type": "integer"
@@ -892,13 +999,19 @@
                                   "type": "object"
                                 }
                               },
-                              "required": ["index", "op", "message"],
+                              "required": [
+                                "index",
+                                "op",
+                                "message"
+                              ],
                               "type": "object"
                             }
                           ]
                         }
                       },
-                      "required": ["detail"],
+                      "required": [
+                        "detail"
+                      ],
                       "type": "object"
                     },
                     {
@@ -923,7 +1036,10 @@
                         {
                           "properties": {
                             "cause_type": {
-                              "type": ["string", "null"]
+                              "type": [
+                                "string",
+                                "null"
+                              ]
                             },
                             "index": {
                               "type": "integer"
@@ -935,13 +1051,19 @@
                               "type": "object"
                             }
                           },
-                          "required": ["index", "op", "message"],
+                          "required": [
+                            "index",
+                            "op",
+                            "message"
+                          ],
                           "type": "object"
                         }
                       ]
                     }
                   },
-                  "required": ["detail"],
+                  "required": [
+                    "detail"
+                  ],
                   "type": "object"
                 }
               }
@@ -950,7 +1072,9 @@
           }
         },
         "summary": "Patch a spellbook (mixed pointer backends)",
-        "tags": ["spellbooks"]
+        "tags": [
+          "spellbooks"
+        ]
       }
     }
   }

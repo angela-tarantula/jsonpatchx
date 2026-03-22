@@ -23,7 +23,11 @@
             "title": "Value"
           }
         },
-        "required": ["op", "path", "value"],
+        "required": [
+          "op",
+          "path",
+          "value"
+        ],
         "title": "Add operation",
         "type": "object"
       },
@@ -52,7 +56,11 @@
             "title": "Value"
           }
         },
-        "required": ["op", "path", "value"],
+        "required": [
+          "op",
+          "path",
+          "value"
+        ],
         "title": "Append operation",
         "type": "object"
       },
@@ -81,7 +89,11 @@
             "title": "Value"
           }
         },
-        "required": ["op", "path", "value"],
+        "required": [
+          "op",
+          "path",
+          "value"
+        ],
         "title": "Append unique operation",
         "type": "object"
       },
@@ -111,7 +123,11 @@
             "x-pointer-type-schema": {}
           }
         },
-        "required": ["from", "op", "path"],
+        "required": [
+          "from",
+          "op",
+          "path"
+        ],
         "title": "Copy operation",
         "type": "object"
       },
@@ -146,7 +162,11 @@
             }
           }
         },
-        "required": ["max_path", "op", "path"],
+        "required": [
+          "max_path",
+          "op",
+          "path"
+        ],
         "title": "Enforce max length operation",
         "type": "object"
       },
@@ -184,12 +204,19 @@
             "type": "string"
           }
         },
-        "required": ["id", "name", "motto"],
+        "required": [
+          "id",
+          "name",
+          "motto"
+        ],
         "title": "Guild",
         "type": "object"
       },
       "GuildId": {
-        "enum": [1, 2],
+        "enum": [
+          1,
+          2
+        ],
         "title": "GuildId",
         "type": "integer"
       },
@@ -289,7 +316,11 @@
             "type": "number"
           }
         },
-        "required": ["op", "path", "value"],
+        "required": [
+          "op",
+          "path",
+          "value"
+        ],
         "title": "Increment operation",
         "type": "object"
       },
@@ -319,7 +350,11 @@
             "x-pointer-type-schema": {}
           }
         },
-        "required": ["from", "op", "path"],
+        "required": [
+          "from",
+          "op",
+          "path"
+        ],
         "title": "Move operation",
         "type": "object"
       },
@@ -363,12 +398,18 @@
             "type": "integer"
           }
         },
-        "required": ["id", "name"],
+        "required": [
+          "id",
+          "name"
+        ],
         "title": "Player",
         "type": "object"
       },
       "PlayerId": {
-        "enum": [1, 2],
+        "enum": [
+          1,
+          2
+        ],
         "title": "PlayerId",
         "type": "integer"
       },
@@ -455,7 +496,10 @@
             "x-pointer-type-schema": {}
           }
         },
-        "required": ["op", "path"],
+        "required": [
+          "op",
+          "path"
+        ],
         "title": "Remove operation",
         "type": "object"
       },
@@ -484,7 +528,11 @@
             "title": "Value"
           }
         },
-        "required": ["op", "path", "value"],
+        "required": [
+          "op",
+          "path",
+          "value"
+        ],
         "title": "Remove value operation",
         "type": "object"
       },
@@ -510,7 +558,11 @@
             "title": "Value"
           }
         },
-        "required": ["op", "path", "value"],
+        "required": [
+          "op",
+          "path",
+          "value"
+        ],
         "title": "Replace operation",
         "type": "object"
       },
@@ -540,7 +592,11 @@
             }
           }
         },
-        "required": ["min_value", "op", "path"],
+        "required": [
+          "min_value",
+          "op",
+          "path"
+        ],
         "title": "Require minimum operation",
         "type": "object"
       },
@@ -566,7 +622,11 @@
             "title": "Value"
           }
         },
-        "required": ["op", "path", "value"],
+        "required": [
+          "op",
+          "path",
+          "value"
+        ],
         "title": "Test operation",
         "type": "object"
       },
@@ -591,7 +651,10 @@
             }
           }
         },
-        "required": ["op", "path"],
+        "required": [
+          "op",
+          "path"
+        ],
         "title": "Toggle operation",
         "type": "object"
       },
@@ -627,7 +690,11 @@
             "type": "string"
           }
         },
-        "required": ["loc", "msg", "type"],
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
         "title": "ValidationError",
         "type": "object"
       }
@@ -677,7 +744,9 @@
           }
         },
         "summary": "Get a guild",
-        "tags": ["guilds"]
+        "tags": [
+          "guilds"
+        ]
       },
       "patch": {
         "description": "Apply custom ops to a Guild model.",
@@ -773,7 +842,10 @@
                         {
                           "properties": {
                             "cause_type": {
-                              "type": ["string", "null"]
+                              "type": [
+                                "string",
+                                "null"
+                              ]
                             },
                             "index": {
                               "type": "integer"
@@ -785,13 +857,19 @@
                               "type": "object"
                             }
                           },
-                          "required": ["index", "op", "message"],
+                          "required": [
+                            "index",
+                            "op",
+                            "message"
+                          ],
                           "type": "object"
                         }
                       ]
                     }
                   },
-                  "required": ["detail"],
+                  "required": [
+                    "detail"
+                  ],
                   "type": "object"
                 }
               }
@@ -811,7 +889,10 @@
                         {
                           "properties": {
                             "cause_type": {
-                              "type": ["string", "null"]
+                              "type": [
+                                "string",
+                                "null"
+                              ]
                             },
                             "index": {
                               "type": "integer"
@@ -823,13 +904,19 @@
                               "type": "object"
                             }
                           },
-                          "required": ["index", "op", "message"],
+                          "required": [
+                            "index",
+                            "op",
+                            "message"
+                          ],
                           "type": "object"
                         }
                       ]
                     }
                   },
-                  "required": ["detail"],
+                  "required": [
+                    "detail"
+                  ],
                   "type": "object"
                 }
               }
@@ -851,7 +938,10 @@
                             {
                               "properties": {
                                 "cause_type": {
-                                  "type": ["string", "null"]
+                                  "type": [
+                                    "string",
+                                    "null"
+                                  ]
                                 },
                                 "index": {
                                   "type": "integer"
@@ -863,13 +953,19 @@
                                   "type": "object"
                                 }
                               },
-                              "required": ["index", "op", "message"],
+                              "required": [
+                                "index",
+                                "op",
+                                "message"
+                              ],
                               "type": "object"
                             }
                           ]
                         }
                       },
-                      "required": ["detail"],
+                      "required": [
+                        "detail"
+                      ],
                       "type": "object"
                     },
                     {
@@ -894,7 +990,10 @@
                         {
                           "properties": {
                             "cause_type": {
-                              "type": ["string", "null"]
+                              "type": [
+                                "string",
+                                "null"
+                              ]
                             },
                             "index": {
                               "type": "integer"
@@ -906,13 +1005,19 @@
                               "type": "object"
                             }
                           },
-                          "required": ["index", "op", "message"],
+                          "required": [
+                            "index",
+                            "op",
+                            "message"
+                          ],
                           "type": "object"
                         }
                       ]
                     }
                   },
-                  "required": ["detail"],
+                  "required": [
+                    "detail"
+                  ],
                   "type": "object"
                 }
               }
@@ -921,7 +1026,9 @@
           }
         },
         "summary": "Patch a guild",
-        "tags": ["guilds"]
+        "tags": [
+          "guilds"
+        ]
       }
     },
     "/players/{player_id}": {
@@ -961,7 +1068,9 @@
           }
         },
         "summary": "Get a player",
-        "tags": ["players"]
+        "tags": [
+          "players"
+        ]
       },
       "patch": {
         "description": "Apply custom ops to a Player model.",
@@ -1056,7 +1165,10 @@
                         {
                           "properties": {
                             "cause_type": {
-                              "type": ["string", "null"]
+                              "type": [
+                                "string",
+                                "null"
+                              ]
                             },
                             "index": {
                               "type": "integer"
@@ -1068,13 +1180,19 @@
                               "type": "object"
                             }
                           },
-                          "required": ["index", "op", "message"],
+                          "required": [
+                            "index",
+                            "op",
+                            "message"
+                          ],
                           "type": "object"
                         }
                       ]
                     }
                   },
-                  "required": ["detail"],
+                  "required": [
+                    "detail"
+                  ],
                   "type": "object"
                 }
               }
@@ -1094,7 +1212,10 @@
                         {
                           "properties": {
                             "cause_type": {
-                              "type": ["string", "null"]
+                              "type": [
+                                "string",
+                                "null"
+                              ]
                             },
                             "index": {
                               "type": "integer"
@@ -1106,13 +1227,19 @@
                               "type": "object"
                             }
                           },
-                          "required": ["index", "op", "message"],
+                          "required": [
+                            "index",
+                            "op",
+                            "message"
+                          ],
                           "type": "object"
                         }
                       ]
                     }
                   },
-                  "required": ["detail"],
+                  "required": [
+                    "detail"
+                  ],
                   "type": "object"
                 }
               }
@@ -1134,7 +1261,10 @@
                             {
                               "properties": {
                                 "cause_type": {
-                                  "type": ["string", "null"]
+                                  "type": [
+                                    "string",
+                                    "null"
+                                  ]
                                 },
                                 "index": {
                                   "type": "integer"
@@ -1146,13 +1276,19 @@
                                   "type": "object"
                                 }
                               },
-                              "required": ["index", "op", "message"],
+                              "required": [
+                                "index",
+                                "op",
+                                "message"
+                              ],
                               "type": "object"
                             }
                           ]
                         }
                       },
-                      "required": ["detail"],
+                      "required": [
+                        "detail"
+                      ],
                       "type": "object"
                     },
                     {
@@ -1177,7 +1313,10 @@
                         {
                           "properties": {
                             "cause_type": {
-                              "type": ["string", "null"]
+                              "type": [
+                                "string",
+                                "null"
+                              ]
                             },
                             "index": {
                               "type": "integer"
@@ -1189,13 +1328,19 @@
                               "type": "object"
                             }
                           },
-                          "required": ["index", "op", "message"],
+                          "required": [
+                            "index",
+                            "op",
+                            "message"
+                          ],
                           "type": "object"
                         }
                       ]
                     }
                   },
-                  "required": ["detail"],
+                  "required": [
+                    "detail"
+                  ],
                   "type": "object"
                 }
               }
@@ -1204,7 +1349,9 @@
           }
         },
         "summary": "Patch a player",
-        "tags": ["players"]
+        "tags": [
+          "players"
+        ]
       }
     }
   }
