@@ -25,18 +25,9 @@ jobs:
       - name: 🔂 dependency review
         uses: actions/dependency-review-action@2031cfc080254a8a887f58cffee85186f0e49e48 # v4.9.0
         with:
+          # Centralized dependency license policy lives in this config file.
+          config-file: ./.github/dependency-review-config.yml
           fail-on-severity: "high"
-          # Explicit allow-list so license policy remains auditable in-repo.
-          allow-licenses:
-            "Apache-2.0, MIT, MIT-0, BSD-2-Clause, BSD-3-Clause, MPL-2.0, 0BSD,
-            Python-2.0, Python-2.0.1, GPL-1.0-or-later"
-          # Version-pinned exceptions for deps with unknown license detection.
-          allow-dependencies-licenses:
-            "pkg:pypi/jsonpointer@3.1.0, pkg:pypi/pytest-cov@7.1.0,
-            pkg:pypi/ruff@0.15.7, pkg:pypi/uvicorn@0.42.0,
-            pkg:pypi/pyinstaller@6.19.0, pkg:pypi/python-jsonpath@2.0.2,
-            pkg:pypi/pyinstaller-hooks-contrib@2026.3, pkg:pypi/uv@0.10.12"
-          # deny-licenses: "AGPL-1.0, AGPL-3.0"
           comment-summary-in-pr: true
           warn-on-openssf-scorecard-level: 3
           # Manual runs can validate the full dependency graph against the
