@@ -87,12 +87,11 @@ enable_error_code = [
 
 [tool.pytest.ini_options]
 pythonpath = ["."]
-addopts = "--cov=jsonpatchx --cov=tests --cov-report=term-missing --cov-report=html --cov-config=pyproject.toml"
 
 [tool.coverage.run]
 branch = true
 parallel = true
-source = ["jsonpatchx", "tests"]
+source = ["jsonpatchx"]
 omit = [
   "*/__init__.py",
   "*temp*.py",

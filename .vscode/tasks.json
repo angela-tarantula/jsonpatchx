@@ -24,7 +24,15 @@
       "label": "pytest",
       "type": "shell",
       "command": "uv",
-      "args": ["run", "pytest", "-v"],
+      "args": [
+        "run",
+        "pytest",
+        "-v",
+        "--cov=jsonpatchx",
+        "--cov=tests",
+        "--cov-report=term-missing",
+        "--cov-report=html"
+      ],
       "group": "test",
       "problemMatcher": []
     },

@@ -53,13 +53,7 @@ jobs:
 
       - name: Test
         run: |
-          set -o pipefail
-          uv run pytest -o addopts="" \
-            --junitxml=pytest.xml \
-            --cov=jsonpatchx \
-            --cov-report=term-missing:skip-covered \
-            --cov-report=xml:coverage.xml \
-            -vv | tee pytest-coverage.txt
+          uv run pytest --cov-report=xml:coverage.xml
 
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@1af58845a975a7985b0beb0cbe6fbbb71a41dbad # v5.5.3
