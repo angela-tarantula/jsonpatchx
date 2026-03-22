@@ -8,9 +8,10 @@ written as they are, with security and auditability as defaults.
 - Workflows default to `permissions: read-all`.
 - Jobs request extra scopes only when required.
 - Examples:
-  - `dependency-action.yml` requests `pull-requests: write` to post review
-    summaries.
-  - `lint.yml` uses `statuses: write` to publish commit status contexts.
+  - [`dependency-action.yml`](dependency-action.yml) requests
+    `pull-requests: write` to post review summaries.
+  - [`lint.yml`](lint.yml) uses `statuses: write` to publish commit status
+    contexts.
   - Most jobs keep `contents: read` only.
 
 ## GitHub App Usage
@@ -18,14 +19,16 @@ written as they are, with security and auditability as defaults.
 Two workflows mint GitHub App tokens instead of using broad `GITHUB_TOKEN`
 writes:
 
-- `scorecard.yml`
-- `dependabot-snapshots.yml` (update OpenAPI snapshots)
+- [`scorecard.yml`](scorecard.yml)
+- [`dependabot-snapshots.yml`](dependabot-snapshots.yml) (update OpenAPI
+  snapshots)
 
 This keeps write operations explicit and reduces default token blast radius.
 
 ## Environment-Scoped Secrets
 
-- `python-app.yml` uses `environment: codecov-automation` on the `build` job.
+- [`python-app.yml`](python-app.yml) uses `environment: codecov-automation` on
+  the `build` job.
 - `CODECOV_TOKEN` should be stored as an environment secret in
   `codecov-automation` (instead of a repository secret).
 - Environment permissions are not a token-scope model. `GITHUB_TOKEN` scopes are
@@ -40,9 +43,9 @@ This keeps write operations explicit and reduces default token blast radius.
   - `py-3.14`
 - This is intentional: repository coverage represents "covered in any supported
   runtime", while still allowing per-runtime inspection via flags.
-- Codecov behavior is configured in root `codecov.yml`.
+- Codecov behavior is configured in [`codecov.yml`](../codecov.yml).
 
-## Dependency Review (`dependency-action.yml`)
+## Dependency Review ([`dependency-action.yml`](dependency-action.yml))
 
 Normal PR behavior:
 
@@ -57,7 +60,8 @@ Manual full-graph check behavior:
 
 License policy behavior:
 
-- Policy lists live in `.github/dependency-review-config.yml`.
+- Policy lists live in
+  [`dependency-review-config.yml`](../dependency-review-config.yml).
 - `allow-licenses` is the explicit accepted SPDX allow-list.
 - `allow-dependencies-licenses` is a version-pinned exception list for
   dependencies where license detection is currently unknown, with inline license
@@ -67,25 +71,24 @@ License policy behavior:
 
 ## Linter Configuration
 
-- `lint.yml` runs Super-Linter with shared configs from `.github/linters`.
+- [`lint.yml`](lint.yml) runs Super-Linter with shared configs from
+  [`linters`](../linters/README.md).
 - Local `prek` hooks use the same config files where possible.
 - PR summary comments are disabled; run summaries are kept in the Actions step
   summary.
 
 ## ClusterFuzzLite
 
-Canonical runbook:
-
-- `.clusterfuzzlite/README.md`
+Canonical [runbook](../../.clusterfuzzlite/README.md).
 
 Quick trigger/permission summary:
 
-- `cflite_pr.yml`
+- [`cflite_pr.yml`](cflite_pr.yml)
   - Triggers: `pull_request` and `workflow_dispatch`
   - Write scopes: `security-events: write` only
-- `cflite_coverage.yml`
+- [`cflite_coverage.yml`](cflite_coverage.yml)
   - Triggers: weekly schedule and `workflow_dispatch`
   - Write scopes: `contents: write`, `security-events: write`
-- `cflite_weekly.yml`
+- [`cflite_weekly.yml`](cflite_weekly.yml)
   - Triggers: weekly schedule and `workflow_dispatch`
   - Write scopes: `contents: write`, `security-events: write`
