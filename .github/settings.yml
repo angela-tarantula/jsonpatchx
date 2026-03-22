@@ -5,7 +5,7 @@ repository:
   # See https://developer.github.com/v3/repos/#edit for all available settings.
 
   name: jsonpatchx
-  description: A PATCH framework for Python test.
+  description: A PATCH framework for Python.
   private: false
 
   # A URL with more information about the repository
@@ -19,7 +19,7 @@ repository:
   has_wiki: true
   has_downloads: true
 
-  default_branch: main2
+  default_branch: main
 
   allow_squash_merge: true
   allow_merge_commit: true
@@ -97,7 +97,7 @@ labels:
 # Branch protection API reference:
 # https://developer.github.com/v3/repos/branches/#update-branch-protection
 branches:
-  - name: main2
+  - name: main
     protection:
       required_pull_request_reviews:
         required_approving_review_count: 2
