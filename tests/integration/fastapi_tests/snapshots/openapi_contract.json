@@ -23,11 +23,7 @@
             "title": "Value"
           }
         },
-        "required": [
-          "op",
-          "path",
-          "value"
-        ],
+        "required": ["op", "path", "value"],
         "title": "Add operation",
         "type": "object"
       },
@@ -104,11 +100,7 @@
             "x-pointer-type-schema": {}
           }
         },
-        "required": [
-          "from",
-          "op",
-          "path"
-        ],
+        "required": ["from", "op", "path"],
         "title": "Copy operation",
         "type": "object"
       },
@@ -137,10 +129,7 @@
             "type": "integer"
           }
         },
-        "required": [
-          "id",
-          "diagnosis"
-        ],
+        "required": ["id", "diagnosis"],
         "title": "MedicalRecord",
         "type": "object"
       },
@@ -218,11 +207,7 @@
             "x-pointer-type-schema": {}
           }
         },
-        "required": [
-          "from",
-          "op",
-          "path"
-        ],
+        "required": ["from", "op", "path"],
         "title": "Move operation",
         "type": "object"
       },
@@ -245,10 +230,7 @@
             "x-pointer-type-schema": {}
           }
         },
-        "required": [
-          "op",
-          "path"
-        ],
+        "required": ["op", "path"],
         "title": "Remove operation",
         "type": "object"
       },
@@ -274,11 +256,7 @@
             "title": "Value"
           }
         },
-        "required": [
-          "op",
-          "path",
-          "value"
-        ],
+        "required": ["op", "path", "value"],
         "title": "Replace operation",
         "type": "object"
       },
@@ -304,11 +282,7 @@
             "title": "Value"
           }
         },
-        "required": [
-          "op",
-          "path",
-          "value"
-        ],
+        "required": ["op", "path", "value"],
         "title": "Test operation",
         "type": "object"
       },
@@ -332,10 +306,7 @@
             }
           }
         },
-        "required": [
-          "op",
-          "path"
-        ],
+        "required": ["op", "path"],
         "title": "ToggleOp",
         "type": "object"
       },
@@ -351,10 +322,7 @@
             "type": "string"
           }
         },
-        "required": [
-          "id",
-          "name"
-        ],
+        "required": ["id", "name"],
         "title": "User",
         "type": "object"
       },
@@ -414,11 +382,7 @@
             "type": "string"
           }
         },
-        "required": [
-          "loc",
-          "msg",
-          "type"
-        ],
+        "required": ["loc", "msg", "type"],
         "title": "ValidationError",
         "type": "object"
       }
