@@ -19,7 +19,15 @@ From `.clusterfuzzlite/build.sh`:
 
 Associated dictionaries and seed corpus ZIP files are copied into `$OUT`.
 
-## CI Workflows and Responsibilities
+## Workflow Overview
+
+- PR (`code-change`) is the fast, targeted safety net.
+- Coverage (`coverage`) maintains baseline data and visibility into explored
+  paths.
+- Weekly (`batch`) spends more time across targets to find latent issues not
+  near current PR changes.
+
+## Workflow Details and Responsibilities
 
 These workflows consume the `.clusterfuzzlite` build/config:
 
@@ -48,14 +56,6 @@ These workflows consume the `.clusterfuzzlite` build/config:
    - Time budget: `fuzz-seconds: 3600`
    - `keep-unaffected-fuzz-targets: true`
    - Purpose: deeper whole-target bug discovery.
-
-## How the Three Workflows Work Together
-
-- PR (`code-change`) is the fast, targeted safety net.
-- Coverage (`coverage`) maintains baseline data and visibility into explored
-  paths.
-- Weekly (`batch`) spends more time across targets to find latent issues not
-  near current PR changes.
 
 ## `gh-pages` Storage Model
 
