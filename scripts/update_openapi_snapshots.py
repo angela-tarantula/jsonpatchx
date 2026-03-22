@@ -1,4 +1,15 @@
-"""Regenerate FastAPI OpenAPI snapshot fixtures for integration tests."""
+"""Regenerate FastAPI OpenAPI snapshot fixtures used as API contract artifacts.
+
+This repository treats generated OpenAPI as part of the product surface of
+``jsonpatchx``. Committed snapshots make contract changes explicit in each PR
+and commit, so reviewers can see exactly what API/schema behavior changed.
+
+The snapshot files are derived artifacts, so they must be refreshed whenever
+code or dependency updates affect generated OpenAPI. This script is used both:
+
+- locally via pre-commit/``prek`` hooks, and
+- in GitHub automation workflows (including Dependabot-triggered PR updates).
+"""
 
 from __future__ import annotations
 
