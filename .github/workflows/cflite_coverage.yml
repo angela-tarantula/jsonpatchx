@@ -10,7 +10,7 @@ on:
 permissions: read-all
 
 jobs:
-  clusterfuzzlite-coverage:
+  fuzz-coverage:
     runs-on: ubuntu-latest
     permissions:
       contents: write
