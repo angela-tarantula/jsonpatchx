@@ -4,7 +4,6 @@
 
 [![Tests](https://img.shields.io/github/actions/workflow/status/angela-tarantula/jsonpatchx/python-app.yml?branch=main&label=Tests&style=flat)](https://github.com/angela-tarantula/jsonpatchx/actions)
 [![Codecov](https://codecov.io/github/angela-tarantula/jsonpatchx/graph/badge.svg)](https://codecov.io/github/angela-tarantula/jsonpatchx)
-[![Release](https://img.shields.io/github/v/release/angela-tarantula/jsonpatchx?display_name=tag)](CHANGELOG.md)
 [![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/angela-tarantula/jsonpatchx/badge)](https://scorecard.dev/viewer/?uri=github.com/angela-tarantula/jsonpatchx)
 [![Contributor Covenant](https://img.shields.io/badge/Contributor%20Covenant-3.0-fbab2c.svg)](CODE_OF_CONDUCT.md)
 
