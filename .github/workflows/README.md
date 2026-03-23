@@ -9,14 +9,14 @@ written as they are, with security and auditability as defaults.
 - They make API contract changes visible in PR diffs.
 - Therefore it's necessary to regenerate snapshots whenever code or dependencies
   change generated OpenAPI.
+- Implementation script:
+  [`scripts/update_openapi_snapshots.py`](../../scripts/update_openapi_snapshots.py).
 - Local refresh: invoke `prek` hooks or direct script execution.
 - CI model: [`update-openapi-snapshots.yml`](update-openapi-snapshots.yml) is
   the reusable refresh workflow that caller workflows invoke.
 - Current caller example:
   [`dependabot-update-openapi-snapshots.yml`](dependabot-update-openapi-snapshots.yml)
   invokes the reusable workflow for Dependabot dependency updates.
-- Implementation script:
-  [`scripts/update_openapi_snapshots.py`](../../scripts/update_openapi_snapshots.py).
 
 ## Least-Privilege Model
 
