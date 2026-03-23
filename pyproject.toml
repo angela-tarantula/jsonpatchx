@@ -1,3 +1,7 @@
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
 [project]
 name = "jsonpatchx"
 version = "0.1.0"
@@ -40,13 +44,6 @@ Homepage = "https://github.com/angela-tarantula/jsonpatchx"
 Repository = "https://github.com/angela-tarantula/jsonpatchx"
 Issues = "https://github.com/angela-tarantula/jsonpatchx/issues"
 
-[build-system]
-requires = ["setuptools"]
-build-backend = "setuptools.build_meta"
-
-[tool.setuptools.packages.find]
-include = ["jsonpatchx*"]
-
 [project.optional-dependencies]
 fastapi = [
     "fastapi>=0.128.0",
@@ -76,6 +73,9 @@ fuzz = [
     "atheris>=3.0.0; python_version >= '3.11' and python_version < '3.14'",
     "pyinstaller>=6.10.0",
 ]
+
+[tool.setuptools.packages.find]
+include = ["jsonpatchx*"]
 
 [tool.mypy]
 plugins = ["pydantic.mypy"]
