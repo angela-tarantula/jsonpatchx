@@ -4,7 +4,7 @@ import copy
 from dataclasses import dataclass
 from functools import partial
 from operator import attrgetter
-from typing import Any, Final, Generic
+from typing import TYPE_CHECKING, Any, Final, Generic
 
 import pytest
 from jsonpath import JSONPointer as ExtendedJsonPointer
@@ -419,6 +419,13 @@ def test_jsonpointer_public_methods_are_backend_agnostic(
 def test_pointer_backend_binding(subtests: Subtests) -> None:
     class BoundPointer(DotPointer):
         pass
+
+    if TYPE_CHECKING:
+        _dont_raise_mypy_error_1: PointerBackend = _DEFAULT_POINTER_CLS("")
+
+        # from jsonpath import JSONPointer as ExtendedJsonPointer
+
+        # _dont_raise_mypy_error_2: PointerBackend = ExtendedJsonPointer("")
 
     with subtests.test("no backends"):
         ptr = JSONPointer.parse("/a", backend=None)

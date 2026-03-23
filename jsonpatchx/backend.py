@@ -3,7 +3,6 @@ from abc import abstractmethod
 from collections.abc import Iterable, Sequence
 from enum import Enum, auto
 from typing import (
-    TYPE_CHECKING,
     Protocol,
     Self,
     assert_never,
@@ -124,14 +123,6 @@ class _DEFAULT_POINTER_CLS(JsonPointer):  # type: ignore[misc]
     @override
     def __repr__(self) -> str:
         return "JsonPointerRFC6901(" + repr(self.path) + ")"
-
-
-if TYPE_CHECKING:
-    _dont_raise_mypy_error_1: PointerBackend = _DEFAULT_POINTER_CLS("")
-
-    # from jsonpath import JSONPointer as ExtendedJsonPointer
-
-    # _dont_raise_mypy_error_2: PointerBackend = ExtendedJsonPointer("")
 
 
 def _is_root_ptr(ptr: PointerBackend, doc: JSONValue) -> bool:
