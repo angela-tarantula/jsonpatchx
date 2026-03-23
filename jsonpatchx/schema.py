@@ -1,4 +1,6 @@
+import copy
 from abc import ABC, abstractmethod
+from collections.abc import Sequence
 from typing import (
     ClassVar,
     Literal,
@@ -13,7 +15,12 @@ from pydantic import BaseModel, ConfigDict, GetJsonSchemaHandler
 from pydantic.json_schema import JsonSchemaValue
 from pydantic_core import core_schema as cs
 
-from jsonpatchx.exceptions import InvalidOperationDefinition
+from jsonpatchx.exceptions import (
+    InvalidOperationDefinition,
+    PatchError,
+    PatchFailureDetail,
+    PatchInternalError,
+)
 from jsonpatchx.types import JSONValue
 
 
@@ -147,3 +154,56 @@ class OperationSchema(BaseModel, ABC):
             "description", "The operation to perform."
         )
         return json_schema
+
+
+def _apply_ops(
+    ops: Sequence[OperationSchema], doc: JSONValue, *, inplace: bool = False
+) -> JSONValue:
+    """
+    Apply a sequence of operations to a JSON document (core patch engine).
+
+    This function is the single source of truth for the library's copy and mutation semantics.
+
+    Args:
+        ops: Operations to apply, in order.
+        doc: Target JSON document.
+        inplace: Controls whether ``doc`` is deep-copied before application.
+
+    Returns:
+        The patched document (either a deep-copied object or the original object, depending on ``inplace``).
+
+    Raises:
+        PatchError: Expected patch failures raised by operation implementations.
+        PatchInternalError: Unexpected exceptions wrapped with structured context.
+
+    Notes:
+        - ``inplace=False`` (default): the engine deep-copies ``doc`` first, then applies operations
+          to that copy. Operation implementations may mutate the document object they receive. The
+          original input object is not modified.
+        - ``inplace=True``: operations are applied directly to the provided ``doc`` object. This is faster
+          and avoids a deep copy, but it is **not transactional**. If an operation fails mid-patch, earlier
+          operations will already have mutated the document (no rollback).
+        -  In other words: operations are allowed to be “mutative”, and the engine decides whether those
+           mutations hit the original input or a deep-copied working document.
+    """
+    if not inplace:
+        doc = copy.deepcopy(
+            doc
+        )  # NOTE: consider letting users inject their own copy function
+
+    for index, op in enumerate(ops):
+        try:
+            doc = op.apply(doc)
+        except PatchError:
+            # Domain-specific patch errors (e.g. TestOpFailed) should propagate unchanged.
+            raise
+        except Exception as e:
+            detail = PatchFailureDetail(
+                index=index,
+                op=op,
+                message=str(e),
+                cause_type=type(e).__name__,
+            )
+            raise PatchInternalError(detail, cause=e) from e
+
+    return doc

@@ -1,6 +1,7 @@
 # ClusterFuzzLite Runbook
 
-This is the canonical documentation for ClusterFuzzLite in this repository.
+This is the canonical documentation for
+[ClusterFuzzLite](https://google.github.io/clusterfuzzlite/) in this repository.
 
 ## What Lives Here
 

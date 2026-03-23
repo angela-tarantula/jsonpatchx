@@ -5,6 +5,7 @@ import signal
 import subprocess
 import sys
 import time
+from contextlib import suppress
 
 DEMOS: dict[str, tuple[str, str, int]] = {
     "1": ("Support desk corrections", "examples.fastapi.demo1:app", 8000),
@@ -29,10 +30,8 @@ def run_demo(choice: str) -> None:
         while True:
             time.sleep(1)
     except KeyboardInterrupt:
-        try:
+        with suppress(ProcessLookupError):
             os.killpg(proc.pid, signal.SIGINT)
-        except ProcessLookupError:
-            pass
         try:
             proc.wait(timeout=5)
         except subprocess.TimeoutExpired:

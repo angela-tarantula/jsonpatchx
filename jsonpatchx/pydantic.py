@@ -29,8 +29,7 @@ from typing_extensions import TypeVar
 
 from jsonpatchx.exceptions import PatchValidationError
 from jsonpatchx.registry import _RegistrySpec
-from jsonpatchx.schema import OperationSchema
-from jsonpatchx.standard import _apply_ops
+from jsonpatchx.schema import OperationSchema, _apply_ops
 from jsonpatchx.types import JSONValue, _validate_JSONValue
 
 
@@ -167,7 +166,7 @@ class JsonPatchFor(_RegistryBoundPatchRoot, Generic[TargetT, RegistryT]):
                 PatchError: Any patch-domain error raised by operations, including conflicts.
                     ``PatchInternalError`` is a ``PatchError`` raised for unexpected failures.
             """
-            ...
+            pass
 
         @overload
         def apply[TargetNameN: str](
@@ -191,7 +190,7 @@ class JsonPatchFor(_RegistryBoundPatchRoot, Generic[TargetT, RegistryT]):
                 PatchError: Any patch-domain error raised by operations, including conflicts.
                     ``PatchInternalError`` is a ``PatchError`` raised for unexpected failures.
             """
-            ...
+            pass
 
         def apply(self, *args: Any, **kwargs: Any) -> Any:
             """
@@ -204,7 +203,7 @@ class JsonPatchFor(_RegistryBoundPatchRoot, Generic[TargetT, RegistryT]):
                 PatchError: Any patch-domain error raised by operations, including conflicts.
                     ``PatchInternalError`` is a ``PatchError`` raised for unexpected failures.
             """
-            ...
+            pass
 
     @override
     def __class_getitem__(cls, params: object) -> type[_RegistryBoundPatchRoot]:

@@ -605,6 +605,12 @@ class RunePointer(PointerBackend):
     def __hash__(self) -> int:
         return hash(self._parts)
 
+    @override
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, RunePointer):
+            return NotImplemented
+        return self._parts == other._parts
+
 
 __all__ = [
     "AddOp",
