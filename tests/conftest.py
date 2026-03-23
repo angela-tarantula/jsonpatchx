@@ -48,6 +48,11 @@ class IncompletePointerBackend:
     def __hash__(self) -> int:
         return hash(tuple(self._parts))
 
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, IncompletePointerBackend):
+            return NotImplemented
+        return self._parts == other._parts
+
 
 class AnotherIncompletePointerBackend(IncompletePointerBackend, PointerBackend):
     """IncompletePointerBackend but it technically inherits from PointerBackend."""
