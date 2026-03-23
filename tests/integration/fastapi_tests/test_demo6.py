@@ -3,7 +3,7 @@ from httpx import AsyncClient
 
 from tests.integration.fastapi_tests.conftest import patch_json
 
-pytestmark = pytest.mark.anyio
+pytestmark = [pytest.mark.anyio, pytest.mark.integration]
 
 
 async def test_demo6_generic_backend_ops_apply(demo6_client: AsyncClient) -> None:

@@ -31,6 +31,7 @@ from jsonpatchx.schema import OperationSchema
 from jsonpatchx.types import JSONBoolean, JSONValue
 
 SNAPSHOT_PATH = Path(__file__).resolve().parent / "snapshots" / "openapi_contract.json"
+pytestmark = pytest.mark.contract
 
 
 class User(BaseModel):

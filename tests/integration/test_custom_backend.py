@@ -1,10 +1,14 @@
 from typing import Literal, override
 
+import pytest
+
 from jsonpatchx.pointer import JSONPointer
 from jsonpatchx.schema import OperationSchema
 from jsonpatchx.standard import JsonPatch
 from jsonpatchx.types import JSONValue
 from tests.conftest import DotPointer
+
+pytestmark = pytest.mark.integration
 
 
 def test_custom_backend_with_registry() -> None:

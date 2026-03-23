@@ -146,8 +146,7 @@ filterwarnings = [
   "error",
 ]
 markers = [
-  "integration: integration tests",
-  "slow: long-running tests",
+  "integration: integration tests across modules/APIs",
   "contract: API/schema contract snapshot tests",
 ]
 

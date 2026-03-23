@@ -8,6 +8,8 @@ from jsonpatchx.schema import OperationSchema
 from jsonpatchx.standard import JsonPatch
 from jsonpatchx.types import JSONNumber, JSONValue
 
+pytestmark = pytest.mark.integration
+
 
 class IncrementOp(OperationSchema):
     op: Literal["increment"] = "increment"

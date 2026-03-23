@@ -3,7 +3,7 @@ from httpx import AsyncClient
 
 from tests.integration.fastapi_tests.conftest import patch_json
 
-pytestmark = pytest.mark.anyio
+pytestmark = [pytest.mark.anyio, pytest.mark.integration]
 
 
 async def test_demo4_spellbook_midnight_runes(demo4_client: AsyncClient) -> None:

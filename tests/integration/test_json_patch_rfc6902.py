@@ -12,6 +12,8 @@ from jsonpatchx import JsonPatch, JSONValue, StandardRegistry
 from jsonpatchx.exceptions import PatchError
 from jsonpatchx.registry import _RegistrySpec
 
+pytestmark = pytest.mark.integration
+
 JSON_PATCH_TESTS_DIR = resources.files("tests") / "cts"
 
 SKIPPED_CASES: Final = {

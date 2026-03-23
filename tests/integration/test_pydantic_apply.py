@@ -5,6 +5,8 @@ from jsonpatchx.exceptions import PatchConflictError, PatchValidationError
 from jsonpatchx.pydantic import JsonPatchFor
 from jsonpatchx.registry import StandardRegistry
 
+pytestmark = pytest.mark.integration
+
 
 class User(BaseModel):
     model_config = ConfigDict(extra="forbid")

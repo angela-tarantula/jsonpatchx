@@ -13,6 +13,7 @@ import pytest
 from examples.fastapi import demo1, demo2, demo3, demo4, demo5, demo6
 
 SNAPSHOT_DIR = Path(__file__).resolve().parent / "snapshots"
+pytestmark = pytest.mark.contract
 
 
 @pytest.mark.parametrize(
