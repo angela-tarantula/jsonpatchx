@@ -253,6 +253,16 @@ fastapi = [
 ]
 
 [package.dev-dependencies]
+ci = [
+    { name = "fastapi" },
+    { name = "httpx" },
+    { name = "mypy" },
+    { name = "pytest" },
+    { name = "pytest-cov" },
+    { name = "python-jsonpath" },
+    { name = "ruff" },
+    { name = "uvicorn" },
+]
 dev = [
     { name = "fastapi" },
     { name = "httpx" },
@@ -269,6 +279,14 @@ fuzz = [
 ]
 lint = [
     { name = "ruff" },
+]
+snapshots = [
+    { name = "fastapi" },
+    { name = "httpx" },
+    { name = "pytest" },
+    { name = "pytest-cov" },
+    { name = "python-jsonpath" },
+    { name = "uvicorn" },
 ]
 tests = [
     { name = "fastapi" },
@@ -292,6 +310,16 @@ requires-dist = [
 provides-extras = ["fastapi"]
 
 [package.metadata.requires-dev]
+ci = [
+    { name = "fastapi", specifier = ">=0.135.1" },
+    { name = "httpx", specifier = ">=0.28.1" },
+    { name = "mypy", specifier = ">=1.19.1" },
+    { name = "pytest", specifier = ">=9.0.2" },
+    { name = "pytest-cov", specifier = ">=7.1.0" },
+    { name = "python-jsonpath", specifier = ">=2.0.2" },
+    { name = "ruff", specifier = ">=0.15.7" },
+    { name = "uvicorn", specifier = ">=0.42.0" },
+]
 dev = [
     { name = "fastapi", specifier = ">=0.135.1" },
     { name = "httpx", specifier = ">=0.28.1" },
@@ -307,6 +335,14 @@ fuzz = [
     { name = "pyinstaller", specifier = ">=6.10.0" },
 ]
 lint = [{ name = "ruff", specifier = ">=0.15.7" }]
+snapshots = [
+    { name = "fastapi", specifier = ">=0.135.1" },
+    { name = "httpx", specifier = ">=0.28.1" },
+    { name = "pytest", specifier = ">=9.0.2" },
+    { name = "pytest-cov", specifier = ">=7.1.0" },
+    { name = "python-jsonpath", specifier = ">=2.0.2" },
+    { name = "uvicorn", specifier = ">=0.42.0" },
+]
 tests = [
     { name = "fastapi", specifier = ">=0.135.1" },
     { name = "httpx", specifier = ">=0.28.1" },

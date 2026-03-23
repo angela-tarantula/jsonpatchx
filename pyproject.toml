@@ -55,6 +55,14 @@ dev = [
     { include-group = "lint" },
     { include-group = "typing" },
 ]
+ci = [
+  { include-group = "tests" },
+  { include-group = "lint" },
+  { include-group = "typing" },
+]
+snapshots = [
+  { include-group = "tests" },
+]
 lint = [
     "ruff>=0.15.7",
 ]
