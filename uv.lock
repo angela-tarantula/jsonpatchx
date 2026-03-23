@@ -267,6 +267,20 @@ fuzz = [
     { name = "atheris", marker = "python_full_version < '3.14'" },
     { name = "pyinstaller" },
 ]
+lint = [
+    { name = "ruff" },
+]
+tests = [
+    { name = "fastapi" },
+    { name = "httpx" },
+    { name = "pytest" },
+    { name = "pytest-cov" },
+    { name = "python-jsonpath" },
+    { name = "uvicorn" },
+]
+typing = [
+    { name = "mypy" },
+]
 
 [package.metadata]
 requires-dist = [
@@ -279,19 +293,29 @@ provides-extras = ["fastapi"]
 
 [package.metadata.requires-dev]
 dev = [
-    { name = "fastapi", specifier = ">=0.128.0" },
+    { name = "fastapi", specifier = ">=0.135.1" },
     { name = "httpx", specifier = ">=0.28.1" },
     { name = "mypy", specifier = ">=1.19.1" },
-    { name = "pytest", specifier = ">=9.0.1" },
-    { name = "pytest-cov", specifier = ">=7.0.0" },
+    { name = "pytest", specifier = ">=9.0.2" },
+    { name = "pytest-cov", specifier = ">=7.1.0" },
     { name = "python-jsonpath", specifier = ">=2.0.2" },
-    { name = "ruff", specifier = ">=0.15.6" },
-    { name = "uvicorn", specifier = ">=0.40.0" },
+    { name = "ruff", specifier = ">=0.15.7" },
+    { name = "uvicorn", specifier = ">=0.42.0" },
 ]
 fuzz = [
     { name = "atheris", marker = "python_full_version >= '3.11' and python_full_version < '3.14'", specifier = ">=3.0.0" },
     { name = "pyinstaller", specifier = ">=6.10.0" },
 ]
+lint = [{ name = "ruff", specifier = ">=0.15.7" }]
+tests = [
+    { name = "fastapi", specifier = ">=0.135.1" },
+    { name = "httpx", specifier = ">=0.28.1" },
+    { name = "pytest", specifier = ">=9.0.2" },
+    { name = "pytest-cov", specifier = ">=7.1.0" },
+    { name = "python-jsonpath", specifier = ">=2.0.2" },
+    { name = "uvicorn", specifier = ">=0.42.0" },
+]
+typing = [{ name = "mypy", specifier = ">=1.19.1" }]
 
 [[package]]
 name = "jsonpointer"
