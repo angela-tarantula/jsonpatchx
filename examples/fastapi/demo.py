@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from contextlib import suppress
 import os
 import signal
 import subprocess
@@ -29,10 +30,8 @@ def run_demo(choice: str) -> None:
         while True:
             time.sleep(1)
     except KeyboardInterrupt:
-        try:
+        with suppress(ProcessLookupError):
             os.killpg(proc.pid, signal.SIGINT)
-        except ProcessLookupError:
-            pass
         try:
             proc.wait(timeout=5)
         except subprocess.TimeoutExpired:
