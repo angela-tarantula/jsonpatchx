@@ -133,7 +133,22 @@ enable_error_code = [
 ]
 
 [tool.pytest.ini_options]
+minversion = "9.0"
 pythonpath = ["."]
+testpaths = ["tests"]
+addopts = [
+  "--strict-config",
+  "--strict-markers",
+  "-ra",
+]
+xfail_strict = true
+filterwarnings = [
+  "error",
+]
+markers = [
+  "integration: integration tests",
+  "slow: long-running tests",
+]
 
 [tool.coverage.run]
 branch = true
