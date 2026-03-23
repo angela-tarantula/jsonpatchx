@@ -29,8 +29,7 @@ from typing_extensions import TypeVar
 
 from jsonpatchx.exceptions import PatchValidationError
 from jsonpatchx.registry import _RegistrySpec
-from jsonpatchx.schema import OperationSchema
-from jsonpatchx.standard import _apply_ops
+from jsonpatchx.schema import OperationSchema, _apply_ops
 from jsonpatchx.types import JSONValue, _validate_JSONValue
 
 

@@ -1,11 +1,11 @@
 from __future__ import annotations
 
-from contextlib import suppress
 import os
 import signal
 import subprocess
 import sys
 import time
+from contextlib import suppress
 
 DEMOS: dict[str, tuple[str, str, int]] = {
     "1": ("Support desk corrections", "examples.fastapi.demo1:app", 8000),
