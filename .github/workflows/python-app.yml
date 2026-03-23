@@ -15,7 +15,6 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-latest
-    environment: codecov-automation
     permissions:
       contents: read
       pull-requests: write
@@ -62,7 +61,6 @@ jobs:
         with:
           files: ./coverage.xml
           flags: py-${{ matrix.python-version }}
-          token: ${{ secrets.CODECOV_TOKEN }}
           fail_ci_if_error: true
 
   # https://github.com/marketplace/actions/alls-green#why
