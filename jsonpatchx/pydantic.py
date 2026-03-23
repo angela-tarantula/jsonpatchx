@@ -167,7 +167,7 @@ class JsonPatchFor(_RegistryBoundPatchRoot, Generic[TargetT, RegistryT]):
                 PatchError: Any patch-domain error raised by operations, including conflicts.
                     ``PatchInternalError`` is a ``PatchError`` raised for unexpected failures.
             """
-            ...
+            pass
 
         @overload
         def apply[TargetNameN: str](
@@ -191,7 +191,7 @@ class JsonPatchFor(_RegistryBoundPatchRoot, Generic[TargetT, RegistryT]):
                 PatchError: Any patch-domain error raised by operations, including conflicts.
                     ``PatchInternalError`` is a ``PatchError`` raised for unexpected failures.
             """
-            ...
+            pass
 
         def apply(self, *args: Any, **kwargs: Any) -> Any:
             """
@@ -204,7 +204,7 @@ class JsonPatchFor(_RegistryBoundPatchRoot, Generic[TargetT, RegistryT]):
                 PatchError: Any patch-domain error raised by operations, including conflicts.
                     ``PatchInternalError`` is a ``PatchError`` raised for unexpected failures.
             """
-            ...
+            pass
 
     @override
     def __class_getitem__(cls, params: object) -> type[_RegistryBoundPatchRoot]:

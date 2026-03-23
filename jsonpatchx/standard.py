@@ -225,9 +225,12 @@ class JsonPatch(Sequence[OperationSchema]):
         return len(self._ops)
 
     @overload
-    def __getitem__(self, index: int) -> OperationSchema: ...
+    def __getitem__(self, index: int) -> OperationSchema:
+        pass
+
     @overload
-    def __getitem__(self, index: slice) -> Sequence[OperationSchema]: ...
+    def __getitem__(self, index: slice) -> Sequence[OperationSchema]:
+        pass
 
     @override
     def __getitem__(
