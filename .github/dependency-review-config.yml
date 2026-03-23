@@ -1,6 +1,7 @@
 ---
 # Dependency Review policy config consumed by:
-#   .github/workflows/dependency-action.yml
+#   .github/workflows/dependency-review.yml
+#   .github/workflows/dependency-review-full-audit.yml
 
 # Explicit SPDX allow-list.
 allow-licenses:

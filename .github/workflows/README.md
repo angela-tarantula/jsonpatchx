@@ -3,12 +3,27 @@
 This directory contains CI/CD workflows. This note explains why workflows are
 written as they are, with security and auditability as defaults.
 
+## OpenAPI Snapshots
+
+- OpenAPI snapshot JSON files are committed artifacts in this repository.
+- They make API contract changes visible in PR diffs.
+- Therefore it's necessary to regenerate snapshots whenever code or dependencies
+  change generated OpenAPI.
+- Implementation script:
+  [`scripts/update_openapi_snapshots.py`](../../scripts/update_openapi_snapshots.py).
+- Local refresh: invoke `prek` hooks or direct script execution.
+- CI model: [`update-openapi-snapshots.yml`](update-openapi-snapshots.yml) is
+  the reusable refresh workflow that caller workflows invoke.
+- Current caller example:
+  [`dependabot-update-openapi-snapshots.yml`](dependabot-update-openapi-snapshots.yml)
+  invokes the reusable workflow for Dependabot dependency updates.
+
 ## Least-Privilege Model
 
 - Workflows default to `permissions: read-all`.
 - Jobs request extra scopes only when required.
 - Examples:
-  - [`dependency-action.yml`](dependency-action.yml) requests
+  - [`dependency-review.yml`](dependency-review.yml) requests
     `pull-requests: write` to post review summaries.
   - [`lint.yml`](lint.yml) uses `statuses: write` to publish commit status
     contexts.
@@ -20,17 +35,17 @@ Two workflows mint GitHub App tokens instead of using broad `GITHUB_TOKEN`
 writes:
 
 - [`scorecard.yml`](scorecard.yml)
-- [`dependabot-snapshots.yml`](dependabot-snapshots.yml) (update OpenAPI
-  snapshots)
+- [`dependabot-update-openapi-snapshots.yml`](dependabot-update-openapi-snapshots.yml)
+  (mints token for snapshot updates)
 
 This keeps write operations explicit and reduces default token blast radius.
 
 ## Environment-Scoped Secrets
 
-- [`python-app.yml`](python-app.yml) uses `environment: codecov-automation` on
-  the `build` job.
-- `CODECOV_TOKEN` should be stored as an environment secret in
-  `codecov-automation` (instead of a repository secret).
+- [`python-tests.yml`](python-tests.yml) uses `environment: codecov-automation`
+  on the `build` job.
+- `CODECOV_TOKEN` is stored as an environment secret in `codecov-automation`
+  instead of a repository secret.
 - Environment permissions are not a token-scope model. `GITHUB_TOKEN` scopes are
   still controlled by workflow/job `permissions`.
 
@@ -45,17 +60,19 @@ This keeps write operations explicit and reduces default token blast radius.
   runtime", while still allowing per-runtime inspection via flags.
 - Codecov behavior is configured in [`codecov.yml`](../codecov.yml).
 
-## Dependency Review ([`dependency-action.yml`](dependency-action.yml))
+## Dependency Review
 
-Normal PR behavior:
+PR required-check behavior ([`dependency-review.yml`](dependency-review.yml)):
 
 - On `pull_request`, dependency-review compares only PR-introduced dependency
   changes.
 
-Manual full-graph check behavior:
+Manual full-graph audit behavior
+([`dependency-review-full-audit.yml`](dependency-review-full-audit.yml)):
 
-- On `workflow_dispatch`, `base-ref` is set to the repository root commit and
-  `head-ref` is set to `github.sha`.
+- Triggered only by `workflow_dispatch`.
+- `base-ref` is computed at runtime as the repository root commit and `head-ref`
+  is set to `github.sha`.
 - This forces a one-off review of the full dependency graph in the branch.
 
 License policy behavior:
