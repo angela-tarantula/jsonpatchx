@@ -3,6 +3,21 @@
 This directory contains CI/CD workflows. This note explains why workflows are
 written as they are, with security and auditability as defaults.
 
+## OpenAPI Snapshots
+
+- OpenAPI snapshot JSON files are committed artifacts in this repository.
+- They make API contract changes visible in PR diffs.
+- Therefore it's necessary to regenerate snapshots whenever code or dependencies
+  change generated OpenAPI.
+- Local refresh: invoke `prek` hooks or direct script execution.
+- CI model: [`update-openapi-snapshots.yml`](update-openapi-snapshots.yml) is
+  the reusable refresh workflow that caller workflows invoke.
+- Current caller example:
+  [`dependabot-update-openapi-snapshots.yml`](dependabot-update-openapi-snapshots.yml)
+  invokes the reusable workflow for Dependabot dependency updates.
+- Implementation script:
+  [`scripts/update_openapi_snapshots.py`](../../scripts/update_openapi_snapshots.py).
+
 ## Least-Privilege Model
 
 - Workflows default to `permissions: read-all`.
@@ -20,8 +35,8 @@ Two workflows mint GitHub App tokens instead of using broad `GITHUB_TOKEN`
 writes:
 
 - [`scorecard.yml`](scorecard.yml)
-- [`dependabot-snapshots.yml`](dependabot-snapshots.yml) (update OpenAPI
-  snapshots)
+- [`dependabot-update-openapi-snapshots.yml`](dependabot-update-openapi-snapshots.yml)
+  (mints token for snapshot updates)
 
 This keeps write operations explicit and reduces default token blast radius.
 
@@ -29,8 +44,8 @@ This keeps write operations explicit and reduces default token blast radius.
 
 - [`python-app.yml`](python-app.yml) uses `environment: codecov-automation` on
   the `build` job.
-- `CODECOV_TOKEN` should be stored as an environment secret in
-  `codecov-automation` (instead of a repository secret).
+- `CODECOV_TOKEN` is stored as an environment secret in `codecov-automation`
+  instead of a repository secret.
 - Environment permissions are not a token-scope model. `GITHUB_TOKEN` scopes are
   still controlled by workflow/job `permissions`.
 
