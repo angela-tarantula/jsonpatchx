@@ -1,7 +1,7 @@
 ---
-# Purpose: Python-only CI (ruff, ruff format, mypy, pytest, coverage comment).
+# Purpose: Python-only tests (ruff, ruff format, mypy, pytest, coverage comment).
 # Non-Python lint/security/docs checks run in .github/workflows/lint.yml.
-name: Python CI
+name: Python Tests
 
 on:
   push:
