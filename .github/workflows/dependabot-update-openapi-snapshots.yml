@@ -40,8 +40,6 @@ jobs:
       contents: write
     uses: ./.github/workflows/update-openapi-snapshots.yml
     with:
-      ref: ${{ github.ref }}
-      branch: ${{ github.ref_name }}
       environment-name: "dependabot-automation"
     secrets:
       push-token: ${{ needs.create-snapshot-app-token.outputs.app_token }}
