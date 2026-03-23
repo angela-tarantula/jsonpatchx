@@ -3,12 +3,42 @@ name = "jsonpatchx"
 version = "0.1.0"
 description = "Add your description here"
 readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE"]
 requires-python = ">=3.12"
+authors = [
+    { name = "Angela Liss", email = "chamsester@gmail.com" },
+]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Framework :: FastAPI",
+    "Framework :: Pydantic",
+    "Framework :: Pydantic :: 2",
+    "Intended Audience :: Developers",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Programming Language :: Python :: Implementation :: CPython",
+    "Programming Language :: Python :: Implementation :: PyPy",
+    "Topic :: File Formats :: JSON",
+    "Topic :: File Formats :: JSON :: JSON Schema",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Typing :: Typed",
+]
 dependencies = [
     "jsonpointer>=3.0.0",
     "pydantic>=2.12.5",
     "typing-extensions>=4.15.0",
 ]
+
+[project.urls]
+Homepage = "https://github.com/angela-tarantula/jsonpatchx"
+Repository = "https://github.com/angela-tarantula/jsonpatchx"
+Issues = "https://github.com/angela-tarantula/jsonpatchx/issues"
 
 [build-system]
 requires = ["setuptools"]
