@@ -1,6 +1,6 @@
 ---
 # Purpose: Non-Python lint/security/docs checks via Super-Linter.
-# Python lint/type/test checks run in .github/workflows/python-app.yml.
+# Python lint/type/test checks run in .github/workflows/python-tests.yml.
 name: lint
 
 on:

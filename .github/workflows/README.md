@@ -42,8 +42,8 @@ This keeps write operations explicit and reduces default token blast radius.
 
 ## Environment-Scoped Secrets
 
-- [`python-app.yml`](python-app.yml) uses `environment: codecov-automation` on
-  the `build` job.
+- [`python-tests.yml`](python-tests.yml) uses `environment: codecov-automation`
+  on the `build` job.
 - `CODECOV_TOKEN` is stored as an environment secret in `codecov-automation`
   instead of a repository secret.
 - Environment permissions are not a token-scope model. `GITHUB_TOKEN` scopes are
