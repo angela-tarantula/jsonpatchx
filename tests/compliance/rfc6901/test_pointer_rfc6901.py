@@ -16,23 +16,26 @@ class URIJsonPointer(CustomJsonPointer):
         super().__init__(pointer, uri_decode=True, unicode_escape=False)
 
 
-MISSING = "__MISSING__"
-
-
 class Case(BaseModel):
     pointer: str
-    expected: object = MISSING
-    fail: str = MISSING
+    expected: object | None = None
+    fail: str | None = None
 
     @model_validator(mode="after")
     def _ensure_expected_or_fail(self) -> Self:
-        if self.expected == MISSING and self.fail == MISSING:
+        if (
+            "expected" not in self.model_fields_set
+            and "fail" not in self.model_fields_set
+        ):
             raise ValueError("case must include expected or set fail message")
         return self
 
     @property
     def id(self) -> str:
-        return self.fail if self.fail != MISSING else repr(self.expected)
+        if "fail" in self.model_fields_set:
+            assert self.fail is not None
+            return self.fail
+        return repr(self.expected)
 
 
 DOC: Final = {
@@ -93,7 +96,7 @@ URI_CASES: Final = [
 
 @pytest.mark.parametrize("case", POINTER_CASES, ids=attrgetter("id"))
 def test_json_pointer_core(case: Case) -> None:
-    if case.fail == MISSING:
+    if "fail" not in case.model_fields_set:
         ptr = JSONPointer.parse(case.pointer)
         assert ptr.get(DOC) == case.expected
     else:
@@ -104,7 +107,7 @@ def test_json_pointer_core(case: Case) -> None:
 
 @pytest.mark.parametrize("case", URI_CASES, ids=attrgetter("id"))
 def test_json_pointer_with_uri_decoding(case: Case) -> None:
-    if case.fail == MISSING:
+    if "fail" not in case.model_fields_set:
         ptr = JSONPointer.parse(case.pointer, backend=URIJsonPointer)
         assert ptr.get(DOC) == case.expected
     else:

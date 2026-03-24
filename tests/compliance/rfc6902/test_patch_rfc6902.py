@@ -28,15 +28,12 @@ SKIPPED_CASES: Final = {
 STANDARD_SPEC = _RegistrySpec.from_typeform(StandardRegistry)
 
 
-MISSING = "__MISSING__"
-
-
 class Case(BaseModel):
     model_config = ConfigDict(frozen=True, strict=True)
 
     doc: JSONValue
     patch: list[dict[str, Any]]
-    expected: JSONValue = MISSING
+    expected: JSONValue | None = None
     error: str | None = None
     comment: str
     # disregard the 'disabled' flag because jsonpatchx implements handling of these cases
@@ -50,7 +47,9 @@ class Case(BaseModel):
 
     @model_validator(mode="after")
     def _ensure_expected_or_error(self) -> Self:
-        if self.expected == MISSING and self.error is None:  # pragma: no cover
+        if (
+            "expected" not in self.model_fields_set and self.error is None
+        ):  # pragma: no cover
             raise ValueError("case must include expected or error")
         return self
 
@@ -233,7 +232,7 @@ def test_json_patch_compliance(case: Case) -> None:
         with pytest.raises(PatchError):
             patch.apply(case.doc)
         return
-    elif case.expected != MISSING:
+    elif "expected" in case.model_fields_set:
         assert patch.apply(case.doc) == case.expected
     else:  # pragma: no cover
         pytest.fail("invalid case: {case!r}")
@@ -257,7 +256,7 @@ def test_json_patch_compliance_with_instantiated_models(case: Case) -> None:
         with pytest.raises(PatchError):
             patch.apply(case.doc)
         return
-    elif case.expected != MISSING:
+    elif "expected" in case.model_fields_set:
         assert patch.apply(case.doc) == case.expected
     else:  # pragma: no cover
         pytest.fail("invalid case: {case!r}")
@@ -281,7 +280,7 @@ def test_json_patch_compliance_from_string(case: Case) -> None:
         with pytest.raises(PatchError):
             patch.apply(case.doc)
         return
-    elif case.expected != MISSING:
+    elif "expected" in case.model_fields_set:
         assert patch.apply(case.doc) == case.expected
     else:  # pragma: no cover
         pytest.fail("invalid case: {case!r}")
