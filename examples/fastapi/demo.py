@@ -14,6 +14,7 @@ DEMOS: dict[str, tuple[str, str, int]] = {
     "4": ("Spellbook rune pointers", "examples.fastapi.demo4:app", 8003),
     "5": ("Explicit custom backend ops", "examples.fastapi.demo5:app", 8004),
     "6": ("Generic P backend ops", "examples.fastapi.demo6:app", 8005),
+    "7": ("OpenAPI schema contract", "examples.fastapi.demo7:app", 8006),
 }
 
 
@@ -44,7 +45,7 @@ def main() -> None:
     for key, (label, _, port) in DEMOS.items():
         print(f"  {key}) {label} (port {port})")
 
-    choice = input("\nSelect a demo (1-6): ").strip()
+    choice = input("\nSelect a demo (1-7): ").strip()
     if choice not in DEMOS:
         print("Invalid choice.")
         return

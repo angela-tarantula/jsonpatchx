@@ -1,7 +1,7 @@
 """
 OpenAPI snapshots for end-to-end FastAPI demo applications.
 
-This test verifies that the published OpenAPI docs for demo1-6 remain stable as
+This test verifies that the published OpenAPI docs for demo1-7 remain stable as
 examples evolve, including route-helper behavior and example-driven schema output.
 """
 
@@ -11,7 +11,7 @@ from pathlib import Path
 import pytest
 from fastapi import FastAPI
 
-from examples.fastapi import demo1, demo2, demo3, demo4, demo5, demo6
+from examples.fastapi import demo1, demo2, demo3, demo4, demo5, demo6, demo7
 
 SNAPSHOT_DIR = Path(__file__).resolve().parent / "snapshots"
 pytestmark = pytest.mark.contract
@@ -26,6 +26,7 @@ pytestmark = pytest.mark.contract
         ("demo4", demo4.app),
         ("demo5", demo5.app),
         ("demo6", demo6.app),
+        ("demo7", demo7.app),
     ],
     ids=lambda item: item[0] if isinstance(item, tuple) else str(item),
 )

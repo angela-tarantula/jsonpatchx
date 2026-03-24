@@ -1,7 +1,7 @@
 # Examples: JsonPatchX demo suite
 
-Six focused FastAPI demos. Each demo is a standalone file that reads cleanly in
-Swagger UI.
+Seven focused FastAPI demos. Each demo is a standalone file that reads cleanly
+in Swagger UI.
 
 ## Setup (once)
 
@@ -86,3 +86,14 @@ backend parameterization.
 ### Run
 
 - `uv run uvicorn examples.fastapi.demo6:app --reload --port 8005`
+
+## Demo 7: OpenAPI schema contract
+
+Contract-focused schema demo for `JsonPatchFor` model generation/reuse
+invariants.
+
+**File:** [`demo7.py`](demo7.py)
+
+### Run
+
+- `uv run uvicorn examples.fastapi.demo7:app --reload --port 8006`

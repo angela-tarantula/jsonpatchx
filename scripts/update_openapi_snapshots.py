@@ -23,11 +23,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
 # pylint: disable=wrong-import-position
-from examples.fastapi import demo1, demo2, demo3, demo4, demo5, demo6  # noqa: E402
-from tests.contract.openapi.test_openapi_contract_snapshot import (  # noqa: E402
-    SNAPSHOT_PATH,
-    _build_openapi,
-)
+from examples.fastapi import demo1, demo2, demo3, demo4, demo5, demo6, demo7  # noqa: E402
 
 
 def _write_snapshot(path: Path, schema: object) -> None:
@@ -79,7 +75,7 @@ def main() -> None:
         snapshot_dir / "demo4_openapi.json",
         snapshot_dir / "demo5_openapi.json",
         snapshot_dir / "demo6_openapi.json",
-        SNAPSHOT_PATH,
+        snapshot_dir / "demo7_openapi.json",
     ]
     snapshot_schemas = [
         demo1.app.openapi(),
@@ -88,7 +84,7 @@ def main() -> None:
         demo4.app.openapi(),
         demo5.app.openapi(),
         demo6.app.openapi(),
-        _build_openapi(),
+        demo7.app.openapi(),
     ]
 
     for path, schema in zip(snapshot_paths, snapshot_schemas, strict=True):
