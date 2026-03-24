@@ -32,5 +32,3 @@ jobs:
           fail-on-severity: "high"
           comment-summary-in-pr: true
           warn-on-openssf-scorecard-level: 3
-          retry-on-snapshot-warnings: true
-          retry-on-snapshot-warnings-timeout: 300
