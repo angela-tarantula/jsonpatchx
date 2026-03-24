@@ -26,7 +26,9 @@ def test_invalid_operation_schema_class(subtests: Subtests) -> None:
                 path: str
 
     with subtests.test("OperationSchema op literal must declare at least one value"):
-        with pytest.raises(InvalidOperationDefinition):
+        with pytest.raises(
+            (InvalidOperationDefinition, TypeError)
+        ):  # TypeError for Py3.13- from get_type_hints
 
             class EmptyLiteral(OperationSchema):
                 op: Literal  # type: ignore[valid-type]
