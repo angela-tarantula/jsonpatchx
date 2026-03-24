@@ -9,6 +9,7 @@ import json
 from pathlib import Path
 
 import pytest
+from fastapi import FastAPI
 
 from examples.fastapi import demo1, demo2, demo3, demo4, demo5, demo6
 
@@ -28,7 +29,7 @@ pytestmark = pytest.mark.contract
     ],
     ids=lambda item: item[0] if isinstance(item, tuple) else str(item),
 )
-def test_demo_openapi_snapshot(name: str, app: object) -> None:
+def test_demo_openapi_snapshot(name: str, app: FastAPI) -> None:
     snapshot_path = SNAPSHOT_DIR / f"{name}_openapi.json"
     if not snapshot_path.exists():  # pragma: no cover
         pytest.fail(f"OpenAPI snapshot missing: {snapshot_path}")

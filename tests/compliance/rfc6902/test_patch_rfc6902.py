@@ -14,7 +14,7 @@ from jsonpatchx.registry import _RegistrySpec
 
 pytestmark = pytest.mark.integration
 
-JSON_PATCH_TESTS_DIR = resources.files("tests") / "cts"
+JSON_PATCH_TESTS_DIR = resources.files("tests") / "compliance" / "rfc6902" / "data"
 
 SKIPPED_CASES: Final = {
     # {skipped_test_case: rationale}

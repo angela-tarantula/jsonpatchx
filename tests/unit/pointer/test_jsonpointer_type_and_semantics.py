@@ -1,132 +1,29 @@
 from __future__ import annotations
 
 import copy
-from dataclasses import dataclass
 from functools import partial
-from operator import attrgetter
-from typing import TYPE_CHECKING, Any, Final, Generic
+from typing import TYPE_CHECKING, Any, Generic
 
 import pytest
 from jsonpath import JSONPointer as ExtendedJsonPointer
 from jsonpointer import JsonPointer as CustomJsonPointer
-from pydantic import BaseModel, TypeAdapter, ValidationError
+from pydantic import BaseModel, TypeAdapter
 from pytest import Subtests
 from typing_extensions import TypeVar
 
-from jsonpatchx.backend import (
-    _DEFAULT_POINTER_CLS,
-    PointerBackend,
-    TargetState,
-    classify_state,
-)
+from jsonpatchx.backend import _DEFAULT_POINTER_CLS, PointerBackend
 from jsonpatchx.exceptions import InvalidJSONPointer, PatchConflictError
 from jsonpatchx.pointer import JSONPointer
 from jsonpatchx.types import JSONBoolean, JSONNumber, JSONValue
-from tests.conftest import (
+from tests.support.pointer_backends import (
     AnotherIncompletePointerBackend,
     BadDotPointer,
     DotPointer,
     DotPointerSubclass,
     IncompletePointerBackend,
     PointerMissingParts,
-    TypeSuite,
 )
-
-# ============================================================================
-# 1) JSON alias validations
-# ============================================================================
-
-
-def test_json_type_validations(subtests: Subtests, suite: TypeSuite) -> None:
-    """Verify that Pydantic TypeAdapters align with suite predicate logic."""
-    for json_type in suite.types:
-        adapter = TypeAdapter(json_type)
-
-        for example in suite.examples:
-            expected_ok = suite.is_compatible(example.value, json_type)
-            label = f"{json_type!r} vs {example.label}"
-
-            with subtests.test(label):
-                if expected_ok:
-                    adapter.validate_python(example.value, strict=True)
-                else:
-                    with pytest.raises(ValidationError):
-                        adapter.validate_python(example.value, strict=True)
-
-
-# ============================================================================
-# 2) Pointer backend protocol checks
-# ============================================================================
-
-
-def test_pointer_backend(subtests: Subtests) -> None:
-    with subtests.test("Custom JsonPointer backend"):
-        assert isinstance(CustomJsonPointer(""), PointerBackend)
-    with subtests.test("Extended JsonPointer backend"):
-        assert isinstance(ExtendedJsonPointer(""), PointerBackend)
-
-
-# ============================================================================
-# 3) classify_state scenarios
-# ============================================================================
-
-
-@dataclass(frozen=True)
-class StateScenario:
-    label: str
-    doc: JSONValue
-    path: str
-    expected: TargetState
-
-
-STATE_SCENARIOS: Final[tuple[StateScenario, ...]] = (
-    StateScenario("root", {"a": 1}, "", TargetState.ROOT),
-    StateScenario(
-        "parent-not-found", {"a": {}}, "/a/missing/b", TargetState.PARENT_NOT_FOUND
-    ),
-    StateScenario(
-        "parent-not-container", {"a": 1}, "/a/b", TargetState.PARENT_NOT_CONTAINER
-    ),
-    StateScenario(
-        "object-key-missing", {"a": {}}, "/a/b", TargetState.OBJECT_KEY_MISSING
-    ),
-    StateScenario(
-        "value-present-object", {"a": {"b": 1}}, "/a/b", TargetState.VALUE_PRESENT
-    ),
-    StateScenario(
-        "array-key-invalid", {"a": [1, 2]}, "/a/nope", TargetState.ARRAY_KEY_INVALID
-    ),
-    StateScenario(
-        "array-index-append", {"a": [1, 2]}, "/a/-", TargetState.ARRAY_INDEX_APPEND
-    ),
-    StateScenario(
-        "array-index-at-end", {"a": [1, 2]}, "/a/2", TargetState.ARRAY_INDEX_AT_END
-    ),
-    StateScenario(
-        "array-index-out-of-range",
-        {"a": [1, 2]},
-        "/a/3",
-        TargetState.ARRAY_INDEX_OUT_OF_RANGE,
-    ),
-    StateScenario(
-        "negative-index-present",
-        {"a": [1, 2]},
-        "/a/-1",
-        TargetState.VALUE_PRESENT_AT_NEGATIVE_ARRAY_INDEX,
-    ),
-)
-assert len(STATE_SCENARIOS) == len(TargetState), "STATE_SCENARIOS not set up correctly"
-
-
-@pytest.mark.parametrize("scenario", STATE_SCENARIOS, ids=attrgetter("label"))
-def test_classify_state(scenario: StateScenario) -> None:
-    ptr = JSONPointer.parse(scenario.path)
-    assert classify_state(ptr.ptr, scenario.doc) is scenario.expected
-
-
-# ============================================================================
-# 4) JSONPointer type gating and method semantics
-# ============================================================================
+from tests.support.type_suite import TypeSuite
 
 
 def test_jsonpointer_get(subtests: Subtests, suite: TypeSuite) -> None:
@@ -213,11 +110,6 @@ def test_jsonpointer_add(subtests: Subtests, suite: TypeSuite) -> None:
                         ptr.add(copy.deepcopy(doc), valid_T_value)
 
 
-# ============================================================================
-# 5) Non-trivial pointer edge cases
-# ============================================================================
-
-
 def test_jsonpointer_root_semantics(subtests: Subtests) -> None:
     with subtests.test("root semantics"):
         root = JSONPointer.parse("")
@@ -249,7 +141,6 @@ def test_jsonpointer_array_index_handling(subtests: Subtests) -> None:
             JSONPointer.parse("/arr/01").remove({"arr": [10, 20]})
 
     with subtests.test("insert semantics (VALUE_PRESENT)"):
-        # /arr/1 with add() inserts (shifts), not overwrite
         doc = {"arr": [10, 20]}
         out = JSONPointer.parse("/arr/1").add(doc, 15)
         assert out["arr"] == [10, 15, 20]
@@ -299,11 +190,6 @@ def test_jsonpointer_parent_child_edge_cases(subtests: Subtests) -> None:
             parent.is_parent_of(dot_ptr)
         with pytest.raises(InvalidJSONPointer):
             parent.is_child_of(dot_ptr)
-
-
-# ============================================================================
-# 6+) Everything else
-# ============================================================================
 
 
 @pytest.mark.parametrize(
@@ -423,10 +309,6 @@ def test_pointer_backend_binding(subtests: Subtests) -> None:
     if TYPE_CHECKING:
         _dont_raise_mypy_error_1: PointerBackend = _DEFAULT_POINTER_CLS("")
 
-        # from jsonpath import JSONPointer as ExtendedJsonPointer
-
-        # _dont_raise_mypy_error_2: PointerBackend = ExtendedJsonPointer("")
-
     with subtests.test("no backends"):
         ptr = JSONPointer.parse("/a", backend=None)
         assert isinstance(ptr.ptr, _DEFAULT_POINTER_CLS)
@@ -498,7 +380,7 @@ def test_jsonpointer_type_args_validation(subtests: Subtests) -> None:
             PointerBackend,
             BadDotPointer,
             DotPointer(""),
-            "DotPointer",  # forward references disallowed for predictability
+            "DotPointer",
         ]:
             with pytest.raises(InvalidJSONPointer):
                 adapter = TypeAdapter(JSONPointer[JSONValue, invalid_backend])
@@ -673,6 +555,3 @@ def test_jsonpointer_covariance_narrow_to_wide(subtests: Subtests) -> None:
         assert JSONPointer.parse(p_bool, type_param=int) == p_bool
         assert JSONPointer.parse(p_bool, type_param=JSONNumber) == p_bool
         assert JSONPointer.parse(p_bool, type_param=JSONValue) == p_bool
-    # currently wide-to-narrow is also allowed, but that's not guaranteed in the future
-    # type hints already forbid non-covariant assignment
-    # NOTE: add tests that simply showcase that ``type: ignore`` is required to disobey the documentation

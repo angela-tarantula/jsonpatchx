@@ -1,7 +1,7 @@
 import pytest
 from httpx import AsyncClient
 
-from tests.integration.fastapi_tests.conftest import patch_json
+from tests.support.fastapi_clients import patch_json
 
 pytestmark = [pytest.mark.anyio, pytest.mark.integration]
 

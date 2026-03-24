@@ -16,7 +16,7 @@ on:
       snapshot-path: # TODO: make the python script configurable like this too
         description: Path containing generated OpenAPI snapshot artifacts.
         required: false
-        default: tests/integration/fastapi_tests/snapshots
+        default: tests/contract/openapi/snapshots
         type: string
       commit-message:
         description: Commit message for refreshed snapshot artifacts.

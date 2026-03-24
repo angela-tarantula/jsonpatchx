@@ -24,7 +24,7 @@ sys.path.insert(0, str(ROOT))
 
 # pylint: disable=wrong-import-position
 from examples.fastapi import demo1, demo2, demo3, demo4, demo5, demo6  # noqa: E402
-from tests.integration.fastapi_tests.test_openapi_contract_snapshot import (  # noqa: E402
+from tests.contract.openapi.test_openapi_contract_snapshot import (  # noqa: E402
     SNAPSHOT_PATH,
     _build_openapi,
 )
@@ -69,7 +69,7 @@ def _format_with_prettier(snapshot_paths: list[Path]) -> None:
 
 def main() -> None:
     """Write and format all generated OpenAPI snapshot files."""
-    snapshot_dir = ROOT / "tests" / "integration" / "fastapi_tests" / "snapshots"
+    snapshot_dir = ROOT / "tests" / "contract" / "openapi" / "snapshots"
     snapshot_dir.mkdir(parents=True, exist_ok=True)
 
     snapshot_paths = [

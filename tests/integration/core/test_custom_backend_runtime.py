@@ -6,7 +6,7 @@ from jsonpatchx.pointer import JSONPointer
 from jsonpatchx.schema import OperationSchema
 from jsonpatchx.standard import JsonPatch
 from jsonpatchx.types import JSONValue
-from tests.conftest import DotPointer
+from tests.support.pointer_backends import DotPointer
 
 pytestmark = pytest.mark.integration
 

@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from collections.abc import AsyncGenerator, Generator
 from typing import Any
 
@@ -10,7 +12,7 @@ from examples.fastapi.shared import reset_store
 
 
 @pytest.fixture(autouse=True)
-def _reset_demo_store() -> Generator[None]:
+def reset_demo_store_fixture() -> Generator[None]:
     reset_store()
     yield
     reset_store()
@@ -61,5 +63,5 @@ async def patch_json(client: AsyncClient, url: str, patch: list[dict[str, Any]])
     return await client.patch(
         url,
         json=patch,
-        headers={"Content-Type": "application/json-patch+json"},  # test others
+        headers={"Content-Type": "application/json-patch+json"},
     )

@@ -170,3 +170,6 @@ exclude_lines = [
   "case _ as unreachable:",
   "^\\s*@(?:typing\\.)?overload\\b",
 ]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/integration/fastapi/runtime/conftest.py" = ["F401"]
