@@ -15,6 +15,10 @@ written as they are, with security and auditability as defaults.
 - Local refresh: invoke `prek` hooks or direct script execution.
 - CI model: [`update-openapi-snapshots.yml`](update-openapi-snapshots.yml) is
   the reusable refresh workflow that caller workflows invoke.
+- The reusable workflow does not accept a snapshot path input; it treats
+  [`scripts/update_openapi_snapshots.py`](../../scripts/update_openapi_snapshots.py)
+  as the source of truth for output locations and commits only when `git diff`
+  detects changes after regeneration.
 - Current caller example:
   [`dependabot-update-openapi-snapshots.yml`](dependabot-update-openapi-snapshots.yml)
   invokes the reusable workflow for Dependabot dependency updates.

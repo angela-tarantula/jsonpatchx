@@ -13,11 +13,6 @@ on:
         description: Environment name used for secret-scoped execution.
         required: true
         type: string
-      snapshot-path: # TODO: make the python script configurable like this too
-        description: Path containing generated OpenAPI snapshot artifacts.
-        required: false
-        default: examples/openapi
-        type: string
       commit-message:
         description: Commit message for refreshed snapshot artifacts.
         required: false
@@ -58,13 +53,12 @@ jobs:
         env:
           BRANCH: ${{ github.ref_name }}
           PUSH_TOKEN: ${{ secrets.push-token }}
-          SNAPSHOT_PATH: ${{ inputs.snapshot-path }}
           COMMIT_MESSAGE: ${{ inputs.commit-message }}
         shell: bash
         run: |
           set -euo pipefail
 
-          if git diff --quiet -- "${SNAPSHOT_PATH}"; then
+          if git diff --quiet --exit-code; then
             echo "No snapshot updates needed."
             exit 0
           fi
@@ -76,7 +70,7 @@ jobs:
 
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add "${SNAPSHOT_PATH}"
+          git add -A
           git commit -m "${COMMIT_MESSAGE}"
 
           git remote set-url origin "https://x-access-token:${PUSH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
