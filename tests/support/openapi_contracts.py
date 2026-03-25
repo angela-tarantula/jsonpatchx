@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Final
+from typing import Any, Final, cast
 
 from fastapi import FastAPI
 
@@ -19,15 +19,11 @@ class DemoOpenAPIContract:
     name: str
     app: FastAPI
 
-    @property
-    def snapshot(self) -> dict[str, Any]:
+    def load_snapshot(self) -> dict[str, Any]:
         path = SNAPSHOT_DIR / f"{self.name}_openapi.json"
-        assert path.exists()
-        text = path.read_text()
-        decoded_json = json.loads(text)
-        assert isinstance(decoded_json, dict)
-        assert all(isinstance(key, str) for key in decoded_json)
-        return decoded_json
+        if not path.exists():
+            raise FileNotFoundError(path)
+        return cast(dict[str, Any], json.loads(path.read_text()))
 
 
 DEMO_OPENAPI_CONTRACTS: Final[tuple[DemoOpenAPIContract, ...]] = (

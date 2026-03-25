@@ -18,6 +18,6 @@ pytestmark = pytest.mark.contract
     ids=lambda contract: contract.name,
 )
 def test_demo_openapi_snapshot(contract: DemoOpenAPIContract) -> None:
-    expected = contract.snapshot
+    expected = contract.load_snapshot()
     actual = contract.app.openapi()
     assert actual == expected
