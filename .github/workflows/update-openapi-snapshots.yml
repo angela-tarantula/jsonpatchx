@@ -13,11 +13,6 @@ on:
         description: Environment name used for secret-scoped execution.
         required: true
         type: string
-      commit-message:
-        description: Commit message for refreshed snapshot artifacts.
-        required: false
-        default: "chore: refresh OpenAPI snapshots"
-        type: string
 
 permissions: read-all
 
@@ -53,7 +48,6 @@ jobs:
         env:
           BRANCH: ${{ github.ref_name }}
           PUSH_TOKEN: ${{ secrets.push-token }}
-          COMMIT_MESSAGE: ${{ inputs.commit-message }}
         shell: bash
         run: |
           set -euo pipefail
@@ -63,15 +57,10 @@ jobs:
             exit 0
           fi
 
-          if [ -z "${PUSH_TOKEN}" ]; then
-            echo "Missing push token."
-            exit 1
-          fi
-
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add -A
-          git commit -m "${COMMIT_MESSAGE}"
+          git commit -m "chore: refresh OpenAPI snapshots"
 
           git remote set-url origin "https://x-access-token:${PUSH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
           git push origin "HEAD:${BRANCH}"
