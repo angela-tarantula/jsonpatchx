@@ -117,4 +117,4 @@ repos:
           npx --yes @stoplight/spectral-cli lint --ruleset
           .github/linters/.openapirc.yml
         language: system
-        files: ^tests/contract/openapi/snapshots/.*\.json$
+        files: ^examples/openapi/.*\.json$

@@ -23,9 +23,8 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
 # pylint: disable=wrong-import-position
-from tests.support.openapi_contracts import (  # noqa: E402
-    DEMO_OPENAPI_CONTRACTS,
-    SNAPSHOT_DIR,
+from examples.loader import (  # noqa: E402
+    DEMO_MAP,
 )
 
 
@@ -68,17 +67,12 @@ def _format_with_prettier(snapshot_paths: list[Path]) -> None:
 
 def main() -> None:
     """Write and format all generated OpenAPI snapshot files."""
-    if not DEMO_OPENAPI_CONTRACTS:  # pragma: no cover
-        raise RuntimeError("No demo OpenAPI contracts configured.")
-
-    snapshot_paths = [
-        SNAPSHOT_DIR / f"{contract.name}_openapi.json"
-        for contract in DEMO_OPENAPI_CONTRACTS
-    ]
+    demos = tuple(DEMO_MAP.values())
+    snapshot_paths = [spec.snapshot_path for spec in demos]
     for path in snapshot_paths:
         path.parent.mkdir(parents=True, exist_ok=True)
 
-    snapshot_schemas = [contract.app.openapi() for contract in DEMO_OPENAPI_CONTRACTS]
+    snapshot_schemas = [spec.app.openapi() for spec in demos]
 
     for path, schema in zip(snapshot_paths, snapshot_schemas, strict=True):
         _write_snapshot(path, schema)

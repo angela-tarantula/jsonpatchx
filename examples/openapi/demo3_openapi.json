@@ -349,8 +349,8 @@
     }
   },
   "info": {
-    "description": "Plain JSON patching for service configs using `JsonPatchFor[Name, Registry]`.",
-    "title": "Demo 3: Control plane configs",
+    "description": "Demo 3: Plain JSON patching for service configs using `JsonPatchFor[Name, Registry]`.",
+    "title": "Control plane configs",
     "version": "0.1.0"
   },
   "openapi": "3.1.0",

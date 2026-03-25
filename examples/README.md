@@ -17,7 +17,7 @@ in Swagger UI.
 ## Demo launcher
 
 ```bash
-uv run python -m examples.fastapi.demo
+uv run python -m examples.run
 ```
 
 FastAPI docs already include example requests and payloads.
@@ -27,7 +27,7 @@ FastAPI docs already include example requests and payloads.
 Standard JSON Patch on customer profiles using
 `JsonPatchFor[Model, StandardRegistry]`.
 
-**File:** [`demo1.py`](demo1.py)
+**File:** [`demo1.py`](fastapi/demo1.py)
 
 ### Run
 
@@ -38,7 +38,7 @@ Standard JSON Patch on customer profiles using
 Custom registries per model (players vs guilds) using
 `JsonPatchFor[Model, CustomRegistry]`.
 
-**File:** [`demo2.py`](demo2.py)
+**File:** [`demo2.py`](fastapi/demo2.py)
 
 ### Run
 
@@ -48,7 +48,7 @@ Custom registries per model (players vs guilds) using
 
 Plain JSON patching for service configs using `JsonPatchFor[Name, Registry]`.
 
-**File:** [`demo3.py`](demo3.py)
+**File:** [`demo3.py`](fastapi/demo3.py)
 
 ### Run
 
@@ -59,7 +59,7 @@ Plain JSON patching for service configs using `JsonPatchFor[Name, Registry]`.
 Mixed pointer backends in one registry: slash-pointer built-ins and rune-pointer
 custom operations.
 
-**File:** [`demo4.py`](demo4.py)
+**File:** [`demo4.py`](fastapi/demo4.py)
 
 ### Run
 
@@ -70,7 +70,7 @@ custom operations.
 Operations that explicitly annotate custom pointer backends (no registry-level
 backend override).
 
-**File:** [`demo5.py`](demo5.py)
+**File:** [`demo5.py`](fastapi/demo5.py)
 
 ### Run
 
@@ -81,7 +81,7 @@ backend override).
 Operations authored as `JSONPointer[..., P]` and specialized per-op via generic
 backend parameterization.
 
-**File:** [`demo6.py`](demo6.py)
+**File:** [`demo6.py`](fastapi/demo6.py)
 
 ### Run
 
@@ -92,7 +92,7 @@ backend parameterization.
 Contract-focused schema demo for `JsonPatchFor` model generation/reuse
 invariants.
 
-**File:** [`demo7.py`](demo7.py)
+**File:** [`demo7.py`](fastapi/demo7.py)
 
 ### Run
 

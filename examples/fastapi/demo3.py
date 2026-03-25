@@ -85,8 +85,8 @@ config_patch = JsonPatchRoute(
 )
 
 app = create_app(
-    title="Demo 3: Control plane configs",
-    description="Plain JSON patching for service configs using `JsonPatchFor[Name, Registry]`.",
+    title="Control plane configs",
+    description="Demo 3: Plain JSON patching for service configs using `JsonPatchFor[Name, Registry]`.",
 )
 
 

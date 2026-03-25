@@ -55,8 +55,8 @@ customer_patch = JsonPatchRoute(
 )
 
 app = create_app(
-    title="Demo 1: Support desk corrections",
-    description="Standard JSON Patch on customer profiles using `JsonPatchFor[Model, StandardRegistry]`.",
+    title="Support desk corrections",
+    description="Demo 1: Standard JSON Patch on customer profiles using `JsonPatchFor[Model, StandardRegistry]`.",
 )
 
 

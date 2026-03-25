@@ -87,7 +87,7 @@ updated = patch.apply(doc)
 
 For practical end-to-end examples:
 
-- FastAPI demos: [examples/fastapi/README.md](examples/fastapi/README.md)
+- FastAPI demos: [examples/README.md](examples/README.md)
 - Operation recipes: [examples/recipes.py](examples/recipes.py)
 - Error payload shapes: [docs/demo-error-shapes.md](docs/demo-error-shapes.md)
 

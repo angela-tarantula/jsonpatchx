@@ -5,7 +5,8 @@ written as they are, with security and auditability as defaults.
 
 ## OpenAPI Snapshots
 
-- OpenAPI snapshot JSON files are committed artifacts in this repository.
+- OpenAPI snapshot JSON files are committed artifacts in this repository under
+  [`examples/openapi`](../../examples/openapi).
 - They make API contract changes visible in PR diffs.
 - Therefore it's necessary to regenerate snapshots whenever code or dependencies
   change generated OpenAPI.

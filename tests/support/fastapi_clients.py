@@ -7,15 +7,14 @@ import pytest
 from fastapi import FastAPI
 from httpx import ASGITransport, AsyncClient
 
-from examples.fastapi import demo1, demo2, demo3, demo4, demo5, demo6
-from examples.fastapi.shared import reset_store
+from examples.loader import DEMO_MAP, reset_demo_store
 
 
 @pytest.fixture(autouse=True)
 def reset_demo_store_fixture() -> Generator[None]:
-    reset_store()
+    reset_demo_store()
     yield
-    reset_store()
+    reset_demo_store()
 
 
 def make_client(app: FastAPI) -> AsyncClient:
@@ -25,37 +24,37 @@ def make_client(app: FastAPI) -> AsyncClient:
 
 @pytest.fixture
 async def demo1_client() -> AsyncGenerator[AsyncClient]:
-    async with make_client(demo1.app) as client:
+    async with make_client(DEMO_MAP["1"].app) as client:
         yield client
 
 
 @pytest.fixture
 async def demo2_client() -> AsyncGenerator[AsyncClient]:
-    async with make_client(demo2.app) as client:
+    async with make_client(DEMO_MAP["2"].app) as client:
         yield client
 
 
 @pytest.fixture
 async def demo3_client() -> AsyncGenerator[AsyncClient]:
-    async with make_client(demo3.app) as client:
+    async with make_client(DEMO_MAP["3"].app) as client:
         yield client
 
 
 @pytest.fixture
 async def demo4_client() -> AsyncGenerator[AsyncClient]:
-    async with make_client(demo4.app) as client:
+    async with make_client(DEMO_MAP["4"].app) as client:
         yield client
 
 
 @pytest.fixture
 async def demo5_client() -> AsyncGenerator[AsyncClient]:
-    async with make_client(demo5.app) as client:
+    async with make_client(DEMO_MAP["5"].app) as client:
         yield client
 
 
 @pytest.fixture
 async def demo6_client() -> AsyncGenerator[AsyncClient]:
-    async with make_client(demo6.app) as client:
+    async with make_client(DEMO_MAP["6"].app) as client:
         yield client
 
 

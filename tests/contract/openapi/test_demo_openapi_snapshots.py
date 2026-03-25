@@ -7,17 +7,10 @@ examples evolve, including route-helper behavior and example-driven schema outpu
 
 import pytest
 
-from tests.support.openapi_contracts import DEMO_OPENAPI_CONTRACTS, DemoOpenAPIContract
+from examples.loader import Demo, load_snapshot
 
 pytestmark = pytest.mark.contract
 
 
-@pytest.mark.parametrize(
-    "contract",
-    DEMO_OPENAPI_CONTRACTS,
-    ids=lambda contract: contract.name,
-)
-def test_demo_openapi_snapshot(contract: DemoOpenAPIContract) -> None:
-    expected = contract.load_snapshot()
-    actual = contract.app.openapi()
-    assert actual == expected
+def test_demo_openapi_snapshot(contract: Demo) -> None:
+    assert contract.app.openapi() == load_snapshot(contract)

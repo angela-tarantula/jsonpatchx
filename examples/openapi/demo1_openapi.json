@@ -307,8 +307,8 @@
     }
   },
   "info": {
-    "description": "Standard JSON Patch on customer profiles using `JsonPatchFor[Model, StandardRegistry]`.",
-    "title": "Demo 1: Support desk corrections",
+    "description": "Demo 1: Standard JSON Patch on customer profiles using `JsonPatchFor[Model, StandardRegistry]`.",
+    "title": "Support desk corrections",
     "version": "0.1.0"
   },
   "openapi": "3.1.0",

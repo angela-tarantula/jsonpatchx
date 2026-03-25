@@ -27,94 +27,63 @@
         "title": "Add operation",
         "type": "object"
       },
-      "Apprentice": {
+      "AppendOp": {
+        "additionalProperties": true,
+        "description": "Appends a value to an array.",
         "properties": {
-          "id": {
-            "title": "Id",
-            "type": "integer"
-          },
-          "mana": {
-            "default": 0,
-            "title": "Mana",
-            "type": "integer"
-          },
-          "name": {
-            "title": "Name",
+          "op": {
+            "const": "append",
+            "default": "append",
+            "description": "The operation to perform.",
+            "title": "Op",
             "type": "string"
           },
-          "rank": {
-            "default": "novice",
-            "title": "Rank",
-            "type": "string"
+          "path": {
+            "description": "JSON Pointer (RFC 6901) string",
+            "format": "json-pointer",
+            "title": "Path",
+            "type": "string",
+            "x-pointer-type-schema": {
+              "items": {},
+              "type": "array"
+            }
           },
-          "sigils": {
-            "items": {
-              "type": "string"
-            },
-            "title": "Sigils",
-            "type": "array"
+          "value": {
+            "title": "Value"
           }
         },
-        "required": ["id", "name"],
-        "title": "Apprentice",
+        "required": ["op", "path", "value"],
+        "title": "Append operation",
         "type": "object"
       },
-      "ApprenticeId": {
-        "enum": [1, 2],
-        "title": "ApprenticeId",
-        "type": "integer"
-      },
-      "ApprenticePatchOperation": {
-        "description": "Discriminated union of patch operations for Apprentice.",
-        "discriminator": {
-          "mapping": {
-            "add": "#/components/schemas/AddOp",
-            "append": "#/components/schemas/RuneAppendOp",
-            "copy": "#/components/schemas/CopyOp",
-            "increment": "#/components/schemas/RuneIncrementOp",
-            "move": "#/components/schemas/MoveOp",
-            "remove": "#/components/schemas/RemoveOp",
-            "replace": "#/components/schemas/ReplaceOp",
-            "test": "#/components/schemas/TestOp"
+      "AppendUniqueOp": {
+        "additionalProperties": true,
+        "description": "Appends a value if it is not already present.",
+        "properties": {
+          "op": {
+            "const": "append_unique",
+            "default": "append_unique",
+            "description": "The operation to perform.",
+            "title": "Op",
+            "type": "string"
           },
-          "propertyName": "op"
-        },
-        "oneOf": [
-          {
-            "$ref": "#/components/schemas/AddOp"
+          "path": {
+            "description": "JSON Pointer (RFC 6901) string",
+            "format": "json-pointer",
+            "title": "Path",
+            "type": "string",
+            "x-pointer-type-schema": {
+              "items": {},
+              "type": "array"
+            }
           },
-          {
-            "$ref": "#/components/schemas/RuneAppendOp"
-          },
-          {
-            "$ref": "#/components/schemas/CopyOp"
-          },
-          {
-            "$ref": "#/components/schemas/RuneIncrementOp"
-          },
-          {
-            "$ref": "#/components/schemas/MoveOp"
-          },
-          {
-            "$ref": "#/components/schemas/RemoveOp"
-          },
-          {
-            "$ref": "#/components/schemas/ReplaceOp"
-          },
-          {
-            "$ref": "#/components/schemas/TestOp"
+          "value": {
+            "title": "Value"
           }
-        ],
-        "title": "Apprentice Patch Operation"
-      },
-      "ApprenticePatchRequest": {
-        "description": "Array of patch operations for Apprentice. Applied to model_dump() and re-validated against the model schema.",
-        "items": {
-          "$ref": "#/components/schemas/ApprenticePatchOperation"
         },
-        "title": "Apprentice Patch Request",
-        "type": "array",
-        "x-target-model": "Apprentice"
+        "required": ["op", "path", "value"],
+        "title": "Append unique operation",
+        "type": "object"
       },
       "CopyOp": {
         "additionalProperties": true,
@@ -146,6 +115,140 @@
         "title": "Copy operation",
         "type": "object"
       },
+      "EnforceMaxLenOp": {
+        "additionalProperties": true,
+        "description": "Trims a list from the front until it fits a max size.",
+        "properties": {
+          "max_path": {
+            "description": "JSON Pointer (RFC 6901) string",
+            "format": "json-pointer",
+            "title": "Max Path",
+            "type": "string",
+            "x-pointer-type-schema": {
+              "type": "number"
+            }
+          },
+          "op": {
+            "const": "enforce_max_len",
+            "default": "enforce_max_len",
+            "description": "The operation to perform.",
+            "title": "Op",
+            "type": "string"
+          },
+          "path": {
+            "description": "JSON Pointer (RFC 6901) string",
+            "format": "json-pointer",
+            "title": "Path",
+            "type": "string",
+            "x-pointer-type-schema": {
+              "items": {},
+              "type": "array"
+            }
+          }
+        },
+        "required": ["max_path", "op", "path"],
+        "title": "Enforce max length operation",
+        "type": "object"
+      },
+      "Guild": {
+        "properties": {
+          "badges": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Badges",
+            "type": "array"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "max_members": {
+            "default": 0,
+            "title": "Max Members",
+            "type": "integer"
+          },
+          "members": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Members",
+            "type": "array"
+          },
+          "motto": {
+            "title": "Motto",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": ["id", "name", "motto"],
+        "title": "Guild",
+        "type": "object"
+      },
+      "GuildId": {
+        "enum": [1, 2],
+        "title": "GuildId",
+        "type": "integer"
+      },
+      "GuildPatchOperation": {
+        "description": "Discriminated union of patch operations for Guild.",
+        "discriminator": {
+          "mapping": {
+            "add": "#/components/schemas/AddOp",
+            "append": "#/components/schemas/AppendOp",
+            "copy": "#/components/schemas/CopyOp",
+            "enforce_max_len": "#/components/schemas/EnforceMaxLenOp",
+            "increment": "#/components/schemas/IncrementOp",
+            "move": "#/components/schemas/MoveOp",
+            "remove": "#/components/schemas/RemoveOp",
+            "replace": "#/components/schemas/ReplaceOp",
+            "test": "#/components/schemas/TestOp"
+          },
+          "propertyName": "op"
+        },
+        "oneOf": [
+          {
+            "$ref": "#/components/schemas/AddOp"
+          },
+          {
+            "$ref": "#/components/schemas/AppendOp"
+          },
+          {
+            "$ref": "#/components/schemas/CopyOp"
+          },
+          {
+            "$ref": "#/components/schemas/EnforceMaxLenOp"
+          },
+          {
+            "$ref": "#/components/schemas/IncrementOp"
+          },
+          {
+            "$ref": "#/components/schemas/MoveOp"
+          },
+          {
+            "$ref": "#/components/schemas/RemoveOp"
+          },
+          {
+            "$ref": "#/components/schemas/ReplaceOp"
+          },
+          {
+            "$ref": "#/components/schemas/TestOp"
+          }
+        ],
+        "title": "Guild Patch Operation"
+      },
+      "GuildPatchRequest": {
+        "description": "Array of patch operations for Guild. Applied to model_dump() and re-validated against the model schema.",
+        "items": {
+          "$ref": "#/components/schemas/GuildPatchOperation"
+        },
+        "title": "Guild Patch Request",
+        "type": "array",
+        "x-target-model": "Guild"
+      },
       "HTTPValidationError": {
         "properties": {
           "detail": {
@@ -157,6 +260,37 @@
           }
         },
         "title": "HTTPValidationError",
+        "type": "object"
+      },
+      "IncrementOp": {
+        "additionalProperties": true,
+        "description": "Increments a numeric field by a value.",
+        "properties": {
+          "op": {
+            "const": "increment",
+            "default": "increment",
+            "description": "The operation to perform.",
+            "title": "Op",
+            "type": "string"
+          },
+          "path": {
+            "description": "JSON Pointer (RFC 6901) string",
+            "format": "json-pointer",
+            "title": "Path",
+            "type": "string",
+            "x-pointer-type-schema": {
+              "type": "number"
+            }
+          },
+          "value": {
+            "gt": 0,
+            "multiple_of": 5,
+            "title": "Value",
+            "type": "number"
+          }
+        },
+        "required": ["op", "path", "value"],
+        "title": "Increment operation",
         "type": "object"
       },
       "MoveOp": {
@@ -189,6 +323,119 @@
         "title": "Move operation",
         "type": "object"
       },
+      "Player": {
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "inventory": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Inventory",
+            "type": "array"
+          },
+          "level": {
+            "default": 1,
+            "title": "Level",
+            "type": "integer"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "perks": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Perks",
+            "type": "array"
+          },
+          "premium": {
+            "default": false,
+            "title": "Premium",
+            "type": "boolean"
+          },
+          "xp": {
+            "default": 0,
+            "title": "Xp",
+            "type": "integer"
+          }
+        },
+        "required": ["id", "name"],
+        "title": "Player",
+        "type": "object"
+      },
+      "PlayerId": {
+        "enum": [1, 2],
+        "title": "PlayerId",
+        "type": "integer"
+      },
+      "PlayerPatchOperation": {
+        "description": "Discriminated union of patch operations for Player.",
+        "discriminator": {
+          "mapping": {
+            "add": "#/components/schemas/AddOp",
+            "append_unique": "#/components/schemas/AppendUniqueOp",
+            "copy": "#/components/schemas/CopyOp",
+            "increment": "#/components/schemas/IncrementOp",
+            "move": "#/components/schemas/MoveOp",
+            "remove": "#/components/schemas/RemoveOp",
+            "remove_value": "#/components/schemas/RemoveValueOp",
+            "replace": "#/components/schemas/ReplaceOp",
+            "require_min": "#/components/schemas/RequireMinimumOp",
+            "test": "#/components/schemas/TestOp",
+            "toggle": "#/components/schemas/ToggleBoolOp"
+          },
+          "propertyName": "op"
+        },
+        "oneOf": [
+          {
+            "$ref": "#/components/schemas/AddOp"
+          },
+          {
+            "$ref": "#/components/schemas/AppendUniqueOp"
+          },
+          {
+            "$ref": "#/components/schemas/CopyOp"
+          },
+          {
+            "$ref": "#/components/schemas/IncrementOp"
+          },
+          {
+            "$ref": "#/components/schemas/MoveOp"
+          },
+          {
+            "$ref": "#/components/schemas/RemoveOp"
+          },
+          {
+            "$ref": "#/components/schemas/RemoveValueOp"
+          },
+          {
+            "$ref": "#/components/schemas/ReplaceOp"
+          },
+          {
+            "$ref": "#/components/schemas/RequireMinimumOp"
+          },
+          {
+            "$ref": "#/components/schemas/TestOp"
+          },
+          {
+            "$ref": "#/components/schemas/ToggleBoolOp"
+          }
+        ],
+        "title": "Player Patch Operation"
+      },
+      "PlayerPatchRequest": {
+        "description": "Array of patch operations for Player. Applied to model_dump() and re-validated against the model schema.",
+        "items": {
+          "$ref": "#/components/schemas/PlayerPatchOperation"
+        },
+        "title": "Player Patch Request",
+        "type": "array",
+        "x-target-model": "Player"
+      },
       "RemoveOp": {
         "additionalProperties": true,
         "description": "RFC 6902 remove operation. Removal of the root sets it to null.",
@@ -210,6 +457,35 @@
         },
         "required": ["op", "path"],
         "title": "Remove operation",
+        "type": "object"
+      },
+      "RemoveValueOp": {
+        "additionalProperties": true,
+        "description": "Removes a value from an array.",
+        "properties": {
+          "op": {
+            "const": "remove_value",
+            "default": "remove_value",
+            "description": "The operation to perform.",
+            "title": "Op",
+            "type": "string"
+          },
+          "path": {
+            "description": "JSON Pointer (RFC 6901) string",
+            "format": "json-pointer",
+            "title": "Path",
+            "type": "string",
+            "x-pointer-type-schema": {
+              "items": {},
+              "type": "array"
+            }
+          },
+          "value": {
+            "title": "Value"
+          }
+        },
+        "required": ["op", "path", "value"],
+        "title": "Remove value operation",
         "type": "object"
       },
       "ReplaceOp": {
@@ -238,121 +514,35 @@
         "title": "Replace operation",
         "type": "object"
       },
-      "RuneAppendOp": {
+      "RequireMinimumOp": {
         "additionalProperties": true,
-        "description": "Appends a value to an array.",
+        "description": "Ensures a numeric value meets a minimum.",
         "properties": {
+          "min_value": {
+            "gt": 0,
+            "title": "Min Value",
+            "type": "number"
+          },
           "op": {
-            "const": "append",
-            "default": "append",
+            "const": "require_min",
+            "default": "require_min",
             "description": "The operation to perform.",
             "title": "Op",
             "type": "string"
           },
           "path": {
-            "description": "JSON Pointer string (custom backend syntax)",
-            "format": "x-json-pointer",
-            "title": "Path",
-            "type": "string",
-            "x-pointer-type-schema": {
-              "items": {},
-              "type": "array"
-            }
-          },
-          "value": {
-            "title": "Value"
-          }
-        },
-        "required": ["op", "path", "value"],
-        "title": "Rune append operation",
-        "type": "object"
-      },
-      "RuneIncrementOp": {
-        "additionalProperties": true,
-        "description": "Increments a numeric field by a value.",
-        "properties": {
-          "op": {
-            "const": "increment",
-            "default": "increment",
-            "description": "The operation to perform.",
-            "title": "Op",
-            "type": "string"
-          },
-          "path": {
-            "description": "JSON Pointer string (custom backend syntax)",
-            "format": "x-json-pointer",
+            "description": "JSON Pointer (RFC 6901) string",
+            "format": "json-pointer",
             "title": "Path",
             "type": "string",
             "x-pointer-type-schema": {
               "type": "number"
             }
-          },
-          "value": {
-            "gt": 0,
-            "multiple_of": 5,
-            "title": "Value",
-            "type": "number"
           }
         },
-        "required": ["op", "path", "value"],
-        "title": "Rune increment operation",
+        "required": ["min_value", "op", "path"],
+        "title": "Require minimum operation",
         "type": "object"
-      },
-      "SpellbookId": {
-        "enum": ["grimoire", "coven"],
-        "title": "SpellbookId",
-        "type": "string"
-      },
-      "SpellbookPatchOperation": {
-        "description": "Discriminated union of patch operations for Spellbook.",
-        "discriminator": {
-          "mapping": {
-            "add": "#/components/schemas/AddOp",
-            "append": "#/components/schemas/RuneAppendOp",
-            "copy": "#/components/schemas/CopyOp",
-            "increment": "#/components/schemas/RuneIncrementOp",
-            "move": "#/components/schemas/MoveOp",
-            "remove": "#/components/schemas/RemoveOp",
-            "replace": "#/components/schemas/ReplaceOp",
-            "test": "#/components/schemas/TestOp"
-          },
-          "propertyName": "op"
-        },
-        "oneOf": [
-          {
-            "$ref": "#/components/schemas/AddOp"
-          },
-          {
-            "$ref": "#/components/schemas/RuneAppendOp"
-          },
-          {
-            "$ref": "#/components/schemas/CopyOp"
-          },
-          {
-            "$ref": "#/components/schemas/RuneIncrementOp"
-          },
-          {
-            "$ref": "#/components/schemas/MoveOp"
-          },
-          {
-            "$ref": "#/components/schemas/RemoveOp"
-          },
-          {
-            "$ref": "#/components/schemas/ReplaceOp"
-          },
-          {
-            "$ref": "#/components/schemas/TestOp"
-          }
-        ],
-        "title": "Spellbook Patch Operation"
-      },
-      "SpellbookPatchRequest": {
-        "description": "Array of patch operations for Spellbook.",
-        "items": {
-          "$ref": "#/components/schemas/SpellbookPatchOperation"
-        },
-        "title": "Spellbook Patch Request",
-        "type": "array"
       },
       "TestOp": {
         "additionalProperties": true,
@@ -378,6 +568,31 @@
         },
         "required": ["op", "path", "value"],
         "title": "Test operation",
+        "type": "object"
+      },
+      "ToggleBoolOp": {
+        "additionalProperties": true,
+        "description": "Toggles a boolean value at a path.",
+        "properties": {
+          "op": {
+            "const": "toggle",
+            "default": "toggle",
+            "description": "The operation to perform.",
+            "title": "Op",
+            "type": "string"
+          },
+          "path": {
+            "description": "JSON Pointer (RFC 6901) string",
+            "format": "json-pointer",
+            "title": "Path",
+            "type": "string",
+            "x-pointer-type-schema": {
+              "type": "boolean"
+            }
+          }
+        },
+        "required": ["op", "path"],
+        "title": "Toggle operation",
         "type": "object"
       },
       "ValidationError": {
@@ -419,23 +634,23 @@
     }
   },
   "info": {
-    "description": "Mixed pointer backends in one registry: RFC6901 slash-pointer built-ins plus rune-pointer custom ops. Uses `JsonPatchRoute` to align OpenAPI and runtime validation.",
-    "title": "Demo 4: Spellbook rune pointers",
+    "description": "Demo 2: Custom registries per model (players vs guilds) using `JsonPatchFor[Model, CustomRegistry]`.",
+    "title": "Player and guild progression",
     "version": "0.1.0"
   },
   "openapi": "3.1.0",
   "paths": {
-    "/apprentices/{apprentice_id}": {
+    "/guilds/{guild_id}": {
       "get": {
-        "description": "Fetch an apprentice by id.",
-        "operationId": "get_apprentice_endpoint_apprentices__apprentice_id__get",
+        "description": "Fetch a guild by id.",
+        "operationId": "get_guild_endpoint_guilds__guild_id__get",
         "parameters": [
           {
             "in": "path",
-            "name": "apprentice_id",
+            "name": "guild_id",
             "required": true,
             "schema": {
-              "$ref": "#/components/schemas/ApprenticeId"
+              "$ref": "#/components/schemas/GuildId"
             }
           }
         ],
@@ -444,7 +659,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Apprentice"
+                  "$ref": "#/components/schemas/Guild"
                 }
               }
             },
@@ -461,19 +676,19 @@
             "description": "Validation Error"
           }
         },
-        "summary": "Get an apprentice",
-        "tags": ["apprentices"]
+        "summary": "Get a guild",
+        "tags": ["guilds"]
       },
       "patch": {
-        "description": "Use slash pointers for built-ins and rune pointers for custom ops.",
-        "operationId": "patch_apprentice_apprentices__apprentice_id__patch",
+        "description": "Apply custom ops to a Guild model.",
+        "operationId": "patch_guild_guilds__guild_id__patch",
         "parameters": [
           {
             "in": "path",
-            "name": "apprentice_id",
+            "name": "guild_id",
             "required": true,
             "schema": {
-              "$ref": "#/components/schemas/ApprenticeId"
+              "$ref": "#/components/schemas/GuildId"
             }
           }
         ],
@@ -481,44 +696,54 @@
           "content": {
             "application/json-patch+json": {
               "examples": {
-                "lantern-lesson": {
-                  "summary": "slash replace + rune append",
+                "cozy-welcome": {
+                  "summary": "Trim members to cap and add a badge",
                   "value": [
                     {
-                      "op": "replace",
-                      "path": "/name",
-                      "value": "Nova"
+                      "max_path": "/max_members",
+                      "op": "enforce_max_len",
+                      "path": "/members"
                     },
                     {
                       "op": "append",
-                      "path": "sigils",
-                      "value": "ember"
+                      "path": "/badges",
+                      "value": "candle-lit"
                     }
                   ]
                 },
-                "sparkle-sprint": {
-                  "summary": "slash replace + rune increment + rune append",
+                "owl-parade": {
+                  "summary": "Add badge and raise cap",
                   "value": [
                     {
-                      "op": "replace",
-                      "path": "/name",
-                      "value": "Morgan Vale"
+                      "op": "append",
+                      "path": "/badges",
+                      "value": "raid-ready"
                     },
                     {
                       "op": "increment",
-                      "path": "mana",
-                      "value": 20
-                    },
+                      "path": "/max_members",
+                      "value": 5
+                    }
+                  ]
+                },
+                "snug-fit": {
+                  "summary": "Add a member, then trim to max size",
+                  "value": [
                     {
                       "op": "append",
-                      "path": "sigils",
-                      "value": "aurora"
+                      "path": "/members",
+                      "value": "Nova"
+                    },
+                    {
+                      "max_path": "/max_members",
+                      "op": "enforce_max_len",
+                      "path": "/members"
                     }
                   ]
                 }
               },
               "schema": {
-                "$ref": "#/components/schemas/ApprenticePatchRequest"
+                "$ref": "#/components/schemas/GuildPatchRequest"
               }
             }
           },
@@ -529,7 +754,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Apprentice"
+                  "$ref": "#/components/schemas/Guild"
                 }
               }
             },
@@ -695,21 +920,21 @@
             "description": "Patch execution error"
           }
         },
-        "summary": "Patch an apprentice (mixed pointer backends)",
-        "tags": ["apprentices"]
+        "summary": "Patch a guild",
+        "tags": ["guilds"]
       }
     },
-    "/spellbooks/{spellbook_id}": {
+    "/players/{player_id}": {
       "get": {
-        "description": "Fetch a spellbook by id.",
-        "operationId": "get_spellbook_endpoint_spellbooks__spellbook_id__get",
+        "description": "Fetch a player by id.",
+        "operationId": "get_player_endpoint_players__player_id__get",
         "parameters": [
           {
             "in": "path",
-            "name": "spellbook_id",
+            "name": "player_id",
             "required": true,
             "schema": {
-              "$ref": "#/components/schemas/SpellbookId"
+              "$ref": "#/components/schemas/PlayerId"
             }
           }
         ],
@@ -718,7 +943,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "title": "Response Get Spellbook Endpoint Spellbooks  Spellbook Id  Get"
+                  "$ref": "#/components/schemas/Player"
                 }
               }
             },
@@ -735,19 +960,19 @@
             "description": "Validation Error"
           }
         },
-        "summary": "Get a spellbook",
-        "tags": ["spellbooks"]
+        "summary": "Get a player",
+        "tags": ["players"]
       },
       "patch": {
-        "description": "Use slash pointers for built-ins and rune pointers for custom ops.",
-        "operationId": "patch_spellbook_spellbooks__spellbook_id__patch",
+        "description": "Apply custom ops to a Player model.",
+        "operationId": "patch_player_players__player_id__patch",
         "parameters": [
           {
             "in": "path",
-            "name": "spellbook_id",
+            "name": "player_id",
             "required": true,
             "schema": {
-              "$ref": "#/components/schemas/SpellbookId"
+              "$ref": "#/components/schemas/PlayerId"
             }
           }
         ],
@@ -755,24 +980,53 @@
           "content": {
             "application/json-patch+json": {
               "examples": {
-                "midnight-runes": {
-                  "summary": "slash replace + rune increment in one patch",
+                "glitter-boost": {
+                  "summary": "Bump XP and toggle premium",
                   "value": [
                     {
-                      "op": "replace",
-                      "path": "/rituals/summon/enabled",
-                      "value": true
+                      "op": "increment",
+                      "path": "/xp",
+                      "value": 50
+                    },
+                    {
+                      "op": "toggle",
+                      "path": "/premium"
+                    }
+                  ]
+                },
+                "snack-quest": {
+                  "summary": "Consume an item and earn XP",
+                  "value": [
+                    {
+                      "op": "remove_value",
+                      "path": "/inventory",
+                      "value": "healing_potion"
                     },
                     {
                       "op": "increment",
-                      "path": "ingredients.moon_salt",
-                      "value": 5
+                      "path": "/xp",
+                      "value": 25
+                    }
+                  ]
+                },
+                "sparkle-unlock": {
+                  "summary": "Require level, then add a perk",
+                  "value": [
+                    {
+                      "min_value": 5,
+                      "op": "require_min",
+                      "path": "/level"
+                    },
+                    {
+                      "op": "append_unique",
+                      "path": "/perks",
+                      "value": "storm-dash"
                     }
                   ]
                 }
               },
               "schema": {
-                "$ref": "#/components/schemas/SpellbookPatchRequest"
+                "$ref": "#/components/schemas/PlayerPatchRequest"
               }
             }
           },
@@ -783,7 +1037,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "title": "Response Patch Spellbook Spellbooks  Spellbook Id  Patch"
+                  "$ref": "#/components/schemas/Player"
                 }
               }
             },
@@ -949,8 +1203,8 @@
             "description": "Patch execution error"
           }
         },
-        "summary": "Patch a spellbook (mixed pointer backends)",
-        "tags": ["spellbooks"]
+        "summary": "Patch a player",
+        "tags": ["players"]
       }
     }
   }
