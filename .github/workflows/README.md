@@ -17,8 +17,9 @@ written as they are, with security and auditability as defaults.
   the reusable refresh workflow that caller workflows invoke.
 - The reusable workflow does not accept a snapshot path input; it treats
   [`scripts/update_openapi_snapshots.py`](../../scripts/update_openapi_snapshots.py)
-  as the source of truth for output locations and commits only when `git diff`
-  detects changes after regeneration.
+  as the source of truth for output locations and uses `EndBug/add-and-commit`
+  (scoped to `examples/openapi/*.json`) to commit only when snapshot files
+  changed.
 - Current caller example:
   [`dependabot-update-openapi-snapshots.yml`](dependabot-update-openapi-snapshots.yml)
   invokes the reusable workflow for Dependabot dependency updates.
