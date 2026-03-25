@@ -23,7 +23,10 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
 # pylint: disable=wrong-import-position
-from examples.fastapi import demo1, demo2, demo3, demo4, demo5, demo6, demo7  # noqa: E402
+from tests.support.openapi_contracts import (  # noqa: E402
+    DEMO_OPENAPI_CONTRACTS,
+    SNAPSHOT_DIR,
+)
 
 
 def _write_snapshot(path: Path, schema: object) -> None:
@@ -65,27 +68,17 @@ def _format_with_prettier(snapshot_paths: list[Path]) -> None:
 
 def main() -> None:
     """Write and format all generated OpenAPI snapshot files."""
-    snapshot_dir = ROOT / "tests" / "contract" / "openapi" / "snapshots"
-    snapshot_dir.mkdir(parents=True, exist_ok=True)
+    if not DEMO_OPENAPI_CONTRACTS:  # pragma: no cover
+        raise RuntimeError("No demo OpenAPI contracts configured.")
 
     snapshot_paths = [
-        snapshot_dir / "demo1_openapi.json",
-        snapshot_dir / "demo2_openapi.json",
-        snapshot_dir / "demo3_openapi.json",
-        snapshot_dir / "demo4_openapi.json",
-        snapshot_dir / "demo5_openapi.json",
-        snapshot_dir / "demo6_openapi.json",
-        snapshot_dir / "demo7_openapi.json",
+        SNAPSHOT_DIR / f"{contract.name}_openapi.json"
+        for contract in DEMO_OPENAPI_CONTRACTS
     ]
-    snapshot_schemas = [
-        demo1.app.openapi(),
-        demo2.app.openapi(),
-        demo3.app.openapi(),
-        demo4.app.openapi(),
-        demo5.app.openapi(),
-        demo6.app.openapi(),
-        demo7.app.openapi(),
-    ]
+    for path in snapshot_paths:
+        path.parent.mkdir(parents=True, exist_ok=True)
+
+    snapshot_schemas = [contract.app.openapi() for contract in DEMO_OPENAPI_CONTRACTS]
 
     for path, schema in zip(snapshot_paths, snapshot_schemas, strict=True):
         _write_snapshot(path, schema)

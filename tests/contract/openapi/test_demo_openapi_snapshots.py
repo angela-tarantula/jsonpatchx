@@ -5,36 +5,19 @@ This test verifies that the published OpenAPI docs for demo1-7 remain stable as
 examples evolve, including route-helper behavior and example-driven schema output.
 """
 
-import json
-from pathlib import Path
-
 import pytest
-from fastapi import FastAPI
 
-from examples.fastapi import demo1, demo2, demo3, demo4, demo5, demo6, demo7
+from tests.support.openapi_contracts import DEMO_OPENAPI_CONTRACTS, DemoOpenAPIContract
 
-SNAPSHOT_DIR = Path(__file__).resolve().parent / "snapshots"
 pytestmark = pytest.mark.contract
 
 
 @pytest.mark.parametrize(
-    "name,app",
-    [
-        ("demo1", demo1.app),
-        ("demo2", demo2.app),
-        ("demo3", demo3.app),
-        ("demo4", demo4.app),
-        ("demo5", demo5.app),
-        ("demo6", demo6.app),
-        ("demo7", demo7.app),
-    ],
-    ids=lambda item: item[0] if isinstance(item, tuple) else str(item),
+    "contract",
+    DEMO_OPENAPI_CONTRACTS,
+    ids=lambda contract: contract.name,
 )
-def test_demo_openapi_snapshot(name: str, app: FastAPI) -> None:
-    snapshot_path = SNAPSHOT_DIR / f"{name}_openapi.json"
-    if not snapshot_path.exists():  # pragma: no cover
-        pytest.fail(f"OpenAPI snapshot missing: {snapshot_path}")
-
-    expected = json.loads(snapshot_path.read_text())
-    actual = app.openapi()
+def test_demo_openapi_snapshot(contract: DemoOpenAPIContract) -> None:
+    expected = contract.snapshot
+    actual = contract.app.openapi()
     assert actual == expected
