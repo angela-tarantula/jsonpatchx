@@ -17,31 +17,23 @@ import json
 import sys
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(ROOT))
+ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(ROOT))  # predictable absolute imports
 
 # pylint: disable=wrong-import-position
-from examples.loader import (  # noqa: E402
-    DEMO_MAP,
-)
-
-
-def _write_snapshot(path: Path, schema: object) -> None:
-    path.write_text(json.dumps(schema, indent=2, sort_keys=True) + "\n")
-    print(f"wrote {path}")
+from examples.loader import DEMO_MAP  # noqa: E402
 
 
 def main() -> None:
     """Write all generated OpenAPI snapshot files."""
-    demos = tuple(DEMO_MAP.values())
-    snapshot_paths = [spec.snapshot_path for spec in demos]
-    for path in snapshot_paths:
+    for demo in DEMO_MAP.values():
+        path = demo.snapshot_path
+        schema = demo.app.openapi()
+
         path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(json.dumps(schema, indent=2, sort_keys=True) + "\n")
 
-    snapshot_schemas = [spec.app.openapi() for spec in demos]
-
-    for path, schema in zip(snapshot_paths, snapshot_schemas, strict=True):
-        _write_snapshot(path, schema)
+        print(f"wrote {path}")
 
 
 if __name__ == "__main__":
