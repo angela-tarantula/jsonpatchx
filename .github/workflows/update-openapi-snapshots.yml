@@ -48,5 +48,5 @@ jobs:
       - name: Commit and push snapshot updates
         uses: EndBug/add-and-commit@290ea2c423ad77ca9c62ae0f5b224379612c0321 # v10.0.0
         with:
-          add: "--all examples/openapi/*.json"
+          add: "-A"
           message: "chore: refresh OpenAPI snapshots"
