@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from collections.abc import AsyncGenerator, Generator
-from typing import Any
 
 import pytest
 from fastapi import FastAPI
@@ -49,14 +48,6 @@ async def demo5_client() -> AsyncGenerator[AsyncClient]:
 async def demo6_client() -> AsyncGenerator[AsyncClient]:
     async with make_client(DEMO_MAP["6"].app) as client:
         yield client
-
-
-async def patch_json(client: AsyncClient, url: str, patch: list[dict[str, Any]]):
-    return await client.patch(
-        url,
-        json=patch,
-        headers={"Content-Type": "application/json-patch+json"},
-    )
 
 
 @pytest.fixture(autouse=True)

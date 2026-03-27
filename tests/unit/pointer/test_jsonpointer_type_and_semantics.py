@@ -15,7 +15,7 @@ from jsonpatchx.backend import _DEFAULT_POINTER_CLS, PointerBackend
 from jsonpatchx.exceptions import InvalidJSONPointer, PatchConflictError
 from jsonpatchx.pointer import JSONPointer
 from jsonpatchx.types import JSONBoolean, JSONNumber, JSONValue
-from tests.support.pointer_backends import (
+from tests.support.pointers import (
     AnotherIncompletePointerBackend,
     BadDotPointer,
     DotPointer,

@@ -11,7 +11,7 @@ from jsonpatchx.registry import StandardRegistry, _RegistrySpec
 from jsonpatchx.schema import OperationSchema
 from jsonpatchx.standard import JsonPatch
 from jsonpatchx.types import JSONValue
-from tests.support.pointer_backends import DotPointer
+from tests.support.pointers import DotPointer
 
 
 class ToggleOp(OperationSchema):
