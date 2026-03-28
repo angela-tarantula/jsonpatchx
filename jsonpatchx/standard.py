@@ -217,6 +217,7 @@ def apply_patch(
     doc: JSONValue,
     patch: Sequence[Mapping[str, JSONValue]],
     *,
+    registry: TypeForm[OperationSchema] | None = None,
     inplace: bool = False,
 ) -> JSONValue:
     """
@@ -227,6 +228,9 @@ def apply_patch(
     Args:
         doc: Target JSON document.
         patch: Patch document as a sequence of operation mappings.
+        registry: A union of concrete OperationSchemas used for parsing and
+            validation (``OpA | OpB | ...``). If omitted, the standard RFC
+            6902 operations are used.
         inplace: Copy policy. ``False`` deep-copies ``doc`` first; ``True`` skips that copy.
             This is not a guarantee that the returned object is the exact same root object.
             See ``_apply_ops(..., inplace=...)`` for full semantics.
@@ -234,4 +238,4 @@ def apply_patch(
     Returns:
         The patched document.
     """
-    return JsonPatch(patch).apply(doc, inplace=inplace)
+    return JsonPatch(patch, registry=registry).apply(doc, inplace=inplace)
