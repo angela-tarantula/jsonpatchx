@@ -2,6 +2,7 @@ from typing import Literal, override
 
 import pytest
 from pydantic import BaseModel, ConfigDict
+from pytest import Subtests
 
 from jsonpatchx.exceptions import InvalidOperationRegistry
 from jsonpatchx.pointer import JSONPointer
@@ -28,6 +29,24 @@ def test_jsonpatchfor_args() -> None:
         JsonPatchFor[User, object()]  # type: ignore[type-var]
     with pytest.raises(InvalidOperationRegistry):
         JsonPatchFor[Literal["Config"], User]  # type: ignore[type-var]
+
+
+def test_jsonpatchfor_rejects_invalid_target_forms(subtests: Subtests) -> None:
+    with subtests.test("bare string target is rejected"):
+        with pytest.raises(TypeError):
+            JsonPatchFor["Config", StandardRegistry]  # type: ignore[type-var]
+
+    with subtests.test("wrong number of generic args is rejected"):
+        with pytest.raises(TypeError):
+            JsonPatchFor[User]  # type: ignore[type-arg]
+
+    with subtests.test("Literal target with multiple args is rejected"):
+        with pytest.raises(TypeError):
+            JsonPatchFor[Literal["Config1", "Config2"], StandardRegistry]
+
+    with subtests.test("Literal target with non-string arg is rejected"):
+        with pytest.raises(TypeError):
+            JsonPatchFor[Literal[123], StandardRegistry]  # type: ignore[type-arg]
 
 
 def test_jsonpatchfor_with_custom_registry() -> None:
