@@ -1,3 +1,6 @@
+from datetime import datetime, timezone
+from typing import Literal
+
 import pytest
 from pydantic import BaseModel, ConfigDict
 
@@ -14,10 +17,16 @@ class User(BaseModel):
     name: str
 
 
-class Other(BaseModel):
+class NonUser(BaseModel):
     model_config = ConfigDict(extra="forbid")
     id: int
     title: str
+
+
+class Event(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    id: int
+    at: datetime | Literal["unknown"]  # may cause model_dump() to fail
 
 
 def test_model_validation_failure() -> None:
@@ -36,4 +45,14 @@ def test_wrong_model_instance() -> None:
         ]
     )
     with pytest.raises(TypeError, match="expects a User instance"):
-        patch.apply(Other(id=1, title="Dr."))  # type: ignore[arg-type]
+        patch.apply(NonUser(id=1, title="Dr."))  # type: ignore[arg-type]
+
+
+def test_model_dump_failure() -> None:
+    EventPatch = JsonPatchFor[Event, StandardRegistry]
+    patch = EventPatch.model_validate([])
+
+    with pytest.raises(
+        PatchValidationError, match="Target model produced non-JSON data for patching"
+    ):
+        patch.apply(Event(id=1, at=datetime.now(timezone.utc)))
