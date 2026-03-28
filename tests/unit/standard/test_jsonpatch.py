@@ -67,10 +67,12 @@ def test_jsonpatch_sequence_and_dunder_contract(subtests: Subtests) -> None:
         assert patch != different_patch
         assert hash(patch) != hash(different_patch)
         assert patch != object()
+
+    with subtests.test("from_string"):
         assert patch == JsonPatch.from_string(
             json.dumps(payload), registry=SameRegistry
         )
-        # assert patch == JsonPatch.from_string(json.dumps(patch), registry=SameRegistry)
+        assert patch == JsonPatch.from_string(patch.to_string(), registry=SameRegistry)
 
     with subtests.test("concatenation"):
         combined = patch + same_patch
