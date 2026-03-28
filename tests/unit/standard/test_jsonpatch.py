@@ -67,6 +67,9 @@ def test_jsonpatch_sequence_and_dunder_contract(subtests: Subtests) -> None:
         assert patch != different_patch
         assert hash(patch) != hash(different_patch)
         assert patch != object()
+        assert patch == JsonPatch.from_string(
+            json.dumps(payload), registry=SameRegistry
+        )
 
     with subtests.test("concatenation"):
         combined = patch + same_patch
@@ -77,3 +80,5 @@ def test_jsonpatch_sequence_and_dunder_contract(subtests: Subtests) -> None:
             # In principle, patches may only be combined if they share the same registry.
             # If desired we can permit patch combinations by taking the registry union when ops don't clash.
             patch + different_patch
+        with pytest.raises(TypeError):
+            patch + object()
