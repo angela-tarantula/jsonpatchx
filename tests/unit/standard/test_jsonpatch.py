@@ -1,14 +1,14 @@
-from collections.abc import MutableSequence, Sequence
 import json
+from collections.abc import MutableSequence, Sequence
 from typing import Literal, override
 
 import pytest
 from pytest import Subtests
 
+from jsonpatchx.builtins import AddOp, MoveOp
 from jsonpatchx.schema import OperationSchema
 from jsonpatchx.standard import JsonPatch
 from jsonpatchx.types import JSONValue
-from jsonpatchx.builtins import AddOp, MoveOp
 
 
 def test_jsonpatch_sequence_and_dunder_contract(subtests: Subtests) -> None:
@@ -70,6 +70,7 @@ def test_jsonpatch_sequence_and_dunder_contract(subtests: Subtests) -> None:
         assert patch == JsonPatch.from_string(
             json.dumps(payload), registry=SameRegistry
         )
+        # assert patch == JsonPatch.from_string(json.dumps(patch), registry=SameRegistry)
 
     with subtests.test("concatenation"):
         combined = patch + same_patch
