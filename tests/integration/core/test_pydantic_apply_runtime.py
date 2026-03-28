@@ -56,3 +56,11 @@ def test_model_dump_failure() -> None:
         PatchValidationError, match="Target model produced non-JSON data for patching"
     ):
         patch.apply(Event(id=1, at=datetime.now(timezone.utc)))
+
+
+def test_json_body_patch_rejects_non_json_document() -> None:
+    ConfigPatch = JsonPatchFor[Literal["Config"], StandardRegistry]
+    patch = ConfigPatch.model_validate([])
+
+    with pytest.raises(PatchValidationError, match="Invalid JSON document"):
+        patch.apply(object())  # type: ignore[arg-type]
