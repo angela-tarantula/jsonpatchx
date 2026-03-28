@@ -31,18 +31,16 @@ def test_jsonpatchfor_args() -> None:
 
 
 def test_jsonpatchfor_with_custom_registry() -> None:
-    class EchoOp(OperationSchema):
-        op: Literal["echo"] = "echo"
-        path: JSONPointer[JSONValue]
-        value: JSONValue
+    class NoOp(OperationSchema):
+        op: Literal["noop"] = "noop"
 
         @override
-        def apply(self, doc: JSONValue) -> JSONValue:
+        def apply(self, doc: JSONValue) -> JSONValue:  # pragma: no cover
             return doc
 
-    type Registry = EchoOp
+    type Registry = NoOp
     PatchBody = JsonPatchFor[User, Registry]
-    patch = PatchBody.model_validate([{"op": "echo", "path": "/name", "value": "ok"}])
+    patch = PatchBody.model_validate([{"op": "noop"}])
     assert patch.ops
 
 
@@ -53,7 +51,7 @@ def test_jsonpatchfor_accepts_registry_type_aliases() -> None:
         value: JSONValue
 
         @override
-        def apply(self, doc: JSONValue) -> JSONValue:
+        def apply(self, doc: JSONValue) -> JSONValue:  # pragma: no cover
             return doc
 
     class StampOp(OperationSchema):
@@ -62,7 +60,7 @@ def test_jsonpatchfor_accepts_registry_type_aliases() -> None:
         value: JSONValue
 
         @override
-        def apply(self, doc: JSONValue) -> JSONValue:
+        def apply(self, doc: JSONValue) -> JSONValue:  # pragma: no cover
             return doc
 
     type EchoRegistry = EchoOp
