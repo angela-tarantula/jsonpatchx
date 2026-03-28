@@ -17,6 +17,6 @@ WORKDIR $SRC/jsonpatchx
 
 # Install dependencies with Py3.13
 RUN . /opt/python313/bin/activate && \
-    uv sync --python /opt/python313/bin/python --no-dev --group fuzz --active
+    uv sync --python /opt/python313/bin/python --no-default-groups --group fuzz --active
 
 COPY .clusterfuzzlite/build.sh $SRC/

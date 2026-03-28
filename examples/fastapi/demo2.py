@@ -130,8 +130,8 @@ guild_patch = JsonPatchRoute(
 )
 
 app = create_app(
-    title="Demo 2: Player and guild progression",
-    description="Custom registries per model (players vs guilds) using `JsonPatchFor[Model, CustomRegistry]`.",
+    title="Player and guild progression",
+    description="Demo 2: Custom registries per model (players vs guilds) using `JsonPatchFor[Model, CustomRegistry]`.",
 )
 
 

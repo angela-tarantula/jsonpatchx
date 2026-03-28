@@ -31,9 +31,9 @@ from jsonpatchx.types import JSONNumber
 STRICT_JSON_PATCH = True
 
 app = create_app(
-    title="Demo 4: Spellbook rune pointers",
+    title="Spellbook rune pointers",
     description=(
-        "Mixed pointer backends in one registry: RFC6901 slash-pointer built-ins "
+        "Demo 4: Mixed pointer backends in one registry: RFC6901 slash-pointer built-ins "
         "plus rune-pointer custom ops. "
         "Uses `JsonPatchRoute` to align OpenAPI and runtime validation."
     ),

@@ -102,9 +102,9 @@ apprentice_patch = JsonPatchRoute(
 )
 
 app = create_app(
-    title="Demo 6: Generic backend-parameterized ops",
+    title="Generic backend-parameterized ops",
     description=(
-        "Rune-pointer operations authored as "
+        "Demo 6: Rune-pointer operations authored as "
         "JSONPointer[..., P] where P is a backend TypeVar."
     ),
 )

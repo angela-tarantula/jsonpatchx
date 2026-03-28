@@ -6,3 +6,6 @@ skip-check:
   - CKV_OPENAPI_5
   # JSON Patch request arrays are intentionally unbounded; maxItems is not enforced.
   - CKV_OPENAPI_21
+skip-path:
+  # This fixture intentionally includes non-standard JSON numeric literals (NaN/Infinity).
+  - tests/compliance/rfc6902/jsonpatchx_nonfinite_tests.json

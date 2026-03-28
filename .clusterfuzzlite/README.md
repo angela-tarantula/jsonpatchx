@@ -3,6 +3,9 @@
 This is the canonical documentation for
 [ClusterFuzzLite](https://google.github.io/clusterfuzzlite/) in this repository.
 
+For local fuzzing setup and commands, see
+[`fuzzers/README.md`](../fuzzers/README.md).
+
 ## What Lives Here
 
 - [`Dockerfile`](Dockerfile): build image and Python runtime for

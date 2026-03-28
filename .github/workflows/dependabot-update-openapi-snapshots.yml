@@ -1,6 +1,6 @@
 ---
 # Purpose: Regenerate OpenAPI snapshots on Dependabot Python dependency PRs.
-name: dependabot update OpenAPI snapshots
+name: Dependabot Update OpenAPI Snapshots
 
 on:
   push:

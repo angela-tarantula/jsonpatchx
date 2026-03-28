@@ -1,21 +1,48 @@
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
 [project]
 name = "jsonpatchx"
 version = "0.1.0"
 description = "Add your description here"
 readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE"]
 requires-python = ">=3.12"
+authors = [
+    { name = "Angela Liss", email = "chamsester@gmail.com" },
+]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Framework :: FastAPI",
+    "Framework :: Pydantic",
+    "Framework :: Pydantic :: 2",
+    "Intended Audience :: Developers",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Programming Language :: Python :: Implementation :: CPython",
+    "Programming Language :: Python :: Implementation :: PyPy",
+    "Topic :: File Formats :: JSON",
+    "Topic :: File Formats :: JSON :: JSON Schema",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Typing :: Typed",
+]
 dependencies = [
     "jsonpointer>=3.0.0",
     "pydantic>=2.12.5",
     "typing-extensions>=4.15.0",
 ]
 
-[build-system]
-requires = ["setuptools"]
-build-backend = "setuptools.build_meta"
-
-[tool.setuptools.packages.find]
-include = ["jsonpatchx*"]
+[project.urls]
+Homepage = "https://github.com/angela-tarantula/jsonpatchx"
+Repository = "https://github.com/angela-tarantula/jsonpatchx"
+Issues = "https://github.com/angela-tarantula/jsonpatchx/issues"
 
 [project.optional-dependencies]
 fastapi = [
@@ -24,19 +51,39 @@ fastapi = [
 
 [dependency-groups]
 dev = [
-    "fastapi>=0.128.0",
+    { include-group = "tests" },
+    { include-group = "lint" },
+    { include-group = "typing" },
+]
+ci = [
+  { include-group = "tests" },
+  { include-group = "lint" },
+  { include-group = "typing" },
+]
+snapshots = [
+  { include-group = "tests" },
+]
+lint = [
+    "ruff>=0.15.7",
+]
+tests = [
+    "fastapi>=0.135.1",
     "httpx>=0.28.1",
-    "mypy>=1.19.1",
-    "pytest>=9.0.1",
-    "pytest-cov>=7.0.0",
+    "pytest>=9.0.2",
+    "pytest-cov>=7.1.0",
     "python-jsonpath>=2.0.2",
-    "ruff>=0.15.6",
-    "uvicorn>=0.40.0",
+    "uvicorn>=0.42.0",
+]
+typing = [
+    "mypy>=1.19.1",
 ]
 fuzz = [
     "atheris>=3.0.0; python_version >= '3.11' and python_version < '3.14'",
     "pyinstaller>=6.10.0",
 ]
+
+[tool.setuptools.packages.find]
+include = ["jsonpatchx*"]
 
 [tool.mypy]
 plugins = ["pydantic.mypy"]
@@ -86,7 +133,22 @@ enable_error_code = [
 ]
 
 [tool.pytest.ini_options]
+minversion = "9.0"
 pythonpath = ["."]
+testpaths = ["tests"]
+addopts = [
+  "--strict-config",
+  "--strict-markers",
+  "-ra",
+]
+xfail_strict = true
+filterwarnings = [
+  "error",
+]
+markers = [
+  "integration: integration tests across modules/APIs",
+  "contract: API/schema contract snapshot tests",
+]
 
 [tool.coverage.run]
 branch = true
@@ -98,6 +160,9 @@ omit = [
 ]
 
 [tool.coverage.report]
+fail_under = 90
+show_missing = true
+skip_covered = true
 exclude_lines = [
   "no cov",
   "if __name__ == .__main__.:",
@@ -105,3 +170,6 @@ exclude_lines = [
   "case _ as unreachable:",
   "^\\s*@(?:typing\\.)?overload\\b",
 ]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/integration/fastapi/runtime/conftest.py" = ["F401"]

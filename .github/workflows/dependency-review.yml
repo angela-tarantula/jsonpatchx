@@ -1,10 +1,11 @@
 ---
 # Purpose: Review PR dependency changes for vulnerabilities, license policy, and scorecard risk.
-name: dependency review
+name: Dependency Review
 
 on:
   pull_request:
     branches: ["main"]
+  workflow_dispatch:
 
 permissions: read-all
 

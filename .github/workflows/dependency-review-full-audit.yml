@@ -1,6 +1,6 @@
 ---
 # Purpose: Manually audit the full dependency graph against repository policy.
-name: dependency review full audit
+name: Dependency Review Full Audit
 
 on:
   workflow_dispatch:

@@ -1,0 +1,20 @@
+[
+  {
+    "doc": {"value": 1},
+    "patch": [{"op": "replace", "path": "/value", "value": NaN}],
+    "error": "non-finite numbers are not valid JSON values",
+    "comment": "nan is rejected"
+  },
+  {
+    "doc": {"value": 1},
+    "patch": [{"op": "replace", "path": "/value", "value": -Infinity}],
+    "error": "non-finite numbers are not valid JSON values",
+    "comment": "-inf is rejected"
+  },
+  {
+    "doc": {"value": 1},
+    "patch": [{"op": "replace", "path": "/value", "value": Infinity}],
+    "error": "non-finite numbers are not valid JSON values",
+    "comment": "+inf is rejected"
+  }
+]

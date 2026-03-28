@@ -1,7 +1,7 @@
 ---
 # Purpose: Non-Python lint/security/docs checks via Super-Linter.
 # Python lint/type/test checks run in .github/workflows/python-tests.yml.
-name: lint
+name: Super-Linter
 
 on:
   push:
@@ -42,6 +42,8 @@ jobs:
           YAML_CONFIG_FILE: ".yamllint.yml"
           PRETTIER_COMMAND_OPTIONS:
             "--config /github/workspace/.github/linters/.prettierrc.json"
+          # This fixture intentionally includes non-standard JSON numeric literals (NaN/Infinity).
+          FILTER_REGEX_EXCLUDE: "tests/compliance/rfc6902/jsonpatchx_nonfinite_tests\\.json"
 
           # Security and workflow hardening.
           VALIDATE_CHECKOV: true # policy/security checks for repo config and API specs

@@ -1,0 +1,116 @@
+[
+  {
+    "doc": [1, 2, 3],
+    "patch": [{ "op": "replace", "path": "", "value": "something else" }],
+    "expected": "something else",
+    "comment": "root replacement"
+  },
+  {
+    "doc": { "a": 1, "b": 2 },
+    "patch": [{ "op": "test", "path": "", "value": { "b": 2, "a": 1 } }],
+    "expected": { "a": 1, "b": 2 },
+    "comment": "test at root"
+  },
+  {
+    "doc": { "a": 1, "b": 2 },
+    "patch": [{ "op": "copy", "from": "/a", "path": "" }],
+    "expected": 1,
+    "comment": "copy to root"
+  },
+  {
+    "doc": { "a": 1, "b": 2 },
+    "patch": [{ "op": "move", "from": "/a", "path": "" }],
+    "expected": 1,
+    "comment": "move to root"
+  },
+  {
+    "doc": { "foo": { "bar": 1 } },
+    "patch": [{ "op": "move", "from": "/foo", "path": "/foo/bar" }],
+    "error": "move op should reject parent->child path",
+    "comment": "move parent to child rejected"
+  },
+  {
+    "doc": [1, 2, 3],
+    "patch": [{ "op": "remove", "path": "" }],
+    "expected": null,
+    "comment": "RFC 6901 defines \"\" as a pointer to the whole document. RFC 6902 models patching as producing a 'resulting document' after each successful operation, which implies that any successful operation yields another JSON value/document. RFC 6902 does not indicate in any way that removal at the root should be unsuccessful. This implementation treats root removal as producing null (Python None), preserving closure under successful operations. If removal of the root was not allowed, so would replacement of the root, according to the RFC. In general, the RemoveOp would be less composable out-of-the-box if it restricted root removal. Users who prefer to forbid root removal can enforce that as an additional constraint in custom Remove/Replace ops."
+  },
+  {
+    "doc": { "foo": "should-not-be-indexable" },
+    "patch": [{ "op": "copy", "from": "/foo/0", "path": "/bar" }],
+    "error": "strings should not be indexible in JSON as they are in Python",
+    "comment": "strings can't be indexed"
+  },
+  {
+    "doc": { "foo": "bar", "baz": [1] },
+    "patch": [{ "op": "copy", "from": "/baz/-", "path": "/foo" }],
+    "error": "copy source must exist beforehand",
+    "comment": "copy with source using '-'"
+  },
+  {
+    "doc": { "foo": "bar", "baz": [1] },
+    "patch": [{ "op": "copy", "from": "/baz/1", "path": "/foo" }],
+    "error": "copy source must exist beforehand",
+    "comment": "copy with source index=len(array)"
+  },
+  {
+    "doc": { "a": 1 },
+    "patch": [{ "op": "add", "path": "/a/b", "value": 2 }],
+    "error": "parent is not a container",
+    "comment": "parent not container"
+  },
+  {
+    "doc": { "foo": "bar", "baz": [1] },
+    "patch": [{ "op": "move", "from": "/foo", "path": "/baz/-" }],
+    "expected": { "baz": [1, "bar"] },
+    "comment": "move with array append"
+  },
+  {
+    "doc": { "foo": "bar", "baz": [1] },
+    "patch": [{ "op": "move", "from": "/baz/-", "path": "/foo" }],
+    "error": "move source must exist beforehand",
+    "comment": "move with source using '-'"
+  },
+  {
+    "doc": { "foo": "bar", "baz": [1] },
+    "patch": [{ "op": "move", "from": "/baz/1", "path": "/foo" }],
+    "error": "move source must exist beforehand",
+    "comment": "move with source index=len(array)"
+  },
+  {
+    "doc": { "foo": "bar", "baz": [1] },
+    "patch": [{ "op": "move", "from_": "/foo", "path": "/baz/-" }],
+    "error": "move using 'from_' instead of 'from'",
+    "comment": "validate via model field aliases, not model field names"
+  },
+  {
+    "doc": { "foo": "bar", "baz": [1] },
+    "patch": [{ "op": "add", "value": 2, "path": "/baz/1" }],
+    "expected": { "foo": "bar", "baz": [1, 2] },
+    "comment": "add to array at length of array"
+  },
+  {
+    "doc": { "foo": "bar", "baz": [1] },
+    "patch": [{ "op": "remove", "path": "/baz/-" }],
+    "error": "remove target must exist beforehand",
+    "comment": "remove using '-'"
+  },
+  {
+    "doc": { "foo": "bar", "baz": [1] },
+    "patch": [{ "op": "remove", "path": "/baz/1" }],
+    "error": "remove target must exist beforehand",
+    "comment": "remove using index=len(array)"
+  },
+  {
+    "doc": { "foo": "bar", "baz": [1] },
+    "patch": [{ "op": "replace", "path": "/baz/-", "value": 2 }],
+    "error": "replace target must exist beforehand",
+    "comment": "replace using '-'"
+  },
+  {
+    "doc": { "foo": "bar", "baz": [1] },
+    "patch": [{ "op": "replace", "path": "/baz/1", "value": 2 }],
+    "error": "replace target must exist beforehand",
+    "comment": "replace using index=len(array)"
+  }
+]

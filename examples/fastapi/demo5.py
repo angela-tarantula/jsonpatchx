@@ -95,9 +95,9 @@ apprentice_patch = JsonPatchRoute(
 )
 
 app = create_app(
-    title="Demo 5: Explicit custom backend ops",
+    title="Explicit custom backend ops",
     description=(
-        "Rune-pointer ops that already declare "
+        "Demo 5: Rune-pointer ops that already declare "
         "an explicit custom backend in their path annotations."
     ),
 )
