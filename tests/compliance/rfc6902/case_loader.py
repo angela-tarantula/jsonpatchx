@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 from importlib import resources
-from typing import Any, Self
+from typing import Any
 
 from pydantic import BaseModel, ConfigDict, model_validator
 
@@ -37,15 +37,13 @@ def load_json_patch_compliance_records() -> list[dict[str, Any]]:
     return records
 
 
-class Case(BaseModel):
+class _BaseCase(BaseModel):
     model_config = ConfigDict(frozen=True, strict=True)
 
     doc: JSONValue
     patch: list[dict[str, Any]]
-    expected: JSONValue | None = None
-    error: str | None = None
     comment: str
-    # disregard the 'disabled' flag because JsonPatchX implements these difficult cases
+    # Disregard the upstream 'disabled' flag: JsonPatchX implements those difficult cases.
 
     @model_validator(mode="before")
     @classmethod
@@ -54,14 +52,47 @@ class Case(BaseModel):
         data["comment"] = data.get("comment") or data.get("error") or "<no comment>"
         return data
 
-    @model_validator(mode="after")
-    def _ensure_expected_or_error(self) -> Self:
-        if (
-            "expected" not in self.model_fields_set and self.error is None
-        ):  # pragma: no cover
-            raise ValueError("case must include expected or error")
-        return self
+
+class PassCase(_BaseCase):
+    expected: JSONValue
 
 
-def cases() -> list[Case]:
-    return [Case(**record) for record in load_json_patch_compliance_records()]
+class FailCase(_BaseCase):
+    error: str
+
+
+def _split_cases(
+    records: list[dict[str, Any]],
+) -> tuple[list[PassCase], list[FailCase]]:
+    passing: list[PassCase] = []
+    failing: list[FailCase] = []
+
+    for record in records:
+        if "expected" in record:
+            passing.append(PassCase(**record))
+        elif record.get("error") is not None:
+            failing.append(FailCase(**record))
+        else:  # pragma: no cover
+            raise ValueError(
+                f"compliance record must include expected or error: {record!r}"
+            )
+
+    return passing, failing
+
+
+def pass_cases() -> list[PassCase]:
+    records = load_json_patch_compliance_records()
+    passing, _ = _split_cases(records)
+    return passing
+
+
+def fail_cases() -> list[FailCase]:
+    records = load_json_patch_compliance_records()
+    _, failing = _split_cases(records)
+    return failing
+
+
+def all_cases() -> list[PassCase | FailCase]:
+    records = load_json_patch_compliance_records()
+    passing, failing = _split_cases(records)
+    return [*passing, *failing]
