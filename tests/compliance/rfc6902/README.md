@@ -5,8 +5,8 @@ This directory organizes tests into 3 places:
 - [`external`](./external/): a
   [Git submodule](https://git-scm.com/book/en/v2/Git-Tools-Submodules) of
   external RFC6902 compliance tests
-- [`jsonpatchx_test.json`](./jsonpatchx_tests.json): additional JSON coverage to
-  cover behaviors we considered underrepresented in upstream fixtures while
+- [`jsonpatchx_tests.json`](./jsonpatchx_tests.json): additional JSON coverage
+  to cover behaviors we considered underrepresented in upstream fixtures while
   still running upstream compatibility tests unchanged.
 - [`jsonpatchx_nonfinite_tests.json`](./jsonpatchx_nonfinite_tests.json):
   non-finite number cases (`NaN`, `Infinity`, `-Infinity`) used to validate
@@ -27,6 +27,17 @@ Then you can run tests normally:
 uv sync
 uv run pytest
 ```
+
+## About `disabled` Cases
+
+The external suite includes records with `"disabled": true`.
+
+In upstream history, these were used for cases described as
+["difficult-to-implement"](https://github.com/json-patch/json-patch-tests/commit/86ad182cbc2ba0c4ed0f539753a283c6c9755f21).
+
+In `JsonPatchX`, we intentionally still run these records in
+[`test_patch.py`](./test_patch.py), because the implementation handles these
+cases and they add useful compliance coverage.
 
 ## Known Upstream Fixture Bug
 
