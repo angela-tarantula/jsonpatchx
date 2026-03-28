@@ -1,3 +1,3 @@
-[submodule "tests/cts"]
-	path = tests/compliance/rfc6902/data
+[submodule "compliance_tests"]
+	path = tests/compliance/rfc6902/external
 	url = https://github.com/json-patch/json-patch-tests

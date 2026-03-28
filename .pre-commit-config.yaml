@@ -6,6 +6,8 @@ repos:
     hooks:
       - id: check-merge-conflict
       - id: check-json
+        # This fixture intentionally includes non-standard JSON numeric literals (NaN/Infinity).
+        exclude: ^tests/compliance/rfc6902/jsonpatchx_nonfinite_tests\.json$
       - id: check-yaml
 
   - repo: https://github.com/rhysd/actionlint
@@ -99,6 +101,8 @@ repos:
           .github/linters/.prettierrc.json
         language: system
         files: \.json$
+        # This fixture intentionally includes non-standard JSON numeric literals (NaN/Infinity).
+        exclude: ^tests/compliance/rfc6902/jsonpatchx_nonfinite_tests\.json$
 
       - id: markdown-prettier
         name: markdown prettier
@@ -131,3 +135,5 @@ repos:
           .github/linters/.openapirc.yml
         language: system
         files: \.json$
+        # This fixture intentionally includes non-standard JSON numeric literals (NaN/Infinity).
+        exclude: ^tests/compliance/rfc6902/jsonpatchx_nonfinite_tests\.json$
