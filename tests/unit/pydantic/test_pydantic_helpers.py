@@ -17,17 +17,17 @@ class User(BaseModel):
     name: str
 
 
-def test_jsonpatchfor_requires_basemodel_type() -> None:
+def test_jsonpatchfor_args() -> None:
     with pytest.raises(TypeError):
         JsonPatchFor[int, StandardRegistry]  # type: ignore[type-var]
 
-
-def test_jsonpatchfor_requires_model_type() -> None:
-    with pytest.raises(TypeError):
-        JsonPatchFor[int, StandardRegistry]  # type: ignore[type-var]
+    assert JsonPatchFor[User, StandardRegistry]
+    assert JsonPatchFor[Literal["Config"], StandardRegistry]
 
     with pytest.raises(InvalidOperationRegistry):
-        JsonPatchFor[Literal["Config"], int]  # type: ignore[type-var]
+        JsonPatchFor[User, object()]  # type: ignore[type-var]
+    with pytest.raises(InvalidOperationRegistry):
+        JsonPatchFor[Literal["Config"], User]  # type: ignore[type-var]
 
 
 def test_jsonpatchfor_with_custom_registry() -> None:
