@@ -1,4 +1,5 @@
 ---
+# Runs CI locally to save time on failures
 minimum_pre_commit_version: "3.7.0"
 repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks
@@ -7,7 +8,8 @@ repos:
       - id: check-merge-conflict
       - id: check-json
         # This fixture intentionally includes non-standard JSON numeric literals (NaN/Infinity).
-        exclude: ^tests/compliance/rfc6902/jsonpatchx_nonfinite_tests\.json$
+        # In super-linter, this is FILTER_REGEX_EXCLUDE.
+        exclude: &json_nonfinite_exclude ^tests/compliance/rfc6902/jsonpatchx_nonfinite_tests\.json$
       - id: check-yaml
 
   - repo: https://github.com/rhysd/actionlint
@@ -101,8 +103,7 @@ repos:
           .github/linters/.prettierrc.json
         language: system
         files: \.json$
-        # This fixture intentionally includes non-standard JSON numeric literals (NaN/Infinity).
-        exclude: ^tests/compliance/rfc6902/jsonpatchx_nonfinite_tests\.json$
+        exclude: *json_nonfinite_exclude
 
       - id: markdown-prettier
         name: markdown prettier
@@ -135,5 +136,4 @@ repos:
           .github/linters/.openapirc.yml
         language: system
         files: \.json$
-        # This fixture intentionally includes non-standard JSON numeric literals (NaN/Infinity).
-        exclude: ^tests/compliance/rfc6902/jsonpatchx_nonfinite_tests\.json$
+        exclude: *json_nonfinite_exclude

@@ -18,7 +18,8 @@ original document:
 
 - inplace=True: apply ops directly to the input object (faster, avoids copy) but is NOT
   transactional. If an operation fails mid-patch, earlier operations may already have
-  mutated the document (no rollback).
+  mutated the document (no rollback). This is a copy policy, not an object-identity
+  guarantee: root-targeting operations (path "") may return a new root value.
 
 ### Typed pointer semantics (why some failures are “intentional”)
 
@@ -68,7 +69,8 @@ class JsonPatch(Sequence[OperationSchema]):
         - ``apply`` delegates to the core engine ``_apply_ops`` and follows the same copy and mutation
           semantics.
         - ``inplace=False`` (default): the engine deep-copies ``doc`` first; operations may mutate the copy.
-        - ``inplace=True``: operations mutate the provided ``doc`` object directly (no rollback on failure).
+        - ``inplace=True``: operations run against the provided ``doc`` object (no rollback on failure).
+          This is a copy policy, not an object-identity guarantee for the returned value.
         - ``JsonPatch`` is immutable with respect to its operation list after construction, but the
           documents you apply it to may be mutated depending on ``inplace``.
     """
@@ -145,7 +147,9 @@ class JsonPatch(Sequence[OperationSchema]):
 
         Args:
             doc: The target JSON document.
-            inplace: Controls whether ``doc`` is deep-copied before application.
+            inplace: Copy policy. ``False`` deep-copies ``doc`` before applying operations.
+                ``True`` skips that copy and applies operations against ``doc``, but does not
+                guarantee returned object identity for root-targeting operations.
 
         Return:
             patched: The patched JSON document.
@@ -213,6 +217,7 @@ def apply_patch(
     doc: JSONValue,
     patch: Sequence[Mapping[str, JSONValue]],
     *,
+    registry: TypeForm[OperationSchema] | None = None,
     inplace: bool = False,
 ) -> JSONValue:
     """
@@ -223,10 +228,14 @@ def apply_patch(
     Args:
         doc: Target JSON document.
         patch: Patch document as a sequence of operation mappings.
-        inplace: Controls copy and mutation behavior. See ``_apply_ops(..., inplace=...)`` for
-            full semantics.
+        registry: A union of concrete OperationSchemas used for parsing and
+            validation (``OpA | OpB | ...``). If omitted, the standard RFC
+            6902 operations are used.
+        inplace: Copy policy. ``False`` deep-copies ``doc`` first; ``True`` skips that copy.
+            This is not a guarantee that the returned object is the exact same root object.
+            See ``_apply_ops(..., inplace=...)`` for full semantics.
 
     Returns:
         The patched document.
     """
-    return JsonPatch(patch).apply(doc, inplace=inplace)
+    return JsonPatch(patch, registry=registry).apply(doc, inplace=inplace)

@@ -112,5 +112,34 @@
     "patch": [{ "op": "replace", "path": "/baz/1", "value": 2 }],
     "error": "replace target must exist beforehand",
     "comment": "replace using index=len(array)"
+  },
+  {
+    "doc": { "name": "alpha", "tags": ["base"], "count": 1 },
+    "patch": [
+      { "op": "add", "path": "/tags/-", "value": "extra" },
+      { "op": "replace", "path": "/count", "value": 2 },
+      { "op": "add", "path": "/active", "value": true }
+    ],
+    "expected": {
+      "name": "alpha",
+      "tags": ["base", "extra"],
+      "count": 2,
+      "active": true
+    },
+    "comment": "multi-op patch with non-root operations"
+  },
+  {
+    "doc": { "name": "alpha", "tags": ["base"], "count": 1 },
+    "patch": [
+      { "op": "add", "path": "/tags/-", "value": "extra" },
+      {
+        "op": "replace",
+        "path": "",
+        "value": { "items": [0], "meta": { "ok": true } }
+      },
+      { "op": "add", "path": "/items/-", "value": 1 }
+    ],
+    "expected": { "items": [0, 1], "meta": { "ok": true } },
+    "comment": "multi-op patch with middle root replacement"
   }
 ]

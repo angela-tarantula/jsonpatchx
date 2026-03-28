@@ -5,7 +5,8 @@
       "files": ["../../examples/openapi/*.json"],
       "options": {
         "parser": "json-stringify"
-      }
+      },
+      "comment": "let update_openapi_snapshots.py own the formatting of openapi"
     }
   ]
 }

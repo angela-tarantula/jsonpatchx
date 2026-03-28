@@ -180,7 +180,9 @@ class JsonPatchFor(_RegistryBoundPatchRoot, Generic[TargetT, RegistryT]):
 
             Args:
                 doc: The target JSON document.
-                inplace: Controls whether ``doc`` is deep-copied before application.
+                inplace: Copy policy. ``False`` deep-copies ``doc`` first; ``True``
+                    applies operations against ``doc`` without that copy. This does
+                    not guarantee returned root object identity.
 
             Return:
                 patched: The patched JSON document.
