@@ -78,9 +78,9 @@ class _BasePatchModel(_RegistryBoundPatchRoot, Generic[ModelT]):
     __target_model__: ClassVar[type[ModelT]]
 
     def apply(self, target: ModelT) -> ModelT:
-        if not isinstance(target, BaseModel):
+        if not isinstance(target, self.__target_model__):
             raise TypeError(
-                f"{self.__class__.__name__}.apply() expects a Pydantic BaseModel instance, "
+                f"{self.__class__.__name__}.apply() expects a {self.__target_model__.__name__} instance, "
                 f"got {type(target).__name__}"
             )
         try:
@@ -124,14 +124,20 @@ RegistryT = TypeVar("RegistryT", bound=OperationSchema)
 
 
 def _coerce_schema_name(target: object) -> str | None:
-    # Limitation: target is either str or Literal["..."]
-    if isinstance(target, str):
-        return target
     origin = get_origin(target)
     if origin is Literal:
         args = get_args(target)
-        if len(args) == 1 and isinstance(args[0], str):
-            return args[0]
+        if len(args) != 1:
+            raise TypeError(
+                "JsonPatchFor[...] schema-name target must be Literal with exactly one string argument, "
+                f"got {target!r}"
+            )
+        if not isinstance(args[0], str):
+            raise TypeError(
+                "JsonPatchFor[...] schema-name target must be Literal with exactly one string argument, "
+                f"got {target!r}"
+            )
+        return args[0]
     return None
 
 
@@ -140,7 +146,7 @@ class JsonPatchFor(_RegistryBoundPatchRoot, Generic[TargetT, RegistryT]):
     Factory for creating typed JSON Patch models bound to a registry declaration.
 
     ``JsonPatchFor[Target, Registry]`` produces a patch model.
-    ``Target`` is either a Pydantic model or a string name for JSON documents.
+    ``Target`` is either a Pydantic model or ``Literal["SchemaName"]`` for JSON documents.
     ``Registry`` is a union of concrete OperationSchemas (``OpA | OpB | ...``).
     """
 
@@ -212,7 +218,7 @@ class JsonPatchFor(_RegistryBoundPatchRoot, Generic[TargetT, RegistryT]):
         if not isinstance(params, tuple) or len(params) != 2:
             raise TypeError(
                 "JsonPatchFor expects JsonPatchFor[Target, Registry] where "
-                "Target is a BaseModel subclass or schema name string and "
+                'Target is a BaseModel subclass or Literal["SchemaName"] and '
                 "Registry is a union of concrete OperationSchemas. "
                 f"Got: {params!r}."
             )
@@ -226,7 +232,7 @@ class JsonPatchFor(_RegistryBoundPatchRoot, Generic[TargetT, RegistryT]):
 
         if not isclass(target) or not issubclass(target, BaseModel):
             raise TypeError(
-                "JsonPatchFor[...] expects a Pydantic BaseModel subclass or schema name string, "
+                'JsonPatchFor[...] expects a Pydantic BaseModel subclass or Literal["SchemaName"], '
                 f"got {target!r}"
             )
 
