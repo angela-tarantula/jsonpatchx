@@ -9,6 +9,13 @@ from httpx import ASGITransport, AsyncClient
 from examples.loader import DEMO_MAP, reset_demo_store
 
 
+@pytest.fixture(autouse=True)
+def reset_demo_store_fixture() -> Generator[None]:
+    reset_demo_store()
+    yield
+    reset_demo_store()
+
+
 def make_client(app: FastAPI) -> AsyncClient:
     transport = ASGITransport(app=app)
     return AsyncClient(transport=transport, base_url="http://test")
@@ -48,10 +55,3 @@ async def demo5_client() -> AsyncGenerator[AsyncClient]:
 async def demo6_client() -> AsyncGenerator[AsyncClient]:
     async with make_client(DEMO_MAP["6"].app) as client:
         yield client
-
-
-@pytest.fixture(autouse=True)
-def reset_demo_store_fixture() -> Generator[None]:
-    reset_demo_store()
-    yield
-    reset_demo_store()
