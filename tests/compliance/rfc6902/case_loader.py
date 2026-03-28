@@ -2,9 +2,9 @@ from __future__ import annotations
 
 import json
 from importlib import resources
-from typing import Any
+from typing import Any, override
 
-from pydantic import BaseModel, ConfigDict, model_validator
+from pydantic import BaseModel, ConfigDict
 
 from jsonpatchx import JSONValue
 
@@ -42,15 +42,14 @@ class _BaseCase(BaseModel):
 
     doc: JSONValue
     patch: list[dict[str, Any]]
-    comment: str
+    comment: str | None = None
     # Disregard the upstream 'disabled' flag: JsonPatchX implements those difficult cases.
 
-    @model_validator(mode="before")
-    @classmethod
-    def _fill_comment_with_error(cls, data: object) -> object:
-        assert isinstance(data, dict)
-        data["comment"] = data.get("comment") or data.get("error") or "<no comment>"
-        return data
+    @property
+    def id(self) -> str:
+        if self.comment:
+            return self.comment
+        return "<no id>"
 
 
 class PassCase(_BaseCase):
@@ -59,6 +58,15 @@ class PassCase(_BaseCase):
 
 class FailCase(_BaseCase):
     error: str
+
+    @property
+    @override
+    def id(self) -> str:
+        if self.comment:
+            return self.comment
+        if self.error:
+            return self.error
+        return "<no id>"
 
 
 def _split_cases(

@@ -101,10 +101,10 @@ def _assert_fail_case_with_builder(
         assert doc == case.doc
 
 
-@pytest.mark.parametrize("case", pass_cases(), ids=attrgetter("comment"))
+@pytest.mark.parametrize("case", pass_cases(), ids=attrgetter("id"))
 def test_json_patch_compliance_pass_cases(case: PassCase, subtests: Subtests) -> None:
-    if case.comment in SKIPPED_CASES:  # pragma: no cover
-        pytest.skip(reason=SKIPPED_CASES[case.comment])
+    if case.id in SKIPPED_CASES:  # pragma: no cover
+        pytest.skip(reason=SKIPPED_CASES[case.id])
 
     for variant, build_patch in PATCH_BUILDERS:
         for inplace in (False, True):
@@ -112,10 +112,10 @@ def test_json_patch_compliance_pass_cases(case: PassCase, subtests: Subtests) ->
                 _assert_pass_case_with_builder(case, build_patch, inplace=inplace)
 
 
-@pytest.mark.parametrize("case", fail_cases(), ids=attrgetter("comment"))
+@pytest.mark.parametrize("case", fail_cases(), ids=attrgetter("id"))
 def test_json_patch_compliance_fail_cases(case: FailCase, subtests: Subtests) -> None:
-    if case.comment in SKIPPED_CASES:  # pragma: no cover
-        pytest.skip(reason=SKIPPED_CASES[case.comment])
+    if case.id in SKIPPED_CASES:  # pragma: no cover
+        pytest.skip(reason=SKIPPED_CASES[case.id])
 
     for variant, build_patch in PATCH_BUILDERS:
         for inplace in (False, True):
