@@ -85,6 +85,9 @@ def _assert_case_with_builder(
         if inplace:
             if _case_uses_only_non_root_paths(case):
                 assert doc == case.expected
+            else:
+                # inplace=True is only upheld when root isn't replaced
+                pass
         else:
             assert doc == case.doc
         return
