@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import copy
 import json
 from operator import attrgetter
 from typing import Callable, Final
@@ -54,7 +55,15 @@ PATCH_BUILDERS: Final[tuple[tuple[str, PatchBuilder], ...]] = (
 )
 
 
-def _assert_case_with_builder(case: Case, build_patch: PatchBuilder) -> None:
+def _case_uses_only_non_root_paths(case: Case) -> bool:
+    # When JsonPatch.apply(..., inplace=True), in-place mutation is only guaranteed on non-root-targeting patches.
+    # This method filters for those patches where that guarantee must be tested.
+    return all(op.get("path") != "" for op in case.patch)
+
+
+def _assert_case_with_builder(
+    case: Case, build_patch: PatchBuilder, *, inplace: bool
+) -> None:
     try:
         patch = build_patch(case)
     except Exception as exc:
@@ -63,12 +72,21 @@ def _assert_case_with_builder(case: Case, build_patch: PatchBuilder) -> None:
             return
         raise
 
+    doc = copy.deepcopy(case.doc)
     if case.error is not None:
         with pytest.raises(PatchError):
-            patch.apply(case.doc)
+            patch.apply(doc, inplace=inplace)
+        if not inplace:
+            # Patch application is atomic: on failure, no partial changes are applied
+            assert doc == case.doc
         return
     if "expected" in case.model_fields_set:
-        assert patch.apply(case.doc) == case.expected
+        assert patch.apply(doc, inplace=inplace) == case.expected
+        if inplace:
+            if _case_uses_only_non_root_paths(case):
+                assert doc == case.expected
+        else:
+            assert doc == case.doc
         return
     pytest.fail(f"invalid case: {case!r}")  # pragma: no cover
 
@@ -79,5 +97,6 @@ def test_json_patch_compliance(case: Case, subtests: Subtests) -> None:
         pytest.skip(reason=SKIPPED_CASES[case.comment])
 
     for variant, build_patch in PATCH_BUILDERS:
-        with subtests.test(variant=variant):
-            _assert_case_with_builder(case, build_patch)
+        for inplace in (False, True):
+            with subtests.test(variant=variant, inplace=inplace):
+                _assert_case_with_builder(case, build_patch, inplace=inplace)
