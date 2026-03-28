@@ -78,9 +78,9 @@ class _BasePatchModel(_RegistryBoundPatchRoot, Generic[ModelT]):
     __target_model__: ClassVar[type[ModelT]]
 
     def apply(self, target: ModelT) -> ModelT:
-        if not isinstance(target, BaseModel):
+        if not isinstance(target, self.__target_model__):
             raise TypeError(
-                f"{self.__class__.__name__}.apply() expects a Pydantic BaseModel instance, "
+                f"{self.__class__.__name__}.apply() expects a {self.__target_model__.__name__} instance, "
                 f"got {type(target).__name__}"
             )
         try:

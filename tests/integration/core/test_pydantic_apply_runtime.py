@@ -1,7 +1,7 @@
 import pytest
 from pydantic import BaseModel, ConfigDict
 
-from jsonpatchx.exceptions import PatchConflictError, PatchValidationError
+from jsonpatchx.exceptions import PatchValidationError
 from jsonpatchx.pydantic import JsonPatchFor
 from jsonpatchx.registry import StandardRegistry
 
@@ -30,7 +30,10 @@ def test_model_validation_failure() -> None:
 def test_wrong_model_instance() -> None:
     UserPatch = JsonPatchFor[User, StandardRegistry]
     patch = UserPatch.model_validate(
-        [{"op": "replace", "path": "/name", "value": "Ada"}]
+        [
+            {"op": "remove", "path": "/title"},
+            {"op": "add", "path": "/name", "value": "Ada"},
+        ]
     )
-    with pytest.raises(PatchConflictError):
+    with pytest.raises(TypeError, match="expects a User instance"):
         patch.apply(Other(id=1, title="Dr."))  # type: ignore[arg-type]
