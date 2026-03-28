@@ -167,10 +167,11 @@ def _apply_ops(
     Args:
         ops: Operations to apply, in order.
         doc: Target JSON document.
-        inplace: Controls whether ``doc`` is deep-copied before application.
+        inplace: Copy policy. ``False`` deep-copies ``doc`` before applying operations.
+            ``True`` applies operations against ``doc`` without that initial copy.
 
     Returns:
-        The patched document (either a deep-copied object or the original object, depending on ``inplace``).
+        The patched document value produced by applying all operations.
 
     Raises:
         PatchError: Expected patch failures raised by operation implementations.
@@ -183,6 +184,8 @@ def _apply_ops(
         - ``inplace=True``: operations are applied directly to the provided ``doc`` object. This is faster
           and avoids a deep copy, but it is **not transactional**. If an operation fails mid-patch, earlier
           operations will already have mutated the document (no rollback).
+          This is a **copy policy**, not an object-identity guarantee for the returned root value
+          (root-targeting operations may rebind the root).
         -  In other words: operations are allowed to be “mutative”, and the engine decides whether those
            mutations hit the original input or a deep-copied working document.
     """
