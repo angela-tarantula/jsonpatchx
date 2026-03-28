@@ -31,20 +31,20 @@ type PatchBuilder = Callable[[Case], JsonPatch]
 
 def _build_patch_python(case: Case) -> JsonPatch:
     """Build JsonPatch from Python list/dict structures."""
-    return JsonPatch(case.patch, registry=StandardRegistry)
+    return JsonPatch(case.patch)
 
 
 def _build_patch_instantiated(case: Case) -> JsonPatch:
     """Build JsonPatch from instantiated operation models."""
     STANDARD_SPEC = _RegistrySpec.from_typeform(StandardRegistry)
     ops = STANDARD_SPEC.parse_python_patch(case.patch)
-    return JsonPatch(ops, registry=StandardRegistry)
+    return JsonPatch(ops)
 
 
 def _build_patch_direct(case: Case) -> JsonPatch:
     """Build JsonPatch directly from JSON string."""
     patch_text = json.dumps(case.patch)
-    return JsonPatch.from_string(patch_text, registry=StandardRegistry)
+    return JsonPatch.from_string(patch_text)
 
 
 PATCH_BUILDERS: Final[tuple[tuple[str, PatchBuilder], ...]] = (
