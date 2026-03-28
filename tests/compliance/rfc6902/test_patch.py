@@ -25,7 +25,7 @@ pytestmark = pytest.mark.integration
 SKIPPED_CASES: Final = {
     # {skipped_test_case: rationale}
     "duplicate ops": (
-        "Duplicate-key handling is delegated to the JSON decoder. "
+        "Duplicate-key handling is delegated to Python's built-in JSON decoder. "
         "JsonPatch.from_string() follows the last-write-wins policy, just like json.loads(). "
         "If you need strict duplicate-key rejection, decode JSON yourself and pass the result to JsonPatch()."
     )
