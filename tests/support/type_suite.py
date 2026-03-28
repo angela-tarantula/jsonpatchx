@@ -95,7 +95,7 @@ class TypeSuite:
 
     def get_predicate(self, json_type: Any) -> Predicate[Any]:
         """Return the predicate associated with ``json_type``."""
-        if json_type not in self.type_map:
+        if json_type not in self.type_map:  # pragma: no cover
             raise AssertionError("Type {json_type!r} is not registered in {self!r}")
         return self.type_map[json_type]
 
@@ -115,7 +115,7 @@ class TypeSuite:
             for ex in self.examples
             if (pred(ex.value) if valid else not pred(ex.value))
         ]
-        if len(matches) < 2:
+        if len(matches) < 2:  # pragma: no cover
             raise AssertionError(
                 f"Insufficient {'valid' if valid else 'invalid'} examples for {json_type!r}"
             )

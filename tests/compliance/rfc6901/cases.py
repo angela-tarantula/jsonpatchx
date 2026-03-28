@@ -15,7 +15,7 @@ class Case(BaseModel):
         if (
             "expected" not in self.model_fields_set
             and "fail" not in self.model_fields_set
-        ):
+        ):  # pragma: no cover
             raise ValueError("case must include expected or set fail message")
         return self
 

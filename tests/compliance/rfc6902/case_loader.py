@@ -64,9 +64,7 @@ class FailCase(_BaseCase):
     def id(self) -> str:
         if self.comment:
             return self.comment
-        if self.error:
-            return self.error
-        return "<no id>"
+        return self.error
 
 
 def _split_cases(
@@ -98,9 +96,3 @@ def fail_cases() -> list[FailCase]:
     records = load_json_patch_compliance_records()
     _, failing = _split_cases(records)
     return failing
-
-
-def all_cases() -> list[PassCase | FailCase]:
-    records = load_json_patch_compliance_records()
-    passing, failing = _split_cases(records)
-    return [*passing, *failing]

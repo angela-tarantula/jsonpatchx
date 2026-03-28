@@ -17,7 +17,7 @@ def test_jsonpatch_sequence_and_dunder_contract(subtests: Subtests) -> None:
         path: str
 
         @override
-        def apply(self, doc: JSONValue) -> JSONValue:
+        def apply(self, doc: JSONValue) -> JSONValue:  # pragma: no cover
             return doc
 
     payload = [
@@ -55,7 +55,7 @@ def test_jsonpatch_sequence_and_dunder_contract(subtests: Subtests) -> None:
         assert repr(patch) == f"JsonPatch({patch.to_string()})"
 
     type MoveAlias = MoveOp
-    type SameRegistry = MoveAlias | NoOp
+    type SameRegistry = MoveAlias | NoOp | Registry
     same_patch = JsonPatch(payload, registry=SameRegistry)
 
     type DifferentRegistry = NoOp | MoveOp | AddOp
