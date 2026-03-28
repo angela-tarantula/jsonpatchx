@@ -11,7 +11,7 @@ from pytest import Subtests
 from jsonpatchx import JsonPatch, StandardRegistry
 from jsonpatchx.exceptions import PatchError
 from jsonpatchx.registry import _RegistrySpec
-from tests.compliance.rfc6902.compliance_loader import Case, cases
+from tests.compliance.rfc6902.case_loader import Case, cases
 
 pytestmark = pytest.mark.integration
 
