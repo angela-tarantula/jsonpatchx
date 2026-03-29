@@ -3,3 +3,28 @@ site_name = "JsonPatchX"
 site_description = "Typed JSON Patch for Python with FastAPI and Pydantic"
 docs_dir = "docs"
 site_dir = "site"
+nav = [
+  { "Start Here" = [
+    { "Overview" = "index.md" },
+    { "Getting Started" = "getting-started.md" },
+    { "Core Concepts" = "core-concepts.md" },
+  ] },
+  { "Apply Patches" = [
+    { "Patching Plain JSON" = "patching-plain-json.md" },
+    { "Patching Pydantic Models" = "patching-pydantic-models.md" },
+    { "FastAPI Integration" = "fastapi-integration.md" },
+  ] },
+  { "Design & Contracts" = [
+    { "Custom Operations" = "custom-operations.md" },
+    { "Operation Registries" = "operation-registries.md" },
+    { "JsonPatchFor Contracts" = "jsonpatchfor-contracts.md" },
+    { "Pointer Backends" = "pointer-backends.md" },
+    { "Type System Notes" = "type-system-notes.md" },
+  ] },
+  { "Demos" = "demos.md" },
+  { "Reference" = [
+    { "API Cheat Sheet" = "api-cheat-sheet.md" },
+    { "Troubleshooting" = "troubleshooting.md" },
+    { "Demo Error Shapes" = "demo-error-shapes.md" },
+  ] },
+]
