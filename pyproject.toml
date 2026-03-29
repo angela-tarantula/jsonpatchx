@@ -51,6 +51,7 @@ fastapi = [
 
 [dependency-groups]
 dev = [
+    { include-group = "docs" },
     { include-group = "tests" },
     { include-group = "lint" },
     { include-group = "typing" },
@@ -80,6 +81,9 @@ typing = [
 fuzz = [
     "atheris>=3.0.0; python_version >= '3.11' and python_version < '3.14'",
     "pyinstaller>=6.10.0",
+]
+docs = [
+    "zensical>=0.0.30",
 ]
 
 [tool.setuptools.packages.find]

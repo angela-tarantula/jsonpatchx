@@ -8,6 +8,7 @@ wheels/
 
 # Tests / Coverage
 .coverage
+site/
 
 # Local fuzzing artifacts (libFuzzer/Atheris)
 crash-*

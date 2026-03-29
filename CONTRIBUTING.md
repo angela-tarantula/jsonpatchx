@@ -81,6 +81,13 @@ python -m pip install --upgrade pip uv
    uv run ruff format
    ```
 
+5. Preview and build docs with [Zensical](https://zensical.org/)
+
+   ```sh
+   uv run zensical serve
+   uv run zensical build
+   ```
+
 ## Prek quick reference
 
 - Run all configured hooks manually:
