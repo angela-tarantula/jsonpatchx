@@ -22,13 +22,12 @@ from jsonpatchx import (
 
 ## Choose the Right Entry Point
 
-| Use case                                  | API                                       |
-| ----------------------------------------- | ----------------------------------------- |
-| Quick one-off patch on JSON doc           | `apply_patch(doc, patch)`                 |
-| Parse once, apply many                    | `JsonPatch(...).apply(doc)`               |
-| Typed request model for Pydantic target   | `JsonPatchFor[Model, Registry]`           |
-| Typed request model for plain JSON target | `JsonPatchFor[Literal["Name"], Registry]` |
-| Route helper for FastAPI PATCH endpoints  | `JsonPatchRoute(...)`                     |
+| Use case                             | API                             |
+| ------------------------------------ | ------------------------------- |
+| Quick one-off patch on JSON doc      | `apply_patch(doc, patch)`       |
+| Parse once, apply many               | `JsonPatch(...).apply(doc)`     |
+| FastAPI PATCH request contract model | `JsonPatchFor[Model, Registry]` |
+| Assisted FastAPI PATCH route wiring  | `JsonPatchRoute(...)`           |
 
 ## FastAPI Helpers
 

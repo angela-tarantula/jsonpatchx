@@ -1,12 +1,17 @@
 # Type System Notes
 
-JsonPatchX focuses on typing patch operations, not only patched data. That lets
-you enforce operational constraints that your data model alone cannot express.
+JsonPatchX aims for JSON semantics over Python coercion semantics.
 
-This page covers:
+## JSON Helpers Are Strict
 
-- JSON helper types and strict JSON semantics (`JSONNumber`, `JSONValue`, etc.)
-- why `bool` is excluded from `JSONNumber`
-- finite-number enforcement (`NaN` and `Infinity` rejected)
-- typing limitations in Python and practical workarounds (for example runtime
-  unions and bounded recursive JSON type approximations)
+- `JSONNumber` is `int | float` but excludes `bool`
+- non-finite numbers (`NaN`, `Infinity`, `-Infinity`) are rejected
+- `JSONValue` enforces strict JSON-compatible structures
+
+## Why This Matters
+
+Pydantic models type your data model, while JsonPatchX types operation intent
+and pointer targets.
+
+That lets you reject operational behavior early, even before domain-level
+validation would fail.

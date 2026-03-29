@@ -1,12 +1,23 @@
 # Getting Started
 
-This guide gets you to your first successful patch in a few minutes.
+This guide gets you to a first successful patch quickly.
 
 ## Install
+
+Core library:
 
 ```sh
 pip install jsonpatchx
 ```
+
+FastAPI route helpers:
+
+```sh
+pip install "jsonpatchx[fastapi]"
+```
+
+`JsonPatchFor` is part of core. The extra adds helpers in `jsonpatchx.fastapi`
+(for example `JsonPatchRoute` and error mapping).
 
 ## First Patch (Plain JSON)
 
@@ -20,36 +31,24 @@ patch = [
 ]
 
 updated = apply_patch(doc, patch)
-print(updated)
-# {'name': 'Ada Lovelace', 'roles': ['engineer', 'maintainer']}
 ```
 
-`apply_patch(...)` deep-copies by default, so `doc` is not mutated unless you
-pass `inplace=True`.
+`apply_patch(...)` deep-copies by default, so `doc` is unchanged unless you use
+`inplace=True`.
 
 ## Parse Once, Apply Many
 
 ```python
 from jsonpatchx import JsonPatch
 
-patch = JsonPatch.from_string(
-    """
+patch = JsonPatch(
     [
-      {"op":"replace","path":"/name","value":"Ada Lovelace"},
-      {"op":"add","path":"/roles/-","value":"maintainer"}
+        {"op": "replace", "path": "/name", "value": "Ada Lovelace"},
+        {"op": "add", "path": "/roles/-", "value": "maintainer"},
     ]
-    """
 )
 
 updated = patch.apply({"name": "Ada", "roles": ["engineer"]})
 ```
 
-Use `JsonPatch` when you want to parse/validate once and reapply to multiple
-documents.
-
-## Next Steps
-
-1. Learn the data model in [Core Concepts](core-concepts.md).
-2. Use typed model patching in
-   [Patching Pydantic Models](patching-pydantic-models.md).
-3. Add domain-specific operations in [Custom Operations](custom-operations.md).
+Use `JsonPatch` when you want to validate once and reuse the same patch object.

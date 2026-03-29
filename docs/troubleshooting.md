@@ -4,75 +4,81 @@
 
 Cause:
 
-- Wrong generic shape, or plain-JSON target not using `Literal["Name"]`.
+- Wrong generic shape for the FastAPI request contract.
 
 Fix:
 
 ```python
-from typing import Literal
-
-ConfigPatch = JsonPatchFor[Literal["ServiceConfig"], MyRegistry]
+UserPatch = JsonPatchFor[User, MyRegistry]
 ```
 
 Not:
 
 ```python
-ConfigPatch = JsonPatchFor["ServiceConfig", MyRegistry]  # rejected
+UserPatch = JsonPatchFor[User]  # missing registry
+UserPatch = JsonPatchFor[User(), MyRegistry]  # instance, not model class
 ```
 
 ## `PatchValidationError: Invalid JSON document ...`
 
 Cause:
 
-- `apply(...)` target is not a strict JSON value (`dict`/`list`/primitive JSON
-  types).
+- `apply(...)` target is not a strict JSON value.
 
 Fix:
 
-- Ensure patch targets are JSON-serializable, strict JSON shapes.
+- Ensure patch targets are strict JSON-compatible values.
 
 ## `PatchConflictError`
 
 Cause:
 
-- Patch is syntactically valid, but impossible against current document state
-  (missing path, failing `test`, invalid remove target, etc.).
+- Patch is valid, but impossible against current document state (missing path,
+  failing `test`, invalid remove target, etc.).
 
 Fix:
 
-- Check target document state and pointer paths.
-- If needed, add precondition ops (`test`, custom guard ops) before mutating
-  ops.
+- Check document state and pointer paths.
+- Add precondition operations (`test`, custom guards) before mutating ops.
 
 ## Custom op rejected as not recognized
 
 Cause:
 
-- Operation class not included in active registry.
+- Operation class is missing from the active registry.
 
 Fix:
 
-- Add op class to the registry union used by `JsonPatch(...)` or `JsonPatchFor`.
+- Add the op class to the union passed to `JsonPatch(...)` or `JsonPatchFor`.
 
 ## FastAPI returns `415 Unsupported Media Type`
 
 Cause:
 
-- Endpoint is enforcing JSON Patch media type, but request sent with a different
-  `Content-Type`.
+- Endpoint expects `application/json-patch+json` but request used another
+  content type.
 
 Fix:
 
-- Send `Content-Type: application/json-patch+json`, or configure non-strict mode
-  if your endpoint should allow `application/json`.
+- Send `Content-Type: application/json-patch+json`, or use non-strict mode.
 
-## FastAPI returns `422` after patch application
+## FastAPI returns `500` for `Infinity` or `NaN` payloads
 
-Cause:
+Observed behavior:
 
-- For model-bound patches, patched payload fails revalidation into target model.
+- If a client sends raw JSON containing `Infinity`/`NaN`, FastAPI validation can
+  include `inf`/`nan` in error payload internals.
+- Error response serialization may then fail
+  (`Out of range float values are not JSON compliant`), producing
+  `500 Internal Server Error`.
+
+Related client behavior:
+
+- Many HTTP clients already block this before sending JSON (`allow_nan=False`),
+  which raises a client-side error instead.
 
 Fix:
 
-- Inspect validation detail and ensure patch values match model field types and
-  constraints.
+- Do not send non-finite numbers in patch payloads.
+- Validate client payloads for finite numbers before sending.
+- Prefer normal JSON encoders over raw request bodies for patch payloads.

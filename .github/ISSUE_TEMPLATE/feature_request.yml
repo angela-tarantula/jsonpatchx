@@ -32,7 +32,7 @@ body:
       label: Alternatives Considered
       description: |
         Please briefly describe which alternatives, if any, have been
-        considered, including merits of alternate approaches and any tradeoffs
+        considered, including merits of alternate approaches and any trade-offs
     validations:
       required: false
   - type: textarea

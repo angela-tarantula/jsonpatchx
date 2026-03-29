@@ -1,17 +1,28 @@
 # JsonPatchFor Contracts
 
-`JsonPatchFor[Target, Registry]` is primarily a contract generator:
+`JsonPatchFor[TargetModel, Registry]` is the PATCH contract type for FastAPI
+endpoints in JsonPatchX.
+
+## What It Gives You
 
 - typed request body validation
-- generated OpenAPI schema for allowed operations
-- target binding (for model targets)
+- OpenAPI schema generation from the active operation union
+- runtime model-bound patch application (`patch.apply(model_instance)`)
 
-Use this when you want API-level patch contracts. For plain runtime patching,
-`apply_patch(...)` or `JsonPatch(...)` is usually enough.
+## Contract Shape
 
-This page covers:
+```python
+from jsonpatchx import StandardRegistry
+from jsonpatchx.pydantic import JsonPatchFor
 
-- model-bound targets: `JsonPatchFor[Model, Registry]`
-- schema-name targets: `JsonPatchFor[Literal["Config"], Registry]`
-- when to choose `JsonPatchFor` vs `JsonPatch`/`apply_patch`
-- how target binding prevents cross-model application mistakes
+UserPatch = JsonPatchFor[User, StandardRegistry]
+```
+
+Use this directly as your FastAPI request model type.
+
+## Why Not Use It for Plain JSON Runtime Work
+
+For plain JSON patching that is not a FastAPI request contract, prefer:
+
+- `apply_patch(...)`
+- `JsonPatch(...)`

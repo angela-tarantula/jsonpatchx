@@ -65,6 +65,7 @@ python -m pip install --upgrade pip uv
 
    ```sh
    uv run pytest -v
+   uv run --managed-python -p 3.12 pytest # for specific python version
    ```
 
 3. View test coverage with

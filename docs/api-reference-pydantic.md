@@ -1,0 +1,3 @@
+# Pydantic Contracts
+
+::: jsonpatchx.pydantic

@@ -1,7 +1,7 @@
 # Patching Plain JSON
 
-Use this when your target is a plain JSON document (`dict`/`list`) instead of a
-Pydantic model.
+Use this when your target is a plain JSON document (`dict`/`list`) and you do
+not need API request-model generation.
 
 ## Option A: `apply_patch` Convenience
 
@@ -17,7 +17,7 @@ patch = [
 updated = apply_patch(doc, patch)
 ```
 
-Pass `inplace=True` if you want to mutate `doc` directly.
+Pass `inplace=True` to apply directly against the input object.
 
 ## Option B: `JsonPatch` Object
 
@@ -34,26 +34,10 @@ patch = JsonPatch(
 updated = patch.apply({"service": {"enabled": False, "max_users": 100}})
 ```
 
-Use this form when you want to reuse a validated patch object.
+Use this when you want to validate once and reapply many times.
 
-## Typed Request Model for Plain JSON APIs
+## When To Move Beyond This
 
-For route contracts and OpenAPI generation, use `JsonPatchFor` with a
-`Literal[...]` target name:
-
-```python
-from typing import Literal
-
-from jsonpatchx import StandardRegistry
-from jsonpatchx.pydantic import JsonPatchFor
-
-ConfigPatch = JsonPatchFor[Literal["ServiceConfig"], StandardRegistry]
-patch = ConfigPatch.model_validate(
-    [{"op": "replace", "path": "/service/enabled", "value": True}]
-)
-
-updated = patch.apply({"service": {"enabled": False}})
-```
-
-Important: `JsonPatchFor["ServiceConfig", ...]` is intentionally rejected. Use
-`Literal["ServiceConfig"]`.
+If you are building PATCH HTTP endpoints and want OpenAPI request contracts, use
+[FastAPI Integration](fastapi-integration.md) with
+[JsonPatchFor Contracts](jsonpatchfor-contracts.md).
