@@ -13,19 +13,12 @@ plugins = [
 nav = [
   { "User Guide" = [
     { "Overview" = "index.md" },
-    { "Getting Started" = "getting-started.md" },
-    { "Patching Plain JSON" = "patching-plain-json.md" },
-    { "FastAPI Integration" = "fastapi-integration.md" },
-    { "JsonPatchFor Contracts" = "jsonpatchfor-contracts.md" },
-    { "Operation Registries" = "operation-registries.md" },
-    { "Custom Operations" = "custom-operations.md" },
-    { "Advanced Patterns" = "advanced-patterns.md" },
-    { "Type System Notes" = "type-system-notes.md" },
-    { "Demos" = "demos.md" },
-    { "Troubleshooting" = "troubleshooting.md" },
-    { "Error Catalog" = "error-catalog.md" },
-    { "API Cheat Sheet" = "api-cheat-sheet.md" },
-    { "Demo Error Shapes" = "demo-error-shapes.md" },
+    { "Custom Operations and Typed Pointers" = "custom-operations-and-typed-pointers.md" },
+    { "Operation Registries and Endpoint Policy" = "operation-registries-and-endpoint-policy.md" },
+    { "JSONPath Selection" = "jsonpath-selection.md" },
+    { "Config-Driven Operation Rollout" = "config-driven-operation-rollout.md" },
+    { "Contract Evolution and Deprecation" = "contract-evolution-and-deprecation.md" },
+    { "Error Semantics and Contract Tests" = "error-semantics-and-contract-tests.md" },
   ] },
   { "Developer Reference" = [
     { "Developer Overview" = "developer-reference.md" },
@@ -44,6 +37,21 @@ nav = [
     { "Exceptions" = "api-reference-exceptions.md" },
     { "FastAPI Helpers" = "api-reference-fastapi.md" },
   ] },
+  { "Legacy User Guide" = [
+    { "Legacy Home" = "legacy-user-guide.md" },
+    { "Getting Started" = "getting-started.md" },
+    { "Patching Plain JSON" = "patching-plain-json.md" },
+    { "FastAPI Integration" = "fastapi-integration.md" },
+    { "JsonPatchFor Contracts" = "jsonpatchfor-contracts.md" },
+    { "Operation Registries" = "operation-registries.md" },
+    { "Custom Operations" = "custom-operations.md" },
+    { "Advanced Patterns" = "advanced-patterns.md" },
+    { "Type System Notes" = "type-system-notes.md" },
+    { "Demos" = "demos.md" },
+    { "Error Catalog" = "error-catalog.md" },
+    { "API Cheat Sheet" = "api-cheat-sheet.md" },
+    { "Demo Error Shapes" = "demo-error-shapes.md" },
+  ] },
 ]
 
 [project.theme]
@@ -52,8 +60,11 @@ features = [
   "announce.dismiss",
   "content.action.edit",
   "content.action.view",
+  "navigation.path",
   "navigation.tabs",
   "navigation.sections",
+  "navigation.top",
+  "toc.follow",
 ]
 
 [[project.theme.palette]]

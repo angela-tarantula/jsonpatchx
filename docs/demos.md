@@ -1,20 +1,11 @@
 # Demos
 
-JsonPatchX demos are available both locally and as hosted preview services.
+JsonPatchX demos are available as local runnable apps and optional hosted
+previews.
 
-## Hosted Demo Links
+## Local Demos (Recommended)
 
-- Standard RFC PATCH API demo: `https://example.com/jsonpatchx/rfc-demo`
-- Governed custom-op PATCH API demo:
-  `https://example.com/jsonpatchx/governed-demo`
-
-Hosted demos are non-mutating by design. Requests are applied to an ephemeral or
-reset snapshot and responses return the patched result only, so users do not
-interfere with each other.
-
-## Run Locally (Authoritative)
-
-Run all local demo servers:
+Run all demos:
 
 ```sh
 uv run python -m examples.run
@@ -26,8 +17,21 @@ Run one demo:
 uv run uvicorn examples.fastapi.demo1:app --reload --port 8000
 ```
 
-## Suggested Exploration Path
+## Hosted Demos (Preview)
 
-1. `demo1.py`: standard RFC patching against Pydantic models
-2. `demo3.py`: plain JSON patching and custom operation behavior
-3. `demo2.py`: custom operation registries and model-specific contracts
+- Standard RFC PATCH demo: `https://example.com/jsonpatchx/rfc-demo`
+- Governed custom-op demo: `https://example.com/jsonpatchx/governed-demo`
+
+Hosted demos are non-mutating by design (sandbox/reset behavior). They return
+patched responses without persisting shared state.
+
+## Recommended Walkthrough
+
+1. `examples/fastapi/demo1.py`
+   - RFC operations with model-bound FastAPI patch contracts
+2. `examples/fastapi/demo2.py`
+   - custom operation registries and domain-oriented verbs
+3. `examples/fastapi/demo3.py`
+   - plain JSON patching and custom operation behavior
+4. `examples/fastapi/demo4.py`
+   - alternate pointer behavior and advanced patch semantics

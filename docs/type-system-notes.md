@@ -1,17 +1,48 @@
 # Type System Notes
 
-JsonPatchX aims for JSON semantics over Python coercion semantics.
+JsonPatchX models JSON semantics directly, not Python's broader runtime
+coercions.
 
-## JSON Helpers Are Strict
+## Strict JSON Helpers
 
-- `JSONNumber` is `int | float` but excludes `bool`
-- non-finite numbers (`NaN`, `Infinity`, `-Infinity`) are rejected
-- `JSONValue` enforces strict JSON-compatible structures
+Use helper types to reason in JSON terms:
+
+- `JSONNumber`: `int | float`, explicitly excluding `bool`
+- `JSONString`, `JSONBoolean`, `JSONNull`
+- `JSONArray[T]`, `JSONObject[T]`
+- `JSONValue`: recursive JSON union
+
+Non-finite numbers (`NaN`, `Infinity`, `-Infinity`) are rejected.
 
 ## Why This Matters
 
-Pydantic models type your data model, while JsonPatchX types operation intent
-and pointer targets.
+Pydantic model fields describe data shape. JsonPatchX operation schemas describe
+mutation intent.
 
-That lets you reject operational behavior early, even before domain-level
-validation would fail.
+That separation is important for governed PATCH APIs:
+
+- your model may allow a broad type
+- your operation can still intentionally narrow what a specific patch verb is
+  allowed to target
+
+## Example: Intent Narrowing
+
+```python
+from typing import Literal
+
+from jsonpatchx import JSONPointer, JSONValue, OperationSchema, ReplaceOp
+from jsonpatchx.types import JSONNumber
+
+
+class IncrementOp(OperationSchema):
+    op: Literal["increment"] = "increment"
+    path: JSONPointer[JSONNumber]
+    value: JSONNumber
+
+    def apply(self, doc: JSONValue) -> JSONValue:
+        current = self.path.get(doc)
+        return ReplaceOp(path=self.path, value=current + self.value).apply(doc)
+```
+
+`path` is explicitly numeric. If the resolved target is non-numeric, apply fails
+before mutation.

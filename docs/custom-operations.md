@@ -1,18 +1,26 @@
 # Custom Operations
 
-Custom operations are Pydantic models that subclass `OperationSchema`.
+Custom operations let you treat PATCH as a domain language, not only a transport
+diff.
 
-They can define completely new semantics, or friendlier/safety-focused variants
-of familiar RFC behavior.
+Operations are Pydantic models (`OperationSchema`) with explicit fields and an
+`apply()` method.
+
+## What Makes a Good Custom Operation
+
+- clear intent (`increment_quota`, `swap`, `append_unique`)
+- explicit pointer/value contracts
+- deterministic failure modes
+- OpenAPI-friendly schema metadata
 
 ## Pointer Methods Available in Operations
 
 - `get(doc)`
-  - type-gated pointer resolution against the document
+  - type-gated pointer resolution against the doc
 - `add(doc, value)`
-  - type-gated RFC 6902 add behavior
+  - type-gated RFC 6902 add
 - `remove(doc)`
-  - type-gated RFC 6902 remove behavior
+  - type-gated RFC 6902 remove
 
 ## Minimal Pattern
 
@@ -26,7 +34,7 @@ from jsonpatchx.types import JSONNumber
 
 
 class IncrementByOp(OperationSchema):
-    op: Literal["increment_by"]
+    op: Literal["increment_by"] = "increment_by"
     path: JSONPointer[JSONNumber]
     amount: JSONNumber = Field(gt=0)
 
@@ -34,6 +42,8 @@ class IncrementByOp(OperationSchema):
         current = self.path.get(doc)
         return ReplaceOp(path=self.path, value=current + self.amount).apply(doc)
 ```
+
+This composes existing operations while preserving typed pointer contracts.
 
 ## Advanced Example: `SwapOp`
 
@@ -63,7 +73,7 @@ class SwapOp(OperationSchema):
         },
     )
 
-    op: Literal["swap"]
+    op: Literal["swap"] = "swap"
     a: JSONPointer[JSONValue]
     b: JSONPointer[JSONValue]
 
@@ -126,3 +136,8 @@ class SwapOp(OperationSchema):
   }
 }
 ```
+
+## Register and Use
+
+After defining the operation, add it to a registry and use that registry in
+`JsonPatch` (plain JSON) or `JsonPatchFor` (FastAPI contracts).

@@ -1,9 +1,17 @@
 # Patching Plain JSON
 
-Use this when your target is a plain JSON document (`dict`/`list`) and you do
-not need API request-model generation.
+Use this page when patching JSON documents at runtime without FastAPI
+request-model generation.
 
-## Option A: `apply_patch` Convenience
+## Entry Points
+
+| Need                       | API                           |
+| -------------------------- | ----------------------------- |
+| One-off patch apply        | `apply_patch(doc, patch)`     |
+| Parse once and reuse       | `JsonPatch(...).apply(doc)`   |
+| Parse patch from JSON text | `JsonPatch.from_string(text)` |
+
+## One-Off Application
 
 ```python
 from jsonpatchx import apply_patch
@@ -17,27 +25,66 @@ patch = [
 updated = apply_patch(doc, patch)
 ```
 
-Pass `inplace=True` to apply directly against the input object.
+Default behavior is non-mutating (`inplace=False`).
 
-## Option B: `JsonPatch` Object
+## Parse Once, Apply Many
 
 ```python
 from jsonpatchx import JsonPatch
 
 patch = JsonPatch(
     [
-        {"op": "replace", "path": "/service/enabled", "value": True},
-        {"op": "replace", "path": "/service/max_users", "value": 200},
+        {"op": "replace", "path": "/tier", "value": "pro"},
+        {"op": "replace", "path": "/limits/max_projects", "value": 25},
     ]
 )
 
-updated = patch.apply({"service": {"enabled": False, "max_users": 100}})
+tenants = [
+    {"tier": "free", "limits": {"max_projects": 3}},
+    {"tier": "free", "limits": {"max_projects": 5}},
+]
+
+upgraded = [patch.apply(doc) for doc in tenants]
 ```
 
-Use this when you want to validate once and reapply many times.
+## Parse JSON Patch Text
 
-## When To Move Beyond This
+```python
+from jsonpatchx import JsonPatch
 
-If you are building PATCH HTTP endpoints and want OpenAPI request contracts, use
-[FastAPI Integration](fastapi-integration.md) with
-[JsonPatchFor Contracts](jsonpatchfor-contracts.md).
+patch = JsonPatch.from_string('[{"op":"replace","path":"/enabled","value":true}]')
+updated = patch.apply({"enabled": False})
+```
+
+## In-Place Apply
+
+```python
+from jsonpatchx import apply_patch
+
+state = {"count": 1}
+result = apply_patch(
+    state,
+    [{"op": "replace", "path": "/count", "value": 2}],
+    inplace=True,
+)
+```
+
+`inplace=True` is faster but non-transactional.
+
+## Error Boundary Pattern
+
+```python
+from jsonpatchx import PatchConflictError, PatchValidationError, apply_patch
+
+try:
+    updated = apply_patch(doc, patch)
+except PatchValidationError:
+    handle_bad_patch_payload()
+except PatchConflictError:
+    handle_state_conflict()
+```
+
+## Scope Note
+
+`JsonPatchFor` is for FastAPI PATCH contracts. Plain JSON patching should use
+`apply_patch` or `JsonPatch`.

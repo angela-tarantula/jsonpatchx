@@ -5,29 +5,26 @@
 ```python
 from jsonpatchx import (
     JsonPatch,
-    apply_patch,
     JsonPatchFor,
     StandardRegistry,
-    OperationSchema,
-    JSONPointer,
-    JSONValue,
-    AddOp,
-    RemoveOp,
-    ReplaceOp,
-    MoveOp,
-    CopyOp,
-    TestOp,
+    apply_patch,
 )
 ```
 
-## Choose the Right Entry Point
+## Entry Points
 
-| Use case                             | API                             |
-| ------------------------------------ | ------------------------------- |
-| Quick one-off patch on JSON doc      | `apply_patch(doc, patch)`       |
-| Parse once, apply many               | `JsonPatch(...).apply(doc)`     |
-| FastAPI PATCH request contract model | `JsonPatchFor[Model, Registry]` |
-| Assisted FastAPI PATCH route wiring  | `JsonPatchRoute(...)`           |
+| Goal                           | API                             |
+| ------------------------------ | ------------------------------- |
+| Apply one patch quickly        | `apply_patch(doc, patch)`       |
+| Parse once and reuse           | `JsonPatch(patch).apply(doc)`   |
+| FastAPI PATCH request contract | `JsonPatchFor[Model, Registry]` |
+| Optional strict FastAPI wiring | `JsonPatchRoute(...)`           |
+
+## Standard Operations
+
+```python
+from jsonpatchx import AddOp, CopyOp, MoveOp, RemoveOp, ReplaceOp, TestOp
+```
 
 ## FastAPI Helpers
 
@@ -35,9 +32,9 @@ from jsonpatchx import (
 from jsonpatchx.fastapi import (
     JsonPatchRoute,
     install_jsonpatch_error_handlers,
-    patch_route_kwargs,
-    patch_request_body,
     patch_error_openapi_responses,
+    patch_request_body,
+    patch_route_kwargs,
 )
 ```
 
@@ -45,17 +42,18 @@ from jsonpatchx.fastapi import (
 
 ```python
 from jsonpatchx import (
-    PatchError,
-    PatchValidationError,
     PatchConflictError,
+    PatchError,
     PatchInputError,
     PatchInternalError,
+    PatchValidationError,
     TestOpFailed,
 )
 ```
 
-## Notes
+## Practical Notes
 
-- `apply(..., inplace=False)` is default and deep-copies input.
-- `inplace=True` is faster but non-transactional.
-- Model-bound `JsonPatchFor` returns revalidated model instances.
+- default apply behavior is non-mutating (`inplace=False`)
+- `inplace=True` is faster but non-transactional
+- `JsonPatchFor` is for FastAPI PATCH contracts; plain JSON patching should use
+  `apply_patch` / `JsonPatch`

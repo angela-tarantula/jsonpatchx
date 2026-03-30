@@ -1,11 +1,25 @@
 # Operation Registries
 
-Registries are the operational allow-list for JsonPatchX. A registry is a union
-of operation models, and only operations in that union are accepted.
+Registries are the governance boundary for PATCH behavior.
+
+A registry is a union of operation models. Only operations in that union can be
+parsed and applied.
+
+## Why Registries Exist
+
+Registries let you control mutation surface area explicitly:
+
+- expose fewer verbs on public routes
+- allow richer verbs on internal routes
+- roll out operations behind flags or config
 
 ## Standard RFC Registry
 
-The built-in RFC registry is:
+```python
+from jsonpatchx import StandardRegistry
+```
+
+Equivalent explicit union:
 
 ```python
 from jsonpatchx import AddOp, CopyOp, MoveOp, RemoveOp, ReplaceOp, TestOp
@@ -13,40 +27,39 @@ from jsonpatchx import AddOp, CopyOp, MoveOp, RemoveOp, ReplaceOp, TestOp
 type StandardRegistry = AddOp | CopyOp | MoveOp | RemoveOp | ReplaceOp | TestOp
 ```
 
-## Compose Larger Registries
+## Compose Registries
 
 ```python
-from jsonpatchx import StandardRegistry  # importable for convenience
+from jsonpatchx import StandardRegistry
 
-type DevRegistry = StandardRegistry | ReplaceSubstringOp | ConcatenateOp | AppendOp
+type DevRegistry = StandardRegistry | IncrementOp | SwapOp
 ```
 
-## Allow-list Operations Per Route
+## Route-Level Allow-Listing
 
 ```python
 from jsonpatchx import AddOp, RemoveOp, ReplaceOp, StandardRegistry
 
-type ClientARegistry = AddOp | RemoveOp | ReplaceOp
-type ClientBRegistry = StandardRegistry
+type PublicRegistry = AddOp | RemoveOp | ReplaceOp
+type InternalRegistry = StandardRegistry
 ```
 
-## Runtime Registries from Config/Flags
-
-You can build operation sets dynamically (feature flags, config files, env):
+## Runtime Registries
 
 ```python
 from typing import Union
-from your_business_logic import load_ops
 
-dynamic_ops = [AddOp, RemoveOp, ReplaceOp] + load_ops("custom_ops.yml")
-RuntimeRegistry = Union[dynamic_ops]  # type: ignore[misc]
+ops = [AddOp, RemoveOp, ReplaceOp]
+if feature_enabled("swap"):
+    ops.append(SwapOp)
+
+RuntimeRegistry = Union[tuple(ops)]  # type: ignore[misc]
 ```
 
-Use this when operational policy is environment-driven. For static typing
-trade-offs of runtime unions, see
+Runtime type construction caveats:
 [Recursive Bound Limitation](recursive-bound-limitation.md).
 
-## Failure Behavior
+## Failure Mode
 
-If an op is not in the active registry, patch parsing fails before apply-time.
-This is how route-level allow-list governance is enforced.
+If an operation is missing from the active registry, parsing fails before
+apply-time. That is the intended contract boundary.

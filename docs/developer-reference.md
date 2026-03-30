@@ -15,6 +15,16 @@ flowchart TD
     F --> G["Model revalidation / response serialization"]
 ```
 
+## Operation Authoring Notes
+
+When defining `OperationSchema` subclasses:
+
+- `op` should be an instance field annotated as `Literal[...]` (not `ClassVar`).
+- Setting a default (for example, `op: Literal["increment"] = "increment"`) is
+  optional and mostly ergonomic for direct Python instantiation.
+- Generated OpenAPI still marks `op` as required, even when a default is
+  provided.
+
 Start with:
 
 - [Local Docs Preview](developer-docs-preview.md)
