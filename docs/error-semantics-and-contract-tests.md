@@ -47,8 +47,3 @@ Use snapshot tests to lock generated PATCH schemas and response metadata. See:
 
 - `tests/contract/openapi/test_demo_openapi_snapshots.py`
 - `examples/openapi/*.json`
-
-## Continue
-
-- [API Reference](api-reference.md)
-- [Legacy User Guide](legacy-user-guide.md)

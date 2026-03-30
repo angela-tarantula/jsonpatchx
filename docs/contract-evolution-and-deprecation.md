@@ -1,65 +1,139 @@
 # Contract Evolution and Deprecation
 
-Treat operation contracts as versioned API surface.
+Operation schemas **are your API surface**. Treat them as versioned contracts
+with clear, predictable evolution rules.
 
-## Preferred Evolution Strategy
+## Evolution Rules
 
-1. add behavior with new fields or new operations
-2. keep old behavior available through an overlap window
-3. deprecate obsolete fields or operations explicitly
-4. remove deprecated paths on a scheduled boundary
+Follow these principles when changing an operation:
 
-## Example: Additive Operation Versioning
+1. **Prefer additive changes** Add new fields instead of changing existing
+   behavior.
+
+2. **Use backward-compatible defaults** New fields must default to existing
+   behavior so current clients continue to work unchanged.
+
+3. **Reserve new `op` values for breaking changes** If semantics change in a way
+   that could break existing clients, introduce a new `op` literal instead of
+   modifying the existing one.
+
+4. **Deprecate before removing** Mark fields or behaviors as deprecated, give
+   consumers time to migrate, then remove them on a defined schedule.
+
+## Decision Guide
+
+Use this table when evolving an operation:
+
+| Change                       | What to do                                     |
+| ---------------------------- | ---------------------------------------------- |
+| Add optional behavior        | Add a new field with a safe default            |
+| Allow opt-out of behavior    | Add a field (e.g. `strict=False`)              |
+| Remove optional behavior     | Deprecate the opt-out, then remove the field   |
+| Change core semantics        | Introduce a new `op`                           |
+| Rename or restructure fields | Add new field -> deprecate old -> remove later |
+
+## Example: Operation Lifecycle
+
+### 1. Initial version
 
 ```python
-from typing import Literal
-
-from jsonpatchx import JSONPointer, JSONValue, OperationSchema, ReplaceOp
-from jsonpatchx.types import JSONNumber
-
-
-class IncrementQuotaV1(OperationSchema):
-    op: Literal["increment_quota"] = "increment_quota"
-    path: JSONPointer[JSONNumber]
-    amount: JSONNumber
+class ReplaceSubstringOp(OperationSchema):
+    op: Literal["replace_substring"] = "replace_substring"
+    path: JSONPointer[JSONString]
+    old: JSONString
+    new: JSONString
 
     def apply(self, doc: JSONValue) -> JSONValue:
         current = self.path.get(doc)
-        return ReplaceOp(path=self.path, value=current + self.amount).apply(doc)
+        if self.old not in current:
+            raise PatchConflictError(f"{self.old!r} is not in {current!r}")
+        return ReplaceOp(
+            path=self.path,
+            value=current.replace(self.old, self.new),
+        ).apply(doc)
+```
 
+### 2. Additive evolution (non-breaking)
 
-class IncrementQuotaV2(OperationSchema):
-    op: Literal["increment_quota_v2"] = "increment_quota_v2"
-    path: JSONPointer[JSONNumber]
-    delta: JSONNumber
+Introduce optional behavior via a new field:
+
+```python
+class ReplaceSubstringOp(OperationSchema):
+    op: Literal["replace_substring"] = "replace_substring"
+    path: JSONPointer[JSONString]
+    old: JSONString
+    new: JSONString
+    strict: JSONBoolean = True
 
     def apply(self, doc: JSONValue) -> JSONValue:
         current = self.path.get(doc)
-        return ReplaceOp(path=self.path, value=current + self.delta).apply(doc)
+        if self.strict and self.old not in current:
+            raise PatchConflictError(
+                f"strict mode is enabled and {self.old!r} is not in {current!r}"
+            )
+        return ReplaceOp(
+            path=self.path,
+            value=current.replace(self.old, self.new),
+        ).apply(doc)
 ```
+
+- Existing clients are unaffected (`strict=True`)
+- New clients can opt into relaxed behavior (`strict=False`)
+
+### 3. Deprecation (behavior consolidation)
+
+If non-strict behavior is no longer desired, deprecate it:
 
 ```python
-type RegistryV1 = StandardRegistry | IncrementQuotaV1
-type RegistryV2 = StandardRegistry | IncrementQuotaV1 | IncrementQuotaV2
+class ReplaceSubstringOp(OperationSchema):
+    op: Literal["replace_substring"] = "replace_substring"
+    path: JSONPointer[JSONString]
+    old: JSONString
+    new: JSONString
+    strict: JSONBoolean = Field(
+        default=True,
+        deprecated=True,
+        description=(
+            "Deprecated. Non-strict mode (strict=False) will be removed. "
+            "This operation will always behave as strict=True."
+        ),
+    )
+
+    def apply(self, doc: JSONValue) -> JSONValue:
+        current = self.path.get(doc)
+        if self.strict and self.old not in current:
+            raise PatchConflictError(
+                f"strict mode is enabled and {self.old!r} is not in {current!r}"
+            )
+        return ReplaceOp(
+            path=self.path,
+            value=current.replace(self.old, self.new),
+        ).apply(doc)
 ```
 
-## Example: Field Deprecation
+At this stage:
 
-```python
-from pydantic import Field
+- `strict=False` is discouraged
+- Documentation and schema signal upcoming removal
+- Runtime warnings may be added if needed
 
+### 4. Removal (future state)
 
-class SetQuotaOp(OperationSchema):
-    op: Literal["set_quota"] = "set_quota"
-    path: JSONPointer[JSONNumber]
-    value: JSONNumber
-    reason: str | None = Field(default=None, deprecated=True)
-```
+Once clients have migrated, remove the field entirely and make strict behavior
+unconditional.
 
-Use endpoint-level registries to control which versions are accepted in each
-environment.
+## Rollout Strategy
 
-## Continue
+Schema evolution should be coordinated with runtime controls:
 
-Next:
-[Error Semantics and Contract Tests](error-semantics-and-contract-tests.md)
+- Use **operation registries** to control which operations are accepted per
+  endpoint
+- Gate new fields or operations behind **feature flags**
+- Roll out changes gradually across environments (dev -> staging -> production)
+
+## Key Takeaways
+
+- Prefer **extending** operations over replacing them
+- Use **fields for optional behavior**, `op` for **semantic shifts**
+- Treat deprecation as a **phase**, not a single step
+- Roll out contract changes with explicit **registry and flag policy**

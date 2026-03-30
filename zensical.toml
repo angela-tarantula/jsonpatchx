@@ -13,6 +13,7 @@ plugins = [
 nav = [
   { "User Guide" = [
     { "Overview" = "index.md" },
+    { "Getting Started" = "getting-started.md" },
     { "Custom Operations and Typed Pointers" = "custom-operations-and-typed-pointers.md" },
     { "Operation Registries and Endpoint Policy" = "operation-registries-and-endpoint-policy.md" },
     { "JSONPath Selection" = "jsonpath-selection.md" },
@@ -39,7 +40,7 @@ nav = [
   ] },
   { "Legacy User Guide" = [
     { "Legacy Home" = "legacy-user-guide.md" },
-    { "Getting Started" = "getting-started.md" },
+    { "Getting Started" = "legacy-getting-started.md" },
     { "Patching Plain JSON" = "patching-plain-json.md" },
     { "FastAPI Integration" = "fastapi-integration.md" },
     { "JsonPatchFor Contracts" = "jsonpatchfor-contracts.md" },

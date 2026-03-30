@@ -32,7 +32,3 @@ mode).
 
 For backend protocol constraints and guarantees, see
 [Pointer Backends](pointer-backends.md).
-
-## Continue
-
-Next: [Config-Driven Operation Rollout](config-driven-operation-rollout.md)

@@ -30,13 +30,25 @@ def patch_internal_user(user_id: int, patch: InternalUserPatch) -> User:
     ...
 ```
 
-Both routes patch the same model, but with different mutation vocabularies.
+Both routes patch the same model, but each can enforce a different mutation
+vocabulary.
 
-## Failure Boundary
+## Useful Patterns
 
-If a client sends an operation that is not in the active registry, request
-parsing fails immediately. That is the intended governance boundary.
+- Least privilege by default: each client gets only the mutation surface it
+  needs.
+- Faster iteration during development: a permissive dev-only registry can
+  support ad-hoc patching and experiments.
+- Safer production administration: admin-only registries can expose high-impact
+  operations behind stricter auth and audit controls.
+- Cleaner client segmentation: web, internal services, and partner APIs can each
+  use a different contract.
 
-## Continue
+## Policy Outcome
 
-Next: [JSONPath Selection](jsonpath-selection.md)
+Route-level registries make PATCH policy explicit:
+
+- Allowed operations are visible in code and OpenAPI.
+- Disallowed operations fail during parse/validation, before mutation.
+- Public, admin, and dev endpoints can evolve independently without sharing one
+  global mutation surface.

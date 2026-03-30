@@ -1,79 +1,48 @@
 # JsonPatchX
 
-JsonPatchX is a framework for building governed PATCH APIs in Python.
+[RFC 6902](https://datatracker.ietf.org/doc/html/rfc6902) (JSON Patch) is
+intentionally minimal and transport-focused. That minimalism is great for
+interoperability, but modern PATCH traffic crosses trust boundaries: browser
+clients, internal services, third-party integrations, and increasingly
+LLM-generated patch payloads.
 
-It keeps RFC 6902 at the core, then adds a contract layer for teams that treat
-PATCH as an API boundary, not just an internal diff.
+## JsonPatchX provides the RFC core and adds an API contract layer
 
-## RFC 6902 Runtime Patching
+- **Input safety**: patch operations are Pydantic models, so malformed payloads
+  fail fast with clear, structured errors.
+- **Surface control**: operations can be allow-listed per route to limit what
+  clients can do.
 
-If you just need standards-compliant patch application, JsonPatchX can do that
-directly.
+## It also provides extensibilty beyond the RFC
 
-```python
-from jsonpatchx import JsonPatch
+- **API Meaning**: define custom patch operations (`toggle`, `increment`, etc.)
+  so updates target intent, not brittle positional assumptions.
+- **Typed Targeting**: operations are explicit, so pointers can participate in
+  typed contracts with clear failure modes when a resolved path violates
+  expected structure or type.
+- **Advanced Path Selection**: choose your path strategy
+  ([JSON Pointer](https://datatracker.ietf.org/doc/html/rfc6901),
+  [JSONPath](https://datatracker.ietf.org/doc/html/rfc9535), or your custom
+  resolver) so you can enable non-positional selection such as filtering,
+  matching, or multi-target updates.
 
-patch = JsonPatch(
-    [
-        {"op": "replace", "path": "/tier", "value": "pro"},
-        {"op": "replace", "path": "/limits/max_projects", "value": 25},
-    ]
-)
+## And it treats the patch layer as a first-class contract
 
-tenants = [
-    {"tier": "free", "limits": {"max_projects": 3}},
-    {"tier": "free", "limits": {"max_projects": 5}},
-]
+- **Contract Drift**: OpenAPI is generated from the same runtime patch models,
+  so documentation stays aligned automatically.
+- **Versioning**: evolve operation contracts over time with additive schema
+  changes and deprecations.
+- **FastAPI Integration**: set up PATCH routes quickly with minimal boilerplate.
 
-upgraded = [patch.apply(doc) for doc in tenants]
-```
+## Now is the Time to Experiment
 
-## RFC 6902 Contracts for FastAPI
+JsonPatchX is intentionally designed as a safe experimentation surface: teams
+can introduce richer operations, compare patterns in production, and **let the
+best designs win**. With JSONPath now standardized in
+[RFC 9535](https://datatracker.ietf.org/doc/html/rfc9535), now is the time to
+explore more expressive targeting and contract models that fit your domain.
 
-When PATCH is part of your API surface, use `JsonPatchFor[Model]` to validate
-and apply operations as a typed request contract.
-
-```python
-from fastapi import FastAPI, HTTPException
-from pydantic import BaseModel
-from jsonpatchx import JsonPatchFor
-
-
-class User(BaseModel):
-    id: int
-    email: str
-    active: bool
-
-
-app = FastAPI()
-
-@app.patch("/users/{user_id}", response_model=User)
-def patch_user(user_id: int, patch: JsonPatchFor[User]) -> User:
-    user = load_user(user_id)
-    if user is None:
-        raise HTTPException(status_code=404, detail="user not found")
-
-    updated = patch.apply(user)
-    save_user(user_id, updated)
-    return updated
-```
-
-Try this endpoint live: [Interactive PATCH preview](example.com)
-
-> Demo note: This preview validates PATCH payloads and returns patched JSON, but
-> does not persist changes.
-
-## Extending RFC 6902
-
-The examples above show baseline RFC behavior. The next layer is extension.
-
-1. Define custom operations as strongly-typed Pydantic models.
-2. Use typed pointers to make operation intent explicit and harden operation
-   targeting.
-3. Use JSONPath selectors for expressive, query-style targeting when a single
-   pointer is not enough.
-4. Control which operations are allowed on each endpoint.
-5. Optionally load operation sets from declarative configuration and gate
-   rollout with feature flags.
-6. Evolve contracts by extending schemas, adding operations, and deprecating
-   obsolete fields or operations.
+To shape what comes next, join the broader forum at
+[json-patch2](https://github.com/json-patch/json-patch2) and project-specific
+discussions at
+[JsonPatchX Discussions](https://github.com/angela-tarantula/jsonpatchx/discussions).

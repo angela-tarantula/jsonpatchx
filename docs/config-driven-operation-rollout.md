@@ -48,8 +48,3 @@ UserPatch = JsonPatchFor[User, RuntimeRegistry]
 
 Static type checker caveats for runtime-built unions:
 [Recursive Bound Limitation](recursive-bound-limitation.md).
-
-## Continue
-
-Next:
-[Contract Evolution and Deprecation](contract-evolution-and-deprecation.md)
