@@ -1,0 +1,3 @@
+# Registries
+
+::: jsonpatchx.registry

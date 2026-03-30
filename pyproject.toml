@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "jsonpatchx"
 version = "0.1.0"
-description = "Add your description here"
+description = "A framework for building governed PATCH APIs in Python."
 readme = "README.md"
 license = "MIT"
 license-files = ["LICENSE"]
@@ -51,6 +51,7 @@ fastapi = [
 
 [dependency-groups]
 dev = [
+    { include-group = "docs" },
     { include-group = "tests" },
     { include-group = "lint" },
     { include-group = "typing" },
@@ -80,6 +81,10 @@ typing = [
 fuzz = [
     "atheris>=3.0.0; python_version >= '3.11' and python_version < '3.14'",
     "pyinstaller>=6.10.0",
+]
+docs = [
+    "mkdocstrings[python]>=1.0.3",
+    "zensical>=0.0.30",
 ]
 
 [tool.setuptools.packages.find]

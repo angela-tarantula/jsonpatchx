@@ -65,6 +65,7 @@ python -m pip install --upgrade pip uv
 
    ```sh
    uv run pytest -v
+   uv run --managed-python -p 3.12 pytest # for specific python version
    ```
 
 3. View test coverage with
@@ -79,6 +80,13 @@ python -m pip install --upgrade pip uv
 
    ```sh
    uv run ruff format
+   ```
+
+5. Preview and build docs with [Zensical](https://zensical.org/)
+
+   ```sh
+   uv run zensical serve
+   uv run zensical build
    ```
 
 ## Prek quick reference

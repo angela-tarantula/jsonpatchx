@@ -96,7 +96,7 @@ class TypeSuite:
     def get_predicate(self, json_type: Any) -> Predicate[Any]:
         """Return the predicate associated with ``json_type``."""
         if json_type not in self.type_map:  # pragma: no cover
-            raise AssertionError("Type {json_type!r} is not registered in {self!r}")
+            raise AssertionError(f"Type {json_type!r} is not registered in {self!r}")
         return self.type_map[json_type]
 
     def is_compatible(self, value: object, type_or_tuple: _TypeInfo) -> bool:

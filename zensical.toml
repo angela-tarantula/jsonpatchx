@@ -1,0 +1,87 @@
+[project]
+site_name = "JsonPatchX"
+site_description = "Typed JSON Patch for Python with FastAPI and Pydantic"
+repo_url = "https://github.com/angela-tarantula/jsonpatchx"
+repo_name = "angela-tarantula/jsonpatchx"
+edit_uri = "edit/main/docs"
+docs_dir = "docs"
+site_dir = "site"
+plugins = [
+  "search",
+  { mkdocstrings = { handlers = { python = { paths = ["."], options = { docstring_style = "google" } } } } },
+]
+nav = [
+  { "User Guide" = [
+    { "Overview" = "index.md" },
+    { "Getting Started" = "getting-started.md" },
+    { "Custom Operations and Typed Pointers" = "custom-operations-and-typed-pointers.md" },
+    { "Operation Registries and Endpoint Policy" = "operation-registries-and-endpoint-policy.md" },
+    { "JSONPath Selection" = "jsonpath-selection.md" },
+    { "Config-Driven Operation Rollout" = "config-driven-operation-rollout.md" },
+    { "Contract Evolution and Deprecation" = "contract-evolution-and-deprecation.md" },
+    { "Error Semantics and Contract Tests" = "error-semantics-and-contract-tests.md" },
+  ] },
+  { "Developer Reference" = [
+    { "Developer Overview" = "developer-reference.md" },
+    { "Local Docs Preview" = "developer-docs-preview.md" },
+    { "Pointer Backends" = "pointer-backends.md" },
+    { "Recursive Bound Limitation" = "recursive-bound-limitation.md" },
+  ] },
+  { "API Reference" = [
+    { "API Overview" = "api-reference.md" },
+    { "Public API" = "api-reference-public.md" },
+    { "Patch Engine" = "api-reference-patch-engine.md" },
+    { "Pydantic Contracts" = "api-reference-pydantic.md" },
+    { "Registries" = "api-reference-registries.md" },
+    { "Pointers" = "api-reference-pointers.md" },
+    { "Schema Base" = "api-reference-schema.md" },
+    { "Exceptions" = "api-reference-exceptions.md" },
+    { "FastAPI Helpers" = "api-reference-fastapi.md" },
+  ] },
+  { "Legacy User Guide" = [
+    { "Legacy Home" = "legacy-user-guide.md" },
+    { "Getting Started" = "legacy-getting-started.md" },
+    { "Patching Plain JSON" = "patching-plain-json.md" },
+    { "FastAPI Integration" = "fastapi-integration.md" },
+    { "JsonPatchFor Contracts" = "jsonpatchfor-contracts.md" },
+    { "Operation Registries" = "operation-registries.md" },
+    { "Custom Operations" = "custom-operations.md" },
+    { "Advanced Patterns" = "advanced-patterns.md" },
+    { "Type System Notes" = "type-system-notes.md" },
+    { "Demos" = "demos.md" },
+    { "Error Catalog" = "error-catalog.md" },
+    { "API Cheat Sheet" = "api-cheat-sheet.md" },
+    { "Demo Error Shapes" = "demo-error-shapes.md" },
+  ] },
+]
+
+[project.theme]
+custom_dir = "overrides"
+features = [
+  "announce.dismiss",
+  "content.action.edit",
+  "content.action.view",
+  "navigation.path",
+  "navigation.tabs",
+  "navigation.sections",
+  "navigation.top",
+  "toc.follow",
+]
+
+[[project.theme.palette]]
+scheme = "default"
+primary = "indigo"
+accent = "indigo"
+
+[project.theme.palette.toggle]
+icon = "material/weather-night"
+name = "Switch to dark mode"
+
+[[project.theme.palette]]
+scheme = "slate"
+primary = "indigo"
+accent = "indigo"
+
+[project.theme.palette.toggle]
+icon = "material/weather-sunny"
+name = "Switch to light mode"
