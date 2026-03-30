@@ -1,0 +1,43 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "type-check",
+      "type": "shell",
+      "command": "bash",
+      "args": ["-c", "uv run ruff check && uv run mypy ."],
+      "group": "test",
+      "problemMatcher": []
+    },
+    {
+      "label": "format",
+      "type": "shell",
+      "command": "bash",
+      "args": [
+        "-c",
+        "uv run ruff check --fix --select I && uv run ruff format"
+      ],
+      "group": "build",
+      "problemMatcher": []
+    },
+    {
+      "label": "pytest",
+      "type": "shell",
+      "command": "bash",
+      "args": [
+        "-c",
+        "uv run pytest -v --cov=jsonpatchx --cov=tests --cov-report=term-missing --cov-report=html; status=$?; echo \"See HTML coverage here: file://${PWD}/htmlcov/index.html\"; exit $status"
+      ],
+      "group": "test",
+      "problemMatcher": []
+    },
+    {
+      "label": "update-openapi-snapshots",
+      "type": "shell",
+      "command": "uv",
+      "args": ["run", "python", "scripts/update_openapi_snapshots.py"],
+      "group": "build",
+      "problemMatcher": []
+    }
+  ]
+}

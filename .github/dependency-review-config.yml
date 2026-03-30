@@ -1,0 +1,37 @@
+---
+# Dependency Review policy config consumed by:
+#   .github/workflows/dependency-review.yml
+#   .github/workflows/dependency-review-full-audit.yml
+
+# Explicit SPDX allow-list.
+allow-licenses:
+  - Apache-2.0
+  - MIT
+  - MIT-0
+  - BSD-2-Clause
+  - BSD-3-Clause
+  - MPL-2.0
+  - 0BSD
+  - Python-2.0
+  - Python-2.0.1
+  - GPL-1.0-or-later
+  - GPL-2.0-or-later
+
+# Version-pinned exceptions for dependencies where license detection is unknown.
+# Keep this list narrow and remove entries when upstream metadata is detectable.
+allow-dependencies-licenses:
+  - pkg:pypi/jsonpointer@3.1.0 # Modified BSD License
+  - pkg:pypi/pytest-cov@7.1.0 # MIT
+  - pkg:pypi/ruff@0.15.7 # MIT
+  - pkg:pypi/uvicorn@0.42.0 # BSD-3-Clause
+  - pkg:pypi/pyinstaller@6.19.0 # GPL-2.0-or-later
+  - pkg:pypi/python-jsonpath@2.0.2 # MIT
+  - pkg:pypi/pyinstaller-hooks-contrib@2026.3 # GPL-2.0-or-later
+  - pkg:pypi/uv@0.10.12 # Apache-2.0 OR MIT
+
+
+# Allow-lists are preferred over deny-lists.
+# Super-linter will be deprecated deny-licenses lists.
+# deny-licenses:
+#   - AGPL-1.0
+#   - AGPL-3.0
