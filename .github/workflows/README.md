@@ -13,16 +13,10 @@ written as they are, with security and auditability as defaults.
 - Implementation script:
   [`scripts/update_openapi_snapshots.py`](../../scripts/update_openapi_snapshots.py).
 - Local refresh: invoke `prek` hooks or direct script execution.
-- CI model: [`update-openapi-snapshots.yml`](update-openapi-snapshots.yml) is
-  the reusable refresh workflow that caller workflows invoke.
-- The reusable workflow does not accept a snapshot path input; it treats
-  [`scripts/update_openapi_snapshots.py`](../../scripts/update_openapi_snapshots.py)
-  as the source of truth for output locations and uses `EndBug/add-and-commit`
-  (scoped to `examples/openapi/*.json`) to commit only when snapshot files
-  changed.
-- Current caller example:
+- CI model:
   [`dependabot-update-openapi-snapshots.yml`](dependabot-update-openapi-snapshots.yml)
-  invokes the reusable workflow for Dependabot dependency updates.
+  regenerates snapshots on Dependabot dependency updates and commits only when
+  snapshot files changed.
 
 ## Least-Privilege Model
 
@@ -42,7 +36,7 @@ writes:
 
 - [`scorecard.yml`](scorecard.yml)
 - [`dependabot-update-openapi-snapshots.yml`](dependabot-update-openapi-snapshots.yml)
-  (mints token for snapshot updates)
+  (mints app token before regenerating and committing snapshots)
 
 This keeps write operations explicit and reduces default token blast radius.
 
