@@ -3,9 +3,11 @@
 name: Dependabot Update OpenAPI Snapshots
 
 on:
-  push:
-    branches:
-      - dependabot/**
+  pull_request:
+    types:
+      - opened
+      - synchronize
+      - reopened
     paths:
       - pyproject.toml
       - uv.lock
@@ -14,7 +16,7 @@ permissions: read-all
 
 jobs:
   create-snapshot-app-token:
-    if: startsWith(github.ref_name, 'dependabot/')
+    if: github.event.pull_request.user.login == 'dependabot[bot]'
     runs-on: ubuntu-latest
     environment:
       name: "dependabot-automation"
@@ -33,7 +35,6 @@ jobs:
           permission-contents: write
 
   update-openapi-snapshots:
-    if: startsWith(github.ref_name, 'dependabot/')
     needs:
       - create-snapshot-app-token
     permissions:
