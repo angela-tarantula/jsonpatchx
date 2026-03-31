@@ -15,15 +15,13 @@ on:
 permissions: read-all
 
 jobs:
-  create-snapshot-app-token:
+  update-openapi-snapshots:
     if: github.event.pull_request.user.login == 'dependabot[bot]'
+    permissions:
+      contents: write
     runs-on: ubuntu-latest
     environment:
       name: "dependabot-automation"
-    permissions:
-      contents: read
-    outputs:
-      app_token: ${{ steps.app-token.outputs.token }}
     steps:
       - name: Create GitHub App token
         id: app-token
@@ -34,13 +32,29 @@ jobs:
           owner: ${{ github.repository_owner }}
           permission-contents: write
 
-  update-openapi-snapshots:
-    needs:
-      - create-snapshot-app-token
-    permissions:
-      contents: write
-    uses: ./.github/workflows/update-openapi-snapshots.yml
-    with:
-      environment-name: "dependabot-automation"
-    secrets:
-      push-token: ${{ needs.create-snapshot-app-token.outputs.app_token }}
+      - name: Checkout target ref
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          ref: ${{ github.head_ref || github.ref_name }}
+          token: ${{ steps.app-token.outputs.token }}
+          persist-credentials: true
+
+      - name: Setup uv
+        uses: astral-sh/setup-uv@cec208311dfd045dd5311c1add060b2062131d57 # v8.0.0
+        with:
+          enable-cache: true
+          cache-dependency-glob: |
+            pyproject.toml
+            uv.lock
+
+      - name: Install dependencies
+        run: uv sync --frozen --no-default-groups --group snapshots
+
+      - name: Regenerate OpenAPI snapshots
+        run: uv run python scripts/update_openapi_snapshots.py
+
+      - name: Commit and push snapshot updates
+        uses: EndBug/add-and-commit@290ea2c423ad77ca9c62ae0f5b224379612c0321 # v10.0.0
+        with:
+          add: "-A"
+          message: "chore: refresh OpenAPI snapshots"
