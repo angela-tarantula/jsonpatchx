@@ -28,7 +28,7 @@ Install from PyPI:
 ### Installation
 
 ```sh
-pip install jsonpatchx[fastapi]
+pip install jsonpatchx
 ```
 
 ## Usage
@@ -76,7 +76,7 @@ Distributed under the MIT License. See [LICENSE](LICENSE) for more information.
 
 ## Contact
 
-Anglea Liss - [chamsester@gmail.com](mailto:chamsester@gmail.com)
+Angela Liss - [chamsester@gmail.com](mailto:chamsester@gmail.com)
 
 Project Link:
 [https://github.com/angela-tarantula/jsonpatchx](https://github.com/angela-tarantula/jsonpatchx)
