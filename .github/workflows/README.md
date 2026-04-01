@@ -36,7 +36,6 @@ writes:
 
 - [`scorecard.yml`](scorecard.yml)
 - [`dependabot-update-openapi-snapshots.yml`](dependabot-update-openapi-snapshots.yml)
-  (mints app token before regenerating and committing snapshots)
 
 This keeps write operations explicit and reduces default token blast radius.
 
