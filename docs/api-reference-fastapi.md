@@ -1,6 +1,7 @@
 # FastAPI Helpers
 
-`jsonpatchx.fastapi` is optional and intended for route wiring helpers, media
-type enforcement, OpenAPI request body helpers, and error mapping.
+This module contains the FastAPI integration layer: error handlers, content-type
+enforcement helpers, OpenAPI request-body helpers, and route configuration
+utilities.
 
-::: jsonpatchx.fastapi
+::: jsonpatchx.fastapi options: show*root_heading: false filters: - "!^*"

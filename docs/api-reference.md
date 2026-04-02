@@ -1,15 +1,10 @@
-# API Reference
+# API Overview
 
-This section documents the public API surface from source-level docstrings and
-type signatures.
+This section is for symbol lookup, not onboarding.
 
-It is intended to answer:
+The pages here mirror the package layout so you can move directly from an import
+to the right module page.
 
-- what each symbol does
-- expected parameters and return types
-- operational and error semantics for each public entry point
-
-Generated module references will be added under this section.
-
-Most pages here are generated directly from Python source docstrings and type
-annotations via `mkdocstrings`.
+Start with **Public API** if you use top-level imports such as
+`from jsonpatchx import JsonPatch`. Use the module pages when you want the exact
+signatures, docstrings, and lower-level helpers behind that import surface.

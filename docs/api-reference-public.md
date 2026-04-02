@@ -1,7 +1,8 @@
 # Public API
 
-```python
-from jsonpatchx import *
-```
+This is the top-level import surface used throughout the User Guide.
 
-::: jsonpatchx
+Use this page when you want the shortest path from an example import to the
+actual exported symbols.
+
+::: jsonpatchx options: show_root_heading: false

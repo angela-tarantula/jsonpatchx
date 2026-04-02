@@ -1,3 +1,0 @@
-# Patch Engine
-
-::: jsonpatchx.standard

@@ -1,21 +1,28 @@
 # Error Semantics and Contract Tests
 
-Governed PATCH APIs need stable failure semantics, not only successful mutation
-paths.
+A governed PATCH API is defined just as much by how it fails as by how it
+mutates.
 
-## Error Semantics
+Status codes, response shape, and contract tests should be part of the design
+from the start.
 
-| HTTP  | Code                     | Meaning                                          |
-| ----- | ------------------------ | ------------------------------------------------ |
-| `415` | `unsupported_media_type` | request content type is rejected                 |
-| `422` | `patch_input`            | request patch payload is invalid                 |
-| `422` | `patch_validation`       | patched output violates target model             |
-| `409` | `patch_conflict`         | patch is valid but cannot apply to current state |
-| `500` | `patch_internal`         | unexpected runtime failure                       |
+## Recommended failure semantics
 
-Install FastAPI error mapping once:
+The default FastAPI helpers in JsonPatchX support a simple, production-friendly
+mapping:
+
+| HTTP  | When it happens                                                                                                |
+| ----- | -------------------------------------------------------------------------------------------------------------- |
+| `415` | the route enforces `application/json-patch+json` and the request uses the wrong media type                     |
+| `422` | request validation fails, the patch document is malformed, or the patched result fails target-model validation |
+| `409` | the patch is valid but cannot be applied to the current resource state                                         |
+| `500` | server-side patch execution fails unexpectedly or the route is misconfigured                                   |
+
+Install the exception handler once:
 
 ```python
+from fastapi import FastAPI
+
 from jsonpatchx.fastapi import install_jsonpatch_error_handlers
 
 
@@ -23,11 +30,59 @@ app = FastAPI()
 install_jsonpatch_error_handlers(app)
 ```
 
-## Contract Tests
+## Default response shape
 
-Test both runtime behavior and generated OpenAPI.
+By default, the FastAPI helper layer returns:
 
-### Runtime Failure Contract
+```json
+{ "detail": "..." }
+```
+
+For most client-visible failures, `detail` is a string.
+
+For internal patch execution failures, `detail` can be structured so the failing
+operation is visible to operators and test suites:
+
+```json
+{
+  "detail": {
+    "index": 2,
+    "op": { "op": "replace", "path": "/email", "value": 42 },
+    "message": "patched value failed validation",
+    "cause_type": "ValidationError"
+  }
+}
+```
+
+That split is practical:
+
+- client-facing contract failures stay simple
+- server-side debugging can still point at the exact failing operation
+
+## Test the contract, not only the happy path
+
+A good PATCH test suite should lock down four things:
+
+1. media-type enforcement
+2. parse-time validation behavior
+3. apply-time conflict behavior
+4. generated OpenAPI for the route
+
+### Media type contract
+
+```python
+def test_requires_json_patch_media_type(client):
+    response = client.patch(
+        "/users/1",
+        headers={"content-type": "application/json"},
+        json=[{"op": "replace", "path": "/active", "value": False}],
+    )
+
+    assert response.status_code == 415
+    assert "application/json-patch+json" in response.json()["detail"]
+```
+
+### Conflict contract
 
 ```python
 def test_missing_path_returns_conflict(client):
@@ -38,12 +93,42 @@ def test_missing_path_returns_conflict(client):
     )
 
     assert response.status_code == 409
-    assert response.json()["detail"]["code"] == "patch_conflict"
+    assert isinstance(response.json()["detail"], str)
 ```
 
-### OpenAPI Contract Snapshot
+### Target-model validation contract
 
-Use snapshot tests to lock generated PATCH schemas and response metadata. See:
+```python
+def test_invalid_patched_model_returns_422(client):
+    response = client.patch(
+        "/users/1",
+        headers={"content-type": "application/json-patch+json"},
+        json=[{"op": "replace", "path": "/email", "value": None}],
+    )
 
-- `tests/contract/openapi/test_demo_openapi_snapshots.py`
-- `examples/openapi/*.json`
+    assert response.status_code == 422
+```
+
+### OpenAPI contract
+
+```python
+def test_user_patch_schema_snapshot(app):
+    openapi = app.openapi()
+
+    user_patch_request = openapi["components"]["schemas"]["UserPatchRequest"]
+    responses = openapi["paths"]["/users/{user_id}"]["patch"]["responses"]
+
+    assert user_patch_request == EXPECTED_USER_PATCH_REQUEST
+    assert responses == EXPECTED_PATCH_RESPONSES
+```
+
+## What to keep stable
+
+The most important things to keep stable over time are:
+
+- which status code a category of failure maps to
+- whether `detail` is a string or structured object
+- which operations the route advertises in OpenAPI
+
+Exact human-readable error strings are usually less important unless clients
+depend on them. Status and shape are the real API contract.

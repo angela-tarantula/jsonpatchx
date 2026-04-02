@@ -1,42 +1,50 @@
-# Contract Evolution and Deprecation
+# Evolving Contracts
 
-Operation schemas **are your API surface**. Treat them as versioned contracts
-with clear, predictable evolution rules.
+Operation schemas are API surface.
 
-## Evolution Rules
+That means changing an operation is not “just changing an internal model.” It is
+changing a request contract that clients send over the wire.
 
-Follow these principles when changing an operation:
+JsonPatchX makes that surface explicit. The trade-off is that you should version
+and deprecate it with the same care you would apply to any other request model.
 
-1. **Prefer additive changes** Add new fields instead of changing existing
-   behavior.
+## Safe ways to change an operation
 
-2. **Use backward-compatible defaults** New fields must default to existing
-   behavior so current clients continue to work unchanged.
+The safest rule is simple:
 
-3. **Reserve new `op` values for breaking changes** If semantics change in a way
-   that could break existing clients, introduce a new `op` literal instead of
-   modifying the existing one.
+Keep an existing `op` stable unless you are willing to own its current meaning
+for old clients.
 
-4. **Deprecate before removing** Mark fields or behaviors as deprecated, give
-   consumers time to migrate, then remove them on a defined schedule.
+That leads to a practical set of rules.
 
-## Decision Guide
+1. Prefer additive changes.
+2. New fields should default to existing behavior.
+3. Use a new `op` literal for a real semantic break.
+4. Deprecate before removing.
+5. Roll schema changes out with registry and deployment policy, not only code
+   merges.
 
-Use this table when evolving an operation:
+## Change guide
 
-| Change                       | What to do                                     |
-| ---------------------------- | ---------------------------------------------- |
-| Add optional behavior        | Add a new field with a safe default            |
-| Allow opt-out of behavior    | Add a field (e.g. `strict=False`)              |
-| Remove optional behavior     | Deprecate the opt-out, then remove the field   |
-| Change core semantics        | Introduce a new `op`                           |
-| Rename or restructure fields | Add new field -> deprecate old -> remove later |
+| Change                    | What to do                                             |
+| ------------------------- | ------------------------------------------------------ |
+| Add optional behavior     | Add a new field with a safe default                    |
+| Relax or tighten a mode   | Add a field that makes the mode explicit               |
+| Rename a field            | Add the new field, deprecate the old one, remove later |
+| Change core semantics     | Introduce a new `op`                                   |
+| Remove an optional branch | Deprecate it first, then remove on a schedule          |
 
-## Example: Operation Lifecycle
+## Example: evolving `replace_substring`
 
-### 1. Initial version
+### Initial version
 
 ```python
+from typing import Literal
+
+from jsonpatchx import JSONPointer, JSONValue, OperationSchema, PatchConflictError, ReplaceOp
+from jsonpatchx.types import JSONString
+
+
 class ReplaceSubstringOp(OperationSchema):
     op: Literal["replace_substring"] = "replace_substring"
     path: JSONPointer[JSONString]
@@ -47,44 +55,58 @@ class ReplaceSubstringOp(OperationSchema):
         current = self.path.get(doc)
         if self.old not in current:
             raise PatchConflictError(f"{self.old!r} is not in {current!r}")
+
         return ReplaceOp(
             path=self.path,
             value=current.replace(self.old, self.new),
         ).apply(doc)
 ```
 
-### 2. Additive evolution (non-breaking)
+### Additive evolution
 
-Introduce optional behavior via a new field:
+Suppose clients now need a non-strict mode.
+
+That is an additive change, so keep the `op` and add a field with the old
+behavior as the default.
 
 ```python
+from pydantic import Field
+from jsonpatchx.types import JSONBoolean
+
+
 class ReplaceSubstringOp(OperationSchema):
     op: Literal["replace_substring"] = "replace_substring"
     path: JSONPointer[JSONString]
     old: JSONString
     new: JSONString
-    strict: JSONBoolean = True
+    strict: JSONBoolean = Field(default=True)
 
     def apply(self, doc: JSONValue) -> JSONValue:
         current = self.path.get(doc)
+
         if self.strict and self.old not in current:
             raise PatchConflictError(
                 f"strict mode is enabled and {self.old!r} is not in {current!r}"
             )
+
         return ReplaceOp(
             path=self.path,
             value=current.replace(self.old, self.new),
         ).apply(doc)
 ```
 
-- Existing clients are unaffected (`strict=True`)
-- New clients can opt into relaxed behavior (`strict=False`)
+Existing clients keep working because `strict=True` preserves old behavior.
 
-### 3. Deprecation (behavior consolidation)
+### Deprecation
 
-If non-strict behavior is no longer desired, deprecate it:
+Now suppose you decide non-strict mode was a mistake.
+
+Deprecate the field before removing it.
 
 ```python
+from pydantic import Field
+
+
 class ReplaceSubstringOp(OperationSchema):
     op: Literal["replace_substring"] = "replace_substring"
     path: JSONPointer[JSONString]
@@ -94,46 +116,43 @@ class ReplaceSubstringOp(OperationSchema):
         default=True,
         deprecated=True,
         description=(
-            "Deprecated. Non-strict mode (strict=False) will be removed. "
+            "Deprecated. Non-strict mode will be removed. "
             "This operation will always behave as strict=True."
         ),
     )
 
     def apply(self, doc: JSONValue) -> JSONValue:
         current = self.path.get(doc)
+
         if self.strict and self.old not in current:
             raise PatchConflictError(
                 f"strict mode is enabled and {self.old!r} is not in {current!r}"
             )
+
         return ReplaceOp(
             path=self.path,
             value=current.replace(self.old, self.new),
         ).apply(doc)
 ```
 
-At this stage:
+The point of deprecation is not ceremony. It is to give clients and your own
+documentation a stable transition period.
 
-- `strict=False` is discouraged
-- Documentation and schema signal upcoming removal
-- Runtime warnings may be added if needed
+### Breaking semantic change
 
-### 4. Removal (future state)
+If you were changing the meaning of the operation itself, do not mutate
+`replace_substring` in place.
 
-Once clients have migrated, remove the field entirely and make strict behavior
-unconditional.
+Create a new `op`, such as `replace_substring_v2`, and let both contracts
+coexist for a while under registry policy.
 
-## Rollout Strategy
+## Coordinate evolution with rollout
 
-Schema evolution should be coordinated with runtime controls:
+Schema evolution works best when it is paired with runtime policy:
 
-- Use **operation registries** to control which operations are accepted per
-  endpoint
-- Gate new fields or operations behind **feature flags**
-- Roll out changes gradually across environments (dev -> staging -> production)
+- registries control which operations are accepted where
+- feature flags control when a new contract appears
+- OpenAPI snapshots tell you exactly what changed
 
-## Key Takeaways
-
-- Prefer **extending** operations over replacing them
-- Use **fields for optional behavior**, `op` for **semantic shifts**
-- Treat deprecation as a **phase**, not a single step
-- Roll out contract changes with explicit **registry and flag policy**
+That is how you keep PATCH contracts predictable. The schema changes, the route
+policy changes, and the docs change together.

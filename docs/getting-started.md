@@ -1,41 +1,56 @@
 # Getting Started
 
-This page gets you to a working RFC 6902 flow quickly, then shows how to apply
-the same PATCH model as a typed FastAPI contract.
+This page gets you to a working patch flow in two steps:
+
+1. apply a plain RFC 6902 patch document;
+2. use the same operation set as a typed FastAPI request contract.
 
 ## Install
 
 ```sh
 pip install jsonpatchx
+pip install "jsonpatchx[fastapi]"
 ```
 
-## Example 1: Standards-Compliant Runtime Patching
+Install the extra only if you want the FastAPI helpers.
+
+## 1. Apply a plain RFC 6902 patch
 
 ```python
 from jsonpatchx import JsonPatch
 
+doc = {"name": "Ada", "roles": ["engineer"]}
+
 patch = JsonPatch(
     [
-        {"op": "replace", "path": "/tier", "value": "pro"},
-        {"op": "replace", "path": "/limits/max_projects", "value": 25},
+        {"op": "replace", "path": "/name", "value": "Ada Lovelace"},
+        {"op": "add", "path": "/roles/-", "value": "maintainer"},
     ]
 )
 
-tenants = [
-    {"tier": "free", "limits": {"max_projects": 3}},
-    {"tier": "free", "limits": {"max_projects": 5}},
-]
-
-upgraded = [patch.apply(doc) for doc in tenants]
+updated = patch.apply(doc)
 ```
 
-## Example 2: FastAPI PATCH Contract
+This is ordinary JSON Patch. No custom operations, no FastAPI integration, no
+new semantics.
+
+`JsonPatch` defaults to the standard RFC 6902 registry, so the input document
+above is parsed and validated as plain JSON Patch. By default, `apply()` works
+against a copy of the input document.
+
+Already have a JSON string? `JsonPatch.from_string(text)` parses and validates
+it with the same default RFC registry.
+
+## 2. Turn the same RFC ops into a FastAPI contract
 
 ```python
+from typing import Annotated
+
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 
-from jsonpatchx import JsonPatchFor
+from jsonpatchx import JsonPatchFor, StandardRegistry
+from jsonpatchx.fastapi import JsonPatchRoute, install_jsonpatch_error_handlers
 
 
 class User(BaseModel):
@@ -44,10 +59,22 @@ class User(BaseModel):
     active: bool
 
 
-app = FastAPI()
+UserPatch = JsonPatchFor[User, StandardRegistry]
+user_patch_route = JsonPatchRoute(UserPatch)
 
-@app.patch("/users/{user_id}", response_model=User)
-def patch_user(user_id: int, patch: JsonPatchFor[User]) -> User:
+app = FastAPI()
+install_jsonpatch_error_handlers(app)
+
+
+@app.patch(
+    "/users/{user_id}",
+    response_model=User,
+    **user_patch_route.route_kwargs(),
+)
+def patch_user(
+    user_id: int,
+    patch: Annotated[UserPatch, user_patch_route.Body()],
+) -> User:
     user = load_user(user_id)
     if user is None:
         raise HTTPException(status_code=404, detail="user not found")
@@ -57,28 +84,34 @@ def patch_user(user_id: int, patch: JsonPatchFor[User]) -> User:
     return updated
 ```
 
-See this endpoint live: [Interactive PATCH preview](example.com)
+A matching request still looks like standard JSON Patch:
 
-> Demo note: This preview validates PATCH payloads and returns patched JSON, but
-> does not persist changes.
+```http
+PATCH /users/1
+Content-Type: application/json-patch+json
 
-## What This Gives You
+[
+  {"op": "replace", "path": "/email", "value": "ada@example.com"},
+  {"op": "replace", "path": "/active", "value": false}
+]
+```
 
-- RFC 6902-compatible patch behavior for runtime document updates.
-- A typed FastAPI request contract for PATCH endpoints.
-- A flexible path from standard JSON Patch to custom PATCH contracts.
+## What changed between the two examples
 
-## Next Steps
+The operation vocabulary did not change. The second example still accepts
+standard RFC 6902 operations through `StandardRegistry`.
 
-The examples above show baseline RFC behavior. The next layer is extension.
+What changed is the contract around them:
 
-1. Define custom operations as strongly-typed Pydantic models.
-2. Use typed pointers to make operation intent explicit and harden operation
-   targeting.
-3. Use JSONPath selectors for expressive, query-style targeting when a single
-   pointer is not enough.
-4. Control which operations are allowed on each endpoint.
-5. Optionally load operation sets from declarative configuration and gate
-   rollout with feature flags.
-6. Evolve contracts by extending schemas, adding operations, and deprecating
-   obsolete fields or operations.
+- the request body is now a named patch model
+- the allowed operations are explicit at the route boundary
+- request parsing and OpenAPI come from the same source
+- `patch.apply(user)` revalidates the patched result as `User`
+
+That is the core JsonPatchX move: keep JSON Patch where it works, then add
+contract semantics where APIs need them.
+
+## Where to go next
+
+The next page explains `JsonPatchFor[Target, Registry]` in more detail and shows
+why it is useful even before you define a single custom operation.

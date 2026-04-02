@@ -1,22 +1,24 @@
-# Operation Registries and Endpoint Policy
+# Registries and Endpoint Policy
 
-Registries are the policy boundary for PATCH contracts.
+Once PATCH becomes a contract, the next question is governance:
 
-A registry is a union of operation models. If an operation is not in the active
-registry, it is rejected during parse/validation, before apply-time.
+Which operations should this route accept?
 
-## Per-Endpoint Allow-Lists
+That is what registries are for.
+
+A registry is a union of operation models. If an operation is not part of the
+registry bound to the route, the request is rejected before apply-time.
+
+## The same resource can expose different mutation vocabularies
 
 ```python
-from jsonpatchx import AddOp, RemoveOp, ReplaceOp, StandardRegistry
-from jsonpatchx.pydantic import JsonPatchFor
+from jsonpatchx import AddOp, JsonPatchFor, RemoveOp, ReplaceOp, StandardRegistry
 
+type PublicUserOps = AddOp | RemoveOp | ReplaceOp
+type InternalUserOps = StandardRegistry | IncrementQuotaOp
 
-type PublicUserRegistry = AddOp | RemoveOp | ReplaceOp
-type InternalUserRegistry = StandardRegistry | IncrementQuotaOp
-
-PublicUserPatch = JsonPatchFor[User, PublicUserRegistry]
-InternalUserPatch = JsonPatchFor[User, InternalUserRegistry]
+PublicUserPatch = JsonPatchFor[User, PublicUserOps]
+InternalUserPatch = JsonPatchFor[User, InternalUserOps]
 ```
 
 ```python
@@ -30,25 +32,55 @@ def patch_internal_user(user_id: int, patch: InternalUserPatch) -> User:
     ...
 ```
 
-Both routes patch the same model, but each can enforce a different mutation
-vocabulary.
+Both routes patch the same target model.
 
-## Useful Patterns
+They do not expose the same mutation vocabulary.
 
-- Least privilege by default: each client gets only the mutation surface it
-  needs.
-- Faster iteration during development: a permissive dev-only registry can
-  support ad-hoc patching and experiments.
-- Safer production administration: admin-only registries can expose high-impact
-  operations behind stricter auth and audit controls.
-- Cleaner client segmentation: web, internal services, and partner APIs can each
-  use a different contract.
+That distinction is one of the main reasons JsonPatchX exists.
 
-## Policy Outcome
+## Why govern the mutation surface
 
-Route-level registries make PATCH policy explicit:
+Without registries, PATCH often turns into an all-or-nothing shape:
 
-- Allowed operations are visible in code and OpenAPI.
-- Disallowed operations fail during parse/validation, before mutation.
-- Public, admin, and dev endpoints can evolve independently without sharing one
-  global mutation surface.
+- either you accept free-form patch documents
+- or you stop using PATCH for anything sensitive
+
+Registries give you a middle ground.
+
+You can keep the PATCH transport model while still saying:
+
+- browser clients may use a small RFC subset
+- internal tools may use the full RFC plus admin-only operations
+- partner APIs may get a different, slower-moving contract
+- beta operations may exist on one route before they exist anywhere else
+
+That is not just “control which mutations are allowed.” It is route design.
+
+## Parse-time rejection matters
+
+A disallowed operation fails during request parsing, before mutation runs.
+
+That is important for two reasons.
+
+First, policy failures should not depend on current resource state. Whether a
+client is allowed to send `increment_quota` is an endpoint rule, not a property
+of the document being patched.
+
+Second, OpenAPI can stay honest. When the registry changes, the route’s request
+schema changes with it. The docs do not have to hand-wave about “supported ops”
+in prose.
+
+## A practical way to think about registries
+
+Treat a registry like an endpoint-specific mutation vocabulary.
+
+It should be shaped by:
+
+- trust boundary
+- client type
+- rollout stage
+- audit and support burden
+- the actual semantics you are prepared to own long-term
+
+That framing keeps registries grounded. They are not abstract allow-lists. They
+are part of the public meaning of the route.

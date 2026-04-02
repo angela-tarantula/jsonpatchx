@@ -1,32 +1,46 @@
-# Developer Reference
+# Developer Overview
 
-This section is for maintainers and advanced adopters working on internals,
-extension points, and implementation constraints.
+This section is for contributors and advanced integrators, not first-time users.
 
-## Architecture Overview
+The User Guide explains when to adopt JsonPatchX and how to build PATCH
+endpoints with it. The pages here explain the constraints and extension points
+that shape the library itself.
 
-```mermaid
-flowchart TD
-    A["PATCH request"] --> B["JsonPatchFor[Model, Registry] validation"]
-    B --> C["Registry discriminator (op) resolution"]
-    C --> D["OperationSchema.apply loop (_apply_ops)"]
-    D --> E["Pointer backend get/add/remove"]
-    E --> F["Patched JSON document"]
-    F --> G["Model revalidation / response serialization"]
-```
+## What matters in the internals
 
-## Operation Authoring Notes
+JsonPatchX has a few design choices that are easy to miss if you only read the
+user-facing examples:
 
-When defining `OperationSchema` subclasses:
+- the RFC 6902 core is meant to stay easy to reach
+- the contract layer is a first-class API surface, not decoration around a patch
+  engine
+- pointer semantics are intentionally extensible
+- richer PATCH behavior should stay explicit, typed, and testable
+- failure behavior matters as much as success behavior
 
-- `op` should be an instance field annotated as `Literal[...]` (not `ClassVar`).
-- Setting a default (for example, `op: Literal["increment"] = "increment"`) is
-  optional and mostly ergonomic for direct Python instantiation.
-- Generated OpenAPI still marks `op` as required, even when a default is
-  provided.
+Those choices are why the library is organized the way it is.
 
-Start with:
+## What belongs in Developer Reference
 
-- [Local Docs Preview](developer-docs-preview.md)
-- [Pointer Backends](pointer-backends.md)
-- [Recursive Bound Limitation](recursive-bound-limitation.md)
+Developer Reference is the right home for:
+
+- local docs and contributor workflow
+- pointer backend protocol details
+- type-system caveats and runtime typing trade-offs
+- extension mechanics that are useful to contributors, but too detailed for
+  onboarding
+
+That separation matters. The User Guide should stay focused on adoption and API
+design. It should not have to carry contributor-only detail.
+
+## How to read this section
+
+Read these pages when you are:
+
+- changing the docs or nav
+- implementing a custom pointer backend
+- debugging typing behavior around registries, pointers, or JSON helper types
+- deciding whether a concept belongs in prose docs or in the generated API
+  Reference
+
+If you are just trying to build a PATCH route, stay in the User Guide.

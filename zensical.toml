@@ -1,6 +1,6 @@
 [project]
 site_name = "JsonPatchX"
-site_description = "Typed JSON Patch for Python with FastAPI and Pydantic"
+site_description = "RFC 6902 JSON Patch for Python, with typed PATCH contracts for FastAPI and Pydantic"
 repo_url = "https://github.com/angela-tarantula/jsonpatchx"
 repo_name = "angela-tarantula/jsonpatchx"
 edit_uri = "edit/main/docs"
@@ -14,44 +14,33 @@ nav = [
   { "User Guide" = [
     { "Overview" = "index.md" },
     { "Getting Started" = "getting-started.md" },
-    { "Custom Operations and Typed Pointers" = "custom-operations-and-typed-pointers.md" },
-    { "Operation Registries and Endpoint Policy" = "operation-registries-and-endpoint-policy.md" },
-    { "JSONPath Selection" = "jsonpath-selection.md" },
-    { "Config-Driven Operation Rollout" = "config-driven-operation-rollout.md" },
-    { "Contract Evolution and Deprecation" = "contract-evolution-and-deprecation.md" },
+    { "PATCH Contracts in FastAPI" = "patch-contracts.md" },
+    { "Custom Operations" = "custom-operations.md" },
+    { "Registries and Endpoint Policy" = "operation-registries-and-endpoint-policy.md" },
+    { "JSONPath and Alternative Selectors" = "jsonpath-selection.md" },
+    { "Rolling Out PATCH Contracts" = "config-driven-operation-rollout.md" },
+    { "Evolving Contracts" = "contract-evolution-and-deprecation.md" },
     { "Error Semantics and Contract Tests" = "error-semantics-and-contract-tests.md" },
   ] },
   { "Developer Reference" = [
     { "Developer Overview" = "developer-reference.md" },
     { "Local Docs Preview" = "developer-docs-preview.md" },
     { "Pointer Backends" = "pointer-backends.md" },
-    { "Recursive Bound Limitation" = "recursive-bound-limitation.md" },
+    { "Type System Notes" = "type-system-notes.md" },
   ] },
   { "API Reference" = [
     { "API Overview" = "api-reference.md" },
     { "Public API" = "api-reference-public.md" },
-    { "Patch Engine" = "api-reference-patch-engine.md" },
+    { "Standard RFC 6902" = "api-reference-standard.md" },
+    { "Built-in Operations" = "api-reference-builtins.md" },
     { "Pydantic Contracts" = "api-reference-pydantic.md" },
     { "Registries" = "api-reference-registries.md" },
     { "Pointers" = "api-reference-pointers.md" },
-    { "Schema Base" = "api-reference-schema.md" },
+    { "Pointer Backends" = "api-reference-backends.md" },
+    { "Operation Schema" = "api-reference-schema.md" },
+    { "JSON Types" = "api-reference-types.md" },
     { "Exceptions" = "api-reference-exceptions.md" },
     { "FastAPI Helpers" = "api-reference-fastapi.md" },
-  ] },
-  { "Legacy User Guide" = [
-    { "Legacy Home" = "legacy-user-guide.md" },
-    { "Getting Started" = "legacy-getting-started.md" },
-    { "Patching Plain JSON" = "patching-plain-json.md" },
-    { "FastAPI Integration" = "fastapi-integration.md" },
-    { "JsonPatchFor Contracts" = "jsonpatchfor-contracts.md" },
-    { "Operation Registries" = "operation-registries.md" },
-    { "Custom Operations" = "custom-operations.md" },
-    { "Advanced Patterns" = "advanced-patterns.md" },
-    { "Type System Notes" = "type-system-notes.md" },
-    { "Demos" = "demos.md" },
-    { "Error Catalog" = "error-catalog.md" },
-    { "API Cheat Sheet" = "api-cheat-sheet.md" },
-    { "Demo Error Shapes" = "demo-error-shapes.md" },
   ] },
 ]
 
