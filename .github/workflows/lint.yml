@@ -48,7 +48,13 @@ jobs:
           # Security and workflow hardening.
           VALIDATE_CHECKOV: true # policy/security checks for repo config and API specs
           VALIDATE_GITHUB_ACTIONS: true # workflow syntax/expression validation
-          VALIDATE_GITHUB_ACTIONS_ZIZMOR: true # GitHub Actions security audits
+
+          # Temporary: disable Super-Linter's bundled zizmor (v1.22.0 in this image).
+          # It fails to parse valid Dependabot pre-commit ecosystem config; fixed in
+          # zizmor v1.23.0: https://github.com/zizmorcore/zizmor/releases/tag/v1.23.0
+          # Remove this override once Super-Linter ships a zizmor >= v1.23.0.
+          # VALIDATE_GITHUB_ACTIONS_ZIZMOR: true # GitHub Actions security audits
+
           VALIDATE_GITLEAKS: true # secrets detection
           VALIDATE_GIT_MERGE_CONFLICT_MARKERS: true # blocks unresolved merge markers
 
@@ -72,3 +78,17 @@ jobs:
 
           VALIDATE_ALL_CODEBASE: false
           MULTI_STATUS: false
+
+      # Remove this once Super-Linter ships a zizmor >= v1.23.0.
+      - name: Setup uv
+        uses: astral-sh/setup-uv@cec208311dfd045dd5311c1add060b2062131d57 # v8.0.0
+      - name: 🔐 run zizmor (pinned)
+        shell: bash
+        run: |
+          set -euo pipefail
+          # Keep audit scope precise: only workflows/actions, not Dependabot config.
+          inputs=(.github/workflows)
+          if [[ -d .github/actions ]]; then
+            inputs+=(.github/actions)
+          fi
+          uv tool run --from zizmor==1.23.1 zizmor "${inputs[@]}"

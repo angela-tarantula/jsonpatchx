@@ -30,6 +30,17 @@ updates:
     schedule:
       interval: "monthly"
 
+  - package-ecosystem: "pre-commit"
+    directory: "/"
+    cooldown:
+      default-days: 7
+    groups:
+      pre-commit-hooks:
+        patterns:
+          - "*"
+    schedule:
+      interval: "monthly"
+
   # .clusterfuzzlite/requirements-bootstrap.txt.
   - package-ecosystem: "pip"
     directory: "/.clusterfuzzlite"
