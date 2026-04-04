@@ -63,12 +63,12 @@ These workflows consume the `.clusterfuzzlite` build/config:
    - `keep-unaffected-fuzz-targets: true`
    - Purpose: deeper whole-target bug discovery.
 
-## `gh-pages` Storage Model
+## `fuzz-corpus` Storage Model
 
-All three workflows are configured to use `gh-pages` as the storage branch:
+All three workflows are configured to use `fuzz-corpus` as the storage branch:
 
-- `storage-repo-branch: gh-pages`
-- `storage-repo-branch-coverage: gh-pages`
+- `storage-repo-branch: fuzz-corpus`
+- `storage-repo-branch-coverage: fuzz-corpus`
 
 Write permissions:
 
