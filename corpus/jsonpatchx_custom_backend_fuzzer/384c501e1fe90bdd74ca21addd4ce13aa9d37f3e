@@ -1,0 +1,6 @@
+{
+  "doc": { "a": { "b": 1 }, "items": ["x"] },
+  "patch": [
+    { "op": "add", "path": "/items/-", "value": "yt_removeot_set", "path": "a.b", "value": 3 }
+  ]
+}

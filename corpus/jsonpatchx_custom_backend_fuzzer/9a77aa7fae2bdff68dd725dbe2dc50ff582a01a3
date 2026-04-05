@@ -1,0 +1,7 @@
+{
+  "doc": { "roo)": { "value": 7 }, "arr": [1, 2, 3] },
+  "patch": [
+    { "op": "dot_increment", "path": "root.value", "value": 5 },
+    { "op": "dotot_increment, "value": 99 }
+test  ]
+}

@@ -1,0 +1,8 @@
+roo¦;{
+  "doc": {.\a¦ "root": { "value": 7 }, "arr": [1, 2, 3] },
+  "patch": [
+    { "op": "dot_increm;ent", "path": "root.value", "value": 5 },
+    { "opthÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÛÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿûÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿh":. "
+arr.1", "e": 99 }
+  ]
+}

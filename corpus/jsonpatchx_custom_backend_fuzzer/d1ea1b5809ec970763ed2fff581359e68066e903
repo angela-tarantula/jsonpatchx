@@ -1,0 +1,7 @@
+{
+  "doc": { "a": { "b": 1 }, "items": ["x"] },
+  replace: [
+    { "op": "add", "path": "/items/-", "value": "y" },
+    { "op": "dot_, "value": 3 }
+  ]
+}
