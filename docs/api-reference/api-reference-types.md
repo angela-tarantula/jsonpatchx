@@ -3,4 +3,9 @@
 This module contains the strict JSON helper types used throughout JsonPatchX
 contracts and operation models.
 
-::: jsonpatchx.types options: show*root_heading: false filters: - "!^*"
+<!-- prettier-ignore -->
+::: jsonpatchx.types
+    options:
+      show_root_heading: false
+      filters:
+        - "!^_"
