@@ -1,7 +1,6 @@
 # JsonPatchX
 
-_A framework for governed PATCH APIs in Python. Powered by Pydantic. FastAPI
-native._
+A PATCH framework for Python.
 
 <!-- markdownlint-disable MD013 -->
 
@@ -15,41 +14,41 @@ native._
 ## About The Project
 
 [RFC 6902](https://datatracker.ietf.org/doc/html/rfc6902) (JSON Patch) is
-intentionally minimal and transport-focused. That's great for interoperability,
+intentionally minimal and transport-focused. That is great for interoperability,
 but modern PATCH traffic crosses trust boundaries: browser clients, internal
 services, third-party integrations, and increasingly LLM-generated patch
 payloads.
 
 ### JsonPatchX supports standard JSON Patch and adds a contract layer
 
-- **Input Safety**: Patch operations are Pydantic models, so malformed payloads
+- **Input Safety**: patch operations are Pydantic models, so malformed payloads
   fail fast with clear, structured errors.
 
-- **FastAPI Native**: Set up PATCH routes quickly with minimal boilerplate.
+- **FastAPI Native**: set up PATCH routes quickly with minimal boilerplate.
 
 ### It also provides extensibility beyond the RFC
 
-- **Richer Operations**: Define custom patch operations such as `increment`,
+- **Richer Operations**: define custom patch operations such as `increment`,
   `toggle`, or `replace_substring` so updates express intent directly instead of
   relying on brittle sequences of low-level steps.
 
-- **Typed targeting**: pointers participate in typed contracts, with clear
+- **Typed Targeting**: pointers participate in typed contracts, with clear
   failure modes when a resolved path has the wrong shape or type.
 
-- **Expressive targeting**: use standard
+- **Expressive Targeting**: use standard
   [JSON Pointer](https://datatracker.ietf.org/doc/html/rfc6901), the new
   [RFC 9535](https://datatracker.ietf.org/doc/html/rfc9535) JSONPath, or your
   own custom resolver.
 
 ### And it treats the patch layer as a first-class contract
 
-- **Live Contract Sync**: OpenAPI is generated from the same runtime patch
-  models, so documentation stays aligned automatically.
+- **OpenAPI in Sync**: OpenAPI is generated from the same runtime patch models,
+  so documentation stays aligned automatically.
 
-- **Surface Control**: Operations can be allow-listed per route to limit what
+- **Surface Control**: operations can be allow-listed per route to limit what
   clients can do.
 
-- **Lifecycle Management**: Evolve operation contracts over time with additive
+- **Lifecycle Management**: evolve operation contracts over time with additive
   schema changes and deprecations.
 
 ## Getting Started
@@ -60,9 +59,9 @@ payloads.
 pip install jsonpatchx
 ```
 
-### Usage
+## Usage
 
-#### 1. Standard RFC 6902
+### 1. Standard RFC 6902
 
 ```python
 from jsonpatchx import JsonPatch
@@ -81,7 +80,7 @@ patch = JsonPatch.from_string(
 updated = patch.apply(doc)
 ```
 
-#### 2. The FastAPI Contract
+### 2. The FastAPI Contract
 
 ```python
 from fastapi import FastAPI
@@ -103,29 +102,34 @@ def patch_user(user_id: int, patch: JsonPatchFor[User]) -> User:
     return updated
 ```
 
-> **Note**: For custom operations, JSONPath targeting, and advanced FastAPI
-> route helpers, see the
-> [Full Documentation](https://angela-tarantula.github.io/jsonpatchx/).
+> **Note**: For registries, custom operations, JSONSelector/JSONPath targeting,
+> and optional FastAPI route helpers, see the
+> [User Guide](https://angela-tarantula.github.io/jsonpatchx/).
 
-## Join the Experiment
+## Roadmap
 
-JsonPatchX is a playground for the future of JSON Patch. With the recent
-standardization of JSONPath, we are exploring more expressive ways to handle
-mutations.
+See the [open issues](https://github.com/angela-tarantula/jsonpatchx/issues) for
+a list of proposed features (and known issues).
 
-- **Discuss**: Join the project
+## Contributing
+
+JsonPatchX is a safe experimentation surface for the future of JSON Patch. With
+the standardization of JSONPath, the ecosystem is in a good place to explore
+more expressive mutation contracts.
+
+- **Discuss**: join the project
   [Discussions](https://github.com/angela-tarantula/jsonpatchx/discussions) or
   the broader [json-patch2](https://github.com/json-patch/json-patch2) forum.
-- **Contribute**: See
-  [CONTRIBUTING.md](https://www.google.com/search?q=CONTRIBUTING.md) to help
-  shape the roadmap. Any contributions you make are **greatly appreciated**. See
-  the [open issues](https://github.com/angela-tarantula/jsonpatchx/issues) for a
-  list of proposed features (and known issues).
+- **Contribute**: see [CONTRIBUTING.md](CONTRIBUTING.md) to help shape the
+  roadmap. Contributions are **greatly appreciated**.
 
-## License & Contact
+## License
 
-Distributed under the MIT License. Created by Angela Liss
-([chamsester@gmail.com](mailto:chamsester@gmail.com)).
+Distributed under the MIT License. See [LICENSE](LICENSE) for more information.
+
+## Contact
+
+Angela Liss - [chamsester@gmail.com](mailto:chamsester@gmail.com)
 
 Project Link:
 [https://github.com/angela-tarantula/jsonpatchx](https://github.com/angela-tarantula/jsonpatchx)

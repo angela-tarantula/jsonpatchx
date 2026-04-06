@@ -1,103 +1,114 @@
 # JsonPatchX
 
-JsonPatchX is a Python library for PATCH APIs.
+A PATCH framework for Python.
 
-At the bottom, it is a clean implementation of
-[RFC 6902](https://datatracker.ietf.org/doc/html/rfc6902) JSON Patch. You can
-parse a standard patch document, apply it to JSON, and stop there.
+JsonPatchX starts with RFC 6902 JSON Patch and goes farther when an API needs
+more than a generic patch document.
 
-The reason the project exists, though, is that most real PATCH endpoints need
-more than transport semantics. They need request models. They need validation
-before mutation. They need OpenAPI that matches what the route will really
-accept. They need a way to say that one client may send `replace`, while another
-may also send `increment`. JsonPatchX adds that contract layer without throwing
-away JSON Patch.
+If all you want is standard JSON Patch, you can use `JsonPatch` and stop there.
+It is Pydantic-backed, standards-compliant, and intentionally easy to reach.
 
-If all you want is standards-compliant JSON Patch, JsonPatchX welcomes that use
-case first. If you want governed PATCH APIs, it gives you a path there.
+If PATCH is part of a public API contract, JsonPatchX gives you more structure:
+typed request models, validation before mutation, target-model revalidation
+after mutation, OpenAPI generated from the same operation models, and
+route-level control over which operations each endpoint accepts.
 
 ```python
-from jsonpatchx import JsonPatch, JsonPatchFor, StandardRegistry
+from jsonpatchx import JsonPatch, JsonPatchFor
 
-# 1) Plain RFC 6902 patching
 patch = JsonPatch(
     [
-        {"op": "replace", "path": "/tier", "value": "pro"},
-        {"op": "add", "path": "/features/-", "value": "priority-support"},
+        {"op": "replace", "path": "/status", "value": "active"},
     ]
 )
 
-# 2) The same RFC operation set, now as an API contract
-UserPatch = JsonPatchFor[User, StandardRegistry]
-
-# 3) Later, if your API needs richer semantics, extend the registry
-type AdminUserOps = StandardRegistry | IncrementQuotaOp
-AdminUserPatch = JsonPatchFor[User, AdminUserOps]
+UserPatch = JsonPatchFor[User]
 ```
 
-## Why this library exists
+That second line is the center of the project. It keeps JSON Patch on the wire,
+but turns the body into an explicit API contract.
 
-[RFC 6902](https://datatracker.ietf.org/doc/html/rfc6902) is deliberately small.
-That is good for interoperability, but it leaves a lot unsaid when the patch
-document itself becomes part of an API contract.
+## Why this exists
 
-In practice, many teams either avoid PATCH altogether or reach for JSON Merge
-Patch because it feels easier to reason about. That trade-off is understandable.
-Generic patch documents are hard to govern across trust boundaries, array
-positions are brittle, and mutation intent is often hidden inside low-level
-`add` or `replace` steps.
+[RFC 6902](https://datatracker.ietf.org/doc/html/rfc6902) is good at what it set
+out to do. It gives you a standard document format for a sequence of patch
+operations and a media type for sending them over HTTP.
 
-Those problems get sharper when PATCH traffic comes from browsers, internal
-services, third-party integrations, and generated clients. A `list[dict]` body
-is no longer enough. The route needs to describe its mutation vocabulary
-explicitly.
+That still leaves a lot of practical API design questions open.
 
-JsonPatchX is built around that gap.
+Many teams react by avoiding PATCH, or by using
+[JSON Merge Patch](https://datatracker.ietf.org/doc/html/rfc7386) when updates
+are simple enough that “just send the new object shape” feels easier. That is a
+reasonable trade-off a lot of the time. Merge Patch is a good fit for coarse
+object updates where array handling, explicit deletions, and per-operation
+semantics do not matter much.
 
-## One adoption path, not two products
+JsonPatchX is for the cases where they do.
 
-You do not have to buy into the whole vision on day one.
+Those cases show up quickly in real systems. Browser clients, internal tools,
+third-party integrations, and increasingly LLM-generated patches all cross trust
+boundaries. At that point, a route usually needs more than “send me a list of
+patch dicts and I’ll try to apply them.”
 
-1. Use `JsonPatch` when you want plain RFC 6902 patch application.
-2. Use `JsonPatchFor[Model, StandardRegistry]` when you want standard RFC
-   operations, but as a typed FastAPI/Pydantic contract.
-3. Add custom operations, route-level registries, and alternative selectors only
-   when your domain actually needs them.
+## What changes when PATCH becomes a contract
 
-That progression matters. JsonPatchX is not a forked ecosystem where “simple”
-and “advanced” are separate products. The standard path is the first path.
+Once PATCH is part of an API surface, you usually care about things like:
 
-## What JsonPatchX adds once you need it
+- whether the request body is validated before mutation
+- whether the patched result is validated as the target model
+- whether OpenAPI matches what the route actually accepts
+- whether one endpoint should accept a smaller mutation vocabulary than another
+- whether repeated domain mutations should have their own named operations
+- whether exact-path addressing is enough, or query-style targeting would be
+  clearer
 
-When PATCH becomes a public API surface, JsonPatchX lets you make that surface
-explicit:
+That is the contract layer JsonPatchX adds.
 
-- patch operations are Pydantic models, so malformed payloads fail before
-  mutation
-- the patched result can be revalidated against a target model
-- OpenAPI is generated from the same operation models used at runtime
-- registries let each route accept only the operations it actually supports
-- custom operations can express domain intent such as `increment`, `toggle`, or
-  `replace_substring`
-- alternative pointer backends, including JSONPath-backed ones, can be
-  introduced as opt-in targeting strategies
+It is still JSON Patch at the bottom. The difference is that the patch layer
+stops being anonymous.
 
-Custom operations do not have to be exotic. Often the win is making familiar
-mutations safer and more legible.
+## Why not just use Merge Patch
 
-## The bigger argument
+Merge Patch stays attractive because it is simple to explain and simple to
+generate. For some APIs, that simplicity wins.
 
-JsonPatchX is making a larger claim about PATCH API design.
+But it comes with different trade-offs. It is much less explicit about mutation
+intent. It gets awkward once arrays matter. It is not a good fit when you want
+operation-level policy, extension, or stable error semantics around specific
+kinds of mutations.
 
-JSON Patch has been minimal for a long time.
-[JSONPath](https://datatracker.ietf.org/doc/html/rfc9535) is now standardized.
-The ecosystem is in a good place to explore richer PATCH contracts: better
-targeting, better semantics, and better governance.
+JsonPatchX is not trying to replace Merge Patch everywhere. It is for APIs that
+want the precision of patch operations, plus a cleaner way to govern them.
 
-The project is not arguing that every PATCH endpoint should invent its own
-language. It is arguing that when an API already has mutation rules, those rules
-should live in explicit, typed, testable operation contracts instead of ad hoc
-conventions.
+## You do not have to buy into the whole vision
 
-Start with the RFC. Keep the extensions opt-in. Let the better designs earn
-their place.
+The User Guide starts with plain RFC 6902 because that keeps the moving parts
+small. That is a learning path, not a demand.
+
+You can use JsonPatchX in layers:
+
+- use `JsonPatch` for plain standard JSON Patch
+- use `JsonPatchFor[Target]` when PATCH becomes part of a FastAPI contract
+- use `JsonPatchFor[Target, Registry]` when different endpoints or environments
+  need different operation sets
+- add custom operations or `JSONSelector` only where the domain really needs
+  them
+
+That progression matters. JsonPatchX should feel usable on day one even if you
+never adopt the whole idea.
+
+## Where this is heading
+
+JSON Patch has stayed deliberately small for a long time.
+[JSONPath](https://datatracker.ietf.org/doc/html/rfc9535) now has a standard.
+That makes this a good moment to experiment with richer PATCH contracts without
+throwing away the RFC core.
+
+JsonPatchX is meant to be a serious place to do that.
+
+Keep standard JSON Patch easy. Keep extensions explicit. Try better targeting,
+better operation semantics, and better governance in production-sized systems.
+Let the good ideas survive.
+
+The next page gets you running with plain `JsonPatch` and then the smallest
+possible `JsonPatchFor[...]` route.

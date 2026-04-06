@@ -1,42 +1,31 @@
-# Evolving Contracts
+# Contract Evolution and Deprecation
 
 Operation schemas are API surface.
 
-That means changing an operation is not “just changing an internal model.” It is
-changing a request contract that clients send over the wire.
+Once clients send them over the wire, changing them is not just a refactor. It
+is a contract change.
 
-JsonPatchX makes that surface explicit. The trade-off is that you should version
-and deprecate it with the same care you would apply to any other request model.
+That does not mean PATCH has to be rigid. It means the evolution needs to be
+deliberate.
 
-## Safe ways to change an operation
+## The safest rule
 
-The safest rule is simple:
+Keep an existing `op` stable unless you are prepared to support its current
+meaning for older clients.
 
-Keep an existing `op` stable unless you are willing to own its current meaning
-for old clients.
+That simple rule gets you most of the way there.
 
-That leads to a practical set of rules.
+In practice:
 
-1. Prefer additive changes.
-2. New fields should default to existing behavior.
-3. Use a new `op` literal for a real semantic break.
-4. Deprecate before removing.
-5. Roll schema changes out with registry and deployment policy, not only code
-   merges.
+- additive changes are the safest changes
+- new fields should default to existing behavior
+- a real semantic break deserves a new `op`
+- deprecation should happen before removal
+- registries are the right place to control where old and new contracts coexist
 
-## Change guide
+## A concrete example
 
-| Change                    | What to do                                             |
-| ------------------------- | ------------------------------------------------------ |
-| Add optional behavior     | Add a new field with a safe default                    |
-| Relax or tighten a mode   | Add a field that makes the mode explicit               |
-| Rename a field            | Add the new field, deprecate the old one, remove later |
-| Change core semantics     | Introduce a new `op`                                   |
-| Remove an optional branch | Deprecate it first, then remove on a schedule          |
-
-## Example: evolving `replace_substring`
-
-### Initial version
+Here is a small operation that replaces a substring at a string path:
 
 ```python
 from typing import Literal
@@ -62,12 +51,8 @@ class ReplaceSubstringOp(OperationSchema):
         ).apply(doc)
 ```
 
-### Additive evolution
-
-Suppose clients now need a non-strict mode.
-
-That is an additive change, so keep the `op` and add a field with the old
-behavior as the default.
+**Additive change.** Suppose clients now need a non-strict mode. Keep the same
+`op` and add a field that preserves the old behavior by default.
 
 ```python
 from pydantic import Field
@@ -95,13 +80,11 @@ class ReplaceSubstringOp(OperationSchema):
         ).apply(doc)
 ```
 
-Existing clients keep working because `strict=True` preserves old behavior.
+Existing clients keep working because `strict=True` preserves the original
+behavior.
 
-### Deprecation
-
-Now suppose you decide non-strict mode was a mistake.
-
-Deprecate the field before removing it.
+**Deprecation.** Now imagine you decide non-strict mode was a mistake. Do not
+remove the field the same day you stop liking it. Mark it deprecated first.
 
 ```python
 from pydantic import Field
@@ -135,24 +118,32 @@ class ReplaceSubstringOp(OperationSchema):
         ).apply(doc)
 ```
 
-The point of deprecation is not ceremony. It is to give clients and your own
-documentation a stable transition period.
+That gives OpenAPI and client developers a transition period instead of a
+surprise.
 
-### Breaking semantic change
+**Breaking semantic change.** If you are changing the meaning of the operation
+itself, do not mutate the old one in place. Create a new `op`.
 
-If you were changing the meaning of the operation itself, do not mutate
-`replace_substring` in place.
+For example:
 
-Create a new `op`, such as `replace_substring_v2`, and let both contracts
-coexist for a while under registry policy.
+- keep `replace_substring`
+- introduce `replace_substring_v2`
+- let both exist for a while through registry policy
+- remove the older one on a real schedule
 
-## Coordinate evolution with rollout
+That is easier for clients to reason about than an operation whose name stays
+the same while its semantics quietly drift.
 
-Schema evolution works best when it is paired with runtime policy:
+## Let registries carry the rollout
 
-- registries control which operations are accepted where
-- feature flags control when a new contract appears
-- OpenAPI snapshots tell you exactly what changed
+Registries are how you make evolution manageable in practice.
 
-That is how you keep PATCH contracts predictable. The schema changes, the route
-policy changes, and the docs change together.
+They let you do things like:
+
+- expose both old and new operations internally before a public rollout
+- keep a deprecated operation on one route while removing it from another
+- test migration behavior with a dev-only contract profile
+- version the accepted operation set without changing the transport format
+
+That is one of the strongest arguments for treating PATCH as a contract surface
+instead of just a list of mutation dicts.

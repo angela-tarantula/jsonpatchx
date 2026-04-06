@@ -14,12 +14,12 @@ nav = [
   { "User Guide" = [
     { "Overview" = "index.md" },
     { "Getting Started" = "user-guide/getting-started.md" },
-    { "PATCH Contracts in FastAPI" = "user-guide/patch-contracts.md" },
+    { "PATCH Contracts in FastAPI" = "user-guide/patch-contracts-in-fastapi.md" },
+    { "Registries and Endpoint Policy" = "user-guide/registries-and-endpoint-policy.md" },
     { "Custom Operations" = "user-guide/custom-operations.md" },
-    { "Registries and Endpoint Policy" = "user-guide/operation-registries-and-endpoint-policy.md" },
-    { "JSONPath and Alternative Selectors" = "user-guide/jsonpath-selection.md" },
-    { "Rolling Out PATCH Contracts" = "user-guide/config-driven-operation-rollout.md" },
-    { "Evolving Contracts" = "user-guide/contract-evolution-and-deprecation.md" },
+    { "JSONSelector and Alternative Targeting" = "user-guide/jsonselector-and-alternative-targeting.md" },
+    { "Deployment Profiles and Environment-Specific Contracts" = "user-guide/deployment-profiles-and-environment-specific-contracts.md" },
+    { "Contract Evolution and Deprecation" = "user-guide/contract-evolution-and-deprecation.md" },
     { "Error Semantics and Contract Tests" = "user-guide/error-semantics-and-contract-tests.md" },
   ] },
   { "Developer Reference" = [
@@ -27,6 +27,7 @@ nav = [
     { "Local Docs Preview" = "developer-reference/developer-docs-preview.md" },
     { "Pointer Backends" = "developer-reference/pointer-backends.md" },
     { "Type System Notes" = "developer-reference/type-system-notes.md" },
+    { "Limitations in Python's Type System" = "developer-reference/limitations-in-python-type-system.md" },
   ] },
   { "API Reference" = [
     { "API Overview" = "api-reference/api-reference.md" },

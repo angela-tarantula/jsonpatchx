@@ -81,7 +81,7 @@ It is also harder for static type checkers to reason about than a named alias
 such as:
 
 ```python
-type UserOps = StandardRegistry | IncrementQuotaOp
+type UserOps = StandardRegistry | IncrementOp
 ```
 
 That is not a flaw in the idea. It is just the trade-off between runtime
