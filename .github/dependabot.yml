@@ -17,7 +17,7 @@ updates:
           - "actions/*"
           - "github/*"
     schedule:
-      interval: "weekly"
+      interval: "monthly"
 
   - package-ecosystem: "uv"
     directory: "/"
@@ -28,7 +28,7 @@ updates:
         patterns:
           - "*"
     schedule:
-      interval: "weekly"
+      interval: "monthly"
 
   - package-ecosystem: "pre-commit"
     directory: "/"
@@ -39,7 +39,7 @@ updates:
         patterns:
           - "*"
     schedule:
-      interval: "weekly"
+      interval: "monthly"
 
   # .clusterfuzzlite/requirements-bootstrap.txt.
   - package-ecosystem: "pip"
@@ -51,4 +51,4 @@ updates:
         patterns:
           - "*"
     schedule:
-      interval: "weekly"
+      interval: "monthly"

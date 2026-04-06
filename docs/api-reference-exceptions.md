@@ -1,3 +1,0 @@
-# Exceptions
-
-::: jsonpatchx.exceptions

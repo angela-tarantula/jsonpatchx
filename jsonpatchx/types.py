@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections.abc import Mapping, Sequence
 from functools import lru_cache
 from typing import TYPE_CHECKING, Annotated, Any, cast, get_args
 
@@ -260,21 +261,6 @@ def _validate_typeform(unverified: object) -> TypeForm[Any]:
 
 
 type JSONBound = (
-    JSONScalar | JSONContainer[Any]
+    JSONScalar | Sequence[JSONBound] | Mapping[str, JSONBound]
 )  # Bound for all recursively JSON-ish types.
 # Use it like ``T = TypeVar("T", default=JSONValue, bound=JSONBound)``
-
-# NOTE: Ideally we'd accept JSON containers parameterized by *any* JSON element type:
-#   type JSONBound = JSONScalar | JSONContainer[T]  where  T <: JSONValue
-# This is an existential ("there exists some T") constraint. Writing
-#   type JSONBound = JSONScalar | JSONContainer[JSONValue]
-# is too narrow when JSONContainer is invariant (e.g., mutable), because it would reject
-# JSONContainer[JSONNumber], etc.
-#
-# Python typing can't currently express this existential constraint for invariant recursive
-# containers in type aliases/annotations, so we use `Any` in the container branch as a
-# pragmatic approximation. (Consequence: static checkers may not reject non-JSON element
-# types inside containers.)
-#
-# My proposed syntax (not supported today):
-#   type JSONBound = JSONScalar | JSONContainer[T: JSONValue]

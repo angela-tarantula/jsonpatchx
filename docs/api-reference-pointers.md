@@ -1,3 +1,0 @@
-# Pointers
-
-::: jsonpatchx.pointer

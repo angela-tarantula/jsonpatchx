@@ -1,3 +1,0 @@
-# Schema Base
-
-::: jsonpatchx.schema
