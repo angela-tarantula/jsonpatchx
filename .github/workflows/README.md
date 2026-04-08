@@ -65,6 +65,9 @@ PR required-check behavior ([`dependency-review.yml`](dependency-review.yml)):
 
 - On `pull_request`, dependency-review compares only PR-introduced dependency
   changes.
+- Snapshot warnings are retried automatically via
+  `retry-on-snapshot-warnings: true` with a 10-second timeout to tolerate
+  delayed dependency snapshot ingestion.
 
 Manual full-graph audit behavior
 ([`dependency-review-full-audit.yml`](dependency-review-full-audit.yml)):
@@ -73,6 +76,8 @@ Manual full-graph audit behavior
 - `base-ref` is computed at runtime as the repository root commit and `head-ref`
   is set to `github.sha`.
 - This forces a one-off review of the full dependency graph in the branch.
+- The same snapshot-retry settings are enabled here to reduce false warnings
+  when dependency snapshots arrive late.
 
 License policy behavior:
 
