@@ -105,8 +105,8 @@ Quick trigger/permission summary:
   - Triggers: `pull_request` and `workflow_dispatch`
   - PR behavior: runs fuzzing only when fuzz-relevant inputs changed
     (`jsonpatchx/`, `fuzzers/`, `.clusterfuzzlite/`, `pyproject.toml`,
-    `uv.lock`, or the ClusterFuzzLite workflow YAMLs); otherwise completes via a
-    no-op success job
+    `uv.lock`, or the ClusterFuzzLite workflow YAMLs); otherwise the required
+    `fuzz-code-changes` job exits successfully without fuzzing
   - Write scopes: `security-events: write` only
 - [`cflite_coverage.yml`](cflite_coverage.yml)
   - Triggers: weekly schedule and `workflow_dispatch`
