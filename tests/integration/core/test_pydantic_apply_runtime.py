@@ -30,7 +30,7 @@ class Event(BaseModel):
 
 
 def test_model_validation_failure() -> None:
-    UserPatch = JsonPatchFor[User, StandardRegistry]
+    UserPatch = JsonPatchFor[User]
     patch = UserPatch.model_validate([{"op": "replace", "path": "/name", "value": 123}])
     with pytest.raises(PatchValidationError):
         patch.apply(User(id=1, name="Ada"))
@@ -59,7 +59,7 @@ def test_model_dump_failure() -> None:
 
 
 def test_json_body_patch_rejects_non_json_document() -> None:
-    ConfigPatch = JsonPatchFor[Literal["Config"], StandardRegistry]
+    ConfigPatch = JsonPatchFor[Literal["Config"]]
     patch = ConfigPatch.model_validate([])
 
     with pytest.raises(PatchValidationError, match="Invalid JSON document"):
