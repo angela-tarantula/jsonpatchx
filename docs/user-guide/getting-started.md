@@ -5,14 +5,32 @@ with the fewest moving parts.
 
 ## Install
 
+> JsonPatchX is not on PyPI yet. Install it from a local clone instead:
+
+<!--
 ```sh
 pip install jsonpatchx
+```
+-->
+
+```sh
+git clone https://github.com/angela-tarantula/jsonpatchx.git
+cd jsonpatchx
+python -m venv .venv
+source .venv/bin/activate
+pip install -e .
 ```
 
 Optional FastAPI helpers come later:
 
+<!--
 ```sh
 pip install "jsonpatchx[fastapi]"
+```
+-->
+
+```sh
+pip install -e ".[fastapi]"
 ```
 
 You do not need that extra just to use `JsonPatch` or `JsonPatchFor[...]`.

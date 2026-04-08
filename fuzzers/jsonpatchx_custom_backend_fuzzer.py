@@ -7,7 +7,7 @@ from collections.abc import Iterable
 from dataclasses import dataclass
 from typing import Literal, Self, cast, override
 
-import atheris  # type: ignore[import-not-found]
+import atheris  # type: ignore[import-untyped]
 
 from fuzzers._fuzz_shared import (
     ByteCursor,

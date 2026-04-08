@@ -28,7 +28,7 @@ from pydantic_core import PydanticUndefined, PydanticUndefinedType
 from typing_extensions import TypeVar
 
 from jsonpatchx.exceptions import PatchValidationError
-from jsonpatchx.registry import _RegistrySpec
+from jsonpatchx.registry import StandardRegistry, _RegistrySpec
 from jsonpatchx.schema import OperationSchema, _apply_ops
 from jsonpatchx.types import JSONValue, _validate_JSONValue
 
@@ -120,7 +120,7 @@ class _BasePatchBody(_RegistryBoundPatchRoot):
 
 
 TargetT = TypeVar("TargetT", bound=BaseModel | str)
-RegistryT = TypeVar("RegistryT", bound=OperationSchema)
+RegistryT = TypeVar("RegistryT", bound=OperationSchema, default=StandardRegistry)
 
 
 def _coerce_schema_name(target: object) -> str | None:
@@ -145,7 +145,8 @@ class JsonPatchFor(_RegistryBoundPatchRoot, Generic[TargetT, RegistryT]):
     """
     Factory for creating typed JSON Patch models bound to a registry declaration.
 
-    ``JsonPatchFor[Target, Registry]`` produces a patch model.
+    ``JsonPatchFor[Target]`` produces a patch model using ``StandardRegistry``.
+    ``JsonPatchFor[Target, Registry]`` produces a patch model using an explicit registry.
     ``Target`` is either a Pydantic model or ``Literal["SchemaName"]`` for JSON documents.
     ``Registry`` is a union of concrete OperationSchemas (``OpA | OpB | ...``).
     """
@@ -215,9 +216,12 @@ class JsonPatchFor(_RegistryBoundPatchRoot, Generic[TargetT, RegistryT]):
 
     @override
     def __class_getitem__(cls, params: object) -> type[_RegistryBoundPatchRoot]:
-        if not isinstance(params, tuple) or len(params) != 2:
+        if not isinstance(params, tuple):
+            params = (params, StandardRegistry)
+
+        if len(params) != 2:
             raise TypeError(
-                "JsonPatchFor expects JsonPatchFor[Target, Registry] where "
+                "JsonPatchFor expects JsonPatchFor[Target] or JsonPatchFor[Target, Registry] where "
                 'Target is a BaseModel subclass or Literal["SchemaName"] and '
                 "Registry is a union of concrete OperationSchemas. "
                 f"Got: {params!r}."

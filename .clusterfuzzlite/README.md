@@ -44,6 +44,10 @@ These workflows consume the `.clusterfuzzlite` build/config:
    - Sanitizer: `address`
    - Time budget: `fuzz-seconds: 300`
    - `keep-unaffected-fuzz-targets: false`
+   - PRs only fuzz when fuzz-relevant inputs changed: `jsonpatchx/`, `fuzzers/`,
+     `.clusterfuzzlite/`, `pyproject.toml`, `uv.lock`, or one of the
+     ClusterFuzzLite workflow YAMLs. The required `fuzz-code-changes` job still
+     runs on every PR and exits green when none of those paths changed.
    - Purpose: fast PR signal focused on changed code areas.
 
 2. [`cflite_coverage.yml`](../.github/workflows/cflite_coverage.yml)

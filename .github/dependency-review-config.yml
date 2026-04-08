@@ -3,9 +3,17 @@
 #   .github/workflows/dependency-review.yml
 #   .github/workflows/dependency-review-full-audit.yml
 
+# Shared action policy settings. Workflow-specific toggles such as
+# comment-summary-in-pr and explicit base/head refs stay in workflow YAML.
+fail-on-severity: high
+retry-on-snapshot-warnings: true
+retry-on-snapshot-warnings-timeout: 10
+warn-on-openssf-scorecard-level: 3
+
 # Explicit SPDX allow-list.
 allow-licenses:
   - Apache-2.0
+  - ISC
   - MIT
   - MIT-0
   - BSD-2-Clause
@@ -20,18 +28,30 @@ allow-licenses:
 # Version-pinned exceptions for dependencies where license detection is unknown.
 # Keep this list narrow and remove entries when upstream metadata is detectable.
 allow-dependencies-licenses:
-  - pkg:pypi/jsonpointer@3.1.0 # Modified BSD License
+  - pkg:pypi/click@8.3.2 # BSD-3-Clause
+  - pkg:pypi/fastapi@0.135.3 # MIT
+  - pkg:pypi/griffelib@2.0.2 # ISC
+  - pkg:pypi/jsonpointer@3.1.1 # Modified BSD License
+  - pkg:pypi/mkdocs-autorefs@1.4.4 # ISC
+  - pkg:pypi/mkdocs-get-deps@0.2.2 # MIT
+  - pkg:pypi/mkdocstrings@1.0.3 # ISC
+  - pkg:pypi/mkdocstrings-python@2.0.3 # ISC
+  - pkg:pypi/mypy@1.20.0 # MIT
+  - pkg:pypi/pymdown-extensions@10.21.2 # MIT
+  - pkg:pypi/pytest@9.0.3 # MIT
   - pkg:pypi/pytest-cov@7.1.0 # MIT
-  - pkg:pypi/ruff@0.15.7 # MIT
-  - pkg:pypi/uvicorn@0.42.0 # BSD-3-Clause
+  - pkg:pypi/python-dateutil@2.9.0.post0 # Apache-2.0 AND BSD-3-Clause; also reported as LicenseRef-scancode-unknown-license-reference
+  - pkg:pypi/ruff@0.15.9 # MIT
+  - pkg:pypi/starlette@1.0.0 # BSD-3-Clause
+  - pkg:pypi/uvicorn@0.44.0 # BSD-3-Clause
   - pkg:pypi/pyinstaller@6.19.0 # GPL-2.0-or-later
   - pkg:pypi/python-jsonpath@2.0.2 # MIT
-  - pkg:pypi/pyinstaller-hooks-contrib@2026.3 # GPL-2.0-or-later
+  - pkg:pypi/pyinstaller-hooks-contrib@2026.4 # GPL-2.0-or-later
   - pkg:pypi/uv@0.10.12 # Apache-2.0 OR MIT
 
 
 # Allow-lists are preferred over deny-lists.
-# Super-linter will be deprecated deny-licenses lists.
+# Super-linter will deprecate deny-licenses lists.
 # deny-licenses:
 #   - AGPL-1.0
 #   - AGPL-3.0
