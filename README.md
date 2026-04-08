@@ -9,8 +9,10 @@
 
 <!-- markdownlint-enable MD013 -->
 
+<!--
 Documentation:
 [https://angela-tarantula.github.io/jsonpatchx](https://angela-tarantula.github.io/jsonpatchx)
+-->
 
 ## About The Project
 
@@ -24,6 +26,10 @@ LLM-generated patch payloads.
 
 - **Input Safety**: patch operations are Pydantic models, so malformed payloads
   fail fast with clear, structured errors.
+
+- **FastAPI Native**: set up PATCH routes quickly with minimal boilerplate, with
+  optional `application/json-patch+json` enforcement and a recommended HTTP
+  error mapping.
 
 ### It also provides extensibility beyond the RFC
 
@@ -49,14 +55,6 @@ LLM-generated patch payloads.
 
 - **Lifecycle Management**: evolve operation contracts over time with additive
   schema changes and deprecations.
-
-### Integrates cleanly with FastAPI
-
-- **Protocol Enforcement**: require `application/json-patch+json` and publish
-  accurate request schemas with examples in OpenAPI.
-
-- **Predictable Failures**: patch errors map to consistent HTTP responses (422,
-  409, 415) with structured details.
 
 ## Getting Started
 
