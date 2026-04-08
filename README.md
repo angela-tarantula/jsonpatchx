@@ -27,9 +27,9 @@ LLM-generated patch payloads.
 - **Input Safety**: patch operations are Pydantic models, so malformed payloads
   fail fast with clear, structured errors.
 
-- **FastAPI Native**: set up PATCH routes quickly with minimal boilerplate, with
-  optional `application/json-patch+json` enforcement and a recommended HTTP
-  error mapping.
+- **FastAPI Native**: set up PATCH routes quickly with minimal boilerplate. It
+  includes a recommended HTTP error mapping and optional
+  `application/json-patch+json` enforcement.
 
 ### It also provides extensibility beyond the RFC
 
