@@ -11,6 +11,8 @@ from jsonpatchx.registry import StandardRegistry
 from jsonpatchx.schema import OperationSchema
 from jsonpatchx.types import JSONValue
 
+_: Any
+
 
 class User(BaseModel):
     model_config = ConfigDict(extra="forbid")
@@ -20,35 +22,35 @@ class User(BaseModel):
 
 def test_jsonpatchfor_args() -> None:
     with pytest.raises(TypeError):
-        JsonPatchFor[int, StandardRegistry]  # type: ignore[type-var]
+        _ = JsonPatchFor[int, StandardRegistry]  # type: ignore[type-var]
 
-    JsonPatchFor[User]
-    JsonPatchFor[User, StandardRegistry]
-    JsonPatchFor[Literal["Config"]]
-    JsonPatchFor[Literal["Config"], StandardRegistry]
+    _ = JsonPatchFor[User]
+    _ = JsonPatchFor[User, StandardRegistry]
+    _ = JsonPatchFor[Literal["Config"]]
+    _ = JsonPatchFor[Literal["Config"], StandardRegistry]
 
     with pytest.raises(InvalidOperationRegistry):
-        JsonPatchFor[User, object()]  # type: ignore[misc]
+        _ = JsonPatchFor[User, object()]  # type: ignore[misc]
     with pytest.raises(InvalidOperationRegistry):
-        JsonPatchFor[Literal["Config"], User]  # type: ignore[type-var]
+        _ = JsonPatchFor[Literal["Config"], User]  # type: ignore[type-var]
 
 
 def test_jsonpatchfor_rejects_invalid_target_forms(subtests: Subtests) -> None:
     with subtests.test("bare string target is rejected"):
         with pytest.raises(TypeError):
-            JsonPatchFor["Config", StandardRegistry]  # type: ignore[name-defined]
+            _ = JsonPatchFor["Config", StandardRegistry]  # type: ignore[name-defined]
 
     with subtests.test("wrong number of generic args is rejected"):
         with pytest.raises(TypeError):
-            JsonPatchFor[User, StandardRegistry, StandardRegistry]  # type: ignore[misc]
+            _ = JsonPatchFor[User, StandardRegistry, StandardRegistry]  # type: ignore[misc]
 
     with subtests.test("Literal target with multiple args is rejected"):
         with pytest.raises(TypeError):
-            JsonPatchFor[Literal["Config1", "Config2"], StandardRegistry]
+            _ = JsonPatchFor[Literal["Config1", "Config2"], StandardRegistry]
 
     with subtests.test("Literal target with non-string arg is rejected"):
         with pytest.raises(TypeError):
-            JsonPatchFor[Literal[123], StandardRegistry]  # type: ignore[type-var]
+            _ = JsonPatchFor[Literal[123], StandardRegistry]  # type: ignore[type-var]
 
 
 def test_jsonpatchfor_with_custom_registry() -> None:
