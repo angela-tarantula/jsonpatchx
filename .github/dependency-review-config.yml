@@ -3,6 +3,13 @@
 #   .github/workflows/dependency-review.yml
 #   .github/workflows/dependency-review-full-audit.yml
 
+# Shared action policy settings. Workflow-specific toggles such as
+# comment-summary-in-pr and explicit base/head refs stay in workflow YAML.
+fail-on-severity: high
+retry-on-snapshot-warnings: true
+retry-on-snapshot-warnings-timeout: 10
+warn-on-openssf-scorecard-level: 3
+
 # Explicit SPDX allow-list.
 allow-licenses:
   - Apache-2.0
@@ -37,7 +44,7 @@ allow-dependencies-licenses:
 
 
 # Allow-lists are preferred over deny-lists.
-# Super-linter will be deprecated deny-licenses lists.
+# Super-linter will deprecate deny-licenses lists.
 # deny-licenses:
 #   - AGPL-1.0
 #   - AGPL-3.0
