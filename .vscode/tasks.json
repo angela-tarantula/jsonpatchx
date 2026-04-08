@@ -32,6 +32,17 @@
       "problemMatcher": []
     },
     {
+      "label": "pytest-matrix",
+      "type": "shell",
+      "command": "bash",
+      "args": [
+        "-c",
+        "uv run --managed-python -p 3.12 pytest && uv run --managed-python -p 3.13 pytest && uv run --managed-python -p 3.14 pytest"
+      ],
+      "group": "test",
+      "problemMatcher": []
+    },
+    {
       "label": "update-openapi-snapshots",
       "type": "shell",
       "command": "uv",
