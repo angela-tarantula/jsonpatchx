@@ -1,6 +1,6 @@
 [project]
 site_name = "JsonPatchX"
-site_description = "RFC 6902 JSON Patch for Python, with typed PATCH contracts for FastAPI and Pydantic"
+site_description = "A PATCH framework for Python."
 repo_url = "https://github.com/angela-tarantula/jsonpatchx"
 repo_name = "angela-tarantula/jsonpatchx"
 edit_uri = "edit/main/docs"

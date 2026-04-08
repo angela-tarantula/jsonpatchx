@@ -82,6 +82,8 @@ License policy behavior:
 - `allow-dependencies-licenses` is a version-pinned exception list for
   dependencies where license detection is currently unknown, with inline license
   notes for auditability.
+- Shared action thresholds also live there, including severity threshold,
+  OpenSSF scorecard warning level, and snapshot-retry behavior.
 - Keep exceptions narrow (package + version) and remove entries when upstream
   metadata becomes detectable.
 
@@ -101,6 +103,10 @@ Quick trigger/permission summary:
 
 - [`cflite_pr.yml`](cflite_pr.yml)
   - Triggers: `pull_request` and `workflow_dispatch`
+  - PR behavior: runs fuzzing only when fuzz-relevant inputs changed
+    (`jsonpatchx/`, `fuzzers/`, `.clusterfuzzlite/`, `pyproject.toml`,
+    `uv.lock`, or the ClusterFuzzLite workflow YAMLs); otherwise the required
+    `fuzz-code-changes` job exits successfully without fuzzing
   - Write scopes: `security-events: write` only
 - [`cflite_coverage.yml`](cflite_coverage.yml)
   - Triggers: weekly schedule and `workflow_dispatch`

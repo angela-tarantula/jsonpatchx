@@ -36,9 +36,7 @@ jobs:
         with:
           # Centralized dependency license policy lives in this config file.
           config-file: ./.github/dependency-review-config.yml
-          fail-on-severity: "high"
           comment-summary-in-pr: false
-          warn-on-openssf-scorecard-level: 3
           # Diff from repository root commit to current SHA to force a full-graph audit.
           base-ref: ${{ steps.root-commit.outputs.base_ref }}
           head-ref: ${{ github.sha }}

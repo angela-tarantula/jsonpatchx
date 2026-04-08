@@ -7,7 +7,7 @@ from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
 from typing import cast
 
-import atheris  # type: ignore[import-not-found]
+import atheris  # type: ignore[import-untyped]
 
 from fuzzers._fuzz_shared import (
     ByteCursor,

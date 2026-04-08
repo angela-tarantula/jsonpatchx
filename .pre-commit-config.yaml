@@ -15,7 +15,7 @@ repos:
       - id: check-yaml
 
   - repo: https://github.com/rhysd/actionlint
-    rev: v1.7.11
+    rev: v1.7.12
     hooks:
       - id: actionlint
         files: ^\.github/(workflows|actions)/.*\.ya?ml$
@@ -144,6 +144,6 @@ repos:
     hooks:
       - id: shellcheck
   - repo: https://github.com/pylint-dev/pylint
-    rev: v2.17.2
+    rev: v4.0.5
     hooks:
       - id: pylint

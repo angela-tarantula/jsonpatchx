@@ -8,7 +8,8 @@ on:
       - main
   workflow_dispatch:
 
-permissions: read-all
+permissions:
+  contents: read
 
 env:
   FUZZ_STORAGE_BRANCH: fuzz-corpus
@@ -29,11 +30,47 @@ jobs:
         with:
           egress-policy: audit
 
+      - name: Detect fuzz-relevant changes
+        id: changes
+        # the step-security/paths-filter alternative would require a subscription
+        uses: dorny/paths-filter@fbd0ab8f3e69293af611ebaee6363fc25e6d187d # v4.0.1
+        with:
+          filters: |
+            fuzz_relevant:
+              - 'jsonpatchx/**'
+              - 'fuzzers/**'
+              - '.clusterfuzzlite/**'
+              - 'pyproject.toml'
+              - 'uv.lock'
+              - '.github/workflows/cflite_pr.yml'
+              - '.github/workflows/cflite_coverage.yml'
+              - '.github/workflows/cflite_weekly.yml'
+
+      # Skip the rest of the workflow if no fuzz-relevant paths were changed.
+      # This avoids unnecessary builds and fuzz runs for documentation updates, CI config tweaks, etc.
+
+      - name: Skip fuzzing for non-fuzz-relevant PRs
+        if: >
+          github.event_name == 'pull_request' &&
+          steps.changes.outputs.fuzz_relevant != 'true'
+        run: |
+          echo "No changes in fuzz-relevant paths."
+          echo "Skipping ClusterFuzzLite PR run."
+
+      # Continue with checkout, build, and fuzzing steps if this is a workflow_dispatch event
+      # or if fuzz-relevant paths were changed.
+
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        if: >
+          github.event_name == 'workflow_dispatch' ||
+          steps.changes.outputs.fuzz_relevant == 'true'
         with:
           persist-credentials: false
 
       - name: Build fuzzers
+        if: >
+          github.event_name == 'workflow_dispatch' ||
+          steps.changes.outputs.fuzz_relevant == 'true'
         uses: google/clusterfuzzlite/actions/build_fuzzers@884713a6c30a92e5e8544c39945cd7cb630abcd1 # v1
         with:
           language: python
@@ -47,6 +84,9 @@ jobs:
           storage-repo-branch-coverage: ${{ env.FUZZ_STORAGE_BRANCH }}
 
       - name: Run fuzzers (changed code)
+        if: >
+          github.event_name == 'workflow_dispatch' ||
+          steps.changes.outputs.fuzz_relevant == 'true'
         uses: google/clusterfuzzlite/actions/run_fuzzers@884713a6c30a92e5e8544c39945cd7cb630abcd1 # v1
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}

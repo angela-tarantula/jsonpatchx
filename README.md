@@ -1,7 +1,5 @@
 # JsonPatchX
 
-A PATCH framework for Python.
-
 <!-- markdownlint-disable MD013 -->
 
 [![Tests](https://img.shields.io/github/actions/workflow/status/angela-tarantula/jsonpatchx/python-tests.yml?branch=main&label=Tests&style=flat)](https://github.com/angela-tarantula/jsonpatchx/actions)
@@ -11,20 +9,21 @@ A PATCH framework for Python.
 
 <!-- markdownlint-enable MD013 -->
 
+Documentation:
+[https://angela-tarantula.github.io/jsonpatchx](https://angela-tarantula.github.io/jsonpatchx)
+
 ## About The Project
 
-[RFC 6902](https://datatracker.ietf.org/doc/html/rfc6902) (JSON Patch) is
-intentionally minimal and transport-focused. That is great for interoperability,
-but modern PATCH traffic crosses trust boundaries: browser clients, internal
-services, third-party integrations, and increasingly LLM-generated patch
-payloads.
+[RFC 6902](https://datatracker.ietf.org/doc/html/rfc6902) JSON Patch is
+intentionally minimal and transport-focused. That minimalism is great for
+interoperability, but modern PATCH traffic crosses trust boundaries: browser
+clients, internal services, third-party integrations, and increasingly
+LLM-generated patch payloads.
 
 ### JsonPatchX supports standard JSON Patch and adds a contract layer
 
 - **Input Safety**: patch operations are Pydantic models, so malformed payloads
   fail fast with clear, structured errors.
-
-- **FastAPI Native**: set up PATCH routes quickly with minimal boilerplate.
 
 ### It also provides extensibility beyond the RFC
 
@@ -42,8 +41,8 @@ payloads.
 
 ### And it treats the patch layer as a first-class contract
 
-- **OpenAPI in Sync**: OpenAPI is generated from the same runtime patch models,
-  so documentation stays aligned automatically.
+- **Synchronized Documentation**: OpenAPI is generated from the same runtime
+  patch models, so documentation stays aligned automatically.
 
 - **Surface Control**: operations can be allow-listed per route to limit what
   clients can do.
@@ -51,12 +50,32 @@ payloads.
 - **Lifecycle Management**: evolve operation contracts over time with additive
   schema changes and deprecations.
 
+### Integrates cleanly with FastAPI
+
+- **Protocol Enforcement**: require `application/json-patch+json` and publish
+  accurate request schemas with examples in OpenAPI.
+
+- **Predictable Failures**: patch errors map to consistent HTTP responses (422,
+  409, 415) with structured details.
+
 ## Getting Started
 
 ### Installation
 
+> JsonPatchX is not on PyPI yet. Install it from a local clone instead:
+
+<!--
 ```sh
 pip install jsonpatchx
+```
+-->
+
+```sh
+git clone https://github.com/angela-tarantula/jsonpatchx.git
+cd jsonpatchx
+python -m venv .venv
+source .venv/bin/activate
+pip install -e .
 ```
 
 ## Usage
@@ -102,8 +121,8 @@ def patch_user(user_id: int, patch: JsonPatchFor[User]) -> User:
     return updated
 ```
 
-> **Note**: For registries, custom operations, JSONSelector/JSONPath targeting,
-> and optional FastAPI route helpers, see the
+> **Note**: For custom operations, JSONPath targeting, route-level controls, and
+> optional FastAPI route helpers, see the
 > [User Guide](https://angela-tarantula.github.io/jsonpatchx/).
 
 ## Roadmap

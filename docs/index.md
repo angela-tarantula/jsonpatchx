@@ -1,7 +1,5 @@
 # JsonPatchX
 
-A PATCH framework for Python.
-
 JsonPatchX starts with RFC 6902 JSON Patch and goes farther when an API needs
 more than a generic patch document.
 
