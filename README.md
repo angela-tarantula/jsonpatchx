@@ -62,8 +62,20 @@ LLM-generated patch payloads.
 
 ### Installation
 
+> JsonPatchX is not on PyPI yet. Install it from a local clone instead:
+
+<!--
 ```sh
 pip install jsonpatchx
+```
+-->
+
+```sh
+git clone https://github.com/angela-tarantula/jsonpatchx.git
+cd jsonpatchx
+python -m venv .venv
+source .venv/bin/activate
+pip install -e .
 ```
 
 ## Usage
