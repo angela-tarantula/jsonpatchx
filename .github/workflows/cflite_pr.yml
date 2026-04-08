@@ -8,13 +8,45 @@ on:
       - main
   workflow_dispatch:
 
-permissions: read-all
+permissions:
+  contents: read
 
 env:
   FUZZ_STORAGE_BRANCH: fuzz-corpus
 
 jobs:
+  detect-fuzz-relevant-changes:
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: read
+    outputs:
+      fuzz-relevant: ${{ steps.changes.outputs.fuzz_relevant }}
+    steps:
+      - name: 🔒 harden runner
+        uses: step-security/harden-runner@fe104658747b27e96e4f7e80cd0a94068e53901d # v2.16.1
+        with:
+          egress-policy: audit
+
+      - name: Detect fuzz-relevant changes
+        id: changes
+        uses: dorny/paths-filter@fbd0ab8f3e69293af611ebaee6363fc25e6d187d # v4.0.1
+        with:
+          filters: |
+            fuzz_relevant:
+              - 'jsonpatchx/**'
+              - 'fuzzers/**'
+              - '.clusterfuzzlite/**'
+              - 'pyproject.toml'
+              - 'uv.lock'
+              - '.github/workflows/cflite_pr.yml'
+              - '.github/workflows/cflite_coverage.yml'
+              - '.github/workflows/cflite_weekly.yml'
+
   fuzz-code-changes:
+    needs: detect-fuzz-relevant-changes
+    if: >
+      github.event_name == 'workflow_dispatch' ||
+      needs.detect-fuzz-relevant-changes.outputs.fuzz-relevant == 'true'
     runs-on: ubuntu-latest
     concurrency:
       group:
@@ -59,3 +91,15 @@ jobs:
             github.repository }}.git
           storage-repo-branch: ${{ env.FUZZ_STORAGE_BRANCH }}
           storage-repo-branch-coverage: ${{ env.FUZZ_STORAGE_BRANCH }}
+
+  no-fuzz-relevant-changes:
+    needs: detect-fuzz-relevant-changes
+    if: >
+      github.event_name == 'pull_request' &&
+      needs.detect-fuzz-relevant-changes.outputs.fuzz-relevant != 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: No-op success for non-fuzz-relevant PRs
+        run: |
+          echo "No changes in fuzz-relevant paths."
+          echo "Skipping ClusterFuzzLite PR run."
