@@ -80,6 +80,7 @@ repos:
         name: update openapi snapshots
         entry: uv run python scripts/update_openapi_snapshots.py
         language: system
+        files: (^.*\.py$|^.*\.json$|^pyproject\.toml$|^uv\.lock$)
         pass_filenames: false
 
       - id: checkov
