@@ -24,11 +24,11 @@ LLM-generated patch payloads.
 
 ### JsonPatchX supports standard JSON Patch and adds a contract layer
 
-- **Input Safety**: patch operations are Pydantic models, so malformed payloads
-  fail fast with clear, structured errors.
+- **Input Validation**: patch operations are Pydantic models, so malformed
+  payloads fail fast with clear, structured errors.
 
 - **FastAPI Native**: set up PATCH routes quickly with minimal boilerplate. It
-  includes a recommended HTTP error mapping and optional
+  optionally includes built-in HTTP error mapping and
   `application/json-patch+json` enforcement.
 
 ### It also provides extensibility beyond the RFC
@@ -119,9 +119,8 @@ def patch_user(user_id: int, patch: JsonPatchFor[User]) -> User:
     return updated
 ```
 
-> **Note**: For custom operations, JSONPath targeting, route-level controls, and
-> optional FastAPI route helpers, see the
-> [User Guide](https://angela-tarantula.github.io/jsonpatchx/).
+> **Note**: For custom operations, typed targeting, route-level controls, and
+> more, read the [User Guide](https://angela-tarantula.github.io/jsonpatchx/)!
 
 ## Roadmap
 
