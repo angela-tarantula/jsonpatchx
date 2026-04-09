@@ -11,6 +11,7 @@ plugins = [
   { mkdocstrings = { handlers = { python = { paths = ["."], options = { docstring_style = "google" } } } } },
 ]
 nav = [
+  { "Home" = "index.md" },
   { "About" = [
     { "About" = "about/about.md" },
     { "Why JsonPatchX" = "about/why-jsonpatchx.md" },
@@ -18,8 +19,7 @@ nav = [
   ] },
   { "User Guide" = [
     { "Getting Started" = "user-guide/getting-started.md" },
-    { "PATCH Contracts in FastAPI" = "user-guide/patch-contracts-in-fastapi.md" },
-    { "Registries and Endpoint Policy" = "user-guide/registries-and-endpoint-policy.md" },
+    { "Registries and Routes" = "user-guide/registries-and-routes.md" },
     { "Custom Operations" = "user-guide/custom-operations.md" },
     { "JSONSelector and Alternative Targeting" = "user-guide/jsonselector-and-alternative-targeting.md" },
     { "Deployment Profiles and Environment-Specific Contracts" = "user-guide/deployment-profiles-and-environment-specific-contracts.md" },

@@ -1,35 +1,35 @@
 # Custom Operations
 
-Custom operations are worth adding when low-level RFC 6902 operations stop
-reading like what the caller actually means.
+Custom operations are worth adding when low-level operations stop reading like
+what the caller actually means.
 
 That does not mean inventing a new mutation language for every API. Usually the
-win is much simpler than that. A good custom op takes a mutation your clients
-already keep expressing awkwardly, gives it a clear name, validates the right
-things up front, and makes the contract easier to document.
+win is much simpler than that. A good custom operation takes a mutation your
+clients already keep expressing awkwardly, gives it a clear name, validates the
+right things up front, and makes the contract easier to document.
 
 Start small.
 
-## Operations are just models with `apply()`
+## Operations Should be Simple
 
-Before looking at a custom op, it helps to see how little machinery is involved.
+Before looking at a custom operation, it helps to see how little machinery is
+involved.
 
 A built-in operation such as `ReplaceOp` is conceptually this kind of shape:
 
 ```python
 from typing import Literal
-
-from jsonpatchx import JSONPointer, JSONValue, OperationSchema
-from jsonpatchx.types import JSONValue as AnyJSONValue
-
+from jsonpatchx import JSONPointer, JSONValue, OperationSchema, AddOp, RemoveOp
 
 class ReplaceOp(OperationSchema):
-    op: Literal["replace"] = "replace"
-    path: JSONPointer[AnyJSONValue]
-    value: AnyJSONValue
+    op: Literal["replace"]
+    path: JSONPointer[JSONValue]
+    value: JSONValue
 
+    @override
     def apply(self, doc: JSONValue) -> JSONValue:
-        return self.path.add(doc, self.value)
+        doc = RemoveOp(path=self.path).apply(doc)
+        return AddOp(path=self.path, value=self.value).apply(doc)
 ```
 
 The real implementation may have more detail, but the important thing is the
@@ -39,26 +39,32 @@ shape:
 - `op` is the discriminator
 - its fields define the request contract
 - `apply()` defines the mutation
+- its mutation is a
+  [composition](https://datatracker.ietf.org/doc/html/rfc6902#section-4.3:~:text=This%20operation%20is%20functionally%20identical%20to%20a%20%22remove%22%20operation%20for%0A%20%20%20a%20value%2C%20followed%20immediately%20by%20an%20%22add%22%20operation%20at%20the%20same%0A%20%20%20location%20with%20the%20replacement%20value.)
+  of other operations
 
-That is why custom ops feel natural in JsonPatchX. They are not a separate
-plugin language. They are the same abstraction as the built-ins.
+That is why custom operations feel natural in JsonPatchX. They are not a
+separate plugin language. They are the same abstraction as the standard
+operations.
 
-## A first custom op: `IncrementOp`
+> Note also the [functional](https://docs.python.org/3/howto/functional.html)
+> style of the `apply()`. JsonPatchX recommends you write mutations in this way
+> to make them easier to reason about. For low-level mutations that require
+> in-place semantics, try chaining stateless steps until the very end.
 
-This is a good first example because it stays small while showing why typed
-pointers matter.
+## Your First Custom Operation: `IncrementOp`
+
+Suppose your client is always checking the current state of a resource just to
+increment it by some amount with a `replace`. That's a good candidate for a
+custom operation.
 
 ```python
 from typing import Literal
-
 from pydantic import Field
-
-from jsonpatchx import JSONPointer, JSONValue, OperationSchema, ReplaceOp
-from jsonpatchx.types import JSONNumber
-
+from jsonpatchx import JSONPointer, JSONValue, JSONNumber, OperationSchema, ReplaceOp
 
 class IncrementOp(OperationSchema):
-    op: Literal["increment"] = "increment"
+    op: Literal["increment"]
     path: JSONPointer[JSONNumber]
     amount: JSONNumber = Field(gt=0)
 
@@ -67,51 +73,70 @@ class IncrementOp(OperationSchema):
         return ReplaceOp(path=self.path, value=current + self.amount).apply(doc)
 ```
 
-This is already doing a few useful things.
+Note the type safety:
 
-The payload says what the caller means. It is not pretending an increment is
-just an arbitrary `replace`.
+- The `amount` must be a positive number
+- The `path` must be a
+  [JSON Pointer](https://datatracker.ietf.org/doc/html/rfc6901) string
+- When `get()` is exercised, the `path` must resolve to a number.
 
-The `amount` field is validated before mutation starts.
+As a reviewer, you don't really have to know much about the `JSONPointer` type
+to read and understand this operation. And as a single class, it's easily
+testable.
 
-And the path is not just “some string.” It is a pointer that is expected to
-resolve to a JSON number.
+## Typed Pointers
 
-That last part matters most.
+Let's clear up exactly what you can expect from typed pointers.
 
-## Typed pointers are part of the contract
+### What `JSONPointer` Promises
 
-`JSONPointer[T]` is not just a parsing helper. It lets the path itself
-participate in the operation contract.
+The most important thing to understand is that `JSONPointer` enforces valid JSON
+Pointer strings, but it does not promise that the path exists or resolves to the
+correct type **unless you say so**.
 
-So this:
-
-```python
-path: JSONPointer[JSONNumber]
-```
-
-means more than “this field contains a JSON Pointer string.”
-
-It means that when the pointer is used, the resolved value is expected to be a
-JSON number.
-
-That contract is enforced when the pointer resolves or writes:
+The type contract is enforced when the pointer resolves or writes:
 
 - `get(doc)` resolves the path and validates the target against `T`
 - `add(doc, value)` validates the value before writing it
 - `remove(doc)` validates the existing target before removing it
 
-A `JSONPointer` also comes with useful methods beyond simple resolution. It is a
-subtype of `str`, so it behaves like a string when you need it to, but it also
-has pointer-specific behavior such as `get(...)`, `add(...)`, `remove(...)`, and
-relationship helpers such as `is_parent_of(...)`.
+### What `JSONPointer` Uses
 
-That makes custom ops easier to write and easier to validate correctly.
+JsonPatchX provides a suite of helper types so you can reason about JSON rather
+than Python's types:
+
+- `JSONString`, `JSONNumber`, `JSONBoolean`, and `JSONNull` for primitives
+- `JSONArray[T]` and `JSONObject[T]` for containers
+- `JSONValue` for any of those
+
+> While you can opt out of using these types, JsonPatchX strongly recommends
+> using them. For example, `JSONNumber` is not merely an alias for `int | float`
+> as it rightfully rejects `bool`, which in Python is a subtype of `int`. Other
+> types may have more straightforward implementations but should be considered
+> more future-proof as Python itself evolves.
+
+### What `JSONPointer` Provides
+
+The `JSONPointer` type itself is expressive with what you can do.
+
+- As a subtype of `str`, it inherits all `str` behavior. This is also the
+  [correct model](https://datatracker.ietf.org/doc/html/rfc6901#:~:text=A%20JSON%20Pointer%20is%20a%20Unicode%20string).
+- `is_gettable()`, `is_addable()`, and `is_removable()` let you ask “would this
+  succeed?” without the try-except ceremony.
+- `is_parent_of()` and `is_child_of()` let custom operations validate pointer
+  relationships before mutation starts. That is exactly the kind of guard you
+  want in operations like `move` and `swap`.
+- `parts` is a property that gives you the unescaped path components, which is
+  often easier to reason about than the raw pointer string.
+- If you ever need different syntax, `JSONPointer[T, CustomPointer]` lets you
+  keep the same typed surface while substituting your preferred implementation.
+  The `ptr` property exposes the underlying implementation for advanced use
+  cases.
 
 ## Custom does not have to mean exotic
 
-A custom op is often just a better contract for a mutation people already keep
-trying to express with lower-level steps.
+A custom operation is often just a better contract for a mutation people already
+keep trying to express with lower-level steps.
 
 `replace_substring` is a good example:
 
@@ -139,10 +164,8 @@ class ReplaceSubstringOp(OperationSchema):
         if self.old not in current:
             raise PatchConflictError(f"{self.old!r} is not in {current!r}")
 
-        return ReplaceOp(
-            path=self.path,
-            value=current.replace(self.old, self.new),
-        ).apply(doc)
+        substituted = current.replace(self.old, self.new)
+        return ReplaceOp(path=self.path, value=substituted).apply(doc)
 ```
 
 This is still “just a replace” in one sense.
@@ -283,3 +306,7 @@ model, the OpenAPI schema, and the runtime parser all agree.
 
 The next page moves from operation semantics to targeting semantics with
 `JSONSelector`.
+
+Most custom mutations are not going to be a sequence of standard operations, and
+that's okay. When mutations have to do a little more "work", JsonPatchX keeps it
+as frictionless as possible.
