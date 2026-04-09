@@ -96,6 +96,7 @@ repos:
         name: jscpd
         entry: npx --yes jscpd --gitignore --config .github/linters/.jscpd.json
         language: system
+        types: [python]
         pass_filenames: false
 
       - id: json-prettier
