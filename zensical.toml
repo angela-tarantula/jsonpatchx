@@ -11,8 +11,12 @@ plugins = [
   { mkdocstrings = { handlers = { python = { paths = ["."], options = { docstring_style = "google" } } } } },
 ]
 nav = [
+  { "About" = [
+    { "About" = "about/about.md" },
+    { "Why JsonPatchX" = "about/why-jsonpatchx.md" },
+    { "Acknowledgements" = "about/acknowledgements.md" },
+  ] },
   { "User Guide" = [
-    { "Overview" = "index.md" },
     { "Getting Started" = "user-guide/getting-started.md" },
     { "PATCH Contracts in FastAPI" = "user-guide/patch-contracts-in-fastapi.md" },
     { "Registries and Endpoint Policy" = "user-guide/registries-and-endpoint-policy.md" },
