@@ -303,6 +303,112 @@ This works safely because `JSONPointer` is
 [covariant](https://peps.python.org/pep-0483/#covariance-and-contravariance) in
 its target type.
 
+## Your Fifth Custom Operation: `ClampOp`
+
+The previous examples focused on typing, validation, and mutation semantics. One
+more benefit is worth seeing directly: custom operations can also produce rich
+OpenAPI because they are ordinary Pydantic models.
+
+A clamp operation is a good fit for that. Sometimes, after a sequence of
+mutations, you want to guarantee that a numeric result stays within an allowed
+range. The operation itself is straightforward, but its schema has something
+useful to say: at least one of `min` or `max` must be present.
+
+```python
+from typing import Literal, Self, override
+from pydantic import ConfigDict, Field, model_validator
+from jsonpatchx import JSONPointer, JSONValue, OperationSchema, ReplaceOp
+from jsonpatchx.types import JSONNumber
+
+class ClampOp(OperationSchema):
+    model_config = ConfigDict(
+        title="Clamp operation",
+        json_schema_extra={
+            "description": (
+                "Clamp a numeric value at path to a minimum, a maximum, or both."
+            ),
+            "oneOf": [
+                {"required": ["min"]},
+                {"required": ["max"]},
+            ],
+        },
+    )
+
+    op: Literal["clamp"]
+    path: JSONPointer[JSONNumber] = Field(
+        description="Pointer to the numeric value to clamp."
+    )
+    min: JSONNumber | None = Field(
+        default=None,
+        description="Inclusive lower bound, if provided.",
+    )
+    max: JSONNumber | None = Field(
+        default=None,
+        description="Inclusive upper bound, if provided.",
+    )
+
+    @model_validator(mode="after")
+    def _validate_bounds(self) -> Self:
+        if self.min is None and self.max is None:
+            raise ValueError("clamp requires at least one of 'min' or 'max'")
+        if self.min is not None and self.max is not None and self.min > self.max:
+            raise ValueError("clamp requires min <= max")
+        return self
+
+    @override
+    def apply(self, doc: JSONValue) -> JSONValue:
+        current = self.path.get(doc)
+
+        if self.min is not None:
+            current = max(self.min, current)
+        if self.max is not None:
+            current = min(self.max, current)
+
+        return ReplaceOp(path=self.path, value=current).apply(doc)
+```
+
+This example is intentionally as much about the schema as it is about the
+mutation.
+
+Courtesy of Pydantic, you get:
+
+- `ConfigDict(...)` to give the operation a title and description in generated
+  schema.
+
+- `json_schema_extra` to express richer schema rules directly, in this case that
+  a request must provide min, max, or both.
+
+- `Field(...)` metadata to document individual fields, including the typed
+  pointer itself.
+
+The result is that the same model can drive parsing, validation, execution, and
+documentation. The operation is not just something your server can run. It is
+also something your API can describe clearly.
+
+## A Few Ergonomic Refinements
+
+In addition to patching with `list[dict]`s and JSON text, you can also use
+instantiated Operation Schemas directly:
+
+```python
+patch = JsonPatch(
+    [
+        IncrementOp(path="/foo/bar", value=20),
+        ClampOp(path="/foo/bar", max=100)
+    ]
+)
+```
+
+For this reason, you will usually want to default discriminator fields such as
+`op`, for example:
+
+```python
+op: Literal["clamp"] = "clamp"
+```
+
+JsonPatchX is aware of this and will proactively ensures that these ergonomic
+defaults won't negatively affect your OpenAPI. For example:
+
 ## Custom does not have to mean exotic
 
 A custom operation is often just a better contract for a mutation people already
