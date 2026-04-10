@@ -58,6 +58,9 @@ operations.
 
 ## Your First Custom Operation: `IncrementOp`
 
+> Disclaimer: none of the custom operations on this page are directly importable
+> from JsonPatchX. These are merely examples.
+
 Suppose your client is always checking the current state of a resource just to
 increment it by some amount with a `replace`. That's a good candidate for a
 custom operation.
@@ -206,6 +209,60 @@ Courtesy of Pydantic, you get:
 
 This is a good pattern when a custom operation needs to reject combinations of
 inputs that are individually valid but invalid together.
+
+## Your Third Custom Operation: `AddMissingKeyOp`
+
+Not every custom operation has to introduce a brand-new kind of mutation.
+Sometimes the win is simply taking a broad standard operation and giving it a
+narrower, safer contract.
+
+`add` is a good example. Depending on the path, it may create a missing object
+member, replace an existing value, or append into an array. That flexibility is
+useful, but sometimes a caller means something more specific: add this object
+key only if it does not already exist.
+
+That is what `AddMissingKeyOp` expresses.
+
+```python
+from typing import Literal, override
+from pydantic import ConfigDict
+from jsonpatchx import AddOp, JSONPointer, JSONValue, OperationSchema, PatchConflictError, classify_state
+
+class AddMissingKeyOp(OperationSchema):
+    """AddOp but strictly for object key-value pair additions."""
+    op: Literal["add_missing_key"]
+    path: JSONPointer[JSONValue]
+    value: JSONValue
+
+    @override
+    def apply(self, doc: JSONValue) -> JSONValue:
+        state = classify_state(self.path.ptr, doc) # TODO: make better
+
+        if state is TargetState.OBJECT_KEY_MISSING:
+            return AddOp(path=self.path, value=self.value).apply(doc)
+
+        if state is TargetState.VALUE_PRESENT:
+            raise PatchConflictError(f"path {self.path!r} already exists")
+
+        raise PatchConflictError(f"add_missing_key requires a missing object key at {self.path!r}")
+```
+
+This example also shows a more advanced implementation tool: `classify_state()`.
+
+Helpers such as `is_gettable()` and `is_addable()` are great when a yes-or-no
+answer is enough. But sometimes an operation needs to distinguish _why_ a path
+is usable or unusable. For example:
+
+- the parent does not exist
+- the parent exists but is not a container
+- the object key is missing
+- the value is already present
+- the path points into an array instead of an object
+
+`classify_state()` gives you that fine-grained view. Instead of collapsing all
+failures into a single "not allowed" outcome, it lets a custom operation respond
+differently to each case. This keeps the operation logic focused on intent
+rather than reimplementing pointer resolution.
 
 ## Custom does not have to mean exotic
 
