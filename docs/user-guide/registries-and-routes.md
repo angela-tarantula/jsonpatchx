@@ -53,7 +53,7 @@ def patch_user(user_id: int, patch: JsonPatchFor[User, WriteOnlyRegistry]) -> Us
     ...
 ```
 
-## Environment-selected registries
+## Environment-Selected Registries
 
 You can load operations from a startup-time configuration source and build a
 registry using `Union[*ops]`:

@@ -36,9 +36,13 @@ The real implementation may have more detail, but the important thing is the
 shape:
 
 - an operation is a Pydantic-backed model
+
 - `op` is the discriminator
+
 - its fields define the request contract
+
 - `apply()` defines the mutation
+
 - its mutation is a
   [composition](https://datatracker.ietf.org/doc/html/rfc6902#section-4.3:~:text=This%20operation%20is%20functionally%20identical%20to%20a%20%22remove%22%20operation%20for%0A%20%20%20a%20value%2C%20followed%20immediately%20by%20an%20%22add%22%20operation%20at%20the%20same%0A%20%20%20location%20with%20the%20replacement%20value.)
   of other operations
@@ -76,8 +80,10 @@ class IncrementOp(OperationSchema):
 Note the type safety:
 
 - The `amount` must be a positive number
+
 - The `path` must be a
   [JSON Pointer](https://datatracker.ietf.org/doc/html/rfc6901) string
+
 - When `get()` is exercised, the `path` must resolve to a number.
 
 As a reviewer, you don't really have to know much about the `JSONPointer` type
@@ -97,7 +103,9 @@ correct type **unless you say so**.
 The type contract is enforced when the pointer resolves or writes:
 
 - `get(doc)` resolves the path and validates the target against `T`
+
 - `add(doc, value)` validates the value before writing it
+
 - `remove(doc)` validates the existing target before removing it
 
 ### What `JSONPointer` Uses
@@ -106,7 +114,9 @@ JsonPatchX provides a suite of helper types so you can reason about JSON rather
 than Python's types:
 
 - `JSONString`, `JSONNumber`, `JSONBoolean`, and `JSONNull` for primitives
+
 - `JSONArray[T]` and `JSONObject[T]` for containers
+
 - `JSONValue` for any of those
 
 > While you can opt out of using these types, JsonPatchX strongly recommends
@@ -121,19 +131,81 @@ The `JSONPointer` type itself is expressive with what you can do.
 
 - As a subtype of `str`, it inherits all `str` behavior. This is also the
   [correct model](https://datatracker.ietf.org/doc/html/rfc6901#:~:text=A%20JSON%20Pointer%20is%20a%20Unicode%20string).
+
 - `is_gettable()`, `is_addable()`, and `is_removable()` let you ask “would this
   succeed?” without the try-except ceremony.
+
 - `is_parent_of()` and `is_child_of()` let custom operations validate pointer
   relationships before mutation starts. That is exactly the kind of guard you
   want in operations like `move` and `swap`.
+
 - `parts` is a property that gives you the unescaped path components, which is
   often easier to reason about than the raw pointer string.
+
 - If you ever need different syntax, `JSONPointer[T, CustomPointer]` lets you
   keep the same typed surface while substituting your preferred implementation.
   The `ptr` property exposes the underlying implementation for advanced use
   cases.
 
 ## Your Second Custom Operation: `SwapOp`
+
+You can express a swap with lower-level patch operations, but it stops reading
+like what the caller actually means. Here, the interesting part is less about
+type safety and more about **input validation**.
+
+Both paths can be perfectly valid JSON Pointers on their own and still be
+invalid **together** for a swap. If one path is an ancestor of the other, then
+the first replacement may restructure or overwrite the subtree that the second
+path points into. In that case, the mutation is no longer well-defined.
+
+That kind of rule belongs on the operation itself:
+
+```python
+from typing import Literal, Self, override
+from pydantic import model_validator, PydanticCustomError
+from jsonpatchx import JSONPointer, JSONValue, OperationSchema, ReplaceOp
+
+class SwapOp(OperationSchema):
+    op: Literal["swap"]
+    a: JSONPointer[JSONValue]
+    b: JSONPointer[JSONValue]
+
+    @model_validator(mode="after")
+    def _reject_proper_prefixes(self) -> Self:
+        if self.a.is_parent_of(self.b):
+            raise PydanticCustomError(
+                "swap_path_conflict",
+                "pointer '{ancestor}' cannot be an ancestor of pointer '{descendant}'",
+                {"ancestor": "a", "descendant": "b"},
+            )
+        if self.b.is_parent_of(self.a):
+            raise PydanticCustomError(
+                "swap_path_conflict",
+                "pointer '{ancestor}' cannot be an ancestor of pointer '{descendant}'",
+                {"ancestor": "b", "descendant": "a"},
+            )
+        return self
+
+    @override
+    def apply(self, doc: JSONValue) -> JSONValue:
+        value_a = self.a.get(doc)
+        value_b = self.b.get(doc)
+
+        doc = ReplaceOp(path=self.a, value=value_b).apply(doc)
+        return ReplaceOp(path=self.b, value=value_a).apply(doc)
+```
+
+Courtesy of Pydantic, you get:
+
+- `model_validator(mode="after")` to validate the operation as a whole, after
+  its individual fields have already been parsed and validated.
+
+- `PydanticCustomError` to raise a structured validation error instead of a
+  generic `ValueError`. It gives you a stable error code, a message template,
+  and named context values for the rendered message.
+
+This is a good pattern when a custom operation needs to reject combinations of
+inputs that are individually valid but invalid together.
 
 ## Custom does not have to mean exotic
 
@@ -194,19 +266,9 @@ than the operation itself should require.
 A dedicated `swap` op is much clearer.
 
 ```python
-from typing import Literal, Self
-
+from typing import Literal, Self, override
 from pydantic import ConfigDict, model_validator
-from typing_extensions import override
-
-from jsonpatchx import (
-    JSONPointer,
-    JSONValue,
-    OperationSchema,
-    OperationValidationError,
-    ReplaceOp,
-)
-
+from jsonpatchx import JSONPointer, JSONValue, OperationSchema, OperationValidationError, ReplaceOp
 
 class SwapOp(OperationSchema):
     model_config = ConfigDict(
