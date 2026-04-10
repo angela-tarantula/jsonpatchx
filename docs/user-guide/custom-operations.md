@@ -264,6 +264,45 @@ failures into a single "not allowed" outcome, it lets a custom operation respond
 differently to each case. This keeps the operation logic focused on intent
 rather than reimplementing pointer resolution.
 
+> Note: An implementation of `AddMissingKeyOp` with more structured and detailed
+> error messages is available in the recipes folder # TODO should you want to
+> use a production-ready version of this.
+
+## Your Fourth Custom Operation: `ReplaceNumberOp`
+
+Typed pointers are also useful when you want a custom operation to be _more
+specific_ than the built-in operation it delegates to.
+
+`ReplaceOp` works on any JSON value:
+
+- `path: JSONPointer[JSONValue]`
+- `value: JSONValue`
+
+But a custom operation can narrow that contract. For example, if an operation
+only makes sense for numbers, it can require a numeric pointer and a numeric
+replacement value up front.
+
+```python
+from typing import Literal, override
+from jsonpatchx import JSONPointer, JSONValue, OperationSchema, ReplaceOp
+from jsonpatchx.types import JSONNumber
+
+class ReplaceNumberOp(OperationSchema):
+    op: Literal["replace_number"]
+    path: JSONPointer[JSONNumber]
+    value: JSONNumber
+
+    @override
+    def apply(self, doc: JSONValue) -> JSONValue:
+        return ReplaceOp(path=self.path, value=self.value).apply(doc)
+```
+
+Here, `ReplaceNumberOp` wraps a tighter contract around `ReplaceOp`.
+
+This works safely because `JSONPointer` is
+[covariant](https://peps.python.org/pep-0483/#covariance-and-contravariance) in
+its target type.
+
 ## Custom does not have to mean exotic
 
 A custom operation is often just a better contract for a mutation people already
