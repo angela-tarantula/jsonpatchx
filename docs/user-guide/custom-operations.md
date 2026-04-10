@@ -133,6 +133,8 @@ The `JSONPointer` type itself is expressive with what you can do.
   The `ptr` property exposes the underlying implementation for advanced use
   cases.
 
+## Your Second Custom Operation: `SwapOp`
+
 ## Custom does not have to mean exotic
 
 A custom operation is often just a better contract for a mutation people already
