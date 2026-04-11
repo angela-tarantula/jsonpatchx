@@ -4,23 +4,22 @@ JsonPatchX can validate patch documents client-side before you send them.
 
 ## Patch Clients for Standard RFC 6902
 
-For strict RFC 6902 APIs, use `JsonPatch` and organize your client's patching
-into 3 stages:
+A simple RFC 6902 patch client usually has three steps:
 
 ```python
 from httpx import Client
 from jsonpatchx import JsonPatch
 
-# Stage 1: Build
+# Step 1: Build
 full_restore = [
     {"op": "copy", "from": "/stats/hp", "path": "/health"},
     {"op": "replace", "path": "/status", "value": "healthy"}
 ]
 
-# Stage 2: Validate
+# Step 2: Validate
 patch = JsonPatch(full_restore)
 
-# Stage 3: Apply
+# Step 3: Send
 with Client(base_url="https://api.example.com") as client:
     response = client.patch(
         "/pokemon/pikachu",
@@ -29,6 +28,8 @@ with Client(base_url="https://api.example.com") as client:
     )
     response.raise_for_status()
 ```
+
+### Model-Based Patches
 
 Avoid `list[dict]` boilerplate by using operation models directly:
 
@@ -57,6 +58,8 @@ full_restore = [
     ReplaceOp(path="/status", value="healthy")
 ]
 ```
+
+### Prepared Patches
 
 If your client uses prepared JSON patches, use `from_string`:
 
@@ -119,12 +122,15 @@ with Client(base_url="https://api.example.com") as client:
     response.raise_for_status()
 ```
 
-> Another advantage of custom operations is that they sidestep stale reads. If a
-> client has to read a value, compute a new result locally, and then send a
-> final `replace`, that flow is more vulnerable to concurrent updates than
-> sending one higher-level operation for the server to apply against current
-> state. For example, the above client-side code would succumb to stale reads
-> amidst high concurrency under RFC 6902:
+The API service will do its own validation, so your client can always send raw
+JSON / `list[dict]`s and expect the same safety. But you gain the ability to
+catch validation errors earlier and expect exclusively runtime patch conflicts
+after you send.
+
+### Same Intent, Different Contract
+
+For comparison, imagine if that API service required strict RFC 6902. The client
+would have to compute the final value itself:
 
 ```python
 from httpx import Client
@@ -151,18 +157,9 @@ with Client(base_url="https://api.example.com") as client:
     response.raise_for_status()
 ```
 
-## What This Changes and What It Doesn't
+It's also vulnerable to stale reads.
 
-This is a Python convenience, not a different transport format. The wire
-contract is still ordinary JSON Patch.
-
-What changes between these two client styles is where the operation models come
-from and where the higher-level mutation logic lives. With strict RFC 6902, the
-client imports standard models from JsonPatchX and computes the final value
-itself. With custom PATCH contracts, the client imports operation models from
-the API service and can send those higher-level operations directly.
-
-## Packaging the Contract
+### Packaging the Contract
 
 If an API service wants clients to use this pattern, it should expose a stable
 import surface for its operation schemas and registry. That can be:
@@ -175,7 +172,7 @@ The important part is stability. If client code imports
 `some_service.patching.WidgetPatchRegistry`, that import path becomes part of
 the contract too.
 
-## Optional Higher-Level Variant
+### Optional Higher-Level Variant
 
 An API service could also publish a ready-made patch request model such as
 `JsonPatchFor[...]`, but operation schemas plus a shared registry are usually
