@@ -422,7 +422,7 @@ op: Literal["clamp"] = "clamp"
 ```
 
 JsonPatchX won't let these ergonomic defaults negatively affect your OpenAPI.
-For example, you won't have to see this in your PATCH schema:
+For example, you **won't** have to see this in your PATCH schema:
 
 ```json
 {
@@ -436,11 +436,8 @@ For example, you won't have to see this in your PATCH schema:
 }
 ```
 
-The `default` key is always excluded for `op`, and `op` will always be listed
-inside `required`.
+> The `default` key is always excluded for `op`, and `op` will always be listed
+> inside `required`.
 
 JsonPatchX strives to provide a stable, standardized OpenAPI for PATCH contracts
 that even SDKs can depend on.
-
-If you want to see how these operation models can be shared with a Python
-client, see [Patch Clients](patch-clients.md).

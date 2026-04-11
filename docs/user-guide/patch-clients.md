@@ -1,25 +1,77 @@
 # Patch Clients
 
-If the API service publishes its patch operation models as importable Python
-code, a Python client can use the same operation classes to construct valid
-patch documents instead of hand-writing `dict`s.
+JsonPatchX can validate patch documents client-side before you send them.
 
-On this page, `API service` means the Python package that owns the PATCH
-endpoint and its operation schemas. The `server` is the runtime that exposes
-that contract over HTTP, but the importable contract usually lives in the
-service package.
+## Patch Clients for Standard RFC 6902
+
+For strict RFC 6902 APIs, use `JsonPatch` and organize your client's patching
+into 3 stages:
+
+```python
+from httpx import Client
+from jsonpatchx import JsonPatch
+
+# Stage 1: Build
+full_restore = [
+    {"op": "copy", "from": "/stats/hp", "path": "/health"},
+    {"op": "replace", "path": "/status", "value": "healthy"}
+]
+
+# Stage 2: Validate
+patch = JsonPatch(full_restore)
+
+# Stage 3: Apply
+with Client(base_url="https://api.example.com") as client:
+    response = client.patch(
+        "/pokemon/pikachu",
+        content=patch.to_string(),
+        headers={"content-type": "application/json-patch+json"},
+    )
+    response.raise_for_status()
+```
+
+Avoid `list[dict]` boilerplate by using operation models directly:
+
+```python
+from jsonpatchx import JsonPatch, CopyOp, ReplaceOp
+
+full_restore = [
+    CopyOp(from_="/stats/hp", path="/health"),
+    ReplaceOp(path="/status", value="healthy")
+]
+patch = JsonPatch(full_restore)
+```
+
+> Note: `from` is a reserved keyword in Python, so `CopyOp` and `MoveOp` use
+> `from_` instead. This is only necessary when you instantiate them directly
+> from Python.
+
+When you build with operation models, validation errors can be caught eagerly:
+
+```python
+from jsonpatchx import JsonPatch, CopyOp, ReplaceOp
+
+full_restore = [
+    CopyOp(from_="/stats/hp", path="health"),  # ERROR: invalid pointer!
+    ReplaceOp(path="/status", value="healthy")
+]
+```
+
+If your client uses prepared JSON patches, use `from_string`:
+
+```python
+from pathlib import Path
+from jsonpatchx import JsonPatch
+
+patch = JsonPatch.from_string(Path("full_restore_patch.json").read_text())
+```
 
 ## Patch Clients for Custom PATCH Contracts
 
-When an API service defines custom patch operations, the cleanest pattern is to
-publish those operation schemas as importable Python code.
-
-### Export a Shared Contract
-
-The cleanest pattern is for the API service to expose two things:
-
-- the operation schemas it accepts
-- a registry alias that matches the PATCH endpoint contract
+Custom PATCH contracts move some of that higher-level logic into the patch
+vocabulary itself. When an API service defines custom patch operations, the
+cleanest pattern is to publish those operation schemas as importable Python
+code, together with a registry alias that matches the PATCH endpoint contract.
 
 For example:
 
@@ -33,8 +85,6 @@ type WidgetPatchRegistry = MultiplyOp | IncrementOp | ClampOp
 
 That gives the client one import surface that mirrors the PATCH contract the API
 service actually accepts.
-
-### Build and Send the Patch
 
 With that shared contract, a Python client can build a `JsonPatch` from
 instantiated operation schemas, validate it locally, and send the ordinary JSON
@@ -71,23 +121,17 @@ with Client(base_url="https://api.example.com") as client:
 
 The shared registry matters because it keeps the client's local validation
 aligned with the API service's accepted operations. If the client tries to send
-an operation outside `WidgetPatchRegistry`, that mismatch is caught before the
-request goes over the wire.
+an illegal operation outside `WidgetPatchRegistry`, that mismatch can be caught
+and handled before the request goes over the wire.
 
-## Patch Clients for Standard RFC 6902
-
-If an API service adheres strictly to RFC 6902 JSON Patch, a Python client can
-still use typed operation models. It just imports the standard ones from
-JsonPatchX itself instead of from the API service package.
-
-In that setup, the client still sends a JSON Patch document, but any higher-
-level mutation logic lives on the client-side. For example, if the client wants
-to multiply a value by `2`, add `20`, clamp it to `100`, and then send the
-result, the client has to do that work before it emits the final `replace`:
+> Another advantage of custom operations is that they can shrink the stale-read
+> window. If a client has to read a value, compute a new result locally, and
+> then send a final `replace`, that flow is more vulnerable to concurrent
+> updates than sending one higher-level operation for the server to apply
+> against current state.
 
 ```python
 from httpx import Client
-from jsonpatchx import JsonPatch, ReplaceOp
 
 with Client(base_url="https://api.example.com") as client:
     document = client.get("/users/123").json()
@@ -99,7 +143,7 @@ with Client(base_url="https://api.example.com") as client:
 
     patch = JsonPatch(
         [
-            ReplaceOp(path="/foo/bar", value=result),
+            {"op": "replace", "path": "/foo/bar", "value": result},
         ]
     )
 
@@ -111,26 +155,16 @@ with Client(base_url="https://api.example.com") as client:
     response.raise_for_status()
 ```
 
-This is still a patch client. The difference is where the operation models come
-from and where the multiply/add/clamp logic lives.
-
-For custom PATCH contracts, a Python client can import the API service's shared
-operation models and send those higher-level operations directly. For strict RFC
-6902 JSON Patch, it can import the standard operation models from JsonPatchX
-itself.
-
 ## What This Changes and What It Doesn't
 
 This is a Python convenience, not a different transport format. The wire
 contract is still ordinary JSON Patch.
 
-What changes is where the client gets its operation models:
-
-- from the API service for custom PATCH contracts
-- from JsonPatchX for strict RFC 6902 contracts
-
-In both cases, the client is still constructing and sending a JSON Patch
-document.
+What changes between these two client styles is where the operation models come
+from and where the higher-level mutation logic lives. With strict RFC 6902, the
+client imports standard models from JsonPatchX and computes the final value
+itself. With custom PATCH contracts, the client imports operation models from
+the API service and can send those higher-level operations directly.
 
 ## Packaging the Contract
 

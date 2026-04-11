@@ -21,19 +21,17 @@ source .venv/bin/activate
 pip install -e .
 ```
 
-Optional FastAPI helpers come later:
+For FastAPI integrations:
 
 <!--
 ```sh
-pip install "jsonpatchx[fastapi]"
+pip install jsonpatchx[fastapi]
 ```
 -->
 
 ```sh
-pip install -e ".[fastapi]"
+pip install -e .[fastapi]
 ```
-
-You do not need that extra just to use `JsonPatch` or `JsonPatchFor[...]`.
 
 ## 1. Apply a plain RFC 6902 patch
 
@@ -163,6 +161,13 @@ def patch_user(
 
 See it for yourself: [Interactive PATCH Demo](https://example.com)
 
-## You Don’t Have to Buy Into the Whole Vision
+## You Can Stop Here for Server-Side RFC 6902
 
-If all you want is RFC 6902, you can stop here.
+If all you need is to accept and apply standard RFC 6902 patch documents on the
+server, you can stop here.
+
+If you also want to build a Python patch client, see
+[Patch Clients](patch-clients.md).
+
+The rest of the guide focuses on richer PATCH contracts such as custom
+operations, route-specific registries, and contract evolution.
