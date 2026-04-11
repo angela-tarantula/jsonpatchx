@@ -441,3 +441,6 @@ inside `required`.
 
 JsonPatchX strives to provide a stable, standardized OpenAPI for PATCH contracts
 that even SDKs can depend on.
+
+If you want to see how these operation models can be shared with a Python
+client, see [Patch Clients](patch-clients.md).
