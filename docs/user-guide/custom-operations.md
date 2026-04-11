@@ -225,8 +225,7 @@ That is what `AddMissingKeyOp` expresses.
 
 ```python
 from typing import Literal, override
-from pydantic import ConfigDict
-from jsonpatchx import AddOp, JSONPointer, JSONValue, OperationSchema, PatchConflictError, classify_state
+from jsonpatchx import AddOp, JSONPointer, JSONValue, OperationSchema, PatchConflictError, TargetState, classify_state
 
 class AddMissingKeyOp(OperationSchema):
     """AddOp but strictly for object key-value pair additions."""
@@ -236,7 +235,7 @@ class AddMissingKeyOp(OperationSchema):
 
     @override
     def apply(self, doc: JSONValue) -> JSONValue:
-        state = classify_state(self.path.ptr, doc) # TODO: make better
+        state = classify_state(self.path.ptr, doc)
 
         if state is TargetState.OBJECT_KEY_MISSING:
             return AddOp(path=self.path, value=self.value).apply(doc)
@@ -265,8 +264,8 @@ differently to each case. This keeps the operation logic focused on intent
 rather than reimplementing pointer resolution.
 
 > Note: An implementation of `AddMissingKeyOp` with more structured and detailed
-> error messages is available in the recipes folder # TODO should you want to
-> use a production-ready version of this.
+> error messages is available in the recipes folder should you want to use a
+> production-ready version of this.
 
 ## Your Fourth Custom Operation: `ReplaceNumberOp`
 
@@ -303,6 +302,13 @@ This works safely because `JSONPointer` is
 [covariant](https://peps.python.org/pep-0483/#covariance-and-contravariance) in
 its target type.
 
+In other words, a `JSONPointer[JSONNumber]` can be used anywhere a
+`JSONPointer[JSONValue]` is expected, because every JSON number is also a JSON
+value.
+
+That lets a custom operation expose a narrower contract while still delegating
+to a broader built-in operation.
+
 ## Your Fifth Custom Operation: `ClampOp`
 
 The previous examples focused on typing, validation, and mutation semantics. One
@@ -317,41 +323,46 @@ useful to say: at least one of `min` or `max` must be present.
 ```python
 from typing import Literal, Self, override
 from pydantic import ConfigDict, Field, model_validator
+from pydantic.experimental.missing_sentinel import MISSING
 from jsonpatchx import JSONPointer, JSONValue, OperationSchema, ReplaceOp
 from jsonpatchx.types import JSONNumber
 
 class ClampOp(OperationSchema):
+    """Clamp a numeric value to an inclusive range."""
+
     model_config = ConfigDict(
         title="Clamp operation",
+        validate_default=False,
         json_schema_extra={
-            "description": (
-                "Clamp a numeric value at path to a minimum, a maximum, or both."
-            ),
-            "oneOf": [
-                {"required": ["min"]},
-                {"required": ["max"]},
+            "description": "Clamp a numeric value at path to the inclusive range [min, max].",
+            "anyOf":
+                [
+                    {"required": ["min"]},
+                    {"required": ["max"]}
             ],
         },
     )
-
     op: Literal["clamp"]
     path: JSONPointer[JSONNumber] = Field(
         description="Pointer to the numeric value to clamp."
     )
-    min: JSONNumber | None = Field(
-        default=None,
-        description="Inclusive lower bound, if provided.",
+    min: JSONNumber = Field(
+        default=MISSING,
+        description="Inclusive lower bound.",
     )
-    max: JSONNumber | None = Field(
-        default=None,
-        description="Inclusive upper bound, if provided.",
+    max: JSONNumber = Field(
+        default=MISSING,
+        description="Inclusive upper bound.",
     )
 
     @model_validator(mode="after")
     def _validate_bounds(self) -> Self:
-        if self.min is None and self.max is None:
-            raise ValueError("clamp requires at least one of 'min' or 'max'")
-        if self.min is not None and self.max is not None and self.min > self.max:
+        has_min = "min" in self.model_fields_set
+        has_max = "max" in self.model_fields_set
+
+        if not has_min and not has_max:
+            raise ValueError("clamp requires at least one of min or max")
+        if has_min and has_max and self.min > self.max:
             raise ValueError("clamp requires min <= max")
         return self
 
@@ -359,9 +370,9 @@ class ClampOp(OperationSchema):
     def apply(self, doc: JSONValue) -> JSONValue:
         current = self.path.get(doc)
 
-        if self.min is not None:
+        if "min" in self.model_fields_set:
             current = max(self.min, current)
-        if self.max is not None:
+        if "max" in self.model_fields_set:
             current = min(self.max, current)
 
         return ReplaceOp(path=self.path, value=current).apply(doc)
@@ -376,7 +387,7 @@ Courtesy of Pydantic, you get:
   schema.
 
 - `json_schema_extra` to express richer schema rules directly, in this case that
-  a request must provide min, max, or both.
+  a request must provide `min`, `max`, or both.
 
 - `Field(...)` metadata to document individual fields, including the typed
   pointer itself.
@@ -385,7 +396,10 @@ The result is that the same model can drive parsing, validation, execution, and
 documentation. The operation is not just something your server can run. It is
 also something your API can describe clearly.
 
-## A Few Ergonomic Refinements
+> I must admit, I didn't write that operation myself. I used JsonPatchX's
+> AGENTS.md context to give my coding agent everything it needed to produce it.
+
+## One More Ergonomic Refinement
 
 In addition to patching with `list[dict]`s and JSON text, you can also use
 instantiated Operation Schemas directly:
@@ -393,7 +407,8 @@ instantiated Operation Schemas directly:
 ```python
 patch = JsonPatch(
     [
-        IncrementOp(path="/foo/bar", value=20),
+        MultiplyOp(path="/foo/bar", scalar=2),
+        IncrementOp(path="/foo/bar", amount=20),
         ClampOp(path="/foo/bar", max=100)
     ]
 )
@@ -406,173 +421,23 @@ For this reason, you will usually want to default discriminator fields such as
 op: Literal["clamp"] = "clamp"
 ```
 
-JsonPatchX is aware of this and will proactively ensures that these ergonomic
-defaults won't negatively affect your OpenAPI. For example:
+JsonPatchX won't let these ergonomic defaults negatively affect your OpenAPI.
+For example, you won't have to see this in your PATCH schema:
 
-## Custom does not have to mean exotic
-
-A custom operation is often just a better contract for a mutation people already
-keep trying to express with lower-level steps.
-
-`replace_substring` is a good example:
-
-```python
-from typing import Literal
-
-from jsonpatchx import (
-    JSONPointer,
-    JSONValue,
-    OperationSchema,
-    PatchConflictError,
-    ReplaceOp,
-)
-from jsonpatchx.types import JSONString
-
-
-class ReplaceSubstringOp(OperationSchema):
-    op: Literal["replace_substring"] = "replace_substring"
-    path: JSONPointer[JSONString]
-    old: JSONString
-    new: JSONString
-
-    def apply(self, doc: JSONValue) -> JSONValue:
-        current = self.path.get(doc)
-        if self.old not in current:
-            raise PatchConflictError(f"{self.old!r} is not in {current!r}")
-
-        substituted = current.replace(self.old, self.new)
-        return ReplaceOp(path=self.path, value=substituted).apply(doc)
+```json
+{
+  "properties": {
+    "op": {
+      "type": "string",
+      "default": "clamp"
+    }
+  },
+  "required": []
+}
 ```
 
-This is still “just a replace” in one sense.
+The `default` key is always excluded for `op`, and `op` will always be listed
+inside `required`.
 
-But the contract is much better:
-
-- the request states intent directly
-- the path is type-gated as a string target
-- the failure mode is specific and meaningful
-- the route can choose to advertise this op explicitly instead of burying the
-  behavior in application code
-
-That is the sort of extension JsonPatchX is trying to encourage.
-
-## A more expressive example: `SwapOp`
-
-`swap` is a good second example because it shows something that is genuinely
-awkward to express with plain RFC operations.
-
-You can simulate a swap with low-level steps, but the patch gets clumsy fast.
-You usually need a temporary location, careful sequencing, and more explanation
-than the operation itself should require.
-
-A dedicated `swap` op is much clearer.
-
-```python
-from typing import Literal, Self, override
-from pydantic import ConfigDict, model_validator
-from jsonpatchx import JSONPointer, JSONValue, OperationSchema, OperationValidationError, ReplaceOp
-
-class SwapOp(OperationSchema):
-    model_config = ConfigDict(
-        title="Swap operation",
-        json_schema_extra={
-            "description": (
-                "Swap the values at paths 'a' and 'b'. "
-                "Paths 'a' and 'b' may not be ancestors of each other."
-            )
-        },
-    )
-
-    op: Literal["swap"] = "swap"
-    a: JSONPointer[JSONValue]
-    b: JSONPointer[JSONValue]
-
-    @model_validator(mode="after")
-    def _reject_proper_prefixes(self) -> Self:
-        if self.a.is_parent_of(self.b):
-            raise OperationValidationError(
-                "pointer 'b' cannot be a child of pointer 'a'"
-            )
-        if self.b.is_parent_of(self.a):
-            raise OperationValidationError(
-                "pointer 'a' cannot be a child of pointer 'b'"
-            )
-        return self
-
-    @override
-    def apply(self, doc: JSONValue) -> JSONValue:
-        value_a = self.a.get(doc)
-        value_b = self.b.get(doc)
-
-        doc = ReplaceOp(path=self.a, value=value_b).apply(doc)
-        return ReplaceOp(path=self.b, value=value_a).apply(doc)
-```
-
-This example is worth studying for a different reason than `increment`.
-
-It shows what a well-documented operation looks like:
-
-- the schema has a real title
-- the schema has a real description
-- important invariants are validated before mutation starts
-- the implementation composes existing operations instead of inventing a second
-  write engine
-
-That last point is a good habit. Custom operations should usually reuse the
-library’s existing mutation semantics where possible.
-
-## JSON helper types are worth using
-
-JsonPatchX includes strict JSON helper types for exactly this sort of operation
-design:
-
-- `JSONBoolean`
-- `JSONNumber`
-- `JSONString`
-- `JSONNull`
-- `JSONArray[T]`
-- `JSONObject[T]`
-- `JSONValue`
-
-These keep operation contracts aligned with JSON semantics rather than loose
-Python coercions. For custom ops, that usually leads to better validation and
-clearer schema.
-
-## Good custom operations tend to have the same shape
-
-A custom operation usually ages well when it does a few things clearly:
-
-- it names a real domain mutation
-- its payload is small and obvious
-- the important invariants are validated before mutation
-- its conflict behavior is specific
-- it composes cleanly with the rest of the registry
-
-That last part matters too. A custom op should feel like one more operation your
-route can choose to advertise, not like a separate subsystem.
-
-## Expose custom operations through registries
-
-Defining a custom op does not mean every route should accept it.
-
-That is what registries are for.
-
-```python
-from jsonpatchx import JsonPatchFor, StandardRegistry
-
-type BillingAdminOps = StandardRegistry | IncrementOp | SwapOp
-
-BillingAdminPatch = JsonPatchFor[BillingAccount, BillingAdminOps]
-```
-
-That keeps the extension explicit.
-
-A route either supports `increment` and `swap`, or it does not. The request
-model, the OpenAPI schema, and the runtime parser all agree.
-
-The next page moves from operation semantics to targeting semantics with
-`JSONSelector`.
-
-Most custom mutations are not going to be a sequence of standard operations, and
-that's okay. When mutations have to do a little more "work", JsonPatchX keeps it
-as frictionless as possible.
+JsonPatchX strives to provide a stable, standardized OpenAPI for PATCH contracts
+that even SDKs can depend on.
