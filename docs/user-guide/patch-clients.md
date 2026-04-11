@@ -46,7 +46,8 @@ patch = JsonPatch(full_restore)
 > `from_` instead. This is only necessary when you instantiate them directly
 > from Python.
 
-When you build with operation models, validation errors can be caught eagerly:
+When you build patches from operation models, validation errors can be caught
+eagerly:
 
 ```python
 from jsonpatchx import JsonPatch, CopyOp, ReplaceOp
@@ -68,10 +69,9 @@ patch = JsonPatch.from_string(Path("full_restore_patch.json").read_text())
 
 ## Patch Clients for Custom PATCH Contracts
 
-Custom PATCH contracts move some of that higher-level logic into the patch
-vocabulary itself. When an API service defines custom patch operations, the
+When an API service uses JsonPatchX to define custom patch operations, the
 cleanest pattern is to publish those operation schemas as importable Python
-code, together with a registry alias that matches the PATCH endpoint contract.
+code, together with the registry alias that matches the PATCH endpoint contract.
 
 For example:
 
@@ -87,11 +87,12 @@ That gives the client one import surface that mirrors the PATCH contract the API
 service actually accepts.
 
 With that shared contract, a Python client can build a `JsonPatch` from
-instantiated operation schemas, validate it locally, and send the ordinary JSON
-Patch wire format with `httpx`:
+instantiated operation schemas, validate it locally, _then_ send it over the
+wire:
 
 ```python
 from httpx import Client
+from jsonpatchx import JsonPatch
 
 from some_service.patching import (
     ClampOp,
@@ -99,7 +100,6 @@ from some_service.patching import (
     MultiplyOp,
     WidgetPatchRegistry,
 )
-from jsonpatchx import JsonPatch
 
 patch = JsonPatch(
     [
@@ -119,16 +119,12 @@ with Client(base_url="https://api.example.com") as client:
     response.raise_for_status()
 ```
 
-The shared registry matters because it keeps the client's local validation
-aligned with the API service's accepted operations. If the client tries to send
-an illegal operation outside `WidgetPatchRegistry`, that mismatch can be caught
-and handled before the request goes over the wire.
-
-> Another advantage of custom operations is that they can shrink the stale-read
-> window. If a client has to read a value, compute a new result locally, and
-> then send a final `replace`, that flow is more vulnerable to concurrent
-> updates than sending one higher-level operation for the server to apply
-> against current state.
+> Another advantage of custom operations is that they sidestep stale reads. If a
+> client has to read a value, compute a new result locally, and then send a
+> final `replace`, that flow is more vulnerable to concurrent updates than
+> sending one higher-level operation for the server to apply against current
+> state. For example, the above client-side code would succumb to stale reads
+> amidst high concurrency under RFC 6902:
 
 ```python
 from httpx import Client
