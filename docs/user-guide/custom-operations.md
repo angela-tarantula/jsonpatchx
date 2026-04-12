@@ -59,7 +59,7 @@ operations.
 ## Your First Custom Operation: `IncrementOp`
 
 > Disclaimer: none of the custom operations on this page are directly importable
-> from JsonPatchX. These are merely examples.
+> from JsonPatchX. These are merely examples. <!-- TODO: For now. -->
 
 Suppose your client is always checking the current state of a resource just to
 increment it by some amount with a `replace`. That's a good candidate for a
@@ -79,6 +79,16 @@ class IncrementOp(OperationSchema):
         current = self.path.get(doc)
         return ReplaceOp(path=self.path, value=current + self.amount).apply(doc)
 ```
+
+If every increment were expressed as a client-side read followed by `replace`:
+
+- The communicated intent is collapsed into `replace`.
+
+- The server can validate the `replace`, but not the higher-level intent that
+  this was meant to be an increment.
+
+- The read-then-replace flow is more vulnerable to stale reads and lost updates
+  under concurrency.
 
 Note the type safety:
 

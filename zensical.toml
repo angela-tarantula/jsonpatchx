@@ -26,6 +26,7 @@ nav = [
     { "Deployment Profiles and Environment-Specific Contracts" = "user-guide/deployment-profiles-and-environment-specific-contracts.md" },
     { "Contract Evolution and Deprecation" = "user-guide/contract-evolution-and-deprecation.md" },
     { "Error Semantics and Contract Tests" = "user-guide/error-semantics-and-contract-tests.md" },
+    { "Agentic Patching" = "user-guide/agentic-patching.md" },
   ] },
   { "Developer Reference" = [
     { "Developer Overview" = "developer-reference/developer-reference.md" },
