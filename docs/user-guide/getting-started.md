@@ -33,7 +33,7 @@ pip install jsonpatchx[fastapi]
 pip install -e .[fastapi]
 ```
 
-## 1. Apply a plain RFC 6902 patch
+## Apply a Plain RFC 6902 Patch
 
 ```python
 from jsonpatchx import JsonPatch
@@ -60,7 +60,7 @@ That is ordinary JSON Patch.
 before it is applied. If you already have JSON text, use
 `JsonPatch.from_string(...)` and apply it the same way.
 
-## 2. Turn the RFC into a FastAPI contract
+## Turn RFC 6902 Into a FastAPI Contract
 
 ```python
 from fastapi import FastAPI, HTTPException
@@ -113,7 +113,7 @@ That is the smallest useful JsonPatchX route.
 > `JsonPatchFor` also supports string-literal targets:
 > `JsonPatchFor[Literal["DeploymentSpec"]]`.
 
-## 3. Optional FastAPI Helpers
+## Optional: FastAPI Helpers
 
 You can opt into enforcing `application/json-patch+json` and installing the
 recommended HTTP error mapping:

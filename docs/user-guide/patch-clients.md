@@ -2,7 +2,7 @@
 
 JsonPatchX can validate patch documents client-side before you send them.
 
-## Patch Clients for Standard RFC 6902
+## Clients for Standard RFC 6902
 
 A simple RFC 6902 patch client usually has three steps:
 
@@ -29,7 +29,7 @@ with Client(base_url="https://api.example.com") as client:
     response.raise_for_status()
 ```
 
-### Model-Based Patches
+### Build from Operation Models
 
 Avoid `list[dict]` boilerplate by using operation models directly:
 
@@ -45,6 +45,8 @@ patch = JsonPatch(full_restore)
 
 > Note: `from` is a reserved keyword in Python, so `CopyOp` and `MoveOp` use
 > `from_` instead. This is only necessary when you instantiate them directly.
+> This is implemented with
+> [`Field(alias="from")`](https://pydantic.dev/docs/validation/latest/concepts/alias/).
 
 When you build patches from operation models, validation errors can be caught
 eagerly:
@@ -58,7 +60,7 @@ full_restore = [
 ]
 ```
 
-### Prepared Patches
+### Load from JSON Files
 
 If your client uses prepared JSON patches, use `from_string`:
 
@@ -69,7 +71,7 @@ from jsonpatchx import JsonPatch
 patch = JsonPatch.from_string(Path("full_restore_patch.json").read_text())
 ```
 
-## Patch Clients for Custom PATCH Contracts
+## Clients for Custom PATCH Contracts
 
 If an API service defines custom patch operations with JsonPatchX, it can
 publish those operation schemas together with the registry alias that matches
@@ -123,10 +125,6 @@ with Client(base_url="https://api.example.com") as client:
     )
     response.raise_for_status()
 ```
-
-`registry=WidgetPatchRegistry` keeps client-side validation aligned with the
-operations the API service actually accepts. This is still ordinary JSON Patch
-on the wire.
 
 For why this pattern is especially useful for agents, see
 [Agentic Patching](agentic-patching.md).

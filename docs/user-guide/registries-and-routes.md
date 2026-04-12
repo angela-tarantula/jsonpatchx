@@ -14,7 +14,7 @@ Good patterns include:
 - a dev-only registry for experiments
 - a superuser route with elevated auth and a wider registry
 
-## Why This Matters
+## Why Route-Specific Registries Matter
 
 This is about route-level control. You don’t need custom operations for this to
 matter.
@@ -28,7 +28,7 @@ matter.
 - **Safer evolution** - New or experimental operations can be introduced in
   internal routes first without committing them to public APIs.
 
-## How to Create Registries
+## Create Registries
 
 It's as simple as this:
 
@@ -53,7 +53,7 @@ def patch_user(user_id: int, patch: JsonPatchFor[User, WriteOnlyRegistry]) -> Us
     ...
 ```
 
-## Environment-Selected Registries
+## Environment-Specific Registries
 
 You can load operations from a startup-time configuration source and build a
 registry using `Union[*ops]`:

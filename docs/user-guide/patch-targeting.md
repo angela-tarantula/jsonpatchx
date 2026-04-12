@@ -1,14 +1,14 @@
-# JSONSelector and Alternative Targeting
+# Patch Targeting
 
-Pointers work well when the caller already knows the exact location to patch.
+Every PATCH contract needs a way to say where a mutation applies.
 
-They get awkward as soon as the caller knows which item they mean but not where
-it sits today. “The invoice with ID `inv_42`” is a stable idea. `"/invoices/3"`
-often is not.
+Most of the time that means one exact location. Sometimes it means a query over
+the document. And sometimes the default pointer or selector implementation is
+not the right fit for your domain.
 
-That is where selector-style targeting starts to matter.
+This page covers all three.
 
-## `JSONPointer[T]` and `JSONSelector[T]` are different tools
+## Exact and Query-Based Targeting
 
 Use `JSONPointer[T]` when the operation is aimed at one concrete location.
 
@@ -26,18 +26,43 @@ open_invoices: JSONSelector[JSONObject[JSONValue]]
 priority_orders: JSONSelector[JSONObject[JSONValue]]
 ```
 
-By default, `JSONSelector` uses standardized JSONPath syntax.
+By default, `JSONSelector` uses standardized
+[RFC 9535](https://datatracker.ietf.org/doc/html/rfc9535) JSONPath syntax.
 
 A selector field can therefore accept expressions such as:
 
 ```json
-"$.invoices[?(@.status == 'open')]"
+"$.invoices[?(@.status == 'unpaid')].dueDate"
 ```
 
-The important part is not that JSONPath is fashionable. The important part is
-that query-style targeting now has a standard shape.
+## Typed Pointers
 
-## Selector semantics need to be explicit
+`JSONPointer[T]` is the default targeting tool when an operation means "this
+exact location."
+
+It parses a JSON Pointer string up front. The target and its type are enforced
+when you exercise it:
+
+- `get(doc)` resolves the path and validates the result against `T`
+- `add(doc, value)` validates the value before writing it
+- `remove(doc)` validates the existing target before removing it
+
+For preflight checks:
+
+- `is_gettable()`, `is_addable()`, and `is_removable()` let you ask "would this
+  succeed?" without the try-except ceremony
+
+For pointer relationships:
+
+- `is_parent_of()` and `is_child_of()` help validate pointer relationships
+
+If you need to reason about path components directly, `parts` exposes the
+unescaped path segments.
+
+`JSONPointer` is also a subtype of `str`, so it still behaves like a pointer
+string in the usual places.
+
+## Selector Semantics
 
 Selectors are more expressive than pointers. They also raise questions that
 pointer-based operations do not.
@@ -53,7 +78,7 @@ when:
 That is why selector-heavy behavior usually belongs in custom operations rather
 than being hidden behind a payload that looks exactly like plain RFC 6902.
 
-## The basic selector surface
+## Typed Selectors
 
 `JSONSelector[T]` is intentionally small:
 
@@ -70,7 +95,7 @@ Second, if an operation mutates in place and later hits an error, the document
 may already be partially updated. If you allow that behavior, document it
 plainly.
 
-## Pointers are still the default for a reason
+## Why Pointers Are Still the Default
 
 Most PATCH contracts should still prefer pointers whenever one exact location is
 the clearest thing to name.
@@ -84,7 +109,7 @@ Use a selector when it makes the request easier to say honestly:
 Do not use a selector just because it feels more advanced. The point is better
 targeting, not more clever targeting.
 
-## JSONPath is opt-in, not a replacement story
+## JSONPath Is Opt-In
 
 JsonPatchX does not treat JSONPath as a replacement for JSON Pointer.
 
@@ -94,7 +119,7 @@ enters the picture when query-style targeting is actually the better fit.
 That is the right level of ambition here: richer targeting when it helps, not a
 wholesale rewrite of the standard path model.
 
-## Custom pointer and selector implementations
+## Alternative Backends
 
 You are not limited to the default implementations.
 
@@ -109,3 +134,6 @@ As long as the custom type satisfies the `PointerBackend` or `SelectorBackend`
 protocol, you can keep using the typed surface directly. There is no need to
 drop down to raw `.ptr` strings just because your domain needs different
 resolution rules.
+
+For the backend protocol itself, see the developer-facing
+[Pointer Backends](../developer-reference/pointer-backends.md) reference.
