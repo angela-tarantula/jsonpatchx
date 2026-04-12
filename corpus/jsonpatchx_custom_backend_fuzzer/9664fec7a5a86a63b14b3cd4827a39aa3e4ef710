@@ -1,0 +1,7 @@
+{
+  "d+oc": { "a": { "b": 1 }, "items": ["x"] },
+  "patch": [
+    { "op": "add", "path": "юtems/-", "value": "y" },
+    { "op": "dot_set", "path": "a.b", "value": 3 }
+  ]
+}
