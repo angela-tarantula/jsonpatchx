@@ -10,6 +10,8 @@ and an MCP would.
 - If a heading names `X` and `Y`, then `X` and `Y` must both appear as peer
   topics in the outline.
 - Every heading must describe the content directly under it.
+- Do not begin a heading with inline code. If a symbol or type name appears in
+  the heading, phrase it so the heading still reads naturally in prose.
 - Use noun-phrase headings for conceptual sections.
 - Use action/task headings for procedural sections.
 - Introduce concepts from their actual guarantees and boundaries: say what is

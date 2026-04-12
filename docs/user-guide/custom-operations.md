@@ -10,12 +10,17 @@ right things up front, and makes the contract easier to document.
 
 Start small.
 
-## The Basic Shape of an Operation
+## Operation Anatomy
+
+JsonPatchX patch operations are Pydantic-backed models. This section covers the
+base class, typed targeting, and JSON-native value types.
+
+### The `OperationSchema` Base Class
+
+All operations, standard and custom, inherit from `OperationSchema`.
 
 Before looking at a custom operation, it helps to see how little machinery is
-involved.
-
-A built-in operation such as `ReplaceOp` is conceptually this kind of shape:
+involved. For example, `ReplaceOp` is conceptually this kind of shape:
 
 ```python
 from typing import Literal
@@ -56,7 +61,7 @@ operations.
 > to make them easier to reason about. For low-level mutations that require
 > in-place semantics, try chaining stateless steps until the very end.
 
-## Typed Pointers
+### Typed Pointers
 
 `JSONPointer[T]` parses a JSON Pointer string up front. The target and its type
 are enforced when you exercise it with `get()`, `add()`, or `remove()`.
@@ -68,7 +73,7 @@ the same question without exception flow. For pointer relationships,
 That is enough for this page. For the fuller targeting story, see
 [Patch Targeting](patch-targeting.md).
 
-## JSON-Native Types
+### JSON-Native Types
 
 JsonPatchX also provides helper types so you can reason about JSON rather than
 Python's types:
@@ -135,9 +140,10 @@ testable.
 
 ### Define `SwapOp`
 
-You can express a swap with lower-level patch operations, but it stops reading
-like what the caller actually means. Here, the interesting part is less about
-type safety and more about **input validation**.
+You can express a swap with lower-level patch operations, but needing a
+temporary path just to say "swap these two values" is a good sign the contract
+wants its own operation. Here, the interesting part is less about type safety
+and more about **input validation**.
 
 Both paths can be perfectly valid JSON Pointers on their own and still be
 invalid **together** for a swap. If one path is an ancestor of the other, then
@@ -191,6 +197,10 @@ Courtesy of Pydantic, you get:
 
 This is a good pattern when a custom operation needs to reject combinations of
 inputs that are individually valid but invalid together.
+
+> `SwapOp` can also be useful as a _component_ of a higher-level operation. For
+> example, an operation like `PromoteItemOp` might swap adjacent items in a
+> ranked list without reimplementing swap logic itself.
 
 ## Contract-Narrowing Operations
 
@@ -286,10 +296,10 @@ rich OpenAPI directly.
 
 ### Define `ClampOp`
 
-A clamp operation is a good fit for that. Sometimes, after a sequence of
-mutations, you want to guarantee that a numeric result stays within an allowed
-range. The operation itself is straightforward, but its schema has something
-useful to say: at least one of `min` or `max` must be present.
+Sometimes, after a sequence of mutations, you want to guarantee that a numeric
+result stays within an allowed range. The operation itself is straightforward,
+but its schema has something useful to say: at least one of `min` or `max` must
+be present.
 
 ```python
 from typing import Literal, Self, override
@@ -407,9 +417,9 @@ as required:
 ```
 
 But JsonPatchX understands that `op` is a required discriminator over the wire,
-so we will ensure that `op` is always listed in `required` and that the OpenAPI
-doesn't advertise a default, even when the runtime models can be instantiated
-without `op`.
+so the guarantee is that `op` is always listed in `required` and that the
+OpenAPI won't advertise a default, even when the runtime models can be
+instantiated without `op`.
 
 **JsonPatchX strives to provide a stable, standardized OpenAPI for PATCH
 contracts that even SDKs can depend on.**
