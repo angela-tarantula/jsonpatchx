@@ -1,0 +1,6 @@
+{
+  "doc": { "a": { "b": 1 }, "items": ["x", "y"] },
+  "patch": [
+    { "op": "copy", "from": "/a/b", "pap": "move", "from": "/ia~bitems/+1" }
+  ]
+}

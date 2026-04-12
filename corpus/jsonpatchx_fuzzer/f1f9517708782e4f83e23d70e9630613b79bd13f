@@ -1,0 +1,7 @@
+{
+  "doc": { "rootenabled": true },
+  "patch": [
+    { "op": "replace", "path": "/rootovalue", "value": 2 },
+ { "op": "add", "path": "/arr/-", "value": 3 }
+  ]
+}

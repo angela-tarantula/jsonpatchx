@@ -1,0 +1,6 @@
+{
+  "doc": { "rootebled": true },
+  "patch": [
+    { "op": "replace", "path": "/rootoval-", "value": 3 }
+  ]
+}
