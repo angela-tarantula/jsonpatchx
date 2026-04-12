@@ -56,7 +56,44 @@ operations.
 > to make them easier to reason about. For low-level mutations that require
 > in-place semantics, try chaining stateless steps until the very end.
 
-## Define `IncrementOp`
+## Typed Pointers
+
+`JSONPointer[T]` parses a JSON Pointer string up front. The target and its type
+are enforced when you exercise it with `get()`, `add()`, or `remove()`.
+
+For preflight checks, `is_gettable()`, `is_addable()`, and `is_removable()` ask
+the same question without exception flow. For pointer relationships,
+`is_parent_of()` and `is_child_of()` are available.
+
+That is enough for this page. For the fuller targeting story, see
+[Patch Targeting](patch-targeting.md).
+
+## JSON-Native Types
+
+JsonPatchX also provides helper types so you can reason about JSON rather than
+Python's types:
+
+- `JSONString`, `JSONNumber`, `JSONBoolean`, and `JSONNull` for primitives
+
+- `JSONArray[T]` and `JSONObject[T]` for containers
+
+- `JSONValue` for any of those
+
+While you can opt out of using these types, JsonPatchX strongly recommends using
+them. For example, `JSONNumber` is not merely an alias for `int | float` as it
+rightfully rejects `bool`, which in Python is a subtype of `int`. Other types
+may have more straightforward implementations now but are promised to remain
+JSON-native even as the Python language evolves.
+
+> Disclaimer: None of the custom operations below are directly importable from
+> JsonPatchX. These are merely examples. <!-- TODO: For now. -->
+
+## Intent-Based Operations
+
+These operations make the contract say what the caller actually means, rather
+than encoding that meaning indirectly through lower-level steps.
+
+### Define `IncrementOp`
 
 Suppose your client is always checking the current state of a resource just to
 increment it by some amount with a `replace`. That's a good candidate for a
@@ -80,83 +117,23 @@ class IncrementOp(OperationSchema):
 If every increment were expressed as a client-side read followed by `replace`:
 
 - The communicated intent is collapsed into `replace`.
-
 - The server can validate the `replace`, but not the higher-level intent that
   this was meant to be an increment.
-
 - The read-then-replace flow is more vulnerable to stale reads and lost updates
   under concurrency.
 
 Note the type safety:
 
 - The `amount` must be a positive number
-
 - The `path` must be a
   [JSON Pointer](https://datatracker.ietf.org/doc/html/rfc6901) string
-
 - When `get()` is exercised, the `path` must resolve to a number.
 
 As a reviewer, you don't really have to know much about the `JSONPointer` type
 to read and understand this operation. And as a single class, it's easily
 testable.
 
-## Typed Pointers
-
-`JSONPointer[T]` parses a JSON Pointer string up front. The target and its type
-are enforced when you exercise it with `get()`, `add()`, or `remove()`.
-
-For preflight checks, `is_gettable()`, `is_addable()`, and `is_removable()` ask
-the same question without exception flow. For pointer relationships,
-`is_parent_of()` and `is_child_of()` are available.
-
-That is enough to read the examples on this page. For the fuller targeting
-story, see [Patch Targeting](patch-targeting.md).
-
-## JSON-Native Types
-
-JsonPatchX also provides helper types so you can reason about JSON rather than
-Python's types:
-
-- `JSONString`, `JSONNumber`, `JSONBoolean`, and `JSONNull` for primitives
-
-- `JSONArray[T]` and `JSONObject[T]` for containers
-
-- `JSONValue` for any of those
-
-While you can opt out of using these types, JsonPatchX strongly recommends using
-them. For example, `JSONNumber` is not merely an alias for `int | float` as it
-rightfully rejects `bool`, which in Python is a subtype of `int`. Other types
-may have more straightforward implementations now but are promised to remain
-JSON-native even as the Python language evolves.
-
-## Define `ReplaceNumberOp`
-
-Typed pointers are useful when you want to narrow the type contract:
-
-```python
-from typing import Literal, override
-from jsonpatchx import JSONPointer, JSONValue, OperationSchema, ReplaceOp
-from jsonpatchx.types import JSONNumber
-
-class ReplaceNumberOp(OperationSchema):
-    op: Literal["replace_number"]
-    path: JSONPointer[JSONNumber]
-    value: JSONNumber
-
-    @override
-    def apply(self, doc: JSONValue) -> JSONValue:
-        return ReplaceOp(path=self.path, value=self.value).apply(doc)
-```
-
-This works safely because `JSONPointer` is
-[covariant](https://peps.python.org/pep-0483/#covariance-and-contravariance) in
-its target type.
-
-> In other words, a `JSONPointer[JSONNumber]` can be used anywhere a
-> `JSONPointer[JSONValue]` is expected, because every JSON number is also a JSON
-> value.
-
-## Define `SwapOp`
+### Define `SwapOp`
 
 You can express a swap with lower-level patch operations, but it stops reading
 like what the caller actually means. Here, the interesting part is less about
@@ -208,7 +185,6 @@ Courtesy of Pydantic, you get:
 
 - `model_validator(mode="after")` to validate the operation as a whole, after
   its individual fields have already been parsed and validated.
-
 - `PydanticCustomError` to raise a structured validation error instead of a
   generic `ValueError`. It gives you a stable error code, a message template,
   and named context values for the rendered message.
@@ -216,11 +192,41 @@ Courtesy of Pydantic, you get:
 This is a good pattern when a custom operation needs to reject combinations of
 inputs that are individually valid but invalid together.
 
-## Define `AddMissingKeyOp`
+## Contract-Narrowing Operations
 
-Not every custom operation has to introduce a brand-new kind of mutation.
-Sometimes the win is simply taking a broad standard operation and giving it a
-narrower, safer contract.
+Not every custom operation introduces a new kind of mutation. Sometimes the win
+is taking a broad standard operation and tightening its contract.
+
+### Define `ReplaceNumberOp`
+
+Use typed pointers when you want to narrow the type contract:
+
+```python
+from typing import Literal, override
+from jsonpatchx import JSONPointer, JSONValue, OperationSchema, ReplaceOp
+from jsonpatchx.types import JSONNumber
+
+class ReplaceNumberOp(OperationSchema):
+    op: Literal["replace_number"]
+    path: JSONPointer[JSONNumber]
+    value: JSONNumber
+
+    @override
+    def apply(self, doc: JSONValue) -> JSONValue:
+        return ReplaceOp(path=self.path, value=self.value).apply(doc)
+```
+
+This works safely because `JSONPointer` is
+[covariant](https://peps.python.org/pep-0483/#covariance-and-contravariance) in
+its target type.
+
+> In other words, a `JSONPointer[JSONNumber]` can be used anywhere a
+> `JSONPointer[JSONValue]` is expected, because every JSON number is also a JSON
+> value.
+
+### Define `AddMissingKeyOp`
+
+Contract narrowing can also be behavioral rather than just type-based.
 
 `add` is a good example. Depending on the path, it may create a missing object
 member, replace an existing value, or append into an array. That flexibility is
@@ -273,11 +279,12 @@ rather than reimplementing pointer resolution.
 > error messages is available in the recipes folder should you want to use a
 > production-ready version of this.
 
-## Define `ClampOp`
+## Schema-Rich Operations
 
-The previous examples focused on typing, validation, and mutation semantics. One
-more benefit is worth seeing directly: custom operations can also produce rich
-OpenAPI because they are ordinary Pydantic models.
+Because custom operations are ordinary Pydantic models, they can also express
+rich OpenAPI directly.
+
+### Define `ClampOp`
 
 A clamp operation is a good fit for that. Sometimes, after a sequence of
 mutations, you want to guarantee that a numeric result stays within an allowed
