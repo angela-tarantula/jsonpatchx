@@ -2,9 +2,9 @@
 
 JsonPatchX can validate patch documents client-side before you send them.
 
-## Clients for Standard RFC 6902
+## Patch Client Flow
 
-A simple RFC 6902 patch client usually has three steps:
+A Python patch client usually has three steps:
 
 ```python
 from httpx import Client
@@ -29,9 +29,33 @@ with Client(base_url="https://api.example.com") as client:
     response.raise_for_status()
 ```
 
-### Build from Operation Models
+## Building Patch Documents
 
-Avoid `list[dict]` boilerplate by using operation models directly:
+There are 3 different ways to build patch documents.
+
+### From `list[dict]`
+
+```python
+from jsonpatchx import JsonPatch
+
+full_restore = [
+    {"op": "copy", "from": "/stats/hp", "path": "/health"},
+    {"op": "replace", "path": "/status", "value": "healthy"}
+]
+
+patch = JsonPatch(full_restore)
+```
+
+### From JSON Text
+
+```python
+from pathlib import Path
+from jsonpatchx import JsonPatch
+
+patch = JsonPatch.from_string(Path("full_restore_patch.json").read_text())
+```
+
+### From Operation Models
 
 ```python
 from jsonpatchx import JsonPatch, CopyOp, ReplaceOp
@@ -60,18 +84,7 @@ full_restore = [
 ]
 ```
 
-### Load from JSON Files
-
-If your client uses prepared JSON patches, use `from_string`:
-
-```python
-from pathlib import Path
-from jsonpatchx import JsonPatch
-
-patch = JsonPatch.from_string(Path("full_restore_patch.json").read_text())
-```
-
-## Clients for Custom PATCH Contracts
+## Share Custom Operation Models
 
 If an API service defines custom patch operations with JsonPatchX, it can
 publish those operation schemas together with the registry alias that matches

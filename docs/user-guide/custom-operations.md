@@ -362,7 +362,7 @@ class ClampOp(OperationSchema):
 This example is intentionally as much about the schema as it is about the
 mutation.
 
-Courtesy of Pydantic, you get:
+On the schema side, Pydantic gives you:
 
 - `ConfigDict(...)` to give the operation a title and description in generated
   schema.

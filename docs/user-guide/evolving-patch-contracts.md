@@ -13,9 +13,7 @@ The safest rules are simple:
 - deprecation should happen before removal
 - registries are where old and new contracts can coexist deliberately
 
-Let's look at an example of an operation contract evolving over time.
-
-## Evolving `ReplaceSubstringOp`
+## Contract Evolution by Example
 
 A mutation like "replace substring" is hard to get right the first time.
 
