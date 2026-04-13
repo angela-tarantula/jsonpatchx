@@ -1,32 +1,31 @@
 # Evolving PATCH Contracts
 
-Operation schemas are API surface, so changes need to be deliberate.
+Operation schemas are API surface. Changes to them should preserve compatibility
+on purpose.
 
-## The safest rule
+## Compatibility Rules
 
-Keep an existing `op` stable unless you are prepared to support its current
-meaning for older clients.
-
-That simple rule gets you most of the way there.
-
-In practice:
+The safest rules are simple:
 
 - additive changes are the safest changes
-- new fields should default to existing behavior
-- a real semantic break deserves a new `op`
+- new fields should preserve existing behavior by default
+- a semantic break deserves a new `op`
 - deprecation should happen before removal
-- registries are the right place to control where old and new contracts coexist
+- registries are where old and new contracts can coexist deliberately
 
-## A concrete example
+Let's look at an example of an operation contract evolving over time.
 
-Here is a small operation that replaces a substring at a string path:
+## Evolving `ReplaceSubstringOp`
+
+A mutation like "replace substring" is hard to get right the first time.
+
+### Baseline Contract of `ReplaceSubstringOp`
 
 ```python
 from typing import Literal
-
-from jsonpatchx import JSONPointer, JSONValue, OperationSchema, PatchConflictError, ReplaceOp
-from jsonpatchx.types import JSONString
-
+from pydantic import Field
+from jsonpatchx import JSONPointer, JSONValue, OperationSchema, ReplaceOp, PatchConflictError
+from jsonpatchx.types import JSONString, JSONBoolean
 
 class ReplaceSubstringOp(OperationSchema):
     op: Literal["replace_substring"] = "replace_substring"
@@ -39,19 +38,20 @@ class ReplaceSubstringOp(OperationSchema):
         if self.old not in current:
             raise PatchConflictError(f"{self.old!r} is not in {current!r}")
 
-        return ReplaceOp(
-            path=self.path,
-            value=current.replace(self.old, self.new),
-        ).apply(doc)
+        replaced = current.replace(self.old, self.new)
+        return ReplaceOp(path=self.path, value=replaced).apply(doc)
 ```
 
-**Additive change.** Suppose clients now need a non-strict mode. Keep the same
-`op` and add a field that preserves the old behavior by default.
+### Additive Change
+
+If clients now need a non-strict mode, keep the same `op` and add a field that
+preserves the old behavior by default.
 
 ```python
+from typing import Literal
 from pydantic import Field
-from jsonpatchx.types import JSONBoolean
-
+from jsonpatchx import JSONPointer, JSONValue, OperationSchema, ReplaceOp, PatchConflictError
+from jsonpatchx.types import JSONString, JSONBoolean
 
 class ReplaceSubstringOp(OperationSchema):
     op: Literal["replace_substring"] = "replace_substring"
@@ -68,76 +68,103 @@ class ReplaceSubstringOp(OperationSchema):
                 f"strict mode is enabled and {self.old!r} is not in {current!r}"
             )
 
-        return ReplaceOp(
-            path=self.path,
-            value=current.replace(self.old, self.new),
-        ).apply(doc)
+        replaced = current.replace(self.old, self.new)
+        return ReplaceOp(path=self.path, value=replaced).apply(doc)
 ```
 
-Existing clients keep working because `strict=True` preserves the original
-behavior.
+Because `strict=True` preserves the original behavior, existing clients keep
+working.
 
-**Deprecation.** Now imagine you decide non-strict mode was a mistake. Do not
-remove the field the same day you stop liking it. Mark it deprecated first.
+### Deprecation
+
+If that field later needs to go away, deprecate it before removing it. That
+gives OpenAPI and client developers a transition period instead of a surprise.
 
 ```python
+from typing import Literal
 from pydantic import Field
-
+from jsonpatchx import JSONPointer, JSONValue, OperationSchema, ReplaceOp, PatchConflictError
+from jsonpatchx.types import JSONString, JSONBoolean
 
 class ReplaceSubstringOp(OperationSchema):
     op: Literal["replace_substring"] = "replace_substring"
     path: JSONPointer[JSONString]
     old: JSONString
     new: JSONString
-    strict: JSONBoolean = Field(
-        default=True,
-        deprecated=True,
-        description=(
-            "Deprecated. Non-strict mode will be removed. "
-            "This operation will always behave as strict=True."
-        ),
-    )
+    strict: JSONBoolean = Field(default=True, deprecated=True)
 
     def apply(self, doc: JSONValue) -> JSONValue:
         current = self.path.get(doc)
 
-        if self.strict and self.old not in current:
-            raise PatchConflictError(
-                f"strict mode is enabled and {self.old!r} is not in {current!r}"
-            )
+        if self.old not in current:
+            if "strict" not in self.model_fields_set or self.strict:
+                raise PatchConflictError(
+                    f"strict mode is enabled and {self.old!r} is not in {current!r}"
+                )
 
-        return ReplaceOp(
-            path=self.path,
-            value=current.replace(self.old, self.new),
-        ).apply(doc)
+        replaced = current.replace(self.old, self.new)
+        return ReplaceOp(path=self.path, value=replaced).apply(doc)
 ```
 
-That gives OpenAPI and client developers a transition period instead of a
-surprise.
+Pydantic's
+[`model_fields_set`](https://docs.pydantic.dev/latest/api/base_model/#pydantic.BaseModel.model_fields_set)
+distinguishes omission from explicit use, so
+[DeprecationWarning](https://docs.python.org/3/library/warnings.html#warning-categories)
+becomes a signal that clients are still sending the deprecated field.
 
-**Breaking semantic change.** If you are changing the meaning of the operation
-itself, do not mutate the old one in place. Create a new `op`.
+### Contract Tightening
 
-For example:
+Python's
+[`str.replace()`](https://docs.python.org/3/library/stdtypes.html#str.replace)
+is broad. `str.replace(old, new, /, count=-1)` replaces all occurrences by
+default, limits replacements when `count` is given, and even allows `old=""`.
 
-- keep `replace_substring`
-- introduce `replace_substring_v2`
-- let both exist for a while through registry policy
-- remove the older one on a real schedule
+A PATCH contract does not need to expose every lever. If you decide this
+operation should only replace a non-empty substring, tighten the field contract:
 
-That is easier for clients to reason about than an operation whose name stays
-the same while its semantics quietly drift.
+```python
+from typing import Literal
+from pydantic import Field
+from jsonpatchx import JSONPointer, JSONValue, OperationSchema, ReplaceOp, PatchConflictError
+from jsonpatchx.types import JSONString, JSONBoolean
 
-## Let registries carry the rollout
+class ReplaceSubstringOp(OperationSchema):
+    op: Literal["replace_substring"] = "replace_substring"
+    path: JSONPointer[JSONString]
+    old: JSONString = Field(min_length=1)
+    new: JSONString
 
-Registries are how you make evolution manageable in practice.
+    def apply(self, doc: JSONValue) -> JSONValue:
+        current = self.path.get(doc)
+        if self.old not in current:
+            raise PatchConflictError(f"{self.old!r} is not in {current!r}")
 
-They let you do things like:
+        replaced = current.replace(self.old, self.new)
+        return ReplaceOp(path=self.path, value=replaced).apply(doc)
+```
 
-- expose both old and new operations internally before a public rollout
-- keep a deprecated operation on one route while removing it from another
-- test migration behavior with a dev-only contract profile
-- version the accepted operation set without changing the transport format
+If you use [semantic versioning](https://semver.org/), this is a breaking
+change.
 
-That is one of the strongest arguments for treating PATCH as a contract surface
-instead of just a list of mutation dicts.
+### Breaking Semantic Change
+
+If the meaning of the operation itself changes, do not mutate the old one in
+place.
+
+For example, if `replace_substring` originally meant "replace all occurrences",
+and you now want an operation that replaces only the first occurrence, that is
+not the same operation. If you intend to retire the old behavior, deprecate
+`replace_substring`, introduce `replace_first_substring`, allow both through
+registry policy for a while, then remove the deprecated one.
+
+```python
+from pydantic import ConfigDict
+
+class ReplaceSubstringOp(OperationSchema):
+    model_config = ConfigDict(json_schema_extra={"deprecated": True})
+    ...
+```
+
+Changing semantics in place is harder for clients to reason about than adding a
+new `op`. For the route-level side of that rollout, see
+[Registries and Routes](registries-and-routes.md).

@@ -8,7 +8,7 @@ JsonPatchX supports three ways to target a mutation:
   [RFC 9535](https://datatracker.ietf.org/doc/html/rfc9535) JSON Path)
 - custom backends when the defaults are not the right fit
 
-## The JSONPointer Surface
+## The `JSONPointer` Surface
 
 `JSONPointer[T]` is the default targeting tool when an operation means "this
 exact location."
@@ -24,10 +24,10 @@ you exercise it.
 - `is_valid_type(target)` checks whether an arbitrary value satisfies `T`
 - `is_parent_of()` and `is_child_of()` help validate pointer relationships
 - `parts` exposes the unescaped path segments
-- as a subtype of `str`, it behaves like a pointer string when you want
+- As a subtype of `str`, it behaves like a pointer string when you want
   string-compatible comparison, hashing, and logging
 
-## The JSONSelector Surface
+## The `JSONSelector` Surface
 
 `JSONSelector[T]` is for query-based targeting. By default, it uses the JSON
 Path syntax standardized in
@@ -43,14 +43,13 @@ Selectors are more expressive than pointers. They also raise questions that
 pointer-based operations do not. JsonPatchX takes a simple default position:
 
 - zero matches is a resolution error
-
 - multiple matches are all returned
-
 - stable match ordering is not guaranteed
 
 ### Selector Methods
 
-Similar to `JSONPointer[T]`:
+Similar to `JSONPointer[T]`, it parses the query expression string upfront, and
+its target type is enforced when you exercise it:
 
 - `get(doc)`, `add(doc, value)`, and `remove(doc)`
 - `is_gettable()`, `is_addable()`, and `is_removable()`
@@ -75,3 +74,7 @@ protocol.
 
 If you do need the underlying pointer/selector instance, the `ptr` property
 exposes it on both `JSONPointer` and `JSONSelector`.
+
+> Note: `ptr` exposes the raw backend. If you use it directly, JsonPatchX will
+> not enforce the `T` in `JSONPointer[T]` or `JSONSelector[T]`; use
+> `is_valid_type()` when you need that check.
