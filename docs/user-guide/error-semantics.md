@@ -1,4 +1,4 @@
-# Error Semantics and Contract Tests
+# Error Semantics
 
 A governed PATCH API is defined just as much by how it fails as by how it
 mutates.
@@ -6,7 +6,7 @@ mutates.
 If the route has stable success behavior but fuzzy failure behavior, the
 contract is still incomplete.
 
-## Decide your status mapping on purpose
+## Decide Your Status Mapping on Purpose
 
 With the optional FastAPI helper layer installed, a good default mapping looks
 like this:
@@ -27,7 +27,7 @@ That mapping works well because it keeps three different failure modes separate:
 If you do not use the helper layer, choose an equivalent mapping and keep it
 stable.
 
-## Install the helper layer once
+## Install the Helper Layer Once
 
 ```python
 from fastapi import FastAPI
@@ -42,12 +42,10 @@ install_jsonpatch_error_handlers(app)
 The point is not only convenience. It is keeping PATCH failures consistent
 across routes.
 
-## Disallowed operations should fail at parse time
+## Disallowed Operations Should Fail at Parse Time
 
 When a route accepts a registry-limited contract, an unsupported operation
 should fail before mutation runs.
-
-That matters.
 
 If a public route does not advertise `test` or `increment`, the client has not
 sent a business-rule violation. It has sent a request body that does not match
@@ -55,7 +53,7 @@ the route contract.
 
 Treat that as a request validation failure.
 
-## Keep the error response shape stable
+## Keep the Error Response Shape Stable
 
 A good PATCH contract keeps the shape of failures predictable.
 
@@ -88,89 +86,7 @@ Clients usually care most about:
 - whether `detail` is a string or an object
 - whether the route keeps those choices stable over time
 
-## Test the contract, not only the happy path
-
-PATCH routes deserve contract tests, not only happy-path tests.
-
-A good test suite should cover:
-
-- media type enforcement
-- disallowed-operation rejection
-- apply-time conflicts
-- target-model validation
-- OpenAPI shape for the request body and standard error responses
-
-### Media type enforcement
-
-```python
-def test_requires_json_patch_media_type(client):
-    response = client.patch(
-        "/users/1",
-        headers={"content-type": "application/json"},
-        json=[{"op": "replace", "path": "/active", "value": False}],
-    )
-
-    assert response.status_code == 415
-    assert "application/json-patch+json" in response.json()["detail"]
-```
-
-### Disallowed operation rejection
-
-```python
-def test_public_route_rejects_test_op(client):
-    response = client.patch(
-        "/public/users/1",
-        headers={"content-type": "application/json-patch+json"},
-        json=[{"op": "test", "path": "/billing/plan", "value": "enterprise"}],
-    )
-
-    assert response.status_code == 422
-```
-
-### Current-state conflict
-
-```python
-def test_missing_path_returns_conflict(client):
-    response = client.patch(
-        "/users/1",
-        headers={"content-type": "application/json-patch+json"},
-        json=[{"op": "remove", "path": "/missing"}],
-    )
-
-    assert response.status_code == 409
-```
-
-### Target-model validation
-
-```python
-def test_invalid_patched_model_returns_422(client):
-    response = client.patch(
-        "/users/1",
-        headers={"content-type": "application/json-patch+json"},
-        json=[{"op": "replace", "path": "/email", "value": None}],
-    )
-
-    assert response.status_code == 422
-```
-
-### OpenAPI snapshot
-
-```python
-def test_user_patch_openapi_snapshot(app):
-    openapi = app.openapi()
-
-    patch_operation = openapi["paths"]["/users/{user_id}"]["patch"]
-    request_body = patch_operation["requestBody"]
-    responses = patch_operation["responses"]
-
-    assert request_body == EXPECTED_REQUEST_BODY
-    assert responses == EXPECTED_RESPONSES
-```
-
-That last one matters more than it first appears. A PATCH contract is partly
-runtime behavior and partly published schema. Snapshot both.
-
-## Stable failures make richer PATCH practical
+## Stable Failures Make Richer PATCH Practical
 
 This matters even more once you introduce custom operations and selector-style
 targeting.

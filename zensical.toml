@@ -23,9 +23,9 @@ nav = [
     { "Custom Operations" = "user-guide/custom-operations.md" },
     { "Patch Clients" = "user-guide/patch-clients.md" },
     { "Patch Targeting" = "user-guide/patch-targeting.md" },
-    { "Deployment Profiles and Environment-Specific Contracts" = "user-guide/deployment-profiles-and-environment-specific-contracts.md" },
-    { "Contract Evolution and Deprecation" = "user-guide/contract-evolution-and-deprecation.md" },
-    { "Error Semantics and Contract Tests" = "user-guide/error-semantics-and-contract-tests.md" },
+    { "Evolving PATCH Contracts" = "user-guide/evolving-patch-contracts.md" },
+    { "Error Semantics" = "user-guide/error-semantics.md" },
+    { "Contract Tests" = "user-guide/contract-tests.md" },
     { "Agentic Patching" = "user-guide/agentic-patching.md" },
   ] },
   { "Developer Reference" = [

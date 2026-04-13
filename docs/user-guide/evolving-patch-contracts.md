@@ -1,12 +1,6 @@
-# Contract Evolution and Deprecation
+# Evolving PATCH Contracts
 
-Operation schemas are API surface.
-
-Once clients send them over the wire, changing them is not just a refactor. It
-is a contract change.
-
-That does not mean PATCH has to be rigid. It means the evolution needs to be
-deliberate.
+Operation schemas are API surface, so changes need to be deliberate.
 
 ## The safest rule
 

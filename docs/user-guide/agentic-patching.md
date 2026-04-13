@@ -146,7 +146,7 @@ execution.
 - Treat OpenAPI as the discovery surface, not the execution surface.
 - Treat the Python models as the execution surface, not just documentation.
 - Keep PATCH failures stable and structured. For that side of the contract, see
-  [Error Semantics and Contract Tests](error-semantics-and-contract-tests.md).
+  [Error Semantics](error-semantics.md).
 - Prefer reviewed operations. Agents can draft new operations in Python, but new
   published operations should usually go through human review.
 
