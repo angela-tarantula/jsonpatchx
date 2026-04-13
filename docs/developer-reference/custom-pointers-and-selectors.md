@@ -1,4 +1,4 @@
-# Pointer Backends
+# Custom Pointers and Selectors
 
 JsonPatchX is pointer-backend agnostic.
 

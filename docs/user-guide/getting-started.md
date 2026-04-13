@@ -1,7 +1,7 @@
 # Getting Started
 
-This page gets you from plain RFC 6902 patching to a real FastAPI PATCH contract
-with the fewest moving parts.
+Get from plain RFC 6902 patching to a real FastAPI PATCH contract with the
+fewest moving parts.
 
 ## Install
 

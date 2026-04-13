@@ -31,7 +31,7 @@ nav = [
   { "Developer Reference" = [
     { "Developer Overview" = "developer-reference/developer-reference.md" },
     { "Local Docs Preview" = "developer-reference/developer-docs-preview.md" },
-    { "Pointer Backends" = "developer-reference/pointer-backends.md" },
+    { "Custom Pointers and Selectors" = "developer-reference/custom-pointers-and-selectors.md" },
     { "Type System Notes" = "developer-reference/type-system-notes.md" },
     { "Limitations in Python's Type System" = "developer-reference/limitations-in-python-type-system.md" },
   ] },
