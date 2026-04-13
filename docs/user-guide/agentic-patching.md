@@ -1,43 +1,85 @@
 # Agentic Patching
 
-Agents usually do better when they can search a schema-rich API surface and then
-write typed code against it.
+JsonPatchX makes a new agentic JSON patching style possible: instead of asking a
+coding agent to manipulate JSON directly, you give it a typed Python toolkit of
+reviewed patch operations. Those same operations can also be published as a
+schema-rich catalog for discovery, so the agent searches for the operation it
+needs, then writes Python against the corresponding model.
 
-That is the same general direction described by
+The target might be a local document, a file, or an HTTP request later; the
+pattern does not depend on a PATCH endpoint.
+
+## The Core Pattern
+
+Agentic patching has four parts:
+
+- OpenAPI is the discovery surface.
+- The Python operation package is the SDK.
+- `JsonPatch(...)` is the validator and executor.
+- MCP is optional glue if discovery or execution needs to happen remotely.
+
+This matches the direction described by
 [Cloudflare's Code Mode](https://blog.cloudflare.com/code-mode-mcp/) and
-[Pydantic's recent writing on agents writing code](https://pydantic.dev/articles/your-agent-would-rather-write-code):
-discovery should be compact and semantic, while execution should happen through
-code, types, and validation.
+[Pydantic's argument that agents would rather write code](https://pydantic.dev/articles/your-agent-would-rather-write-code/):
+the agent should search a compact semantic catalog, then act through typed code.
 
-JsonPatchX fits that pattern well.
+## Publish a Patch Toolkit
 
-## What Agents Need
+Agentic patching depends on breadth. The toolkit should be a large reviewed
+corpus of narrow, intentful operations an agent can search and compose for
+arbitrary JSON mutation tasks.
 
-For PATCH specifically, agents usually need four things:
-
-- a discovery surface they can search semantically
-- an execution surface they can use from Python
-- client-side validation before send
-- stable, structured patch failures after send
-
-That means discovery and execution should not be treated as the same problem.
-
-## Make the Operation Model the Source of Truth
-
-In JsonPatchX, an operation model can drive both:
-
-- the Python API an agent imports and instantiates
-- the OpenAPI schema an agent or tool indices for discovery
-
-That is the key design move.
-
-Do not make the agent guess from class names alone. Put semantic metadata on the
-operation model itself so Python and OpenAPI stay in sync.
+For example:
 
 ```python
-from typing import Literal, override
+# agent_patch_toolkit/__init__.py
 
-from pydantic import ConfigDict, Field
+from .arrays import AppendUniqueOp, MoveToFrontOp, RemoveWhereOp
+from .numeric import ClampOp, IncrementOp, MultiplyOp, RoundOp
+from .objects import AddMissingKeyOp, MergeObjectOp, RenameKeyOp
+from .strings import NormalizeWhitespaceOp, ReplaceSubstringOp, SlugifyOp
+from .temporal import ExpireAfterOp, TouchOp
+from .validation import RequireMaxOp, RequireMinOp
+
+type AgentPatchToolkit = (
+    AppendUniqueOp
+    ClampOp
+    ExpireAfterOp
+    | IncrementOp
+    | MultiplyOp
+    | AddMissingKeyOp
+    | MergeObjectOp
+    | MoveToFrontOp
+    | NormalizeWhitespaceOp
+    | RemoveWhereOp
+    | RequireMaxOp
+    | RequireMinOp
+    | RenameKeyOp
+    | ReplaceSubstringOp
+    | RoundOp
+    | SlugifyOp
+    | TouchOp
+    # ... many more reviewed operations
+)
+```
+
+A corpus like this gives the agent something much better than raw RFC 6902
+primitives: it can discover and compose operations whose contracts already
+express the mutation it intends.
+
+## Put Discovery Metadata on the Operation Model
+
+Operation names are not enough. An agent trying to cap a value at `100` may
+never think to search for `ClampOp`.
+
+Put discovery metadata on the model itself so the Python surface and the schema
+surface stay in sync:
+
+```python
+from typing import Literal, Self, override
+
+from pydantic import ConfigDict, Field, model_validator
+from pydantic.experimental.missing_sentinel import MISSING
 
 from jsonpatchx import JSONPointer, JSONValue, OperationSchema, ReplaceOp
 from jsonpatchx.types import JSONNumber
@@ -46,14 +88,24 @@ from jsonpatchx.types import JSONNumber
 class ClampOp(OperationSchema):
     model_config = ConfigDict(
         title="Clamp operation",
+        validate_default=False,
         json_schema_extra={
             "description": (
                 "Clamp a numeric value into an inclusive range. "
-                "Useful for capping, bounding, limiting, flooring, "
+                "Useful for capping, limiting, bounding, flooring, "
                 "or applying a ceiling."
             ),
-            "x-tags": ["cap", "limit", "bound", "ceiling", "floor", "max", "min"],
+            "x-discovery-terms": [
+                "cap",
+                "limit",
+                "bound",
+                "ceiling",
+                "floor",
+                "maximum",
+                "minimum",
+            ],
             "examples": [{"op": "clamp", "path": "/score", "max": 100}],
+            "anyOf": [{"required": ["min"]}, {"required": ["max"]}],
         },
     )
 
@@ -61,95 +113,94 @@ class ClampOp(OperationSchema):
     path: JSONPointer[JSONNumber] = Field(
         description="Pointer to the numeric value to clamp."
     )
-    min: JSONNumber | None = Field(default=None, description="Inclusive lower bound.")
-    max: JSONNumber | None = Field(default=None, description="Inclusive upper bound.")
+    min: JSONNumber = Field(
+        default=MISSING,
+        description="Inclusive lower bound.",
+    )
+    max: JSONNumber = Field(
+        default=MISSING,
+        description="Inclusive upper bound.",
+    )
+
+    @model_validator(mode="after")
+    def _validate_bounds(self) -> Self:
+        has_min = "min" in self.model_fields_set
+        has_max = "max" in self.model_fields_set
+
+        if not has_min and not has_max:
+            raise ValueError("clamp requires at least one of min or max")
+        if has_min and has_max and self.min > self.max:
+            raise ValueError("clamp requires min <= max")
+        return self
 
     @override
     def apply(self, doc: JSONValue) -> JSONValue:
         current = self.path.get(doc)
-        if self.min is not None:
+
+        if "min" in self.model_fields_set:
             current = max(self.min, current)
-        if self.max is not None:
+        if "max" in self.model_fields_set:
             current = min(self.max, current)
+
         return ReplaceOp(path=self.path, value=current).apply(doc)
 ```
 
-An agent trying to "cap a value at 100" may never think to search for `ClampOp`.
-But it can discover this operation through the description, examples, and
-semantic tags published into OpenAPI from the same model.
+JsonPatchX does not define one required discovery vocabulary here. The important
+part is that the metadata lives on the operation model and ships into OpenAPI
+from the same source of truth.
 
-JsonPatchX does not require one special metadata format here. The important part
-is that the metadata lives on the operation model and is published with it.
-`json_schema_extra` is the right place to do that.
+## Execute Through the Python SDK
 
-## OpenAPI for Discovery, Python for Execution
-
-Once the operation models carry semantic metadata, the split becomes simple:
-
-- OpenAPI is the discovery surface.
-- Importable Python operations are the execution surface.
-
-For example, an API service can publish a small patch SDK:
+Once the agent has found the right operations, it should use the Python models
+directly:
 
 ```python
-# some_service/patching.py
-
-from .ops import ClampOp, IncrementOp, MultiplyOp
-
-type WidgetPatchRegistry = MultiplyOp | IncrementOp | ClampOp
-```
-
-An agent or agent-adjacent tool can search the generated OpenAPI for tags,
-descriptions, and examples such as "cap", "limit", or "bound", discover
-`ClampOp`, then use the Python model directly:
-
-```python
-from some_service.patching import ClampOp, WidgetPatchRegistry
-
 from jsonpatchx import JsonPatch
+
+from agent_patch_toolkit import (
+    AgentPatchToolkit,
+    ClampOp,
+    IncrementOp,
+    MultiplyOp,
+)
 
 patch = JsonPatch(
     [
-        ClampOp(path="/foo/bar", max=100),
+        MultiplyOp(path="/stats/xp", scalar=2),
+        IncrementOp(path="/stats/xp", amount=20),
+        ClampOp(path="/stats/xp", max=100),
     ],
-    registry=WidgetPatchRegistry,
+    registry=AgentPatchToolkit,
 )
+
+document = patch.apply(document)
 ```
 
-This is the core pattern:
+The agent did not have to assemble JSON text by hand. It also did not have to
+translate intent into brittle RFC 6902 sequences or raw JSON structure.
 
-1. Discover the right operation from OpenAPI metadata.
-2. Import the Python model for that operation.
-3. Build the patch in Python.
-4. Validate client-side with `JsonPatch(...)`.
-5. Send ordinary JSON Patch on the wire.
+It wrote Python, instantiated typed operations, and let `JsonPatch(...)`
+validate the patch before execution. If the patch later needs to cross a process
+boundary, it is still ordinary JSON Patch on the wire.
 
-## What "SDK" Means Here
+## Use Validation and Patch Errors for Course Correction
 
-In this context, an SDK does not need to be a large generated client.
+This pattern gives the agent a better retry loop than "emit JSON and hope":
 
-Usually it is enough to publish:
+- invalid operation inputs fail during model construction or `JsonPatch(...)`
+  validation
+- operation-level validation can raise structured `PydanticCustomError`
+- runtime document-state failures raise `PatchConflictError`
 
-- the operation models
-- the shared registry alias
-- optional helper functions or client wrappers
+## Publishing Guidance
 
-The important part is that agents get a stable Python import surface for
-execution.
+- Publish the toolkit as a stable Python import surface.
+- Publish matching OpenAPI from the same operation models.
+- Put discovery terms, descriptions, and examples on the operation model itself.
+- Do not rely on operation names alone for discovery.
+- Keep the toolkit reviewed. Agents can draft new operations, but published
+  operations should usually go through human review.
 
-## Recommendations
-
-- Publish custom operations as importable Python models.
-- Export a shared registry alias that matches the PATCH contract.
-- Put descriptions, examples, and semantic discovery metadata on the operation
-  model itself.
-- Treat OpenAPI as the discovery surface, not the execution surface.
-- Treat the Python models as the execution surface, not just documentation.
-- Keep PATCH failures stable and structured. For that side of the contract, see
-  [Error Semantics](error-semantics.md).
-- Prefer reviewed operations. Agents can draft new operations in Python, but new
-  published operations should usually go through human review.
-
-This gives agents what they want: searchable semantics, typed Python models,
-client-side validation, and patch documents that are written as code instead of
-assembled as brittle JSON.
+The result is a patching workflow in which agents search a schema-rich catalog,
+write Python against a controlled toolkit, validate early, and recover from
+clear patch failures when they need to try again.
