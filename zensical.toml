@@ -25,7 +25,6 @@ nav = [
     { "Patch Targeting" = "user-guide/patch-targeting.md" },
     { "Evolving PATCH Contracts" = "user-guide/evolving-patch-contracts.md" },
     { "Error Semantics" = "user-guide/error-semantics.md" },
-    { "Contract Tests" = "user-guide/contract-tests.md" },
     { "Agentic Patching" = "user-guide/agentic-patching.md" },
   ] },
   { "Developer Reference" = [
