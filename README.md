@@ -38,6 +38,15 @@ If you are deciding where to start:
 - [API Reference](https://angela-tarantula.github.io/jsonpatchx/api-reference/api-reference-public/):
   generated public API surface.
 
+<!--
+
+## Installation
+
+```sh
+pip install jsonpatchx
+```
+-->
+
 ## Examples
 
 ### 1. Standard RFC 6902
