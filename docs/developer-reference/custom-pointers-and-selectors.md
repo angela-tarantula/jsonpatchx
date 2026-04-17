@@ -2,9 +2,10 @@
 
 JsonPatchX is pointer-backend agnostic.
 
-The default backend is standard RFC 6901 JSON Pointer behavior, but the library
-can bind alternative pointer implementations when a domain needs different
-parsing or traversal rules.
+The default backend is standard
+[RFC 6901](https://datatracker.ietf.org/doc/html/rfc6901) JSON Pointer behavior,
+but the library can bind alternative pointer implementations when a domain needs
+different parsing or traversal rules.
 
 That flexibility is useful. It also needs guardrails.
 
@@ -19,11 +20,6 @@ JsonPatchX expects a backend to do a small number of things well:
 - rebuild itself from parts
 - resolve itself against a JSON document
 - round-trip through a canonical string form
-
-That is it.
-
-The backend does not need to implement your whole mutation story. In fact, it
-should not.
 
 ## Minimal backend shape
 
@@ -72,31 +68,8 @@ instances.
 The backend defines its own syntax. There is no universal root string across
 every possible backend.
 
-## Keep single-target semantics in the backend
+<!--
 
-This is the most important design rule.
+Explain Selectors
 
-Backends are a good place to change syntax or traversal semantics.
-
-They are not a good place to hide multi-target fan-out behavior behind a
-familiar-looking pointer type.
-
-If a PATCH operation can affect many matches, that should be part of the
-operation contract itself, where ordering, conflict handling, and zero-match
-behavior can be documented and tested directly.
-
-## When to use a backend, and when not to
-
-Use a custom backend when you need:
-
-- different pointer syntax
-- different escaping rules
-- a different single-target traversal model
-
-Do not use a backend when you really need:
-
-- selector fan-out
-- batch mutation semantics
-- query-specific conflict rules
-
-Those belong in custom operations.
+-->
