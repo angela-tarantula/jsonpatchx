@@ -18,9 +18,9 @@ and agent-friendly patch toolkits.
 - **Standard JSON Patch in Python**: parse, validate, and apply ordinary RFC
   6902 patch documents.
 - **Governed PATCH APIs**: add custom operations, typed targeting, endpoint
-  controls, and OpenAPI generated from the same models.
+  controls, and OpenAPI generated from the same operations.
 - **Agentic Patching**: publish reviewed operations as typed Python models and
-  OpenAPI schemas for PATCH clients and coding agents.
+  OpenAPI schemas for coding agents to discover and use.
 
 ## Documentation
 
@@ -37,6 +37,52 @@ If you are deciding where to start:
   contributor and extension details.
 - [API Reference](https://angela-tarantula.github.io/jsonpatchx/api-reference/api-reference-public/):
   generated public API surface.
+
+## Examples
+
+### 1. Standard RFC 6902
+
+```python
+from jsonpatchx import JsonPatch
+
+doc = {"name": "Ada", "roles": ["engineer"]}
+
+patch = JsonPatch.from_string(
+    """
+    [
+      {"op": "replace", "path": "/name", "value": "Ada Lovelace"},
+      {"op": "add", "path": "/roles/-", "value": "maintainer"}
+    ]
+    """
+)
+
+updated = patch.apply(doc)
+```
+
+### 2. The FastAPI Contract
+
+```python
+from fastapi import FastAPI
+from pydantic import BaseModel, EmailStr
+from jsonpatchx import JsonPatchFor
+
+class User(BaseModel):
+    id: int
+    email: EmailStr
+    active: bool
+
+app = FastAPI()
+
+@app.patch("/users/{user_id}", response_model=User)
+def patch_user(user_id: int, patch: JsonPatchFor[User]) -> User:
+    user = load_user(user_id)
+    updated = patch.apply(user)
+    save_user(user_id, updated)
+    return updated
+```
+
+> **Note**: For custom operations, JSONPath targeting, route-level controls, and
+> more, see the [User Guide](https://angela-tarantula.github.io/jsonpatchx/).
 
 ## Contributing
 
