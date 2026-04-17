@@ -12,10 +12,7 @@ class Case(BaseModel):
 
     @model_validator(mode="after")
     def _ensure_expected_or_fail(self) -> Self:
-        if (
-            "expected" not in self.model_fields_set
-            and "fail" not in self.model_fields_set
-        ):  # pragma: no cover
+        if {"expected", "fail"}.isdisjoint(self.model_fields_set):  # pragma: no cover
             raise ValueError("case must include expected or set fail message")
         return self
 

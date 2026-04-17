@@ -73,7 +73,7 @@ class _RegistrySpec(BaseModel):
     construction.
     """
 
-    model_config = ConfigDict(arbitrary_types_allowed=True, frozen=True)
+    model_config = ConfigDict(frozen=True)
 
     ops: frozenset[type[OperationSchema]] = Field(min_length=1)
 
@@ -103,6 +103,9 @@ class _RegistrySpec(BaseModel):
 
         Ensures the registry contains only concrete operation models and that
         both model names and ``op`` discriminator literals are unique.
+
+        This is a model validator rather than a field validator because that
+        makes it future-proof if additional fields start mattering.
 
         Raises:
             InvalidOperationRegistry: If the registry definition is unusable.

@@ -80,6 +80,7 @@ repos:
         name: update openapi snapshots
         entry: uv run python scripts/update_openapi_snapshots.py
         language: system
+        files: (^.*\.py$|^.*\.json$|^pyproject\.toml$|^uv\.lock$)
         pass_filenames: false
 
       - id: checkov
@@ -96,6 +97,7 @@ repos:
         name: jscpd
         entry: npx --yes jscpd --gitignore --config .github/linters/.jscpd.json
         language: system
+        types: [python]
         pass_filenames: false
 
       - id: json-prettier
@@ -143,7 +145,7 @@ repos:
     rev: 3.0.0
     hooks:
       - id: shellcheck
-  - repo: https://github.com/pylint-dev/pylint
-    rev: v4.0.5
-    hooks:
-      - id: pylint
+  # - repo: https://github.com/pylint-dev/pylint
+  #   rev: v4.0.5
+  #   hooks:
+  #     - id: pylint

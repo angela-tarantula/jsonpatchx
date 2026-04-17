@@ -43,15 +43,47 @@ def _type_adapter_for[T](expected: TypeForm[T]) -> TypeAdapter[T]:
         ) from e
 
 
-# Pydantic-aware JSON types (type-checking aliases + runtime classes)
+"""Pydantic-aware JSON types.
+
+Design note:
+
+These definitions look more complicated than the underlying JSON domain because
+they are balancing three competing requirements at once:
+1. strict runtime validation,
+2. clean static types for users and type checkers, and
+3. stable/minimal OpenAPI output.
+
+The obvious-looking alternatives all break one of those goals:
+- Runtime type / Annotated[..., WithJsonSchema(...)] aliases for
+  JSONString / JSONNull / JSONBoolean cause Pydantic to promote
+  those aliases into named schema components, which pollutes the generated
+  OpenAPI surface with helper types.
+- Applying WithJsonSchema({"type": "number"}) to JSONNumber hides
+  field-level JSON Schema keywords such as gt / multiple_of because
+  it replaces the generated schema instead of refining it.
+- Writing Annotated[int | float, Field(strict=True, ...)] for
+  JSONNumber does not work: Pydantic cannot apply strict=True to the
+  union node itself, so strictness has to be expressed on the individual
+  int and float branches.
+- Exposing the full internal JSON union for JSONValue creates noisy named
+  OpenAPI components for internal helper types that are not part of the public
+  contract we want to advertise.
+
+So the "ugly" pattern here is intentional:
+- TYPE_CHECKING gets pleasant alias syntax,
+- runtime uses tiny helper classes only where Pydantic/OpenAPI need more
+  control, and
+- validation schema is allowed to differ from published JSON Schema when that
+  produces a better external API contract.
+"""
 
 
 def _strict_validator(typeform: TypeForm[Any]) -> core_schema.CoreSchema:
     """
     Build a strict validator for a TypeForm using a cached TypeAdapter.
 
-    This is used to keep validation strict while avoiding automatic OpenAPI
-    component generation for internal helper types (e.g., JSONValue internals).
+    This keeps validation strict without exposing the internal helper type's full
+    generated JSON Schema.
     """
     adapter = _type_adapter_for(typeform)
 
@@ -71,6 +103,8 @@ if TYPE_CHECKING:
 else:
 
     class JSONBoolean:
+        """Strict JSON boolean helper used in Pydantic-backed patch contracts."""
+
         @classmethod
         def __get_pydantic_core_schema__(
             cls, _source_type: object, _handler: core_schema.GetCoreSchemaHandler
@@ -86,6 +120,8 @@ else:
             return {"type": "boolean"}
 
     class JSONNumber:
+        """Strict JSON number helper accepting ``int`` or finite ``float`` values."""
+
         @classmethod
         def __get_pydantic_core_schema__(
             cls, _source_type: object, _handler: core_schema.GetCoreSchemaHandler
@@ -108,6 +144,8 @@ else:
             return {"type": "number"}
 
     class JSONString:
+        """Strict JSON string helper used in operation models and patch schemas."""
+
         @classmethod
         def __get_pydantic_core_schema__(
             cls, _source_type: object, _handler: core_schema.GetCoreSchemaHandler
@@ -123,6 +161,8 @@ else:
             return {"type": "string"}
 
     class JSONNull:
+        """Strict JSON null helper."""
+
         @classmethod
         def __get_pydantic_core_schema__(
             cls, _source_type: object, _handler: core_schema.GetCoreSchemaHandler
@@ -138,6 +178,8 @@ else:
             return {"type": "null"}
 
     class JSONArray[T]:
+        """Strict JSON array helper restricted to concrete ``list`` values."""
+
         @classmethod
         def __get_pydantic_core_schema__(
             cls, source_type: object, handler: core_schema.GetCoreSchemaHandler
@@ -155,6 +197,8 @@ else:
             return handler(_core_schema)
 
     class JSONObject[T]:
+        """Strict JSON object helper restricted to ``dict[str, ...]`` values."""
+
         @classmethod
         def __get_pydantic_core_schema__(
             cls, source_type: object, handler: core_schema.GetCoreSchemaHandler
@@ -175,7 +219,10 @@ else:
 
 
 type JSONScalar = JSONBoolean | JSONNumber | JSONString | JSONNull
+"""Strict JSON scalar helper union."""
+
 type JSONContainer[T] = JSONArray[T] | JSONObject[T]
+"""Strict JSON container helper union."""
 
 # type-narrowing helpers
 # NOTE: consider making public type-narrowing helpers
@@ -260,7 +307,7 @@ def _validate_typeform(unverified: object) -> TypeForm[Any]:
     return cast(TypeForm[Any], unverified)
 
 
-type JSONBound = (
-    JSONScalar | Sequence[JSONBound] | Mapping[str, JSONBound]
-)  # Bound for all recursively JSON-ish types.
+type JSONBound = JSONScalar | Sequence[JSONBound] | Mapping[str, JSONBound]
+"""Bound for recursively JSON-shaped values accepted by generic helpers such as
+``JSONPointer[T]``."""
 # Use it like ``T = TypeVar("T", default=JSONValue, bound=JSONBound)``

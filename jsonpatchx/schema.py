@@ -5,6 +5,7 @@ from typing import (
     ClassVar,
     Literal,
     Unpack,
+    cast,
     get_args,
     get_origin,
     get_type_hints,  # NOTE: For Py3.14+, this is enhanced for deferred annotations
@@ -144,15 +145,17 @@ class OperationSchema(BaseModel, ABC):
     ) -> JsonSchemaValue:
         json_schema = handler(schema)
 
-        # Allow users to set "op" defaults, but tell OpenAPI it's required
+        # 'op' is always required, even if it has a runtime default.
         required = set(json_schema.get("required", []))
-        required.add("op")
-        json_schema["required"] = sorted(required)
+        json_schema["required"] = sorted(required | {"op"})
 
-        # Add description to 'op' for consistency across models
-        json_schema["properties"]["op"].setdefault(
-            "description", "The operation to perform."
-        )
+        # 'op' is never pre-filled, even if it has a runtime default.
+        properties = json_schema.get("properties", {})
+        op_schema = cast(dict[str, object], properties.get("op"))
+        op_schema.pop("default", None)
+
+        # 'op' gets a consistent description unless specified.
+        op_schema.setdefault("description", "The operation to perform.")
         return json_schema
 
 
