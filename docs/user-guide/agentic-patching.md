@@ -198,7 +198,13 @@ This pattern gives the agent a better retry loop than "emit JSON and hope":
 - operation-level validation can raise structured `PydanticCustomError`
 - runtime document-state failures raise `PatchConflictError`
 
-## Grow the Toolkit from Missing Operations
+## Iterate on the Toolkit
+
+Agentic patching gets better over time. The corpus should evolve from two kinds
+of evidence: operations the agent wanted but could not find, and operations it
+found but used badly or ambiguously.
+
+### Log Missing Operations
 
 Whenever the agent wants to do something but cannot find a good operation for
 it, that gap should be logged somewhere durable.
@@ -212,6 +218,18 @@ At minimum, log:
 
 Over time, that backlog becomes the roadmap for new reviewed operation models
 that get added to the corpus.
+
+### Measure Misused Operations
+
+It is also worth capturing metrics around misused operations. Repeated
+validation failures, conflict-heavy retries, or frequent human corrections are
+signals that an existing operation's name, examples, description, or discovery
+metadata needs work.
+
+Those signals help improve the operations you already have, not just identify
+the ones that are missing.
+
+### Draft New Operations Carefully
 
 Some teams may also choose to let agents draft missing operation models on the
 fly. That can work well, but draft operations should usually stay separate from
