@@ -76,15 +76,12 @@ class InvalidOperationRegistry(PatchError):
     """
 
 
-class OperationNotRecognized(PatchInputError):
+class OperationNotRecognized(PatchError):
     """
     An OperationSchema instance does not belong to the active registry.
 
     Examples:
         - Passing a StandardRegistry op instance into a custom registry.
-
-    Typical HTTP mapping:
-        422 Unprocessable Entity.
     """
 
 

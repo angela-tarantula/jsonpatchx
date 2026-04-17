@@ -7,16 +7,16 @@ This API is **UNSTABLE** and is just for demonstration purposes.
 from __future__ import annotations
 
 import json
-from typing import Literal, override
+from typing import Literal, Self, cast, override
 
 from pydantic import ConfigDict, Field, model_validator
+from pydantic.experimental.missing_sentinel import MISSING
 
 from jsonpatchx import (
     AddOp,
     JSONPointer,
     JSONValue,
     OperationSchema,
-    OperationValidationError,
     PatchConflictError,
     RemoveOp,
     ReplaceOp,
@@ -92,24 +92,46 @@ class DecrementOp(OperationSchema):
 class ClampOp(OperationSchema):
     """Clamp a numeric value to an inclusive range."""
 
-    model_config = ConfigDict(title="Clamp operation")
+    model_config = ConfigDict(
+        title="Clamp operation",
+        validate_default=False,
+        json_schema_extra={
+            "description": "Clamp a numeric value at path to the inclusive range [min, max].",
+            "anyOf": [{"required": ["min"]}, {"required": ["max"]}],
+        },
+    )
     op: Literal["clamp"] = "clamp"
-    path: JSONPointer[JSONNumber]
-    min: JSONNumber
-    max: JSONNumber
+    path: JSONPointer[JSONNumber] = Field(
+        description="Pointer to the numeric value to clamp."
+    )
+    min: JSONNumber = Field(
+        default=cast(JSONNumber, MISSING),
+        description="Inclusive lower bound.",
+    )
+    max: JSONNumber = Field(
+        default=cast(JSONNumber, MISSING),
+        description="Inclusive upper bound.",
+    )
 
     @model_validator(mode="after")
-    def _validate_bounds(self) -> "ClampOp":
-        if self.min > self.max:
-            raise OperationValidationError("clamp requires min <= max")
+    def _validate_bounds(self) -> Self:
+        has_min = "min" in self.model_fields_set
+        has_max = "max" in self.model_fields_set
+
+        if not has_min and not has_max:
+            raise ValueError("clamp requires at least one of min or max")
+        if has_min and has_max and self.min > self.max:
+            raise ValueError("clamp requires min <= max")
         return self
 
     @override
     def apply(self, doc: JSONValue) -> JSONValue:
         current = self.path.get(doc)
-        return ReplaceOp(
-            path=self.path, value=max(self.min, min(self.max, current))
-        ).apply(doc)
+        if "min" in self.model_fields_set:
+            current = max(self.min, current)
+        if "max" in self.model_fields_set:
+            current = min(self.max, current)
+        return ReplaceOp(path=self.path, value=current).apply(doc)
 
 
 class AppendOp(OperationSchema):

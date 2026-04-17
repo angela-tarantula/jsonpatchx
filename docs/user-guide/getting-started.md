@@ -1,7 +1,8 @@
 # Getting Started
 
-This page gets you from plain RFC 6902 patching to a real FastAPI PATCH contract
-with the fewest moving parts.
+Read this guide in order. It starts with plain
+[RFC 6902](https://datatracker.ietf.org/doc/html/rfc6902) patching and builds
+from there.
 
 ## Install
 
@@ -21,21 +22,19 @@ source .venv/bin/activate
 pip install -e .
 ```
 
-Optional FastAPI helpers come later:
+For FastAPI integrations:
 
 <!--
 ```sh
-pip install "jsonpatchx[fastapi]"
+pip install jsonpatchx[fastapi]
 ```
 -->
 
 ```sh
-pip install -e ".[fastapi]"
+pip install -e .[fastapi]
 ```
 
-You do not need that extra just to use `JsonPatch` or `JsonPatchFor[...]`.
-
-## 1. Apply a plain RFC 6902 patch
+## Apply a Plain RFC 6902 Patch
 
 ```python
 from jsonpatchx import JsonPatch
@@ -62,7 +61,7 @@ That is ordinary JSON Patch.
 before it is applied. If you already have JSON text, use
 `JsonPatch.from_string(...)` and apply it the same way.
 
-## 2. Turn the same RFC ops into a FastAPI contract
+## Turn RFC 6902 Into a FastAPI Contract
 
 ```python
 from fastapi import FastAPI, HTTPException
@@ -83,9 +82,6 @@ app = FastAPI()
 @app.patch("/users/{user_id}", response_model=User)
 def patch_user(user_id: int, patch: JsonPatchFor[User]) -> User:
     user = load_user(user_id)
-    if user is None:
-        raise HTTPException(status_code=404, detail="user not found")
-
     updated = patch.apply(user)
     save_user(user_id, updated)
     return updated
@@ -114,14 +110,65 @@ What changed is the contract around it.
 
 That is the smallest useful JsonPatchX route.
 
-## What the first two examples are really showing
+> Most routes should use a Pydantic model target. If you are patching raw JSON,
+> `JsonPatchFor` also supports string-literal targets:
+> `JsonPatchFor[Literal["DeploymentSpec"]]`.
 
-The first example proves that JsonPatchX is happy to be just an RFC 6902
-library.
+## Optional: FastAPI Helpers
 
-The second example proves that you do not need to buy into custom operations,
-JSONPath, or helper classes just to get value from it. One type annotation is
-enough to make PATCH part of a real FastAPI contract.
+You can opt into enforcing `application/json-patch+json` and installing the
+recommended HTTP error mapping:
 
-The next page stays with that idea and shows where the optional FastAPI helper
-layer fits.
+```python
+from typing import Annotated
+from fastapi import FastAPI, HTTPException
+
+from jsonpatchx import JsonPatchFor
+from jsonpatchx.fastapi import JsonPatchRoute, install_jsonpatch_error_handlers
+
+UserPatch = JsonPatchFor[User]
+user_patch_route = JsonPatchRoute(
+    UserPatch,
+    operation_examples=[
+        {
+            "summary": "Deactivate a user",
+            "value": [
+                {"op": "replace", "path": "/active", "value": False},
+            ],
+        }
+    ],
+)
+
+app = FastAPI()
+install_jsonpatch_error_handlers(app)
+
+@app.patch(
+    "/users/{user_id}",
+    response_model=User,
+    **user_patch_route.route_kwargs(),
+)
+def patch_user(
+    user_id: int,
+    patch: Annotated[UserPatch, user_patch_route.Body()],
+) -> User:
+    user = load_user(user_id)
+    if user is None:
+        raise HTTPException(status_code=404, detail="user not found")
+
+    updated = patch.apply(user)
+    save_user(user_id, updated)
+    return updated
+```
+
+See it for yourself: [Interactive PATCH Demo](https://example.com)
+
+## You Can Stop Here for Server-Side RFC 6902
+
+If all you need is to accept and apply standard RFC 6902 patch documents on the
+server, you can stop here.
+
+If you also want to build a Python patch client, see
+[Patch Clients](patch-clients.md).
+
+The rest of the guide focuses on richer PATCH contracts such as custom
+operations, route-specific registries, and contract evolution.

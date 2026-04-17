@@ -1,18 +1,37 @@
 # Type System Notes
 
-JsonPatchX leans hard on Python typing because patch documents are doing two
-jobs at once:
+This page explains the core JSON helper types in `jsonpatchx/types.py`.
 
-- carrying data
-- declaring what kinds of mutation are allowed
+The important idea is simple: JsonPatchX keeps its JSON types true to JSON, not
+to Python convenience behavior.
 
-That pays off in clearer contracts, but it also means a few type-system details
-are worth understanding.
+## JSON Semantics
 
-## Strict JSON helper types are intentional
+The helper family models JSON values with strict runtime behavior:
 
-JsonPatchX ships JSON-specific helper types rather than leaning on broad Python
-primitives everywhere:
+- strings stay strings
+- booleans stay booleans
+- numbers are `int` or finite `float`
+- arrays are concrete `list` values
+- objects are concrete `dict[str, ...]` values
+
+That means JsonPatchX does not quietly accept Python conveniences that would
+blur a PATCH contract.
+
+Examples:
+
+- `"2"` does not coerce to `2`
+- `True` is not treated as a JSON number just because Python makes `bool` a
+  subtype of `int`
+- `float("nan")` and `float("inf")` are rejected
+- tuple-like containers are not accepted as runtime JSON arrays
+
+Those constraints are deliberate. PATCH payloads are usually crossing trust
+boundaries, so the library prefers explicit rejection over clever coercion.
+
+## Helper Types
+
+The core helper family is:
 
 - `JSONBoolean`
 - `JSONNumber`
@@ -20,90 +39,107 @@ primitives everywhere:
 - `JSONNull`
 - `JSONArray[T]`
 - `JSONObject[T]`
+- `JSONScalar`
+- `JSONContainer[T]`
 - `JSONValue`
 
-These types are strict on purpose.
+`JSONScalar` is the union of the four scalar helpers.
 
-That matters in patch contracts. A PATCH API usually wants to reject `"2"` where
-the schema says number, and it should not quietly treat `True` as numeric JSON
-just because Python lets `bool` subclass `int`.
+`JSONContainer[T]` is the union of `JSONArray[T]` and `JSONObject[T]`.
 
-Use these helper types when operation semantics care about JSON meaning rather
-than generic Python values.
+`JSONValue` is the full recursive JSON value type used when a field or API
+surface wants an actual JSON document or subdocument.
 
-## `JSONPointer[T]` is a contract, not a promise
+## Type Aliases at Check Time, Pydantic Helpers at Runtime
 
-`JSONPointer[T]` tells JsonPatchX what kind of value the pointer is expected to
-resolve.
+The names in `types.py` are doing two jobs.
 
-It does not promise the path exists in every document.
-
-That means this annotation:
+During static type checking, the scalar and container helpers are pleasant type
+aliases such as:
 
 ```python
-path: JSONPointer[JSONString]
+type JSONString = str
+type JSONArray[T] = list[T]
 ```
 
-says, “when this pointer is used, the target should behave like a JSON string.”
+At runtime, those same names become small Pydantic-aware helper classes with
+custom validation and JSON Schema behavior.
 
-Existence and runtime shape are checked when pointer operations run.
+That split exists because plain aliases were not enough to get all three goals
+at once:
 
-That distinction keeps pointer annotations useful without pretending every
-document already satisfies them.
+- strict runtime validation
+- readable static types
+- stable and minimal OpenAPI output
 
-## `JsonPatchFor` has two target modes
+So when `types.py` looks more complicated than the JSON domain itself, that is
+usually because the implementation is balancing those three requirements on
+purpose.
 
-`JsonPatchFor` supports two kinds of target declarations:
+## Published Schemas
 
-- a Pydantic model class, for model-aware patching and result revalidation
-- `Literal["SchemaName"]`, for raw JSON patch bodies that still need stable
-  schema naming
+The runtime helper classes are not there only for validation. They also shape
+the published schema surface.
 
-Both are useful.
+This matters because some obvious-looking alternatives produce poor OpenAPI:
 
-Use a model target when the patched result is a resource object with a real
-schema.
+- helper aliases can become noisy named schema components
+- replacing generated schema wholesale can hide useful field keywords
+- pushing strictness to the wrong level can make Pydantic accept values that a
+  JSON contract should reject
 
-Use a literal schema name when the endpoint works on free-form JSON, but you
-still want OpenAPI components that read like deliberate API shapes instead of
-anonymous arrays.
+One design goal here is that constraints layered on top of helper types should
+survive into the published schema instead of disappearing.
 
-## Runtime-built registries are a typing trade-off
+For example, `Annotated[JSONNumber, Field(gt=4)]` should still advertise that
+the value must be greater than `4`.
 
-This pattern is useful:
+In the current stack, that lower bound is preserved, but not in the desired
+OpenAPI form: it is emitted as Pydantic's `gt: 4` metadata rather than
+normalized OpenAPI `exclusiveMinimum: 4`.
 
-```python
-RuntimeRegistry = build_registry(enabled_ops)
-PatchModel = JsonPatchFor[User, RuntimeRegistry]
+That is not unique to `JSONNumber`. Plain `Annotated[int | float, Field(gt=4)]`
+currently behaves the same way under the project's OpenAPI 3.1 output.
+
+`JSONValue` is the clearest example. At runtime it validates against the full
+strict recursive JSON union, but its published JSON Schema is deliberately
+inlined as `{}` so helper internals do not leak into OpenAPI as a named
+component.
+
+Contributors should treat that as part of the design, not an implementation
+accident.
+
+Likewise, `JSONBoolean | JSONNull` currently renders as:
+
+```yaml
+anyOf:
+  - type: boolean
+  - type: null
 ```
 
-It is also harder for static type checkers to reason about than a named alias
-such as:
+That is normal for OpenAPI 3.1. In older OpenAPI 3.0 tooling, the same concept
+often appeared as `nullable: true` on a base type instead.
 
-```python
-type UserOps = StandardRegistry | IncrementOp
-```
+## JSONValue and JSONBound
 
-That is not a flaw in the idea. It is just the trade-off between runtime
-flexibility and static readability.
+`JSONValue` and `JSONBound` are related, but they are not interchangeable.
 
-A good rule of thumb:
+`JSONValue` is the actual Pydantic-aware JSON value model. Use it when runtime
+validation should accept only genuine JSON values with the strict rules above.
 
-- use named aliases for stable, human-facing contracts
-- use runtime-built registries at startup boundaries where rollout flexibility
-  matters more than perfect static inference
+`JSONBound` is a typing bound for generics. It means “JSON-shaped enough to be a
+valid type parameter bound,” not “accepted as a runtime JSON payload.”
 
-## Keep runtime complexity at the edges
+Examples:
 
-When typing starts to feel strained, the usual fix is not “stop using types.”
+- `JSONScalar` is assignable to both `JSONValue` and `JSONBound`
+- `JSONArray[JSONValue]` is assignable to both `JSONValue` and `JSONBound`
+- `JSONArray[JSONScalar]` is only assignable `JSONBound`
 
-The better fix is usually:
+If `JSONPointer[T]` was bound by `JSONValue`,
+`JSONPointer[JSONArray[JSONScalar]]` would be a type checker error. So `T` is
+bound by `JSONBound` instead, with the compromise that it's overly permissive.
+For example, `JSONPointer[tuple[int]]` is "type-safe."
 
-- keep route-facing contracts simple and named
-- keep runtime composition near startup or configuration code
-- keep custom operations small and explicit
-- avoid inventing one giant generic abstraction that tries to model every PATCH
-  pattern at once
-
-That keeps the type system working for you instead of becoming part of the
-problem.
+For more about why it has to be this way, see
+[Limitations in Python's Type System](limitations-in-python-type-system.md).

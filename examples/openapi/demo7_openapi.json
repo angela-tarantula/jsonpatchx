@@ -7,7 +7,6 @@
         "properties": {
           "op": {
             "const": "add",
-            "default": "add",
             "description": "The operation to perform.",
             "title": "Op",
             "type": "string"
@@ -91,7 +90,6 @@
           },
           "op": {
             "const": "copy",
-            "default": "copy",
             "description": "The operation to perform.",
             "title": "Op",
             "type": "string"
@@ -205,7 +203,6 @@
           },
           "op": {
             "const": "move",
-            "default": "move",
             "description": "The operation to perform.",
             "title": "Op",
             "type": "string"
@@ -232,7 +229,6 @@
         "properties": {
           "op": {
             "const": "remove",
-            "default": "remove",
             "description": "The operation to perform.",
             "title": "Op",
             "type": "string"
@@ -258,7 +254,6 @@
         "properties": {
           "op": {
             "const": "replace",
-            "default": "replace",
             "description": "The operation to perform.",
             "title": "Op",
             "type": "string"
@@ -288,7 +283,6 @@
         "properties": {
           "op": {
             "const": "test",
-            "default": "test",
             "description": "The operation to perform.",
             "title": "Op",
             "type": "string"
@@ -317,7 +311,6 @@
         "properties": {
           "op": {
             "const": "toggle",
-            "default": "toggle",
             "description": "The operation to perform.",
             "title": "Op",
             "type": "string"

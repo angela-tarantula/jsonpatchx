@@ -7,7 +7,6 @@
         "properties": {
           "op": {
             "const": "append",
-            "default": "append",
             "description": "The operation to perform.",
             "title": "Op",
             "type": "string"
@@ -47,7 +46,6 @@
         "properties": {
           "op": {
             "const": "ensure_object",
-            "default": "ensure_object",
             "description": "The operation to perform.",
             "title": "Op",
             "type": "string"
@@ -76,7 +74,6 @@
         "properties": {
           "op": {
             "const": "extend",
-            "default": "extend",
             "description": "The operation to perform.",
             "title": "Op",
             "type": "string"
@@ -124,7 +121,6 @@
         "properties": {
           "op": {
             "const": "increment",
-            "default": "increment",
             "description": "The operation to perform.",
             "title": "Op",
             "type": "string"
@@ -159,7 +155,6 @@
         "properties": {
           "op": {
             "const": "remove_number",
-            "default": "remove_number",
             "description": "The operation to perform.",
             "title": "Op",
             "type": "string"
@@ -249,7 +244,6 @@
           },
           "op": {
             "const": "set_message",
-            "default": "set_message",
             "description": "The operation to perform.",
             "title": "Op",
             "type": "string"
@@ -299,7 +293,6 @@
           },
           "op": {
             "const": "swap",
-            "default": "swap",
             "description": "The operation to perform.",
             "title": "Op",
             "type": "string"
@@ -319,7 +312,6 @@
         "properties": {
           "op": {
             "const": "toggle",
-            "default": "toggle",
             "description": "The operation to perform.",
             "title": "Op",
             "type": "string"
