@@ -132,7 +132,13 @@ typing workaround at the generic-bound layer.
 
 ## Why both `JSONValue` and `JSONBound` exist
 
-They solve different problems:
+`JSONValue` is the type that's actually defined like this:
+
+```python
+type JSONBound = JSONScalar | JSONContainer[JSONValue]
+```
+
+Each type serves a different purpose:
 
 - `JSONValue` is the semantic recursive JSON model used in runtime validation
   and API contracts.

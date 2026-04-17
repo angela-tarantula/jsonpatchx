@@ -1,64 +1,116 @@
 # Custom Operations
 
-Custom operations are worth adding when low-level RFC 6902 operations stop
-reading like what the caller actually means.
+Custom operations are worth adding when low-level operations stop reading like
+what the caller actually means.
 
 That does not mean inventing a new mutation language for every API. Usually the
-win is much simpler than that. A good custom op takes a mutation your clients
-already keep expressing awkwardly, gives it a clear name, validates the right
-things up front, and makes the contract easier to document.
+win is much simpler than that. A good custom operation takes a mutation your
+clients already keep expressing awkwardly, gives it a clear name, validates the
+right things up front, and makes the contract easier to document.
 
 Start small.
 
-## Operations are just models with `apply()`
+## Operation Anatomy
 
-Before looking at a custom op, it helps to see how little machinery is involved.
+JsonPatchX patch operations are Pydantic-backed models. This section covers the
+base class, typed targeting, and JSON-native value types.
 
-A built-in operation such as `ReplaceOp` is conceptually this kind of shape:
+### The `OperationSchema` Base Class
+
+All operations, standard and custom, inherit from `OperationSchema`.
+
+Before looking at a custom operation, it helps to see how little machinery is
+involved. For example, `ReplaceOp` is conceptually this kind of shape:
 
 ```python
 from typing import Literal
-
-from jsonpatchx import JSONPointer, JSONValue, OperationSchema
-from jsonpatchx.types import JSONValue as AnyJSONValue
-
+from jsonpatchx import JSONPointer, JSONValue, OperationSchema, AddOp, RemoveOp
 
 class ReplaceOp(OperationSchema):
-    op: Literal["replace"] = "replace"
-    path: JSONPointer[AnyJSONValue]
-    value: AnyJSONValue
+    op: Literal["replace"]
+    path: JSONPointer[JSONValue]
+    value: JSONValue
 
+    @override
     def apply(self, doc: JSONValue) -> JSONValue:
-        return self.path.add(doc, self.value)
+        doc = RemoveOp(path=self.path).apply(doc)
+        return AddOp(path=self.path, value=self.value).apply(doc)
 ```
 
 The real implementation may have more detail, but the important thing is the
 shape:
 
 - an operation is a Pydantic-backed model
+
 - `op` is the discriminator
+
 - its fields define the request contract
+
 - `apply()` defines the mutation
 
-That is why custom ops feel natural in JsonPatchX. They are not a separate
-plugin language. They are the same abstraction as the built-ins.
+- its mutation is a
+  [composition](https://datatracker.ietf.org/doc/html/rfc6902#section-4.3:~:text=This%20operation%20is%20functionally%20identical%20to%20a%20%22remove%22%20operation%20for%0A%20%20%20a%20value%2C%20followed%20immediately%20by%20an%20%22add%22%20operation%20at%20the%20same%0A%20%20%20location%20with%20the%20replacement%20value.)
+  of other operations
 
-## A first custom op: `IncrementOp`
+That is why custom operations feel natural in JsonPatchX. They are not a
+separate plugin language. They are the same abstraction as the standard
+operations.
 
-This is a good first example because it stays small while showing why typed
-pointers matter.
+> Note also the [functional](https://docs.python.org/3/howto/functional.html)
+> style of the `apply()`. JsonPatchX recommends you write mutations in this way
+> to make them easier to reason about. For low-level mutations that require
+> in-place semantics, try chaining stateless steps until the very end.
+
+### Typed Pointers
+
+`JSONPointer[T]` parses a JSON Pointer string up front. The target and its type
+are enforced when you exercise it with `get()`, `add()`, or `remove()`.
+
+For preflight checks, `is_gettable()`, `is_addable()`, and `is_removable()` ask
+the same question without exception flow. For pointer relationships,
+`is_parent_of()` and `is_child_of()` are available.
+
+That is enough for this page. For the fuller targeting story, see
+[Patch Targeting](patch-targeting.md).
+
+### JSON-Native Types
+
+JsonPatchX also provides helper types so you can reason about JSON rather than
+Python's types:
+
+- `JSONString`, `JSONNumber`, `JSONBoolean`, and `JSONNull` for primitives
+
+- `JSONArray[T]` and `JSONObject[T]` for containers
+
+- `JSONValue` for any of those
+
+While you can opt out of using these types, JsonPatchX strongly recommends using
+them. For example, `JSONNumber` is not merely an alias for `int | float` as it
+rightfully rejects `bool`, which in Python is a subtype of `int`. Other types
+may have more straightforward implementations now but are promised to remain
+JSON-native even as the Python language evolves.
+
+> Disclaimer: None of the custom operations below are directly importable from
+> JsonPatchX. These are merely examples. <!-- TODO: For now. -->
+
+## Intent-Based Operations
+
+These operations make the contract say what the caller actually means, rather
+than encoding that meaning indirectly through lower-level steps.
+
+### Define `IncrementOp`
+
+Suppose your client is always checking the current state of a resource just to
+increment it by some amount with a `replace`. That's a good candidate for a
+custom operation.
 
 ```python
 from typing import Literal
-
 from pydantic import Field
-
-from jsonpatchx import JSONPointer, JSONValue, OperationSchema, ReplaceOp
-from jsonpatchx.types import JSONNumber
-
+from jsonpatchx import JSONPointer, JSONValue, JSONNumber, OperationSchema, ReplaceOp
 
 class IncrementOp(OperationSchema):
-    op: Literal["increment"] = "increment"
+    op: Literal["increment"]
     path: JSONPointer[JSONNumber]
     amount: JSONNumber = Field(gt=0)
 
@@ -67,146 +119,62 @@ class IncrementOp(OperationSchema):
         return ReplaceOp(path=self.path, value=current + self.amount).apply(doc)
 ```
 
-This is already doing a few useful things.
+If every increment were expressed as a client-side read followed by `replace`:
 
-The payload says what the caller means. It is not pretending an increment is
-just an arbitrary `replace`.
+- The communicated intent is collapsed into `replace`.
+- The server can validate the `replace`, but not the higher-level intent that
+  this was meant to be an increment.
+- The read-then-replace flow is more vulnerable to stale reads and lost updates
+  under concurrency.
 
-The `amount` field is validated before mutation starts.
+Note the type safety:
 
-And the path is not just “some string.” It is a pointer that is expected to
-resolve to a JSON number.
+- The `amount` must be a positive number
+- The `path` must be a
+  [JSON Pointer](https://datatracker.ietf.org/doc/html/rfc6901) string
+- When `get()` is exercised, the `path` must resolve to a number.
 
-That last part matters most.
+As a reviewer, you don't really have to know much about the `JSONPointer` type
+to read and understand this operation. And as a single class, it's easily
+testable.
 
-## Typed pointers are part of the contract
+### Define `SwapOp`
 
-`JSONPointer[T]` is not just a parsing helper. It lets the path itself
-participate in the operation contract.
+You can express a swap with lower-level patch operations, but needing a
+temporary path just to say "swap these two values" is a good sign the contract
+wants its own operation. Here, the interesting part is less about type safety
+and more about **input validation**.
 
-So this:
+Both paths can be perfectly valid JSON Pointers on their own and still be
+invalid **together** for a swap. If one path is an ancestor of the other, then
+the first replacement may restructure or overwrite the subtree that the second
+path points into. In that case, the mutation is no longer well-defined.
 
-```python
-path: JSONPointer[JSONNumber]
-```
-
-means more than “this field contains a JSON Pointer string.”
-
-It means that when the pointer is used, the resolved value is expected to be a
-JSON number.
-
-That contract is enforced when the pointer resolves or writes:
-
-- `get(doc)` resolves the path and validates the target against `T`
-- `add(doc, value)` validates the value before writing it
-- `remove(doc)` validates the existing target before removing it
-
-A `JSONPointer` also comes with useful methods beyond simple resolution. It is a
-subtype of `str`, so it behaves like a string when you need it to, but it also
-has pointer-specific behavior such as `get(...)`, `add(...)`, `remove(...)`, and
-relationship helpers such as `is_parent_of(...)`.
-
-That makes custom ops easier to write and easier to validate correctly.
-
-## Custom does not have to mean exotic
-
-A custom op is often just a better contract for a mutation people already keep
-trying to express with lower-level steps.
-
-`replace_substring` is a good example:
+That kind of rule belongs on the operation itself:
 
 ```python
-from typing import Literal
-
-from jsonpatchx import (
-    JSONPointer,
-    JSONValue,
-    OperationSchema,
-    PatchConflictError,
-    ReplaceOp,
-)
-from jsonpatchx.types import JSONString
-
-
-class ReplaceSubstringOp(OperationSchema):
-    op: Literal["replace_substring"] = "replace_substring"
-    path: JSONPointer[JSONString]
-    old: JSONString
-    new: JSONString
-
-    def apply(self, doc: JSONValue) -> JSONValue:
-        current = self.path.get(doc)
-        if self.old not in current:
-            raise PatchConflictError(f"{self.old!r} is not in {current!r}")
-
-        return ReplaceOp(
-            path=self.path,
-            value=current.replace(self.old, self.new),
-        ).apply(doc)
-```
-
-This is still “just a replace” in one sense.
-
-But the contract is much better:
-
-- the request states intent directly
-- the path is type-gated as a string target
-- the failure mode is specific and meaningful
-- the route can choose to advertise this op explicitly instead of burying the
-  behavior in application code
-
-That is the sort of extension JsonPatchX is trying to encourage.
-
-## A more expressive example: `SwapOp`
-
-`swap` is a good second example because it shows something that is genuinely
-awkward to express with plain RFC operations.
-
-You can simulate a swap with low-level steps, but the patch gets clumsy fast.
-You usually need a temporary location, careful sequencing, and more explanation
-than the operation itself should require.
-
-A dedicated `swap` op is much clearer.
-
-```python
-from typing import Literal, Self
-
-from pydantic import ConfigDict, model_validator
-from typing_extensions import override
-
-from jsonpatchx import (
-    JSONPointer,
-    JSONValue,
-    OperationSchema,
-    OperationValidationError,
-    ReplaceOp,
-)
-
+from typing import Literal, Self, override
+from pydantic import model_validator, PydanticCustomError
+from jsonpatchx import JSONPointer, JSONValue, OperationSchema, ReplaceOp
 
 class SwapOp(OperationSchema):
-    model_config = ConfigDict(
-        title="Swap operation",
-        json_schema_extra={
-            "description": (
-                "Swap the values at paths 'a' and 'b'. "
-                "Paths 'a' and 'b' may not be ancestors of each other."
-            )
-        },
-    )
-
-    op: Literal["swap"] = "swap"
+    op: Literal["swap"]
     a: JSONPointer[JSONValue]
     b: JSONPointer[JSONValue]
 
     @model_validator(mode="after")
     def _reject_proper_prefixes(self) -> Self:
         if self.a.is_parent_of(self.b):
-            raise OperationValidationError(
-                "pointer 'b' cannot be a child of pointer 'a'"
+            raise PydanticCustomError(
+                "swap_path_conflict",
+                "pointer '{ancestor}' cannot be an ancestor of pointer '{descendant}'",
+                {"ancestor": "a", "descendant": "b"},
             )
         if self.b.is_parent_of(self.a):
-            raise OperationValidationError(
-                "pointer 'a' cannot be a child of pointer 'b'"
+            raise PydanticCustomError(
+                "swap_path_conflict",
+                "pointer '{ancestor}' cannot be an ancestor of pointer '{descendant}'",
+                {"ancestor": "b", "descendant": "a"},
             )
         return self
 
@@ -219,67 +187,239 @@ class SwapOp(OperationSchema):
         return ReplaceOp(path=self.b, value=value_a).apply(doc)
 ```
 
-This example is worth studying for a different reason than `increment`.
+Courtesy of Pydantic, you get:
 
-It shows what a well-documented operation looks like:
+- `model_validator(mode="after")` to validate the operation as a whole, after
+  its individual fields have already been parsed and validated.
+- `PydanticCustomError` to raise a structured validation error instead of a
+  generic `ValueError`. It gives you a stable error code, a message template,
+  and named context values for the rendered message.
 
-- the schema has a real title
-- the schema has a real description
-- important invariants are validated before mutation starts
-- the implementation composes existing operations instead of inventing a second
-  write engine
+This is a good pattern when a custom operation needs to reject combinations of
+inputs that are individually valid but invalid together.
 
-That last point is a good habit. Custom operations should usually reuse the
-library’s existing mutation semantics where possible.
+> `SwapOp` can also be useful as a _component_ of a higher-level operation. For
+> example, an operation like `PromoteItemOp` might swap adjacent items in a
+> ranked list without reimplementing swap logic itself.
 
-## JSON helper types are worth using
+## Contract-Narrowing Operations
 
-JsonPatchX includes strict JSON helper types for exactly this sort of operation
-design:
+Not every custom operation introduces a new kind of mutation. Sometimes the win
+is taking a broad standard operation and tightening its contract.
 
-- `JSONBoolean`
-- `JSONNumber`
-- `JSONString`
-- `JSONNull`
-- `JSONArray[T]`
-- `JSONObject[T]`
-- `JSONValue`
+### Define `ReplaceNumberOp`
 
-These keep operation contracts aligned with JSON semantics rather than loose
-Python coercions. For custom ops, that usually leads to better validation and
-clearer schema.
-
-## Good custom operations tend to have the same shape
-
-A custom operation usually ages well when it does a few things clearly:
-
-- it names a real domain mutation
-- its payload is small and obvious
-- the important invariants are validated before mutation
-- its conflict behavior is specific
-- it composes cleanly with the rest of the registry
-
-That last part matters too. A custom op should feel like one more operation your
-route can choose to advertise, not like a separate subsystem.
-
-## Expose custom operations through registries
-
-Defining a custom op does not mean every route should accept it.
-
-That is what registries are for.
+Use typed pointers when you want to narrow the type contract:
 
 ```python
-from jsonpatchx import JsonPatchFor, StandardRegistry
+from typing import Literal, override
+from jsonpatchx import JSONPointer, JSONValue, OperationSchema, ReplaceOp
+from jsonpatchx.types import JSONNumber
 
-type BillingAdminOps = StandardRegistry | IncrementOp | SwapOp
+class ReplaceNumberOp(OperationSchema):
+    op: Literal["replace_number"]
+    path: JSONPointer[JSONNumber]
+    value: JSONNumber
 
-BillingAdminPatch = JsonPatchFor[BillingAccount, BillingAdminOps]
+    @override
+    def apply(self, doc: JSONValue) -> JSONValue:
+        return ReplaceOp(path=self.path, value=self.value).apply(doc)
 ```
 
-That keeps the extension explicit.
+This works safely because `JSONPointer` is
+[covariant](https://peps.python.org/pep-0483/#covariance-and-contravariance) in
+its target type.
 
-A route either supports `increment` and `swap`, or it does not. The request
-model, the OpenAPI schema, and the runtime parser all agree.
+> In other words, a `JSONPointer[JSONNumber]` can be used anywhere a
+> `JSONPointer[JSONValue]` is expected, because every JSON number is also a JSON
+> value.
 
-The next page moves from operation semantics to targeting semantics with
-`JSONSelector`.
+### Define `AddMissingKeyOp`
+
+Contract narrowing can also be behavioral rather than just type-based.
+
+`add` is a good example. Depending on the path, it may create a missing object
+member, replace an existing value, or append into an array. That flexibility is
+useful, but sometimes a caller means something more specific: add this object
+key only if it does not already exist.
+
+That is what `AddMissingKeyOp` expresses.
+
+```python
+from typing import Literal, override
+from jsonpatchx import AddOp, JSONPointer, JSONValue, OperationSchema, PatchConflictError, TargetState, classify_state
+
+class AddMissingKeyOp(OperationSchema):
+    """AddOp but strictly for object key-value pair additions."""
+    op: Literal["add_missing_key"]
+    path: JSONPointer[JSONValue]
+    value: JSONValue
+
+    @override
+    def apply(self, doc: JSONValue) -> JSONValue:
+        state = classify_state(self.path.ptr, doc)
+
+        if state is TargetState.OBJECT_KEY_MISSING:
+            return AddOp(path=self.path, value=self.value).apply(doc)
+
+        if state is TargetState.VALUE_PRESENT:
+            raise PatchConflictError(f"path {self.path!r} already exists")
+
+        raise PatchConflictError(f"add_missing_key requires a missing object key at {self.path!r}")
+```
+
+This example also shows a more advanced implementation tool: `classify_state()`.
+
+Helpers such as `is_gettable()` and `is_addable()` are great when a yes-or-no
+answer is enough. But sometimes an operation needs to distinguish _why_ a path
+is usable or unusable. For example:
+
+- the parent does not exist
+- the parent exists but is not a container
+- the object key is missing
+- the value is already present
+- the path points into an array instead of an object
+
+`classify_state()` gives you that fine-grained view. Instead of collapsing all
+failures into a single "not allowed" outcome, it lets a custom operation respond
+differently to each case. This keeps the operation logic focused on intent
+rather than reimplementing pointer resolution.
+
+> Note: An implementation of `AddMissingKeyOp` with more structured and detailed
+> error messages is available in the recipes folder should you want to use a
+> production-ready version of this.
+
+## Schema-Rich Operations
+
+Because custom operations are ordinary Pydantic models, they can also express
+rich OpenAPI directly.
+
+### Define `ClampOp`
+
+Sometimes, after a sequence of mutations, you want to guarantee that a numeric
+result stays within an allowed range. The operation itself is straightforward,
+but its schema has something useful to say: at least one of `min` or `max` must
+be present.
+
+```python
+from typing import Literal, Self, override
+from pydantic import ConfigDict, Field, model_validator
+from pydantic.experimental.missing_sentinel import MISSING
+from jsonpatchx import JSONPointer, JSONValue, OperationSchema, ReplaceOp
+from jsonpatchx.types import JSONNumber
+
+class ClampOp(OperationSchema):
+    """Clamp a numeric value to an inclusive range."""
+
+    model_config = ConfigDict(
+        title="Clamp operation",
+        validate_default=False,
+        json_schema_extra={
+            "description": "Clamp a numeric value at path to the inclusive range [min, max].",
+            "anyOf":
+                [
+                    {"required": ["min"]},
+                    {"required": ["max"]}
+            ],
+        },
+    )
+    op: Literal["clamp"]
+    path: JSONPointer[JSONNumber] = Field(
+        description="Pointer to the numeric value to clamp."
+    )
+    min: JSONNumber = Field(
+        default=MISSING,
+        description="Inclusive lower bound.",
+    )
+    max: JSONNumber = Field(
+        default=MISSING,
+        description="Inclusive upper bound.",
+    )
+
+    @model_validator(mode="after")
+    def _validate_bounds(self) -> Self:
+        has_min = "min" in self.model_fields_set
+        has_max = "max" in self.model_fields_set
+
+        if not has_min and not has_max:
+            raise ValueError("clamp requires at least one of min or max")
+        if has_min and has_max and self.min > self.max:
+            raise ValueError("clamp requires min <= max")
+        return self
+
+    @override
+    def apply(self, doc: JSONValue) -> JSONValue:
+        current = self.path.get(doc)
+
+        if "min" in self.model_fields_set:
+            current = max(self.min, current)
+        if "max" in self.model_fields_set:
+            current = min(self.max, current)
+
+        return ReplaceOp(path=self.path, value=current).apply(doc)
+```
+
+This example is intentionally as much about the schema as it is about the
+mutation.
+
+On the schema side, Pydantic gives you:
+
+- `ConfigDict(...)` to give the operation a title and description in generated
+  schema.
+
+- `json_schema_extra` to express richer schema rules directly, in this case that
+  a request must provide `min`, `max`, or both.
+
+- `Field(...)` metadata to document individual fields, including the typed
+  pointer itself.
+
+The result is that the same model can drive parsing, validation, execution, and
+documentation. The operation is not just something your server can run. It is
+also something your API can describe clearly.
+
+> I must admit, I didn't write that operation myself. I used JsonPatchX's
+> AGENTS.md context to give my coding agent everything it needed to produce it.
+
+## Use Operation Instances Directly
+
+In addition to patching with `list[dict]`s and JSON text, you can also use
+instantiated Operation Schemas directly:
+
+```python
+patch = JsonPatch(
+    [
+        MultiplyOp(path="/foo/bar", scalar=2),
+        IncrementOp(path="/foo/bar", amount=20),
+        ClampOp(path="/foo/bar", max=100)
+    ]
+)
+```
+
+For this reason, you will usually want to default the `op` discriminator field:
+
+```python
+op: Literal["clamp"] = "clamp"
+```
+
+**Ordinarily**, this would produce misleading OpenAPI that no longer lists `op`
+as required:
+
+```json
+{
+  "properties": {
+    "op": {
+      "type": "string",
+      "default": "clamp"
+    }
+  },
+  "required": []
+}
+```
+
+But JsonPatchX understands that `op` is a required discriminator over the wire,
+so the guarantee is that `op` is always listed in `required` and that the
+OpenAPI won't advertise a default, even when the runtime models can be
+instantiated without `op`.
+
+**JsonPatchX strives to provide a stable, standardized OpenAPI for PATCH
+contracts that even SDKs can depend on.**
