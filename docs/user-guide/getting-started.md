@@ -1,7 +1,8 @@
 # Getting Started
 
-Get from plain RFC 6902 patching to a real FastAPI PATCH contract with the
-fewest moving parts.
+Read this guide in order. It starts with plain
+[RFC 6902](https://datatracker.ietf.org/doc/html/rfc6902) patching and builds
+from there.
 
 ## Install
 

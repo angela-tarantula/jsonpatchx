@@ -1,12 +1,12 @@
 # Developer Overview
 
-This section is for contributors and advanced integrators, not first-time users.
+This section is for contributors and advanced integrators.
 
 The User Guide explains when to adopt JsonPatchX and how to build PATCH
 endpoints with it. The pages here explain the constraints and extension points
 that shape the library itself.
 
-## What matters in the internals
+## What Matters in the Internals
 
 JsonPatchX has a few design choices that are easy to miss if you only read the
 user-facing examples:

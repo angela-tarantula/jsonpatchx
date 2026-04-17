@@ -1,74 +1,57 @@
 # About
 
-JsonPatchX starts with RFC 6902 JSON Patch and goes farther when an API needs
-more than a generic patch document.
+[RFC 6902](https://datatracker.ietf.org/doc/html/rfc6902) JSON Patch was
+designed to be primitive and transport-focused. That is great for
+interoperability, but modern patching often needs more structure.
 
-If all you want is standard JSON Patch, you can use `JsonPatch` and stop there.
-It is Pydantic-backed, standards-compliant, and intentionally easy to reach.
+JsonPatchX builds that structure on top of standard JSON Patch with
+[Pydantic](https://pydantic.dev/docs/validation/latest/get-started/)-backed
+operation models. The same models can validate patch documents, power
+[FastAPI](https://fastapi.tiangolo.com/) PATCH routes, generate
+[OpenAPI](https://www.openapis.org/), and serve as typed patch toolkits for
+PATCH clients and coding agents.
 
-If PATCH is part of a public API contract, JsonPatchX gives you more structure:
-typed request models, validation before mutation, target-model revalidation
-after mutation, OpenAPI generated from the same operation models, and
-route-level control over which operations each endpoint accepts.
+## Standard JSON Patch in Python
 
-```python
-from jsonpatchx import JsonPatch, JsonPatchFor
+Use JsonPatchX as a standards-compliant RFC 6902 implementation for parsing,
+validating, and applying ordinary JSON Patch documents in Python.
 
-patch = JsonPatch(
-    [
-        {"op": "replace", "path": "/status", "value": "active"},
-    ]
-)
+## Governed PATCH APIs
 
-UserPatch = JsonPatchFor[User]
-```
+When PATCH becomes a real API contract, you often need richer operations,
+accurate OpenAPI, per-endpoint control over what updates are allowed, and a
+deliberate way to evolve over time.
 
-That second line is the center of the project. It keeps JSON Patch on the wire,
-but turns the body into an explicit API contract.
+JsonPatchX gives you:
 
-## What changes when PATCH becomes a contract
+- Payload validation
+- Custom operations
+- Typed JSON Pointer and JSONPath targeting
+- OpenAPI generated from the same models
+- Per-endpoint update controls
 
-Once PATCH is part of an API surface, you usually care about things like:
+## Agentic Patching
 
-- whether the request body is validated before mutation
-- whether the patched result is validated as the target model
-- whether OpenAPI matches what the route actually accepts
-- whether one endpoint should accept a smaller mutation vocabulary than another
-- whether repeated domain mutations should have their own named operations
-- whether exact-path addressing is enough, or query-style targeting would be
-  clearer
+Coding agents want to write Python, not raw RFC 6902 payloads. Use JsonPatchX to
+publish reviewed patch operations as typed Python models and OpenAPI schemas so
+agents can discover and compose higher-level mutations.
 
-That is the contract layer JsonPatchX adds.
+## Why Not Merge Patch
 
-It is still JSON Patch at the bottom. The difference is that the patch layer
-stops being anonymous.
+[JSON Merge Patch](https://datatracker.ietf.org/doc/html/rfc7386) is simpler and
+is often the right choice for coarse object updates. JsonPatchX is for cases
+where operation semantics, array handling, richer targeting, or explicit
+mutation policy matter.
 
-## You do not have to buy into the whole vision
+## Now Is the Time to Experiment
 
-The User Guide starts with plain RFC 6902 because that keeps the moving parts
-small. That is a learning path, not a demand.
+JsonPatchX is designed as a safe experimentation surface: teams can introduce
+richer operations, compare patterns in production, and let the best designs win.
 
-You can use JsonPatchX in layers:
+With JSONPath now standardized in
+[RFC 9535](https://datatracker.ietf.org/doc/html/rfc9535), this is a good moment
+to explore more expressive targeting and contract models that fit real domains.
 
-- use `JsonPatch` for plain standard JSON Patch
-- use `JsonPatchFor[Target]` when PATCH becomes part of a FastAPI contract
-- use `JsonPatchFor[Target, Registry]` when different endpoints or environments
-  need different operation sets
-- add custom operations or `JSONSelector` only where the domain really needs
-  them
-
-That progression matters. JsonPatchX should feel usable on day one even if you
-never adopt the whole idea.
-
-## Where this is heading
-
-JSON Patch has stayed deliberately small for a long time.
-[JSONPath](https://datatracker.ietf.org/doc/html/rfc9535) now has a standard.
-That makes this a good moment to experiment with richer PATCH contracts without
-throwing away the RFC core.
-
-JsonPatchX is meant to be a serious place to do that.
-
-Keep standard JSON Patch easy. Keep extensions explicit. Try better targeting,
-better operation semantics, and better governance in production-sized systems.
-Let the good ideas survive.
+To shape what comes next, join the broader
+[json-patch2](https://github.com/json-patch/json-patch2) forum and
+[JsonPatchX Discussions](https://github.com/angela-tarantula/jsonpatchx/discussions).

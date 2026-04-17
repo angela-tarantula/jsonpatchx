@@ -1,6 +1,6 @@
 [project]
 site_name = "JsonPatchX"
-site_description = "A PATCH framework for Python."
+site_description = "A Python toolkit for JSON patching, from standard RFC 6902 to governed PATCH APIs and agent-friendly patch toolkits."
 repo_url = "https://github.com/angela-tarantula/jsonpatchx"
 repo_name = "angela-tarantula/jsonpatchx"
 edit_uri = "edit/main/docs"
@@ -11,12 +11,7 @@ plugins = [
   { mkdocstrings = { handlers = { python = { paths = ["."], options = { docstring_style = "google" } } } } },
 ]
 nav = [
-  { "Home" = "index.md" },
-  { "About" = [
-    { "About" = "about/about.md" },
-    { "Why JsonPatchX" = "about/why-jsonpatchx.md" },
-    { "Acknowledgements" = "about/acknowledgements.md" },
-  ] },
+  { "About" = "about/about.md" },
   { "User Guide" = [
     { "Getting Started" = "user-guide/getting-started.md" },
     { "Registries and Routes" = "user-guide/registries-and-routes.md" },
