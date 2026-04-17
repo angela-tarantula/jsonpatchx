@@ -1,10 +1,10 @@
 # Agentic Patching
 
-JsonPatchX makes a new agentic JSON patching style possible: instead of asking a
-coding agent to manipulate JSON directly, you give it a typed Python toolkit of
-reviewed patch operations. Those same operations can also be published as a
-schema-rich catalog for discovery, so the agent searches for the operation it
-needs, then writes Python against the corresponding model.
+JsonPatchX makes **safe and reliable** agentic JSON patching possible: instead
+of asking a coding agent to manipulate JSON directly, you give it a typed Python
+toolkit of reviewed patch operation models. If those operations are described
+well in an OpenAPI spec, agents can discover the ones they need and write Python
+against the corresponding models.
 
 The target might be a local document, a file, or an HTTP request later; the
 pattern does not depend on a PATCH endpoint.
@@ -34,31 +34,37 @@ For example:
 ```python
 # agent_patch_toolkit/__init__.py
 
-from .arrays import AppendUniqueOp, MoveToFrontOp, RemoveWhereOp
-from .numeric import ClampOp, IncrementOp, MultiplyOp, RoundOp
-from .objects import AddMissingKeyOp, MergeObjectOp, RenameKeyOp
-from .strings import NormalizeWhitespaceOp, ReplaceSubstringOp, SlugifyOp
-from .temporal import ExpireAfterOp, TouchOp
-from .validation import RequireMaxOp, RequireMinOp
+from .arrays import AppendUniqueOp, DeduplicateArrayOp, RemoveValueOp
+from .assertions import AssertNotEqualOp, AssertRegexMatchOp, RequireMaxOp, RequireMinOp
+from .conversion import ParseNumberOp, StringifyOp
+from .numbers import ClampOp, IncrementOp, MultiplyOp, RoundOp
+from .objects import AddMissingKeyOp, MergeObjectOp, RemoveKeysOp, RenameKeyOp
+from .scalars import SetDefaultOp, ToggleOp
+from .strings import RegexReplaceOp, ReplaceSubstringOp, StrConcatOp
 
 type AgentPatchToolkit = (
-    AppendUniqueOp
-    ClampOp
-    ExpireAfterOp
+    AddMissingKeyOp
+    | AppendUniqueOp
+    | AssertNotEqualOp
+    | AssertRegexMatchOp
+    | ClampOp
+    | DeduplicateArrayOp
     | IncrementOp
-    | MultiplyOp
-    | AddMissingKeyOp
     | MergeObjectOp
-    | MoveToFrontOp
-    | NormalizeWhitespaceOp
-    | RemoveWhereOp
-    | RequireMaxOp
-    | RequireMinOp
+    | MultiplyOp
+    | ParseNumberOp
+    | RegexReplaceOp
+    | RemoveKeysOp
+    | RemoveValueOp
     | RenameKeyOp
     | ReplaceSubstringOp
+    | RequireMaxOp
+    | RequireMinOp
     | RoundOp
-    | SlugifyOp
-    | TouchOp
+    | SetDefaultOp
+    | StringifyOp
+    | StrConcatOp
+    | ToggleOp
     # ... many more reviewed operations
 )
 ```
@@ -191,6 +197,26 @@ This pattern gives the agent a better retry loop than "emit JSON and hope":
   validation
 - operation-level validation can raise structured `PydanticCustomError`
 - runtime document-state failures raise `PatchConflictError`
+
+## Grow the Toolkit from Missing Operations
+
+Whenever the agent wants to do something but cannot find a good operation for
+it, that gap should be logged somewhere durable.
+
+At minimum, log:
+
+- the task the agent was trying to complete
+- the search terms or operations it considered
+- the missing mutation or guard it wanted to express
+- a small example input and desired output
+
+Over time, that backlog becomes the roadmap for new reviewed operation models
+that get added to the corpus.
+
+Some teams may also choose to let agents draft missing operation models on the
+fly. That can work well, but draft operations should usually stay separate from
+the reviewed published toolkit until a human decides they are generic enough,
+safe enough, and well documented enough to keep.
 
 ## Publishing Guidance
 
