@@ -7,5 +7,16 @@ contracts and operation models.
 ::: jsonpatchx.types
     options:
       show_root_heading: false
+      members:
+        - JSONBoolean
+        - JSONNumber
+        - JSONString
+        - JSONNull
+        - JSONArray
+        - JSONObject
+        - JSONScalar
+        - JSONContainer
+        - JSONValue
+        - JSONBound
       filters:
         - "!^_"

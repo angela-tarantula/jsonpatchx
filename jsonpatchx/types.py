@@ -103,6 +103,8 @@ if TYPE_CHECKING:
 else:
 
     class JSONBoolean:
+        """Strict JSON boolean helper used in Pydantic-backed patch contracts."""
+
         @classmethod
         def __get_pydantic_core_schema__(
             cls, _source_type: object, _handler: core_schema.GetCoreSchemaHandler
@@ -118,6 +120,8 @@ else:
             return {"type": "boolean"}
 
     class JSONNumber:
+        """Strict JSON number helper accepting ``int`` or finite ``float`` values."""
+
         @classmethod
         def __get_pydantic_core_schema__(
             cls, _source_type: object, _handler: core_schema.GetCoreSchemaHandler
@@ -140,6 +144,8 @@ else:
             return {"type": "number"}
 
     class JSONString:
+        """Strict JSON string helper used in operation models and patch schemas."""
+
         @classmethod
         def __get_pydantic_core_schema__(
             cls, _source_type: object, _handler: core_schema.GetCoreSchemaHandler
@@ -155,6 +161,8 @@ else:
             return {"type": "string"}
 
     class JSONNull:
+        """Strict JSON null helper."""
+
         @classmethod
         def __get_pydantic_core_schema__(
             cls, _source_type: object, _handler: core_schema.GetCoreSchemaHandler
@@ -170,6 +178,8 @@ else:
             return {"type": "null"}
 
     class JSONArray[T]:
+        """Strict JSON array helper restricted to concrete ``list`` values."""
+
         @classmethod
         def __get_pydantic_core_schema__(
             cls, source_type: object, handler: core_schema.GetCoreSchemaHandler
@@ -187,6 +197,8 @@ else:
             return handler(_core_schema)
 
     class JSONObject[T]:
+        """Strict JSON object helper restricted to ``dict[str, ...]`` values."""
+
         @classmethod
         def __get_pydantic_core_schema__(
             cls, source_type: object, handler: core_schema.GetCoreSchemaHandler
@@ -207,7 +219,10 @@ else:
 
 
 type JSONScalar = JSONBoolean | JSONNumber | JSONString | JSONNull
+"""Strict JSON scalar helper union."""
+
 type JSONContainer[T] = JSONArray[T] | JSONObject[T]
+"""Strict JSON container helper union."""
 
 # type-narrowing helpers
 # NOTE: consider making public type-narrowing helpers
@@ -292,7 +307,7 @@ def _validate_typeform(unverified: object) -> TypeForm[Any]:
     return cast(TypeForm[Any], unverified)
 
 
-type JSONBound = (
-    JSONScalar | Sequence[JSONBound] | Mapping[str, JSONBound]
-)  # Bound for all recursively JSON-ish types.
+type JSONBound = JSONScalar | Sequence[JSONBound] | Mapping[str, JSONBound]
+"""Bound for recursively JSON-shaped values accepted by generic helpers such as
+``JSONPointer[T]``."""
 # Use it like ``T = TypeVar("T", default=JSONValue, bound=JSONBound)``

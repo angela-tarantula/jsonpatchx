@@ -20,27 +20,11 @@ user-facing examples:
 
 Those choices are why the library is organized the way it is.
 
-## What belongs in Developer Reference
-
-Developer Reference is the right home for:
-
-- local docs and contributor workflow
-- pointer backend protocol details
-- type-system caveats and runtime typing trade-offs
-- extension mechanics that are useful to contributors, but too detailed for
-  onboarding
-
-That separation matters. The User Guide should stay focused on adoption and API
-design. It should not have to carry contributor-only detail.
-
 ## How to read this section
 
 Read these pages when you are:
 
-- changing the docs or nav
 - implementing a custom pointer backend
 - debugging typing behavior around registries, pointers, or JSON helper types
-- deciding whether a concept belongs in prose docs or in the generated API
-  Reference
 
 If you are just trying to build a PATCH route, stay in the User Guide.
