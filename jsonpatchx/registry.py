@@ -36,7 +36,7 @@ from jsonpatchx.builtins import (
 )
 from jsonpatchx.exceptions import InvalidOperationRegistry, OperationNotRecognized
 from jsonpatchx.schema import OperationSchema
-from jsonpatchx.types import JSONValue, _type_adapter_for
+from jsonpatchx.types import JSONValue
 
 
 def _iter_union_members[T](value: TypeForm[T]) -> Generator[type[T]]:
@@ -182,12 +182,12 @@ class _RegistrySpec(BaseModel):
     @cached_property
     def op_adapter(self) -> TypeAdapter[OperationSchema]:
         """TypeAdapter for validating a single registry-bound operation."""
-        return _type_adapter_for(self.union_type)
+        return TypeAdapter(self.union_type)
 
     @cached_property
     def patch_adapter(self) -> TypeAdapter[list[OperationSchema]]:
         """TypeAdapter for validating a registry-bound patch document."""
-        return _type_adapter_for(list[self.union_type])  # type: ignore[name-defined]
+        return TypeAdapter(list[self.union_type])  # type: ignore[name-defined]
 
     def model_for(self, instruction: str) -> type[OperationSchema]:
         """Resolve an ``op`` literal to its registered operation model."""

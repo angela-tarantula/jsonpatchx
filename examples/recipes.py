@@ -301,7 +301,7 @@ class SortNumbersOp(OperationSchema):
     def apply(self, doc: JSONValue) -> JSONValue:
         current = self.path.get(doc)
         new = sorted(current, reverse=self.order == "desc")
-        return ReplaceOp(path=self.path, value=new).apply(doc)
+        return ReplaceOp(path=self.path, value=new).apply(doc)  # type: ignore[arg-type]
 
 
 class BitSetOp(OperationSchema):

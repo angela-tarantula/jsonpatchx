@@ -1,15 +1,18 @@
 from __future__ import annotations
 
-from typing import Literal, override
+from typing import Generic, Literal, override
 
 import pytest
+from typing_extensions import TypeVar
 
 from jsonpatchx.builtins import AddOp, RemoveOp, ReplaceOp
 from jsonpatchx.exceptions import InvalidJSONPointer, PatchConflictError
 from jsonpatchx.pointer import JSONPointer
 from jsonpatchx.schema import OperationSchema
-from jsonpatchx.types import JSONBoolean, JSONValue
+from jsonpatchx.types import JSONBoolean, JSONBound, JSONValue
 from tests.support.pointers import DotPointer
+
+T = TypeVar("T", default=JSONValue, bound=JSONBound)
 
 
 def test_jsonpointer_invalid_syntax() -> None:
@@ -95,3 +98,22 @@ def test_composed_ops_preserve_custom_pointer_backend() -> None:
         {"from_": "a.b", "path": "x.y"},
     ).apply({"a": {"b": 1}, "x": {}})
     assert moved == {"a": {}, "x": {"y": 1}}
+
+
+def test_custom_generic_op_can_still_specialize_jsonpointer_type() -> None:
+
+    class TypedReplaceOp(OperationSchema, Generic[T]):
+        op: Literal["typed-replace"] = "typed-replace"
+        path: JSONPointer[T]
+        value: T
+
+        @override
+        def apply(self, doc: JSONValue) -> JSONValue:
+            doc = self.path.remove(doc)
+            return self.path.add(doc, self.value)
+
+    op = TypedReplaceOp[JSONBoolean].model_validate({"path": "/flag", "value": False})
+    assert op.apply({"flag": True}) == {"flag": False}
+
+    with pytest.raises(PatchConflictError):
+        op.apply({"flag": 1})
