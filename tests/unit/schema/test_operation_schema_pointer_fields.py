@@ -12,6 +12,8 @@ from jsonpatchx.schema import OperationSchema
 from jsonpatchx.types import JSONBoolean, JSONBound, JSONValue
 from tests.support.pointers import DotPointer
 
+T = TypeVar("T", default=JSONValue, bound=JSONBound)
+
 
 def test_jsonpointer_invalid_syntax() -> None:
     class ReadOp(OperationSchema):
@@ -99,8 +101,6 @@ def test_composed_ops_preserve_custom_pointer_backend() -> None:
 
 
 def test_custom_generic_op_can_still_specialize_jsonpointer_type() -> None:
-
-    T = TypeVar("T", default=JSONValue, bound=JSONBound)
 
     class TypedReplaceOp(OperationSchema, Generic[T]):
         op: Literal["typed-replace"] = "typed-replace"
