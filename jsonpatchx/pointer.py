@@ -17,6 +17,7 @@ from pydantic import (
     GetJsonSchemaHandler,
     TypeAdapter,
 )
+from pydantic.experimental.missing_sentinel import MISSING
 from pydantic.json_schema import JsonSchemaValue
 from pydantic_core import core_schema as cs
 from typing_extensions import TypeForm, TypeVar
@@ -104,9 +105,9 @@ class JSONPointer(str, Generic[T_co, P_co]):
     Mutation semantics:
     - ``add`` and ``remove`` may mutate the document object they are given (or containers reachable
       from it). The root pointer ``""`` is the exception: setting the root returns a new document
-      value rather than mutating an existing container. Removing the root sets it to JSONNull (None)
-      so that all standard operations are closed over JSONValue. If you want to forbid root removal,
-      it's easy to make a custom op!
+      value rather than mutating an existing container. Removing the root returns
+      ``MISSING`` to represent document deletion rather than a JSON ``null`` value.
+      If you want to forbid root removal, it's easy to make a custom op!
     - Whether these mutations affect the original caller-owned document is determined by the patch
       engine (see ``_apply_ops(..., inplace=...)``), which may deep-copy the input document.
 
@@ -586,7 +587,7 @@ class JSONPointer(str, Generic[T_co, P_co]):
 
     def remove(self, doc: JSONValue) -> JSONValue:
         """
-        RFC 6902 remove (type-gated). Removal of the root sets it to null.
+        RFC 6902 remove (type-gated). Removal of the root returns ``MISSING``.
 
         Args:
             doc: Target JSON document.
@@ -599,11 +600,10 @@ class JSONPointer(str, Generic[T_co, P_co]):
         """
         match classify_state(self._ptr, doc):
             case TargetState.ROOT:
-                # Choice: Removal of root sets root to null.
-                # Why: Keeps all operations closed over JSONValue. Remove is also more composable this way.
-                #      It affects few users, who themselves can circumvent with custom ops.
+                # Choice: Removal of root returns MISSING.
+                # Why: Root removal is document deletion, not replacement with JSON null.
                 self._validate_target(doc)
-                return None
+                return MISSING
             case TargetState.PARENT_NOT_FOUND:
                 raise PatchConflictError(
                     f"cannot remove value at {str(self)!r} because parent does not exist"

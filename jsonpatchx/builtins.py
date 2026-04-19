@@ -27,12 +27,12 @@ class AddOp(OperationSchema):
 
 
 class RemoveOp(OperationSchema):
-    """RFC 6902 remove operation. Removal of the root sets it to null."""
+    """RFC 6902 remove operation. Removal of the root returns MISSING."""
 
     model_config = ConfigDict(
         title="Remove operation",
         json_schema_extra={
-            "description": "RFC 6902 remove operation. Removal of the root sets it to null."
+            "description": "RFC 6902 remove operation. Removal of the root returns MISSING."
         },
     )
 
