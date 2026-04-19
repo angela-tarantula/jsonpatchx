@@ -359,19 +359,24 @@ class ClampOp(OperationSchema):
         return ReplaceOp(path=self.path, value=current).apply(doc)
 ```
 
-This example is intentionally as much about the schema as it is about the
-mutation.
-
-On the schema side, Pydantic gives you:
+This example is as much about contract design as it is about mutation logic.
+Pydantic carries most of that contract surface:
 
 - `ConfigDict(...)` to give the operation a title and description in generated
   schema.
 
-- `json_schema_extra` to express richer schema rules directly, in this case that
-  a request must provide `min`, `max`, or both.
-
 - `Field(...)` metadata to document individual fields, including the typed
   pointer itself.
+
+- `MISSING` so that `min` and `max` are optional by omission, not by
+  nullability. That lets `model_fields_set` distinguish “not provided” from
+  “provided with a numeric bound” without widening the wire contract to
+  `number | null`.
+
+- `json_schema_extra` to express richer schema rules directly, in this case that
+  a request must provide
+  [`anyOf`](https://json-schema.org/understanding-json-schema/reference/combining#anyOf)
+  `min` or `max`.
 
 The result is that the same model can drive parsing, validation, execution, and
 documentation. The operation is not just something your server can run. It is
