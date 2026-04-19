@@ -1,0 +1,5 @@
+{
+  "doc":{ },
+  "patch": [ { "op": "replace", "path": "'arr/-", "e": 7 }
+  ]
+}
