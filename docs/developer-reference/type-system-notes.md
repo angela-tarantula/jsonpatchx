@@ -143,3 +143,31 @@ For example, `JSONPointer[tuple[int]]` is "type-safe."
 
 For more about why it has to be this way, see
 [Limitations in Python's Type System](limitations-in-python-type-system.md).
+
+## Missing Document Sentinel
+
+`MISSING` is the runtime sentinel for “the document no longer exists.”
+
+A custom operation that intends to delete the whole document should return
+`MISSING`, not `None`. `None` is JSON `null`. `MISSING` means document deletion.
+
+That is allowed at the operation layer because it keeps composed operations
+simple. `ReplaceOp`, for example, can implement root replacement as `RemoveOp`
+followed by `AddOp` without a root-only special case.
+
+For the purpose of runtime type compatibility with a missing document, `MISSING`
+is accepted by the JSON helper family:
+
+- `JSONBoolean`
+- `JSONNumber`
+- `JSONString`
+- `JSONNull`
+- `JSONArray[T]`
+- `JSONObject[T]`
+- `JSONValue`
+
+So an individual operation is allowed to delete the document even if the
+enclosing patch contract later rejects that final state. This is useful for
+composability, but a completed patch is still usually expected to finish as a
+real document at higher-level boundaries such as model revalidation or HTTP
+response serialization.
