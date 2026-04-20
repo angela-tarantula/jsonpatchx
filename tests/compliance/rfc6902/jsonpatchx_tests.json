@@ -1,9 +1,21 @@
 [
   {
     "doc": [1, 2, 3],
+    "patch": [{ "op": "add", "path": "", "value": "something else" }],
+    "expected": "something else",
+    "comment": "root addition"
+  },
+  {
+    "doc": [1, 2, 3],
     "patch": [{ "op": "replace", "path": "", "value": "something else" }],
     "expected": "something else",
     "comment": "root replacement"
+  },
+  {
+    "doc": [1, 2, 3],
+    "patch": [{ "op": "remove", "path": "" }],
+    "error": "cannot delete the document",
+    "comment": "root removal"
   },
   {
     "doc": { "a": 1, "b": 2 },
