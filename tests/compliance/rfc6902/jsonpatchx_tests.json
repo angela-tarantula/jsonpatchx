@@ -31,9 +31,66 @@
   },
   {
     "doc": [1, 2, 3],
-    "patch": [{ "op": "remove", "path": "" }],
-    "expected": null,
-    "comment": "RFC 6901 defines \"\" as a pointer to the whole document. RFC 6902 models patching as producing a 'resulting document' after each successful operation, which implies that any successful operation yields another JSON value/document. RFC 6902 does not indicate in any way that removal at the root should be unsuccessful. This implementation treats root removal as producing null (Python None), preserving closure under successful operations. If removal of the root was not allowed, so would replacement of the root, according to the RFC. In general, the RemoveOp would be less composable out-of-the-box if it restricted root removal. Users who prefer to forbid root removal can enforce that as an additional constraint in custom Remove/Replace ops."
+    "patch": [
+      { "op": "remove", "path": "" },
+      { "op": "add", "path": "", "value": [1, 2, 3] }
+    ],
+    "expected": [1, 2, 3],
+    "comment": "remove then add at root should work"
+  },
+  {
+    "doc": [1, 2, 3],
+    "patch": [
+      { "op": "remove", "path": "" },
+      { "op": "remove", "path": "" }
+    ],
+    "error": "remove target must exist beforehand",
+    "comment": "removal of missing document"
+  },
+  {
+    "doc": [1, 2, 3],
+    "patch": [
+      { "op": "remove", "path": "" },
+      { "op": "replace", "path": "", "value": [1, 2, 3] }
+    ],
+    "error": "replace target must exist beforehand",
+    "comment": "replacement of missing document"
+  },
+  {
+    "doc": [1, 2, 3],
+    "patch": [
+      { "op": "remove", "path": "" },
+      { "op": "move", "from": "", "path": "/a/b" }
+    ],
+    "error": "move source must exist beforehand",
+    "comment": "move from missing document"
+  },
+  {
+    "doc": [1, 2, 3],
+    "patch": [
+      { "op": "remove", "path": "" },
+      { "op": "copy", "from": "", "path": "/a/b" }
+    ],
+    "error": "copy source must exist beforehand",
+    "comment": "copy from missing document"
+  },
+  {
+    "doc": [1, 2, 3],
+    "patch": [
+      { "op": "remove", "path": "" },
+      { "op": "test", "path": "", "value": null }
+    ],
+    "error": "root removal is does not produce null",
+    "comment": "test on missing document (1)"
+  },
+  {
+    "doc": [1, 2, 3],
+    "patch": [
+      { "op": "remove", "path": "" },
+      { "op": "test", "path": "", "value": "" }
+    ],
+    "error": "root removal is does not produce empty string",
+    "comment": "test on missing document (2)"
   },
   {
     "doc": { "foo": "should-not-be-indexable" },

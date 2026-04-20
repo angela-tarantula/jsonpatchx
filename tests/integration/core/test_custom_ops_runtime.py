@@ -76,7 +76,6 @@ def test_replace_number_op_runtime() -> None:
         patch.apply({"count": "not-a-number"})
 
 
-@pytest.mark.xfail(reason="Root-targeted ReplaceNumberOp is a known gap for now.")
 def test_replace_number_op_runtime_root_number() -> None:
 
     result = JsonPatch(

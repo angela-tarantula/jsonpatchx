@@ -1,9 +1,9 @@
 from __future__ import annotations
 
-from typing import Literal, Self, cast, override
+from typing import Any, Literal, Self, cast, override
 
 import pytest
-from pydantic import ConfigDict, Field, ValidationError, model_validator
+from pydantic import ConfigDict, Field, TypeAdapter, ValidationError, model_validator
 from pydantic.experimental.missing_sentinel import MISSING
 from pytest import Subtests
 
@@ -12,7 +12,16 @@ from jsonpatchx.exceptions import InvalidOperationDefinition
 from jsonpatchx.pointer import JSONPointer
 from jsonpatchx.schema import OperationSchema
 from jsonpatchx.standard import JsonPatch
-from jsonpatchx.types import JSONNumber, JSONValue
+from jsonpatchx.types import (
+    JSONArray,
+    JSONBoolean,
+    JSONBound,
+    JSONNull,
+    JSONNumber,
+    JSONObject,
+    JSONString,
+    JSONValue,
+)
 
 
 def test_invalid_operation_schema_class(subtests: Subtests) -> None:
@@ -130,6 +139,22 @@ def test_jsonvalue_accepts_json_types() -> None:
 
     with pytest.raises(ValidationError):
         ValueOp(value=object())  # type: ignore[arg-type]
+
+
+def test_runtime_json_types_accept_missing() -> None:
+    # MISSING is considered compatible with any type narrowing JSONValue.
+    for json_type in (
+        JSONBoolean,
+        JSONNumber,
+        JSONString,
+        JSONNull,
+        JSONArray[Any],
+        JSONObject[Any],
+        JSONValue,
+        JSONBound,
+    ):
+        adapter = TypeAdapter(json_type)
+        assert adapter.validate_python(MISSING) is MISSING
 
 
 class TestAdvancedOperationSchema:

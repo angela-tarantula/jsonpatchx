@@ -361,6 +361,12 @@ class JSONPointer(str, Generic[T_co, P_co]):
                 f"expected target type {self.type_param} for pointer {str(self)!r}, got: {type(target)}"
             ) from e
 
+    def _enforce_existence(self, target: JSONValue) -> JSONValue:
+        """Enforce that the target exists (is not MISSING)."""
+        if target is MISSING:  # type: ignore[comparison-overlap]
+            raise PatchConflictError(f"target {str(self)!r} does not exist")
+        return target
+
     # Constructor - for convenience
 
     @classmethod
@@ -603,7 +609,8 @@ class JSONPointer(str, Generic[T_co, P_co]):
                 # Choice: Removal of root returns MISSING.
                 # Why: Root removal is document deletion, not replacement with JSON null.
                 self._validate_target(doc)
-                return MISSING
+                self._enforce_existence(doc)
+                return cast(JSONValue, MISSING)
             case TargetState.PARENT_NOT_FOUND:
                 raise PatchConflictError(
                     f"cannot remove value at {str(self)!r} because parent does not exist"
@@ -639,6 +646,7 @@ class JSONPointer(str, Generic[T_co, P_co]):
                 token = self.parts[-1]
                 key = int(token) if _is_array(container) else token
                 self._validate_target(container[key])  # type: ignore[index]
+                self._enforce_existence(container[key])  # type: ignore[index]
                 del container[key]  # type: ignore[arg-type]
                 return doc
             case _ as unreachable:
