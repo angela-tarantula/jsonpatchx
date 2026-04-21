@@ -10,6 +10,7 @@ from typing import (
     runtime_checkable,
 )
 
+from jsonpath import JSONPathEnvironment, JSONPathMatch, Query
 from jsonpointer import JsonPointer  # type: ignore[import-untyped]
 from jsonpointer import JsonPointerException as JPException
 
@@ -231,3 +232,63 @@ def classify_state(ptr: PointerBackend, doc: JSONValue) -> TargetState:
 
     else:  # pragma: no cover
         assert_never(container)
+
+
+# -- JSONSelector Backend --
+
+# JsonPatchX cannot provide strict RFC-compliant JSONPath out of the box on
+# Python 3.14 today. Upstream python-jsonpath's full RFC-compliance path is
+# JSONPathEnvironment(strict=True) together with the python-jsonpath[strict]
+# extra, but that extra is currently incompatible with Python 3.14.
+#
+# So the default selector environment uses JSONPathEnvironment(strict=True)
+# without the extra. That still requires the RFC-style root form, rejects
+# upstream's relaxed syntax, and disables upstream's non-standard extensions by
+# default.
+#
+# It is still not fully RFC-compliant for regex-based JSONPath functions:
+# - match() and search() run on Python's built-in re instead of the third-party
+#   regex engine, so some standards-suite regex cases do not pass.
+# - regex patterns are not validated against RFC 9485 I-Regexp, so patterns
+#   such as \d+ may be accepted even though they are not standards-compliant
+#   I-Regexp patterns.
+#
+# Clients can still use python-jsonpath directly with their own environment
+# settings, or bind a custom selector backend in JsonPatchX. They just cannot
+# change the fixed environment behind _DEFAULT_SELECTOR_CLS itself.
+_DEFAULT_SELECTOR_ENV = JSONPathEnvironment(strict=True)
+
+
+class _DEFAULT_SELECTOR_CLS:
+    """
+    Default JSONPath selector backend powered by ``python-jsonpath``.
+
+    The wrapped selector is compiled from a string using the fixed shared
+    ``_DEFAULT_SELECTOR_ENV``.
+    """
+
+    __slots__ = ("_path", "_selector")
+
+    def __init__(self, selector: str) -> None:
+        self._path = selector
+        self._selector = _DEFAULT_SELECTOR_ENV.compile(selector)
+
+    def findall(self, doc: JSONValue) -> list[object]:
+        return self._selector.findall(doc)
+
+    def finditer(self, doc: JSONValue) -> Iterable[JSONPathMatch]:
+        return self._selector.finditer(doc)
+
+    def match(self, doc: JSONValue) -> JSONPathMatch | None:
+        return self._selector.match(doc)
+
+    def query(self, doc: JSONValue) -> Query:
+        return self._selector.query(doc)
+
+    @override
+    def __str__(self) -> str:
+        return self._path
+
+    @override
+    def __repr__(self) -> str:
+        return "JsonPathDefault(" + repr(self._path) + ")"
