@@ -81,9 +81,20 @@
     "doc": [1, 2, 3],
     "patch": [
       { "op": "remove", "path": "" },
-      { "op": "copy", "from": "", "path": "/a/b" }
+      { "op": "copy", "from": "", "path": "" },
+      { "op": "add", "path": "/a/b", "value": 1 }
     ],
     "error": "copy source must exist beforehand",
+    "comment": "copy from missing document"
+  },
+  {
+    "doc": [1, 2, 3],
+    "patch": [
+      { "op": "remove", "path": "" },
+      { "op": "copy", "from": "", "path": "/a/b" },
+      { "op": "add", "path": "/a/b", "value": 1 }
+    ],
+    "error": "copy source must exist beforehand (2)",
     "comment": "copy from missing document"
   },
   {
