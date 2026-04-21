@@ -3,6 +3,7 @@ from operator import attrgetter
 import pytest
 
 from jsonpatchx import JSONPointer
+from jsonpatchx.exceptions import InvalidJSONPointer, PatchConflictError
 from tests.compliance.rfc6901.cases import DOC, POINTER_CASES, Case
 
 
@@ -12,6 +13,6 @@ def test_json_pointer_core(case: Case) -> None:
         ptr = JSONPointer.parse(case.pointer)
         assert ptr.get(DOC) == case.expected
     else:
-        with pytest.raises(Exception):
+        with pytest.raises((InvalidJSONPointer, PatchConflictError)):
             ptr = JSONPointer.parse(case.pointer)
             print(ptr.get(DOC))
