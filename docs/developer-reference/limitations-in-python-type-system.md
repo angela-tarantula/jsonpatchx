@@ -93,9 +93,7 @@ the alias/annotation shape we need for `JSONPointer[T]`.
 The workaround is to use covariant immutable interfaces in the bound:
 
 ```python
-type JSONBound = (
-    JSONScalar | Sequence[JSONBound] | Mapping[str, JSONBound]
-)
+type JSONBound = JSONScalar | Sequence[JSONBound] | Mapping[str, JSONBound]
 # Use it like: T = TypeVar("T", default=JSONValue, bound=JSONBound)
 ```
 
@@ -135,7 +133,7 @@ typing workaround at the generic-bound layer.
 `JSONValue` is the type that's actually defined like this:
 
 ```python
-type JSONBound = JSONScalar | JSONContainer[JSONValue]
+type JSONValue = JSONScalar | JSONContainer[JSONValue]
 ```
 
 Each type serves a different purpose:

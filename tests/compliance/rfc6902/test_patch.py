@@ -10,7 +10,7 @@ from pydantic import ValidationError
 from pytest import Subtests
 
 from jsonpatchx import JsonPatch, StandardRegistry
-from jsonpatchx.exceptions import PatchError
+from jsonpatchx.exceptions import PatchError, PatchInternalError
 from jsonpatchx.registry import _RegistrySpec
 from tests.compliance.rfc6902.case_loader import (
     FailCase,
@@ -91,11 +91,15 @@ def _assert_fail_case_with_builder(
         patch = build_patch(case)
     except Exception as exc:
         assert isinstance(exc, (PatchError, ValidationError))
+        assert not isinstance(exc, PatchInternalError), f"Internal error: {exc!r}"
         return
 
     doc = copy.deepcopy(case.doc)
-    with pytest.raises(PatchError):
+    with pytest.raises(PatchError) as exc_info:
         patch.apply(doc, inplace=inplace)
+    assert not isinstance(exc_info.value, PatchInternalError), (
+        f"Internal error {exc_info!r}"
+    )
     if not inplace:
         # Patch application is atomic: on failure, no partial changes are applied.
         assert doc == case.doc

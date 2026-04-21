@@ -8,6 +8,7 @@ import pytest
 from jsonpath import JSONPointer as ExtendedJsonPointer
 from jsonpointer import JsonPointer as CustomJsonPointer
 from pydantic import BaseModel, TypeAdapter
+from pydantic.experimental.missing_sentinel import MISSING
 from pytest import Subtests
 from typing_extensions import TypeVar
 
@@ -115,7 +116,7 @@ def test_jsonpointer_root_semantics(subtests: Subtests) -> None:
         root = JSONPointer.parse("")
         assert root.get({"a": 1}) == {"a": 1}
         assert root.add({"a": 1}, {"b": 2}) == {"b": 2}
-        assert root.remove({"a": 1}) is None
+        assert root.remove({"a": 1}) is MISSING
 
 
 def test_jsonpointer_array_index_handling(subtests: Subtests) -> None:
