@@ -361,11 +361,10 @@ class JSONPointer(str, Generic[T_co, P_co]):
                 f"expected target type {self.type_param} for pointer {str(self)!r}, got: {type(target)}"
             ) from e
 
-    def _enforce_existence(self, target: JSONValue) -> JSONValue:
+    def _enforce_existence(self, target: object) -> None:
         """Enforce that the target exists (is not MISSING)."""
-        if target is MISSING:  # type: ignore[comparison-overlap]
+        if target is MISSING:
             raise PatchConflictError(f"target {str(self)!r} does not exist")
-        return target
 
     # Constructor - for convenience
 
@@ -479,7 +478,9 @@ class JSONPointer(str, Generic[T_co, P_co]):
             target = self._ptr.resolve(doc)
         except Exception as e:
             raise PatchConflictError(f"path {str(self)!r} not found: {e}") from e
-        return self._validate_target(target)
+        val = self._validate_target(target)
+        self._enforce_existence(val)
+        return val
 
     def is_gettable(self, doc: JSONValue) -> bool:
         """Return True if ``get`` would succeed for this document, else False."""
