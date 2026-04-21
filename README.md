@@ -11,7 +11,8 @@
 
 JsonPatchX is a Python toolkit for JSON patching, from standard
 [RFC 6902](https://datatracker.ietf.org/doc/html/rfc6902) to governed PATCH APIs
-and agent-friendly patch toolkits.
+and agent-friendly patch toolkits. Tested against the
+[RFC 6902 Compliance Test Suite](https://github.com/json-patch/json-patch-tests).
 
 ## Use It Three Ways
 
