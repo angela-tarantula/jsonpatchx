@@ -25,6 +25,11 @@ and agent-friendly patch toolkits. Tested against the
 
 ## Documentation
 
+> Note: JsonPatchX is in alpha. Please use the
+> [Discussions](https://github.com/angela-tarantula/jsonpatchx/discussions) to
+> ask any questions you have! We want to know what's confusing and how to help
+> you.
+
 Read the docs:
 [https://angela-tarantula.github.io/jsonpatchx](https://angela-tarantula.github.io/jsonpatchx)
 
