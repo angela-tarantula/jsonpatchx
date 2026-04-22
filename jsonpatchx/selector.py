@@ -336,18 +336,18 @@ class JSONSelector(str, Generic[T_co, S_co]):
             )
         return raw_pointer
 
-    def get_pointer_instances(self, doc: JSONValue) -> list[PointerBackend]:
+    def _pointer_instances(self, doc: JSONValue) -> list[PointerBackend]:
+        return [self._get_pointer_instance(match) for match in self._raw_matches(doc)]
+
+    def get_pointers(self, doc: JSONValue) -> list[JSONPointer[T_co, PointerBackend]]:
         """
         Resolve this selector against ``doc`` and return exact matched pointers.
 
-        This exposes the raw backend pointers for advanced cases where each
-        match needs to be handled individually.
+        This exposes the matched locations as typed ``JSONPointer`` values, so
+        callers can use familiar pointer utilities case by case.
         """
-        return [self._get_pointer_instance(match) for match in self._raw_matches(doc)]
-
-    def _json_pointers(self, doc: JSONValue) -> list[JSONPointer[T_co, PointerBackend]]:
         json_pointers: list[JSONPointer[T_co, PointerBackend]] = []
-        for pointer in self.get_pointer_instances(doc):
+        for pointer in self._pointer_instances(doc):
             pointer_backend = type(pointer)
             try:
                 json_pointers.append(
@@ -371,7 +371,7 @@ class JSONSelector(str, Generic[T_co, S_co]):
         selector's type parameter ``T`` is enforced at read time. If the
         selector matches nothing, this returns an empty list.
         """
-        return [pointer.get(doc) for pointer in self._json_pointers(doc)]
+        return [pointer.get(doc) for pointer in self.get_pointers(doc)]
 
     def is_gettable(self, doc: JSONValue) -> bool:
         try:
@@ -396,7 +396,7 @@ class JSONSelector(str, Generic[T_co, S_co]):
         except Exception as e:
             raise PatchConflictError(f"value {value!r} is not a valid JSONValue") from e
 
-        for pointer in self._json_pointers(doc):
+        for pointer in self.get_pointers(doc):
             doc = pointer.add(doc, copy.deepcopy(target))
         return doc
 
@@ -408,7 +408,7 @@ class JSONSelector(str, Generic[T_co, S_co]):
         if value is _Nothing:
             try:
                 return all(
-                    pointer.is_addable(doc) for pointer in self._json_pointers(doc)
+                    pointer.is_addable(doc) for pointer in self.get_pointers(doc)
                 )
             except Exception:
                 return False
@@ -419,7 +419,7 @@ class JSONSelector(str, Generic[T_co, S_co]):
             target = _validate_JSONValue(value_T)
 
             return all(
-                pointer.is_addable(doc, target) for pointer in self._json_pointers(doc)
+                pointer.is_addable(doc, target) for pointer in self.get_pointers(doc)
             )
         except Exception:
             return False
@@ -432,7 +432,7 @@ class JSONSelector(str, Generic[T_co, S_co]):
         JsonPatchX does not add extra overlap or ordering guarantees beyond
         ordinary pointer semantics.
         """
-        for pointer in self._json_pointers(doc):
+        for pointer in self.get_pointers(doc):
             doc = pointer.remove(doc)
         return doc
 

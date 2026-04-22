@@ -6,8 +6,8 @@ import pytest
 from pydantic import TypeAdapter
 from pytest import Subtests
 
-from jsonpatchx.backend import _DEFAULT_POINTER_CLS
 from jsonpatchx.exceptions import InvalidJSONSelector, PatchConflictError
+from jsonpatchx.pointer import JSONPointer
 from jsonpatchx.selector import JSONSelector
 from jsonpatchx.types import JSONNumber, JSONValue
 from tests.support.selectors import SimpleSelector
@@ -59,7 +59,7 @@ def test_jsonselector_root_semantics_with_custom_backend() -> None:
         "root", backend=SimpleSelector
     )
     assert selector.getall({"a": 1}) == [{"a": 1}]
-    assert selector.get_pointer_instances({"a": 1}) == [_DEFAULT_POINTER_CLS("")]
+    assert selector.get_pointers({"a": 1}) == [JSONPointer.parse("")]
     assert selector.addall({"a": 1}, {"b": 2}) == {"b": 2}
 
 
@@ -68,7 +68,7 @@ def test_jsonselector_zero_matches_and_invalid_matches() -> None:
         "missing", backend=SimpleSelector
     )
     assert missing.getall({"a": 1}) == []
-    assert missing.get_pointer_instances({"a": 1}) == []
+    assert missing.get_pointers({"a": 1}) == []
     assert missing.is_gettable({"a": 1}) is True
     assert missing.is_addable({"a": 1}, 1) is True
     assert missing.is_addable({"a": 1}, object()) is False
@@ -169,9 +169,7 @@ def test_default_jsonselector_backend_smoke() -> None:
         "$.items[*]", type_param=JSONNumber
     )
     assert selector.getall({"items": [1, 2]}) == [1, 2]
-    assert [
-        str(pointer) for pointer in selector.get_pointer_instances({"items": [1, 2]})
-    ] == [
+    assert [str(pointer) for pointer in selector.get_pointers({"items": [1, 2]})] == [
         "/items/0",
         "/items/1",
     ]

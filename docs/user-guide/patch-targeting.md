@@ -54,8 +54,8 @@ Similar to `JSONPointer[T]`, it parses the query expression string upfront, and
 its target type is enforced when you exercise it:
 
 - `getall(doc)`, `addall(doc, value)`, and `removeall(doc)`
-- `get_pointer_instances(doc)` when you want the matched exact pointers for
-  case-by-case handling
+- `get_pointers(doc)` when you want the matched exact pointers for case-by-case
+  handling
 - `is_gettable()`, `is_addable()`, and `is_removable()`
 - `is_valid_type(target)`
 
