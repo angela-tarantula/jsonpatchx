@@ -44,7 +44,7 @@ from jsonpatchx.types import (
     _is_array,
     _is_container,
     _is_object,
-    _type_adapter_for,
+    _cached_adapter,
     _validate_JSONValue,
     _validate_typeform,
 )
@@ -157,7 +157,7 @@ class JSONPointer(str, Generic[T_co, P_co]):
 
     @property
     def _adapter(self) -> TypeAdapter[T_co]:
-        return _type_adapter_for(self._type)
+        return _cached_adapter(self._type)
 
     @property
     def parent_ptr(self) -> P_co:  # NOTE: add parent property for JSONPointer of parent
@@ -281,9 +281,7 @@ class JSONPointer(str, Generic[T_co, P_co]):
 
         # enrich with json schema of type param
         type_param = schema["metadata"]["type_param"]
-        json_schema["x-pointer-type-schema"] = _type_adapter_for(
-            type_param
-        ).json_schema()
+        json_schema["x-pointer-type-schema"] = _cached_adapter(type_param).json_schema()
         return json_schema
 
     @classmethod
@@ -393,11 +391,11 @@ class JSONPointer(str, Generic[T_co, P_co]):
         validated_type, validated_backend = cls._parse_pointer_type_args(*pointer_args)
 
         if backend is None:
-            adapter = _type_adapter_for(
+            adapter = _cached_adapter(
                 JSONPointer[validated_type]  # type: ignore[valid-type]
             )
         else:
-            adapter = _type_adapter_for(
+            adapter = _cached_adapter(
                 JSONPointer[validated_type, validated_backend]  # type: ignore[valid-type]
             )
         return adapter.validate_python(path)

@@ -26,7 +26,7 @@ from jsonpatchx.pointer import JSONPointer
 from jsonpatchx.types import (
     JSONBound,
     JSONValue,
-    _type_adapter_for,
+    _cached_adapter,
     _validate_JSONValue,
     _validate_typeform,
 )
@@ -85,7 +85,7 @@ class JSONSelector(str, Generic[T_co, S_co]):
 
     @property
     def _adapter(self) -> TypeAdapter[T_co]:
-        return _type_adapter_for(cast(Any, self._type))
+        return _cached_adapter(cast(Any, self._type))
 
     @classmethod
     def _validator(
@@ -191,7 +191,7 @@ class JSONSelector(str, Generic[T_co, S_co]):
 
         # enrich with json schema of type param
         type_param = schema["metadata"]["type_param"]
-        json_schema["x-selector-type-schema"] = _type_adapter_for(
+        json_schema["x-selector-type-schema"] = _cached_adapter(
             type_param
         ).json_schema()
         return json_schema
@@ -295,11 +295,11 @@ class JSONSelector(str, Generic[T_co, S_co]):
         )
 
         if backend is None:
-            adapter = _type_adapter_for(
+            adapter = _cached_adapter(
                 JSONSelector[validated_type]  # type: ignore[valid-type]
             )
         else:
-            adapter = _type_adapter_for(
+            adapter = _cached_adapter(
                 JSONSelector[validated_type, validated_backend]  # type: ignore[valid-type]
             )
         return adapter.validate_python(selector)

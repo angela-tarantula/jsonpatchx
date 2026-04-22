@@ -19,7 +19,7 @@ def _cached_type_adapter[T](expected: TypeForm[T]) -> TypeAdapter[T]:
     return TypeAdapter(expected)
 
 
-def _type_adapter_for[T](expected: TypeForm[T]) -> TypeAdapter[T]:
+def _cached_adapter[T](expected: TypeForm[T]) -> TypeAdapter[T]:
     """
     Internal: return a (usually cached) Pydantic TypeAdapter for a TypeForm.
 
@@ -90,7 +90,7 @@ def _strict_validator(typeform: TypeForm[Any]) -> core_schema.CoreSchema:
     This keeps validation strict without exposing the internal helper type's full
     generated JSON Schema.
     """
-    adapter = _type_adapter_for(typeform)
+    adapter = _cached_adapter(typeform)
 
     def _validate(value: object) -> object:
         return adapter.validate_python(value, strict=True)
@@ -300,13 +300,13 @@ else:
 
 
 def _validate_JSONValue(obj: object) -> JSONValue:
-    return _type_adapter_for(JSONValue).validate_python(obj, strict=True)
+    return _cached_adapter(JSONValue).validate_python(obj, strict=True)
 
 
 def _validate_typeform(unverified: object, exc_type: type[Exception]) -> TypeForm[Any]:
     """Validate a TypeForm parameter."""  # NOTE: move to JSONPointer if it's gonna raise InvalidJSONPointer
     try:
-        _type_adapter_for(unverified)  # type: ignore[arg-type]
+        _cached_adapter(unverified)  # type: ignore[arg-type]
     except Exception as e:
         raise exc_type(f"type parameter {unverified!r} must be a valid TypeForm") from e
     return cast(TypeForm[Any], unverified)
