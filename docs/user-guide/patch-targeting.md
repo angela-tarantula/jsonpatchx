@@ -37,6 +37,14 @@ Path syntax standardized in
 "$.invoices[?(@.status == 'unpaid')].dueDate"
 ```
 
+> Note: The
+> [built-in JSONPath backend](https://github.com/jg-rp/python-jsonpath) is RFC
+> 9535-compliant and passes the
+> [jsonpath-compliance-test-suite](https://github.com/jsonpath-standard/jsonpath-compliance-test-suite),
+> except for some I-Regexp patterns
+> ([RFC 9485](https://datatracker.ietf.org/doc/html/rfc9485)) and whitespace
+> cases.
+
 ### Selector Semantics
 
 Selectors are more expressive than pointers. They also raise questions that

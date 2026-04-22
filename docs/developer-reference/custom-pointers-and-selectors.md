@@ -126,12 +126,25 @@ Selector mutation is intentionally thin. JsonPatchX applies matched pointers
 sequentially in the backend's iteration order and does not impose extra
 overlap-resolution or ordering rules on top.
 
-JsonPatchX is slightly more permissive at runtime than this protocol surface.
-The built-in JSONPath backend accepts upstream `python-jsonpath` matches even
-though upstream annotates `obj` as `object` and returns its own pointer type.
-JsonPatchX treats those runtime values as JSON-shaped document values and
-accepts those match pointers because that upstream pointer type satisfies
-`PointerBackend`.
+JsonPatchX is slightly more permissive at runtime than this protocol surface for
+the built-in JSONPath backend. Upstream `python-jsonpath` annotates `match.obj`
+as `object`, but that is mostly a static typing limitation, not a runtime one.
+JsonPatchX only applies the default selector backend to `JSONValue` documents
+anyway, and matched values are still revalidated through `JSONSelector[T]` and
+`JSONPointer[T]` before typed operations use them.
+
+Upstream also returns its own JSON Pointer type from `match.pointer()`.
+JsonPatchX accepts that because the returned object satisfies `PointerBackend`,
+so it can be wrapped as a typed `JSONPointer`.
+
+The more important limitation is standards compliance, not upstream's `object`
+annotation. On Python 3.14, JsonPatchX cannot provide fully RFC-compliant
+JSONPath out of the box because upstream's `python-jsonpath[strict]` extra is
+currently incompatible there. So the default backend uses
+`JSONPathEnvironment(strict=True)` without that extra: it keeps the RFC-style
+root form and disables upstream's relaxed extensions, but regex-based `match()`
+and `search()` are still not fully RFC-compliant, and patterns are not validated
+against RFC 9485 I-Regexp.
 
 Like pointer backends, selector backends should be immutable or otherwise safe
 to reuse.
