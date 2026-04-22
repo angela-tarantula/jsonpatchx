@@ -182,6 +182,7 @@ class JSONPointer(str, Generic[T_co, P_co]):
         Assumes ``type_param`` and ``bound_backend`` are already validated.
         """
         resolved_backend = cls._resolve_runtime_backend_param(concrete_backend)
+        ptr: PointerBackend
         if isinstance(path, JSONPointer):
             path_str = str(path)
             if resolved_backend is _DEFAULT_POINTER_CLS:
@@ -254,11 +255,14 @@ class JSONPointer(str, Generic[T_co, P_co]):
     def __get_pydantic_json_schema__(
         cls, schema: cs.CoreSchema, handler: GetJsonSchemaHandler
     ) -> JsonSchemaValue:
+
+        pointer_backend: type[PointerBackend]
         pointer_backend_param = schema["metadata"]["pointer_backend_param"]
         if isinstance(pointer_backend_param, TypeVar):
             pointer_backend = cls._resolve_runtime_backend_param(pointer_backend_param)
         else:
             pointer_backend = pointer_backend_param
+
         if pointer_backend is _DEFAULT_POINTER_CLS:
             pointer_format = "json-pointer"
             pointer_description = "JSON Pointer (RFC 6901) string"
@@ -293,7 +297,7 @@ class JSONPointer(str, Generic[T_co, P_co]):
         unverified_bound_backend = args[1] if len(args) > 1 else _DEFAULT_POINTER_CLS
 
         backend_param = cls._resolve_backend_type_param(unverified_bound_backend)
-        type_param = _validate_typeform(unverified_typeform)
+        type_param = _validate_typeform(unverified_typeform, InvalidJSONPointer)
 
         return type_param, backend_param
 

@@ -6,15 +6,16 @@ from typing import (
     Protocol,
     Self,
     assert_never,
+    cast,
     override,
     runtime_checkable,
 )
 
-from jsonpath import JSONPathEnvironment, JSONPathMatch, Query
+from jsonpath import JSONPathEnvironment
 from jsonpointer import JsonPointer  # type: ignore[import-untyped]
 from jsonpointer import JsonPointerException as JPException
 
-from jsonpatchx.exceptions import InvalidJSONPointer
+from jsonpatchx.exceptions import InvalidJSONPointer, InvalidJSONSelector
 from jsonpatchx.types import JSONValue, _is_array, _is_container, _is_object
 
 # strict RFC 6901 array index
@@ -236,6 +237,60 @@ def classify_state(ptr: PointerBackend, doc: JSONValue) -> TargetState:
 
 # -- JSONSelector Backend --
 
+
+@runtime_checkable
+class SelectorMatch(Protocol):
+    """
+    Minimal match shape returned by ``SelectorBackend.finditer()``.
+
+    Selector-backed mutation works by turning each match into an exact pointer,
+    then reusing the existing ``JSONPointer`` mutation rules.
+    """
+
+    @property
+    @abstractmethod
+    def obj(self) -> JSONValue:
+        """Return the matched value."""
+
+    @property
+    @abstractmethod
+    def parts(self) -> Sequence[int | str]:
+        """Return the exact path parts for this match."""
+
+    @abstractmethod
+    def pointer(self) -> PointerBackend:
+        """
+        Return an exact-location pointer for this match.
+
+        Backend authors should return a concrete pointer object that satisfies
+        the ``PointerBackend`` protocol.
+        """
+
+
+@runtime_checkable
+class SelectorBackend(Protocol):
+    """
+    Protocol for custom query selector backends.
+
+    A selector backend is the query analogue of ``PointerBackend``:
+    it parses a selector string and can iterate exact matches against a JSON
+    document.
+    """
+
+    @abstractmethod
+    def __init__(self, selector: str) -> None:
+        """Parse and construct a backend-specific selector."""
+
+    @abstractmethod
+    def finditer(self, doc: JSONValue) -> Iterable[SelectorMatch]:
+        """Yield backend-specific matches against ``doc``."""
+
+    @abstractmethod
+    @override
+    def __str__(self) -> str:
+        """Return the backend's canonical string form."""
+
+
 # JsonPatchX cannot provide strict RFC-compliant JSONPath out of the box on
 # Python 3.14 today. Upstream python-jsonpath's full RFC-compliance path is
 # JSONPathEnvironment(strict=True) together with the python-jsonpath[strict]
@@ -273,17 +328,11 @@ class _DEFAULT_SELECTOR_CLS:
         self._path = selector
         self._selector = _DEFAULT_SELECTOR_ENV.compile(selector)
 
-    def findall(self, doc: JSONValue) -> list[object]:
-        return self._selector.findall(doc)
-
-    def finditer(self, doc: JSONValue) -> Iterable[JSONPathMatch]:
-        return self._selector.finditer(doc)
-
-    def match(self, doc: JSONValue) -> JSONPathMatch | None:
-        return self._selector.match(doc)
-
-    def query(self, doc: JSONValue) -> Query:
-        return self._selector.query(doc)
+    def finditer(self, doc: JSONValue) -> Iterable[SelectorMatch]:
+        # Upstream python-jsonpath annotates match.obj as object and returns its
+        # own JSONPointer class from match.pointer(). JsonPatchX still accepts
+        # those matches because that pointer type satisfies PointerBackend.
+        return cast(Iterable[SelectorMatch], self._selector.finditer(doc))
 
     @override
     def __str__(self) -> str:
@@ -292,3 +341,38 @@ class _DEFAULT_SELECTOR_CLS:
     @override
     def __repr__(self) -> str:
         return "JsonPathDefault(" + repr(self._path) + ")"
+
+
+def _selector_backend_instance[SB: SelectorBackend](
+    selector: str, *, selector_cls: type[SB]
+) -> SB:
+    """
+    Internal: construct a SelectorBackend instance for a selector string.
+
+    Args:
+        selector: Selector string to parse.
+        selector_cls: Backend class used to parse the selector.
+
+    Returns:
+        A backend instance for ``selector``.
+
+    Raises:
+        InvalidJSONSelector: If construction fails.
+    """
+    try:
+        compiled = selector_cls(selector)
+    except Exception as e:
+        if selector_cls is _DEFAULT_SELECTOR_CLS:
+            raise InvalidJSONSelector(
+                f"invalid JSONPath selector for default backend: {selector!r}"
+            ) from e
+        raise InvalidJSONSelector(
+            f"invalid JSON selector for {selector_cls!r}: {selector!r}"
+        ) from e
+
+    if not isinstance(compiled, SelectorBackend):
+        raise InvalidJSONSelector(
+            f"selector_cls {selector_cls!r} instances must implement the SelectorBackend protocol"
+        )
+
+    return compiled

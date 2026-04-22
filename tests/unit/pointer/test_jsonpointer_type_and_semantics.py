@@ -330,6 +330,7 @@ def test_pointer_backend_binding(subtests: Subtests) -> None:
 def test_jsonpointer_backend_reuse(subtests: Subtests) -> None:
     ptr1a = JSONPointer.parse("a.b", backend=DotPointer)
     ptr1b = JSONPointer.parse(ptr1a, backend=DotPointer)
+    ptr1c = JSONPointer.parse(ptr1a)
     ptr2a = JSONPointer.parse(DotPointer("a.b"), backend=DotPointer)
     ptr2b = JSONPointer.parse(ptr2a, backend=DotPointer)
     ptr3a = JSONPointer.parse(DotPointerSubclass("c.d"), backend=DotPointer)
@@ -337,12 +338,19 @@ def test_jsonpointer_backend_reuse(subtests: Subtests) -> None:
 
     with subtests.test("reuse compatible backend instances"):
         assert ptr1a.ptr is ptr1b.ptr
+        assert ptr1a.ptr is ptr1c.ptr
         assert ptr2a.ptr is ptr2b.ptr
         assert ptr3a.ptr is ptr3b.ptr
 
     with subtests.test("don't coerce backend superclass instances"):
         with pytest.raises(InvalidJSONPointer):
             JSONPointer.parse(DotPointer("e.f"), backend=DotPointerSubclass)
+
+    with subtests.test(
+        "reject raw backend instances when omitted backend defaults to RFC 6901"
+    ):
+        with pytest.raises(InvalidJSONPointer):
+            JSONPointer.parse(DotPointer("e.f"))
 
     with subtests.test("reject incompatible backend instances"):
         with pytest.raises(InvalidJSONPointer):

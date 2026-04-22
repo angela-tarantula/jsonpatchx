@@ -66,6 +66,19 @@ class InvalidJSONPointer(PatchInputError):
     """
 
 
+class InvalidJSONSelector(PatchInputError):
+    """
+    A JSON selector definition or instance is invalid.
+
+    Examples:
+        - Selector string is malformed or uses an incompatible backend.
+        - Selector backend class fails protocol checks.
+
+    Typical HTTP mapping:
+        422 Unprocessable Entity for request input.
+    """
+
+
 class InvalidOperationRegistry(PatchError):
     """
     An OperationRegistry has incompatible OperationSchemas (developer error).

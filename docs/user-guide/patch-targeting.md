@@ -42,16 +42,20 @@ Path syntax standardized in
 Selectors are more expressive than pointers. They also raise questions that
 pointer-based operations do not. JsonPatchX takes a simple default position:
 
-- zero matches is a resolution error
+- zero matches return `[]` from `getall()` and leave `addall()` or `removeall()`
+  unchanged
 - multiple matches are all returned
-- stable match ordering is not guaranteed
+- mutation helpers apply matches sequentially in backend iteration order
+- JsonPatchX does not add extra overlap or stable ordering guarantees
 
 ### Selector Methods
 
 Similar to `JSONPointer[T]`, it parses the query expression string upfront, and
 its target type is enforced when you exercise it:
 
-- `get(doc)`, `add(doc, value)`, and `remove(doc)`
+- `getall(doc)`, `addall(doc, value)`, and `removeall(doc)`
+- `get_pointer_instances(doc)` when you want the matched exact pointers for
+  case-by-case handling
 - `is_gettable()`, `is_addable()`, and `is_removable()`
 - `is_valid_type(target)`
 

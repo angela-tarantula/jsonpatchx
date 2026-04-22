@@ -1,11 +1,10 @@
 # Custom Pointers and Selectors
 
-JsonPatchX is pointer-backend agnostic.
+JsonPatchX is targeting-backend agnostic.
 
-The default backend is standard
-[RFC 6901](https://datatracker.ietf.org/doc/html/rfc6901) JSON Pointer behavior,
-but the library can bind alternative pointer implementations when a domain needs
-different parsing or traversal rules.
+`JSONPointer` and `JSONSelector` both have default backends, but the library can
+bind alternative implementations when a domain needs different parsing,
+traversal, or query rules.
 
 That flexibility is useful. It also needs guardrails.
 
@@ -68,8 +67,71 @@ instances.
 The backend defines its own syntax. There is no universal root string across
 every possible backend.
 
-<!--
+## What a selector backend is
 
-Explain Selectors
+A selector backend is the object behind `JSONSelector[T, Backend]`.
 
--->
+JsonPatchX expects it to do two things:
+
+- parse a selector string
+- yield exact matches against a JSON document
+
+Each match must expose:
+
+- `obj`: the matched JSON value
+- `parts`: the concrete path parts to that value
+- `pointer()`: an exact-location pointer for that value
+
+## Minimal selector backend shape
+
+```python
+from collections.abc import Iterable, Sequence
+
+from jsonpatchx.backend import PointerBackend
+from jsonpatchx.types import JSONValue
+
+
+class MySelectorMatch:
+    obj: JSONValue
+    parts: Sequence[int | str]
+
+    def pointer(self) -> PointerBackend:
+        ...
+
+
+class MySelectorBackend:
+    def __init__(self, selector: str) -> None:
+        ...
+
+    def finditer(self, doc: JSONValue) -> Iterable[MySelectorMatch]:
+        ...
+
+    def __str__(self) -> str:
+        ...
+```
+
+## Selector Rules That Matter In Practice
+
+`finditer(doc)` should yield zero or more concrete matches, not abstract query
+nodes.
+
+`pointer()` should identify the same location as the match's `obj`. If those
+drift apart, selector-backed mutation will target the wrong place.
+
+`pointer()` should return a concrete object that satisfies `PointerBackend`.
+JsonPatchX uses that returned pointer object itself when it wraps matches as
+typed `JSONPointer` values.
+
+Selector mutation is intentionally thin. JsonPatchX applies matched pointers
+sequentially in the backend's iteration order and does not impose extra
+overlap-resolution or ordering rules on top.
+
+JsonPatchX is slightly more permissive at runtime than this protocol surface.
+The built-in JSONPath backend accepts upstream `python-jsonpath` matches even
+though upstream annotates `obj` as `object` and returns its own pointer type.
+JsonPatchX treats those runtime values as JSON-shaped document values and
+accepts those match pointers because that upstream pointer type satisfies
+`PointerBackend`.
+
+Like pointer backends, selector backends should be immutable or otherwise safe
+to reuse.

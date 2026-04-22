@@ -10,6 +10,7 @@ from jsonpatchx.builtins import (
 )
 from jsonpatchx.exceptions import (
     InvalidJSONPointer,
+    InvalidJSONSelector,
     InvalidOperationDefinition,
     InvalidOperationRegistry,
     OperationValidationError,
@@ -28,12 +29,14 @@ from jsonpatchx.registry import (
     StandardRegistry,
 )
 from jsonpatchx.schema import OperationSchema
+from jsonpatchx.selector import JSONSelector
 from jsonpatchx.standard import JsonPatch, apply_patch
 from jsonpatchx.types import JSONValue
 
 __all__ = [
     # exceptions
     "InvalidJSONPointer",
+    "InvalidJSONSelector",
     "InvalidOperationDefinition",
     "InvalidOperationRegistry",
     "OperationValidationError",
@@ -46,6 +49,7 @@ __all__ = [
     "TestOpFailed",
     # types
     "JSONPointer",
+    "JSONSelector",
     "JSONValue",
     # operation specs
     "OperationSchema",

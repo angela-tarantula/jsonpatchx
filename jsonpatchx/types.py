@@ -303,14 +303,12 @@ def _validate_JSONValue(obj: object) -> JSONValue:
     return _type_adapter_for(JSONValue).validate_python(obj, strict=True)
 
 
-def _validate_typeform(unverified: object) -> TypeForm[Any]:
+def _validate_typeform(unverified: object, exc_type: type[Exception]) -> TypeForm[Any]:
     """Validate a TypeForm parameter."""  # NOTE: move to JSONPointer if it's gonna raise InvalidJSONPointer
     try:
         _type_adapter_for(unverified)  # type: ignore[arg-type]
     except Exception as e:
-        raise InvalidJSONPointer(
-            f"JSONPointer type parameter {unverified!r} must be a valid TypeForm"
-        ) from e
+        raise exc_type(f"type parameter {unverified!r} must be a valid TypeForm") from e
     return cast(TypeForm[Any], unverified)
 
 
