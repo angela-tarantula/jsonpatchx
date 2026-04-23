@@ -1,17 +1,32 @@
 [build-system]
-requires = ["setuptools"]
+requires = ["setuptools>=77.0.3"]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "jsonpatchx"
 version = "0.1.0"
-description = "A framework for building governed PATCH APIs in Python."
+description = "JSON Patch for modern PATCH APIs."
 readme = "README.md"
 license = "MIT"
 license-files = ["LICENSE"]
 requires-python = ">=3.12"
 authors = [
     { name = "Angela Liss", email = "chamsester@gmail.com" },
+]
+keywords = [
+    "JSON",
+    "JSON Patch",
+    "JSONPatch",
+    "JSON Pointer",
+    "JSONPointer",
+    "JSON Path",
+    "JSONPath",
+    "RFC 6902",
+    "RFC 6901",
+    "RFC 9535",
+    "fastapi",
+    "pydantic",
+    "openapi",
 ]
 classifiers = [
     "Development Status :: 3 - Alpha",
@@ -42,9 +57,12 @@ dependencies = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/angela-tarantula/jsonpatchx"
-Repository = "https://github.com/angela-tarantula/jsonpatchx"
+Documentation = "https://angela-tarantula.github.io/jsonpatchx/"
+Source = "https://github.com/angela-tarantula/jsonpatchx"
 Issues = "https://github.com/angela-tarantula/jsonpatchx/issues"
+Changelog = "https://github.com/angela-tarantula/jsonpatchx/blob/main/CHANGELOG.md"
+Tests = "https://github.com/angela-tarantula/jsonpatchx/actions/workflows/python-tests.yml"
+"Test Coverage" = "https://codecov.io/github/angela-tarantula/jsonpatchx"
 
 [project.optional-dependencies]
 fastapi = [

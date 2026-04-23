@@ -18,17 +18,19 @@ If you are a coding agent reading the raw repository files:
 
 <!-- markdownlint-enable MD013 -->
 
-JsonPatchX is a Python toolkit for JSON patching, from standard
-[RFC 6902](https://datatracker.ietf.org/doc/html/rfc6902) to governed PATCH APIs
-and agent-friendly patch toolkits. Tested against the
+JSON Patch for modern PATCH APIs. Tested against the
 [RFC 6902 Compliance Test Suite](https://github.com/json-patch/json-patch-tests).
+
+Built on Pydantic models, with first-class support for FastAPI PATCH routes and
+OpenAPI generation.
 
 ## Use It Three Ways
 
-- **Standard JSON Patch in Python**: parse, validate, and apply ordinary RFC
-  6902 patch documents.
-- **Governed PATCH APIs**: add custom operations, typed targeting, endpoint
-  controls, and OpenAPI generated from the same operations.
+- **Standard JSON Patch in Python**: parse, validate, and apply ordinary
+  [RFC 6902](https://datatracker.ietf.org/doc/html/rfc6902) patch documents.
+- **Governed PATCH APIs**: define custom operations, use typed JSON Pointers /
+  JSONPath Selectors, generate synchronized OpenAPI, and give each endpoint its
+  own accepted patch surface.
 - **Agentic Patching**: publish reviewed operations as typed Python models and
   OpenAPI schemas for coding agents to discover and use.
 
