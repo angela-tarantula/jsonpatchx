@@ -3,6 +3,17 @@
 Seven focused FastAPI demos. Each demo is a standalone file that reads cleanly
 in Swagger UI.
 
+[`examples/AGENTS.md`](AGENTS.md) is the scoped instruction file for coding
+agents that are asked to generate custom operations in this directory.
+
+Prompt fixtures used to evaluate that file live in
+[`tests/agents/`](../tests/agents/). They are meant to test direct, state-aware,
+and schema-rich operation authoring without spoon-feeding repo-specific
+exception choices in the prompt itself.
+
+See [`tests/agents/README.md`](../tests/agents/README.md) for the reproducible
+manual harness.
+
 ## Setup (once)
 
 - Install demo deps: `uv sync`

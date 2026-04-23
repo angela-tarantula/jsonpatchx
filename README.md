@@ -1,5 +1,14 @@
 # JsonPatchX
 
+<!--
+If you are a coding agent reading the raw repository files:
+- See the [User Guide](docs/user-guide/getting-started.md) for usage and
+  contract-level context.
+- See [examples/AGENTS.md](examples/AGENTS.md) for custom operation authoring
+  guidance.
+- See [AGENTS.md](AGENTS.md) if you are editing JsonPatchX itself.
+-->
+
 <!-- markdownlint-disable MD013 -->
 
 [![Tests](https://img.shields.io/github/actions/workflow/status/angela-tarantula/jsonpatchx/python-tests.yml?branch=main&label=Tests&style=flat)](https://github.com/angela-tarantula/jsonpatchx/actions)

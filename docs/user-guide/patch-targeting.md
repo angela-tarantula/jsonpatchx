@@ -52,9 +52,8 @@ pointer-based operations do not. JsonPatchX takes a simple default position:
 
 - zero matches return `[]` from `getall()` and leave `addall()` or `removeall()`
   unchanged
-- multiple matches are all returned
-- mutation helpers apply matches sequentially in backend iteration order
-- JsonPatchX does not add extra overlap or stable ordering guarantees
+- multiple matches are all returned without any ordering guarantee
+- mutation helpers apply matches sequentially without any ordering guarantee
 
 ### Selector Methods
 
