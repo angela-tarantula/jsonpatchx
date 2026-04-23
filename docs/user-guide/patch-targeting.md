@@ -39,12 +39,14 @@ Path syntax standardized in
 ```
 
 > Note: The
-> [built-in JSONPath backend](https://github.com/jg-rp/python-jsonpath) is RFC
-> 9535-compliant and passes the
-> [jsonpath-compliance-test-suite](https://github.com/jsonpath-standard/jsonpath-compliance-test-suite),
-> except for some I-Regexp patterns
-> ([RFC 9485](https://datatracker.ietf.org/doc/html/rfc9485)) and whitespace
-> cases.
+> [built-in JSONPath backend](https://github.com/jg-rp/python-jsonpath) is
+> RFC-compliant out of the box, except on Python 3.14 and later, where
+> [python-jsonpath](https://github.com/jg-rp/python-jsonpath)'s
+> [`iregexp-check`](https://github.com/jg-rp/rust-iregexp) dependency is not yet
+> compatible with free-threaded Python. On Python 3.14+, this only affects regex
+> compliance: `match()` and `search()` fall back to Python's built-in `re`, and
+> regex patterns are not validated against
+> [RFC 9485](https://datatracker.ietf.org/doc/html/rfc9485) I-Regexp.
 
 ### Selector Semantics
 

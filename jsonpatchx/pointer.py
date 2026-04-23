@@ -41,10 +41,10 @@ from jsonpatchx.types import (
     JSONContainer,
     JSONObject,
     JSONValue,
+    _cached_adapter,
     _is_array,
     _is_container,
     _is_object,
-    _cached_adapter,
     _validate_JSONValue,
     _validate_typeform,
 )

@@ -291,22 +291,16 @@ class SelectorBackend(Protocol):
         """Return the backend's canonical string form."""
 
 
-# JsonPatchX cannot provide strict RFC-compliant JSONPath out of the box on
-# Python 3.14 today. Upstream python-jsonpath's full RFC-compliance path is
-# JSONPathEnvironment(strict=True) together with the python-jsonpath[strict]
-# extra, but that extra is currently incompatible with Python 3.14.
+# Out of the box, JsonPatchX's default JSONPath backend follows upstream
+# python-jsonpath's RFC 9535 path.
 #
-# So the default selector environment uses JSONPathEnvironment(strict=True)
-# without the extra. That still requires the RFC-style root form, rejects
-# upstream's relaxed syntax, and disables upstream's non-standard extensions by
-# default.
-#
-# It is still not fully RFC-compliant for regex-based JSONPath functions:
-# - match() and search() run on Python's built-in re instead of the third-party
-#   regex engine, so some standards-suite regex cases do not pass.
-# - regex patterns are not validated against RFC 9485 I-Regexp, so patterns
-#   such as \d+ may be accepted even though they are not standards-compliant
-#   I-Regexp patterns.
+# The exception is Python 3.14 and later, where the upstream iregexp-check
+# dependency behind python-jsonpath[strict] is not yet compatible with
+# free-threaded Python. JsonPatchX still uses JSONPathEnvironment(strict=True)
+# there, so this only affects regex compliance:
+# - match() and search() use Python's built-in re instead of the third-party
+#   regex engine.
+# - regex patterns are not validated against RFC 9485 I-Regexp.
 #
 # Clients can still use python-jsonpath directly with their own environment
 # settings, or bind a custom selector backend in JsonPatchX. They just cannot
@@ -319,7 +313,10 @@ class _DEFAULT_SELECTOR_CLS:
     Default JSONPath selector backend powered by ``python-jsonpath``.
 
     The wrapped selector is compiled from a string using the fixed shared
-    ``_DEFAULT_SELECTOR_ENV``.
+    ``_DEFAULT_SELECTOR_ENV``. Out of the box, this follows upstream's RFC 9535
+    path. On Python 3.14 and later, the upstream ``iregexp-check`` dependency
+    behind ``python-jsonpath[strict]`` is not yet compatible with free-threaded
+    Python, so only regex-related RFC behavior falls back.
     """
 
     __slots__ = ("_path", "_selector")

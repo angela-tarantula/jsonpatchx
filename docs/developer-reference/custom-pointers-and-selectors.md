@@ -138,12 +138,14 @@ JsonPatchX accepts that because the returned object satisfies `PointerBackend`,
 so it can be wrapped as a typed `JSONPointer`.
 
 The more important limitation is standards compliance, not upstream's `object`
-annotation. On Python 3.14, JsonPatchX cannot provide fully RFC-compliant
-JSONPath out of the box because upstream's `python-jsonpath[strict]` extra is
-currently incompatible there. So the default backend uses
-`JSONPathEnvironment(strict=True)` without that extra: it keeps the RFC-style
-root form and disables upstream's relaxed extensions, but regex-based `match()`
-and `search()` are still not fully RFC-compliant, and patterns are not validated
+annotation. Out of the box, JsonPatchX's built-in JSONPath backend follows the
+RFC 9535 path. The exception is Python 3.14 and later, where the upstream
+[`iregexp-check`](https://github.com/jg-rp/rust-iregexp) dependency behind
+`python-jsonpath[strict]` is not yet compatible with free-threaded Python.
+
+JsonPatchX still uses `JSONPathEnvironment(strict=True)` there, so this only
+affects regular expression compliance: `match()` and `search()` fall back to
+Python's built-in `re`, and regular expression patterns are not validated
 against RFC 9485 I-Regexp.
 
 Like pointer backends, selector backends should be immutable or otherwise safe

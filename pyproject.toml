@@ -36,6 +36,8 @@ classifiers = [
 dependencies = [
     "jsonpointer>=3.0.0",
     "pydantic>=2.12.5",
+    "python-jsonpath[strict]>=2.0.2; python_version <= '3.13'",
+    "python-jsonpath>=2.0.2; python_version >= '3.14'",
     "typing-extensions>=4.15.0",
 ]
 
@@ -72,7 +74,6 @@ tests = [
     "httpx>=0.28.1",
     "pytest>=9.0.2",
     "pytest-cov>=7.1.0",
-    "python-jsonpath>=2.0.2",
     "uvicorn>=0.42.0",
 ]
 typing = [
