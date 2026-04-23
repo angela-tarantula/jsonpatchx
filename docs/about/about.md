@@ -28,7 +28,7 @@ JsonPatchX gives you:
 - Custom operations
 - Typed JSON Pointer and JSONPath targeting
 - OpenAPI generated from the same models
-- Per-endpoint update controls
+- Endpoint controls over accepted operations
 
 ## Agentic Patching
 
@@ -40,7 +40,7 @@ agents can discover and compose higher-level mutations.
 
 [JSON Merge Patch](https://datatracker.ietf.org/doc/html/rfc7386) is simpler and
 is often the right choice for coarse object updates. JsonPatchX is for cases
-where operation semantics, array handling, richer targeting, or explicit
+where named operation semantics, array handling, richer targeting, or explicit
 mutation policy matter.
 
 ## Now Is the Time to Experiment

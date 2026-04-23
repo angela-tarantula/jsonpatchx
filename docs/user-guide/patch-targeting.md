@@ -3,7 +3,8 @@
 JsonPatchX supports three ways to target a mutation:
 
 - exact locations with `JSONPointer[T]` (default:
-  [RFC 6902](https://datatracker.ietf.org/doc/html/rfc6902) JSON Pointer)
+  [RFC 6901](https://datatracker.ietf.org/doc/html/rfc6901) JSON Pointer, as
+  used by RFC 6902)
 - query-based targeting with `JSONSelector[T]` (default:
   [RFC 9535](https://datatracker.ietf.org/doc/html/rfc9535) JSON Path)
 - custom backends when the defaults are not the right fit

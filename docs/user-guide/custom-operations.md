@@ -154,7 +154,8 @@ That kind of rule belongs on the operation itself:
 
 ```python
 from typing import Literal, Self, override
-from pydantic import model_validator, PydanticCustomError
+from pydantic import model_validator
+from pydantic_core import PydanticCustomError
 from jsonpatchx import JSONPointer, JSONValue, OperationSchema, ReplaceOp
 
 class SwapOp(OperationSchema):
@@ -284,10 +285,6 @@ is usable or unusable. For example:
 failures into a single "not allowed" outcome, it lets a custom operation respond
 differently to each case. This keeps the operation logic focused on intent
 rather than reimplementing pointer resolution.
-
-> Note: An implementation of `AddMissingKeyOp` with more structured and detailed
-> error messages is available in the recipes folder should you want to use a
-> production-ready version of this.
 
 ## Schema-Rich Operations
 
