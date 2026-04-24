@@ -24,6 +24,15 @@ class SimpleSelectorMatch(SelectorMatch):
 
 
 class SimpleSelector(SelectorBackend):
+    """
+    Tiny deterministic selector backend for unit tests.
+
+    This is a test double for ``SelectorBackend``, not a real JSONPath engine.
+    It exposes a small fixed set of selector strings so selector unit tests can
+    exercise JsonPatchX's own wrapper semantics without depending on full
+    JSONPath parsing or evaluation behavior.
+    """
+
     def __init__(self, selector: str) -> None:
         allowed = {
             "root",

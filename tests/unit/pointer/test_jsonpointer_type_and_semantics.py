@@ -111,12 +111,11 @@ def test_jsonpointer_add(subtests: Subtests, suite: TypeSuite) -> None:
                         ptr.add(copy.deepcopy(doc), valid_T_value)
 
 
-def test_jsonpointer_root_semantics(subtests: Subtests) -> None:
-    with subtests.test("root semantics"):
-        root = JSONPointer.parse("")
-        assert root.get({"a": 1}) == {"a": 1}
-        assert root.add({"a": 1}, {"b": 2}) == {"b": 2}
-        assert root.remove({"a": 1}) is MISSING
+def test_jsonpointer_root_semantics() -> None:
+    root = JSONPointer.parse("")
+    assert root.get({"a": 1}) == {"a": 1}
+    assert root.add({"a": 1}, {"b": 2}) == {"b": 2}
+    assert root.remove({"a": 1}) is MISSING
 
 
 def test_jsonpointer_array_index_handling(subtests: Subtests) -> None:

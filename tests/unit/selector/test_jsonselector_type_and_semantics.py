@@ -5,6 +5,7 @@ from typing import Any
 
 import pytest
 from pydantic import TypeAdapter
+from pydantic.experimental.missing_sentinel import MISSING
 from pytest import Subtests
 
 from jsonpatchx.exceptions import InvalidJSONSelector, PatchConflictError
@@ -126,13 +127,14 @@ def test_jsonselector_addall_and_removeall_with_custom_backend() -> None:
     assert selector.removeall({"record": {"a": 1, "b": 2}}) == {"record": {}}
 
 
-def test_jsonselector_root_semantics_with_custom_backend() -> None:
+def test_jsonselector_root_semantics() -> None:
     selector: JSONSelector[JSONValue, SimpleSelector] = JSONSelector.parse(
         "root", backend=SimpleSelector
     )
     assert selector.getall({"a": 1}) == [{"a": 1}]
     assert selector.get_pointers({"a": 1}) == [JSONPointer.parse("")]
     assert selector.addall({"a": 1}, {"b": 2}) == {"b": 2}
+    assert selector.removeall({"a": 1}) is MISSING
 
 
 def test_jsonselector_zero_matches_and_invalid_matches() -> None:
