@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import copy
 from typing import Any
 
 import pytest
@@ -16,14 +17,14 @@ from tests.support.type_suite import TypeSuite
 
 def test_jsonselector_getall(subtests: Subtests, suite: TypeSuite) -> None:
     for type_param in suite.types:
-        selector: Any = JSONSelector.parse(
+        selector = JSONSelector.parse(
             "all_items",
             type_param=type_param,
             backend=SimpleSelector,
         )
         for example in suite.examples:
             value = example.value
-            doc: JSONValue = {"items": [value]}
+            doc: Any = {"items": [value]}
             expected_get = suite.is_compatible(value, type_param)
 
             with subtests.test(
@@ -39,6 +40,77 @@ def test_jsonselector_getall(subtests: Subtests, suite: TypeSuite) -> None:
 
             with subtests.test(f"{type_param!r} is_valid_type ({example.label})"):
                 assert selector.is_valid_type(value) is expected_get
+
+
+def test_jsonselector_removeall(subtests: Subtests, suite: TypeSuite) -> None:
+    for type_param in suite.types:
+        selector = JSONSelector.parse(
+            "record_values",
+            type_param=type_param,
+            backend=SimpleSelector,
+        )
+        for example in suite.examples:
+            value = example.value
+            doc: Any = {"record": {"a": value, "b": value}}
+            expected_remove = suite.is_compatible(value, type_param)
+
+            with subtests.test(
+                f"{type_param!r} removeall / is_removable ({example.label})"
+            ):
+                if expected_remove:
+                    assert selector.is_removable(doc) is True
+                    d2 = copy.deepcopy(doc)
+                    out = selector.removeall(d2)
+                    assert isinstance(out, dict)
+                    assert out == {"record": {}}
+                    assert selector.getall(d2) == []
+                else:
+                    assert selector.is_removable(doc) is False
+                    with pytest.raises(PatchConflictError):
+                        selector.removeall(copy.deepcopy(doc))
+
+
+def test_jsonselector_addall(subtests: Subtests, suite: TypeSuite) -> None:
+    for type_param in suite.types:
+        valid_examples = suite.get_examples(type_param, valid=True)
+        valid_T_value = valid_examples[0].value
+        alt_valid_T_value = valid_examples[1].value
+        selector = JSONSelector.parse(
+            "record_values",
+            type_param=type_param,
+            backend=SimpleSelector,
+        )
+
+        for example in suite.examples:
+            value = example.value
+            doc: Any = {"record": {"a": value, "b": value}}
+            new_value = alt_valid_T_value
+
+            expected_existing_ok = suite.is_compatible(value, type_param)
+            expected_new_ok = suite.is_compatible(new_value, (type_param, JSONValue))
+            expected_add = expected_existing_ok and expected_new_ok
+
+            with subtests.test(
+                f"{type_param!r} addall / is_addable overwrite-object ({example.label})"
+            ):
+                if expected_add:
+                    d2 = copy.deepcopy(doc)
+                    assert selector.is_addable(d2, new_value) is True
+                    out = selector.addall(d2, new_value)
+                    assert isinstance(out, dict)
+                    assert out == {"record": {"a": new_value, "b": new_value}}
+                else:
+                    assert selector.is_addable(doc, new_value) is False
+                    with pytest.raises(PatchConflictError):
+                        selector.addall(copy.deepcopy(doc), new_value)
+
+            if (not expected_existing_ok) and expected_new_ok:
+                with subtests.test(
+                    f"{type_param!r} overwrite blocked when existing wrong type ({example.label})"
+                ):
+                    assert selector.is_addable(doc, valid_T_value) is False
+                    with pytest.raises(PatchConflictError):
+                        selector.addall(copy.deepcopy(doc), valid_T_value)
 
 
 def test_jsonselector_addall_and_removeall_with_custom_backend() -> None:
