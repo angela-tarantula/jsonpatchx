@@ -23,7 +23,6 @@ from jsonpatchx.backend import (
     _selector_backend_instance,
 )
 from jsonpatchx.exceptions import (
-    InvalidJSONPointer,
     InvalidJSONSelector,
     PatchConflictError,
 )
@@ -394,7 +393,7 @@ class JSONSelector(str, Generic[T_co, S_co]):
         cls,
         selector: str | Self | SelectorBackend,
         *,
-        type_param: TypeForm[Any] = JSONValue,
+        type_param: TypeForm[T_co] = JSONValue,  # type: ignore[assignment]
         backend: type[SelectorBackend] | None = None,
     ) -> Self:
         """
@@ -413,6 +412,15 @@ class JSONSelector(str, Generic[T_co, S_co]):
         Raises:
             InvalidJSONSelector: If the selector string, backend, or generic
                 parameters are invalid.
+
+        Notes:
+            `type_param` technically places the covariant `T` parameter in an
+            input position, which would normally be an unsound public API
+            shape. That tradeoff is intentional here because `parse()` is only
+            a convenience constructor around Pydantic validation. Normal
+            construction happens through Pydantic on an already-specialized
+            `JSONSelector[...]` type, so callers are not meant to treat
+            `parse()` as the primary semantic surface for consuming `T`.
         """
         selector_args: tuple[TypeForm[Any], ...]
         if backend is None:
@@ -533,25 +541,17 @@ class JSONSelector(str, Generic[T_co, S_co]):
 
         Raises:
             PatchConflictError: If selector resolution fails.
-            InvalidJSONSelector: If the backend yields invalid matches or a
-                match pointer that cannot be re-bound as a `JSONPointer`.
+            InvalidJSONSelector: If the backend yields invalid matches or
+                invalid pointer objects.
         """
-        json_pointers: list[JSONPointer[T_co, PointerBackend]] = []
-        for pointer in self._pointer_instances(doc):
-            pointer_backend = type(pointer)
-            try:
-                json_pointers.append(
-                    JSONPointer.parse(
-                        pointer,
-                        type_param=cast(Any, self._type),
-                        backend=pointer_backend,
-                    )
-                )
-            except InvalidJSONPointer as e:
-                raise InvalidJSONSelector(
-                    f"selector match pointer {pointer!r} is incompatible with backend {pointer_backend.__name__}"
-                ) from e
-        return json_pointers
+        return [
+            JSONPointer.parse(
+                pointer,
+                type_param=self._type,
+                backend=type(pointer),
+            )
+            for pointer in self._pointer_instances(doc)
+        ]
 
     def getall(self, doc: JSONValue) -> list[T_co]:
         """

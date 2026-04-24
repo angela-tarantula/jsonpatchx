@@ -111,9 +111,9 @@ class LowercaseOp(OperationSchema):
   prefers `PydanticCustomError` when stable error codes, message templates, or
   named context values materially improve the contract.
 - Decide deliberately between omission and nullability. Use `MISSING` from
-  `pydantic.experimental.missing_sentinel` plus `model_fields_set` when “not
-  provided” and “provided as null” mean different things. Use a nullable field
-  when `null` is itself part of the wire contract.
+  `pydantic_core` plus `model_fields_set` when “not provided” and “provided as
+  null” mean different things. Use a nullable field when `null` is itself part
+  of the wire contract.
 - For bounds, limits, indices, regexes, and similar constraint fields, prefer
   omission semantics when an inactive constraint has no meaningful JSON `null`
   value. A very short Python comment may explain that `null` is not meaningful

@@ -301,7 +301,7 @@ be present.
 ```python
 from typing import Literal, Self, override
 from pydantic import ConfigDict, Field, model_validator
-from pydantic.experimental.missing_sentinel import MISSING
+from pydantic_core import MISSING
 from jsonpatchx import JSONPointer, JSONValue, OperationSchema, ReplaceOp
 from jsonpatchx.types import JSONNumber
 

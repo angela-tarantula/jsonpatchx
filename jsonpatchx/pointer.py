@@ -19,7 +19,8 @@ from pydantic import (
     ValidationError,
 )
 from pydantic.json_schema import JsonSchemaValue
-from pydantic_core import MISSING, core_schema as cs
+from pydantic_core import MISSING
+from pydantic_core import core_schema as cs
 from typing_extensions import TypeForm, TypeVar
 
 from jsonpatchx.backend import (
@@ -474,7 +475,7 @@ class JSONPointer(str, Generic[T_co, P_co]):
         cls,
         path: str | Self | PointerBackend,
         *,
-        type_param: TypeForm[Any] = JSONValue,
+        type_param: TypeForm[T_co] = JSONValue,  # type: ignore[assignment]
         backend: type[PointerBackend] | None = None,
     ) -> Self:
         """
@@ -492,6 +493,15 @@ class JSONPointer(str, Generic[T_co, P_co]):
         Raises:
             InvalidJSONPointer: If the pointer string, backend, or generic
                 parameters are invalid.
+
+        Notes:
+            `type_param` technically places the covariant `T` parameter in an
+            input position, which would normally be an unsound public API
+            shape. That tradeoff is intentional here because `parse()` is only
+            a convenience constructor around Pydantic validation. Normal
+            construction happens through Pydantic on an already-specialized
+            `JSONPointer[...]` type, so callers are not meant to treat
+            `parse()` as the primary semantic surface for consuming `T`.
         """
         pointer_args: tuple[TypeForm[Any], ...]
         if backend is None:

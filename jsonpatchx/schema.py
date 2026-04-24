@@ -14,7 +14,8 @@ from typing import (
 
 from pydantic import BaseModel, ConfigDict, GetJsonSchemaHandler
 from pydantic.json_schema import JsonSchemaValue
-from pydantic_core import MISSING, core_schema as cs
+from pydantic_core import MISSING
+from pydantic_core import core_schema as cs
 
 from jsonpatchx.exceptions import (
     InvalidOperationDefinition,
