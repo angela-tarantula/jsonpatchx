@@ -67,6 +67,11 @@ instances.
 The backend defines its own syntax. There is no universal root string across
 every possible backend.
 
+If you want to study an intentionally extended pointer implementation, see
+[`python-jsonpath`'s `JSONPointer`](https://jg-rp.github.io/python-jsonpath/pointers/),
+which documents non-standard features beyond strict RFC 6901, like
+interoperability with relative pointers.
+
 ## What a selector backend is
 
 A selector backend is the object behind `JSONSelector[T, Backend]`.
@@ -150,3 +155,9 @@ against RFC 9485 I-Regexp.
 
 Like pointer backends, selector backends should be immutable or otherwise safe
 to reuse.
+
+For a feature-first JSONPath implementation with deliberate non-standard query
+operators, sorting, and `update()` support, see
+[`jsonpath-python`](https://github.com/sean2077/jsonpath-python). It is useful
+inspiration for custom selector backends, but JsonPatchX still needs concrete
+matches with exact `parts` and a `pointer()` that returns a `PointerBackend`.
