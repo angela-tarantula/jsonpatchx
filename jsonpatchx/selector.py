@@ -92,6 +92,7 @@ class JSONSelector(str, Generic[T_co, S_co]):
 
     @property
     def _adapter(self) -> TypeAdapter[T_co]:
+        """Return the cached Pydantic adapter used for strict `T` validation."""
         return _cached_adapter(cast(Any, self._type))
 
     @classmethod
@@ -102,6 +103,22 @@ class JSONSelector(str, Generic[T_co, S_co]):
         type_param: TypeForm[Any],
         concrete_backend: type[SelectorBackend] | TypeVar,
     ) -> Self:
+        """
+        Normalize a raw selector input into a validated `JSONSelector`.
+
+        Arguments:
+            selector: Selector string, parsed `JSONSelector`, or backend
+                selector instance supplied by Pydantic validation.
+            type_param: Already-validated runtime type parameter `T`.
+            concrete_backend: Already-validated backend parameter.
+
+        Returns:
+            A `JSONSelector` bound to the resolved backend and type parameter.
+
+        Raises:
+            InvalidJSONSelector: If an existing selector/backend instance
+                cannot be rebound to the required backend.
+        """
         resolved_backend = cls._resolve_runtime_backend_param(concrete_backend)
         compiled: SelectorBackend
         if isinstance(selector, JSONSelector):
@@ -207,6 +224,20 @@ class JSONSelector(str, Generic[T_co, S_co]):
     def _parse_selector_type_args(
         cls, *args: TypeForm[Any]
     ) -> tuple[TypeForm[Any], type[SelectorBackend] | TypeVar]:
+        """
+        Validate the selector generic arguments.
+
+        Arguments:
+            *args: Generic arguments from `JSONSelector[T, Backend]`.
+
+        Returns:
+            The validated type parameter and backend parameter.
+
+        Raises:
+            TypeError: If the selector is missing its required type argument.
+            InvalidJSONSelector: If the type parameter or backend parameter is
+                invalid.
+        """
         if not args:
             raise TypeError(f"{cls} requires at least one type parameter")
         unverified_typeform = args[0]
@@ -221,6 +252,20 @@ class JSONSelector(str, Generic[T_co, S_co]):
     def _resolve_backend_type_param(
         backend_param: object,
     ) -> type[SelectorBackend] | TypeVar:
+        """
+        Validate the backend generic argument before runtime resolution.
+
+        Arguments:
+            backend_param: Raw second generic argument from
+                `JSONSelector[T, Backend]`.
+
+        Returns:
+            A backend class or unresolved `TypeVar`.
+
+        Raises:
+            InvalidJSONSelector: If the backend argument is neither a class nor
+                a `TypeVar`.
+        """
         if isinstance(backend_param, TypeVar):
             return backend_param
         if not isinstance(backend_param, type):
@@ -234,6 +279,19 @@ class JSONSelector(str, Generic[T_co, S_co]):
         cls,
         backend_param: type[SelectorBackend] | TypeVar,
     ) -> type[SelectorBackend]:
+        """
+        Resolve a backend parameter to a concrete runtime backend class.
+
+        Arguments:
+            backend_param: Backend class or backend `TypeVar`.
+
+        Returns:
+            A concrete `SelectorBackend` class.
+
+        Raises:
+            InvalidJSONSelector: If an unspecialized backend `TypeVar` cannot
+                be resolved to a concrete default backend.
+        """
         if not isinstance(backend_param, TypeVar):
             return backend_param
         return cls._resolve_runtime_backend_typevar(backend_param)
@@ -243,6 +301,19 @@ class JSONSelector(str, Generic[T_co, S_co]):
         cls,
         backend_typevar: TypeVar,
     ) -> type[SelectorBackend]:
+        """
+        Resolve an unspecialized backend `TypeVar` using its default.
+
+        Arguments:
+            backend_typevar: Backend `TypeVar` from the generic parameter list.
+
+        Returns:
+            A concrete `SelectorBackend` class.
+
+        Raises:
+            InvalidJSONSelector: If the `TypeVar` has no usable default
+                backend.
+        """
         try:
             has_default = backend_typevar.has_default()
         except AttributeError:  # Py3.12
@@ -263,6 +334,16 @@ class JSONSelector(str, Generic[T_co, S_co]):
         cls,
         candidate: object,
     ) -> type[SelectorBackend] | None:
+        """
+        Coerce a potential default backend candidate into a usable class.
+
+        Arguments:
+            candidate: Runtime object drawn from a backend `TypeVar` default.
+
+        Returns:
+            A concrete `SelectorBackend` class, or `None` if the candidate is
+            not usable as a runtime backend.
+        """
         if isinstance(candidate, TypeVar):
             return cls._resolve_runtime_backend_typevar(candidate)
         if not isinstance(candidate, type):

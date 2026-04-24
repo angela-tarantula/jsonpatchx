@@ -160,11 +160,12 @@ class JSONPointer(str, Generic[T_co, P_co]):
 
     @property
     def _adapter(self) -> TypeAdapter[T_co]:
+        """Return the cached Pydantic adapter used for strict `T` validation."""
         return _cached_adapter(self._type)
 
     @property
     def parent_ptr(self) -> P_co:  # NOTE: add parent property for JSONPointer of parent
-        # NOTE: make this public
+        """Return the backend pointer for this pointer's parent path."""
         return _parent_ptr_of(self._ptr)
 
     def is_root(self, doc: JSONValue) -> bool:
@@ -180,9 +181,20 @@ class JSONPointer(str, Generic[T_co, P_co]):
         concrete_backend: type[PointerBackend] | TypeVar,
     ) -> Self:
         """
-        Validator function for JSONPointer.
+        Normalize a raw pointer input into a validated `JSONPointer`.
 
-        Assumes `type_param` and `bound_backend` are already validated.
+        Arguments:
+            path: Pointer string, parsed `JSONPointer`, or backend pointer
+                instance supplied by Pydantic validation.
+            type_param: Already-validated runtime type parameter `T`.
+            concrete_backend: Already-validated backend parameter.
+
+        Returns:
+            A `JSONPointer` bound to the resolved backend and type parameter.
+
+        Raises:
+            InvalidJSONPointer: If an existing pointer/backend instance cannot
+                be rebound to the required backend.
         """
         resolved_backend = cls._resolve_runtime_backend_param(concrete_backend)
         ptr: PointerBackend
@@ -306,6 +318,20 @@ class JSONPointer(str, Generic[T_co, P_co]):
     def _resolve_backend_type_param(
         backend_param: object,
     ) -> type[PointerBackend] | TypeVar:
+        """
+        Validate the backend generic argument before runtime resolution.
+
+        Arguments:
+            backend_param: Raw second generic argument from
+                `JSONPointer[T, Backend]`.
+
+        Returns:
+            A backend class or unresolved `TypeVar`.
+
+        Raises:
+            InvalidJSONPointer: If the backend argument is neither a class nor
+                a `TypeVar`.
+        """
         if isinstance(backend_param, TypeVar):
             return backend_param
         if not isinstance(backend_param, type):
@@ -319,6 +345,19 @@ class JSONPointer(str, Generic[T_co, P_co]):
         cls,
         backend_param: type[PointerBackend] | TypeVar,
     ) -> type[PointerBackend]:
+        """
+        Resolve a backend parameter to a concrete runtime backend class.
+
+        Arguments:
+            backend_param: Backend class or backend `TypeVar`.
+
+        Returns:
+            A concrete `PointerBackend` class.
+
+        Raises:
+            InvalidJSONPointer: If an unspecialized backend `TypeVar` cannot be
+                resolved to a concrete default backend.
+        """
         if not isinstance(backend_param, TypeVar):
             return backend_param
         return cls._resolve_runtime_backend_typevar(backend_param)
@@ -328,6 +367,18 @@ class JSONPointer(str, Generic[T_co, P_co]):
         cls,
         backend_typevar: TypeVar,
     ) -> type[PointerBackend]:
+        """
+        Resolve an unspecialized backend `TypeVar` using its default.
+
+        Arguments:
+            backend_typevar: Backend `TypeVar` from the generic parameter list.
+
+        Returns:
+            A concrete `PointerBackend` class.
+
+        Raises:
+            InvalidJSONPointer: If the `TypeVar` has no usable default backend.
+        """
         # Only TypeVar defaults are used for unspecialized backend TypeVars.
         try:
             has_default = backend_typevar.has_default()
@@ -349,6 +400,16 @@ class JSONPointer(str, Generic[T_co, P_co]):
         cls,
         candidate: object,
     ) -> type[PointerBackend] | None:
+        """
+        Coerce a potential default backend candidate into a usable class.
+
+        Arguments:
+            candidate: Runtime object drawn from a backend `TypeVar` default.
+
+        Returns:
+            A concrete `PointerBackend` class, or `None` if the candidate is
+            not usable as a runtime backend.
+        """
         if isinstance(candidate, TypeVar):
             return cls._resolve_runtime_backend_typevar(candidate)
         if not isinstance(candidate, type):
