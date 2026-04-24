@@ -9,9 +9,17 @@ from jsonpath import JSONPointer as ExtendedJsonPointer
 from jsonpointer import JsonPointer as CustomJsonPointer
 from pytest import Subtests
 
-from jsonpatchx.backend import PointerBackend, TargetState, classify_state
+from jsonpatchx.backend import (
+    _DEFAULT_SELECTOR_CLS,
+    PointerBackend,
+    SelectorBackend,
+    SelectorMatch,
+    TargetState,
+    classify_state,
+)
 from jsonpatchx.pointer import JSONPointer
 from jsonpatchx.types import JSONValue
+from tests.support.selectors import SimpleSelector
 
 
 def test_pointer_backend(subtests: Subtests) -> None:
@@ -19,6 +27,32 @@ def test_pointer_backend(subtests: Subtests) -> None:
         assert isinstance(CustomJsonPointer(""), PointerBackend)
     with subtests.test("Extended JsonPointer backend"):
         assert isinstance(ExtendedJsonPointer(""), PointerBackend)
+
+
+def test_selector_backend(subtests: Subtests) -> None:
+    with subtests.test("built-in JSONPath backend"):
+        assert isinstance(_DEFAULT_SELECTOR_CLS("$.a"), SelectorBackend)
+
+    with subtests.test("simple selector backend"):
+        assert isinstance(SimpleSelector("a"), SelectorBackend)
+
+
+def test_selector_match(subtests: Subtests) -> None:
+    cases = [
+        (
+            "built-in JSONPath match",
+            next(iter(_DEFAULT_SELECTOR_CLS("$.a").finditer({"a": 1}))),
+        ),
+        ("simple selector match", next(iter(SimpleSelector("a").finditer({"a": 1})))),
+    ]
+
+    for label, match in cases:
+        with subtests.test(label):
+            assert isinstance(match, SelectorMatch)
+            assert match.obj == 1
+            assert tuple(match.parts) == ("a",)
+            assert isinstance(match.pointer(), PointerBackend)
+            assert str(match.pointer()) == "/a"
 
 
 @dataclass(frozen=True)
