@@ -8,6 +8,7 @@ from pydantic import TypeAdapter
 from pydantic.experimental.missing_sentinel import MISSING
 from pytest import Subtests
 
+from jsonpatchx.backend import _DEFAULT_SELECTOR_CLS
 from jsonpatchx.exceptions import InvalidJSONSelector, PatchConflictError
 from jsonpatchx.pointer import JSONPointer
 from jsonpatchx.selector import JSONSelector
@@ -18,11 +19,7 @@ from tests.support.type_suite import TypeSuite
 
 def test_jsonselector_getall(subtests: Subtests, suite: TypeSuite) -> None:
     for type_param in suite.types:
-        selector = JSONSelector.parse(
-            "all_items",
-            type_param=type_param,
-            backend=SimpleSelector,
-        )
+        selector = JSONSelector.parse("$.items[*]", type_param=type_param)
         for example in suite.examples:
             value = example.value
             doc: Any = {"items": [value]}
@@ -45,11 +42,7 @@ def test_jsonselector_getall(subtests: Subtests, suite: TypeSuite) -> None:
 
 def test_jsonselector_removeall(subtests: Subtests, suite: TypeSuite) -> None:
     for type_param in suite.types:
-        selector = JSONSelector.parse(
-            "record_values",
-            type_param=type_param,
-            backend=SimpleSelector,
-        )
+        selector = JSONSelector.parse("$.record.*", type_param=type_param)
         for example in suite.examples:
             value = example.value
             doc: Any = {"record": {"a": value, "b": value}}
@@ -76,11 +69,7 @@ def test_jsonselector_addall(subtests: Subtests, suite: TypeSuite) -> None:
         valid_examples = suite.get_examples(type_param, valid=True)
         valid_T_value = valid_examples[0].value
         alt_valid_T_value = valid_examples[1].value
-        selector = JSONSelector.parse(
-            "record_values",
-            type_param=type_param,
-            backend=SimpleSelector,
-        )
+        selector = JSONSelector.parse("$.record.*", type_param=type_param)
 
         for example in suite.examples:
             value = example.value
@@ -115,19 +104,15 @@ def test_jsonselector_addall(subtests: Subtests, suite: TypeSuite) -> None:
 
 
 def test_jsonselector_root_semantics() -> None:
-    selector: JSONSelector[JSONValue, SimpleSelector] = JSONSelector.parse(
-        "root", backend=SimpleSelector
-    )
+    selector: JSONSelector[JSONValue] = JSONSelector.parse("$")
     assert selector.getall({"a": 1}) == [{"a": 1}]
     assert selector.get_pointers({"a": 1}) == [JSONPointer.parse("")]
     assert selector.addall({"a": 1}, {"b": 2}) == {"b": 2}
     assert selector.removeall({"a": 1}) is MISSING
 
 
-def test_jsonselector_zero_matches_and_invalid_matches() -> None:
-    missing: JSONSelector[JSONValue, SimpleSelector] = JSONSelector.parse(
-        "missing", backend=SimpleSelector
-    )
+def test_default_jsonselector_zero_matches() -> None:
+    missing: JSONSelector[JSONValue] = JSONSelector.parse("$.missing[*]")
     assert missing.getall({"a": 1}) == []
     assert missing.get_pointers({"a": 1}) == []
     assert missing.is_gettable({"a": 1}) is True
@@ -137,9 +122,16 @@ def test_jsonselector_zero_matches_and_invalid_matches() -> None:
     assert missing.addall({"a": 1}, 1) == {"a": 1}
     assert missing.removeall({"a": 1}) == {"a": 1}
 
-    bad_match: JSONSelector[JSONValue, SimpleSelector] = JSONSelector.parse(
-        "bad_match", backend=SimpleSelector
-    )
+
+def test_default_jsonselector_invalid_matches_from_backend_raise(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    def broken_finditer(_self: object, _doc: JSONValue) -> list[object]:
+        return [object()]
+
+    monkeypatch.setattr(_DEFAULT_SELECTOR_CLS, "finditer", broken_finditer)
+
+    bad_match: JSONSelector[JSONValue] = JSONSelector.parse("$.a")
     with pytest.raises(InvalidJSONSelector):
         bad_match.getall({"a": 1})
 
