@@ -118,6 +118,53 @@ def test_jsonpointer_root_semantics() -> None:
     assert root.remove({"a": 1}) is MISSING
 
 
+def test_jsonpointer_backend_corruption_paths(
+    subtests: Subtests,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    class BrokenResolveBackend:
+        def __init__(self, parts: tuple[str, ...]) -> None:
+            self._parts = parts
+
+        @property
+        def parts(self) -> tuple[str, ...]:
+            return self._parts
+
+        @classmethod
+        def from_parts(
+            cls, parts: list[object] | tuple[object, ...]
+        ) -> BrokenResolveBackend:
+            return cls(tuple(str(part) for part in parts))
+
+        def resolve(self, _doc: JSONValue) -> object:
+            raise RuntimeError("broken pointer backend")
+
+        def __str__(self) -> str:
+            return "/" + "/".join(self._parts)
+
+    with subtests.test(
+        "read-path backend corruption raises normalized conflict and returns False from read booleans"
+    ):
+        ptr = JSONPointer.parse("/a")
+        monkeypatch.setattr(ptr, "_ptr", BrokenResolveBackend(("a",)))
+        with pytest.raises(PatchConflictError):
+            ptr.get({"a": 1})
+        assert ptr.is_gettable({"a": 1}) is False
+        assert ptr.is_removable({"a": 1}) is False
+
+    with subtests.test(
+        "mutation-path backend corruption is normalized through classify_state"
+    ):
+        ptr = JSONPointer.parse("/a/b")
+        monkeypatch.setattr(ptr, "_ptr", BrokenResolveBackend(("a", "b")))
+        with pytest.raises(PatchConflictError):
+            ptr.add({"a": {"b": 1}}, 2)
+        with pytest.raises(PatchConflictError):
+            ptr.remove({"a": {"b": 1}})
+        assert ptr.is_addable({"a": {"b": 1}}) is False
+        assert ptr.is_addable({"a": {"b": 1}}, 2) is False
+
+
 def test_jsonpointer_array_index_handling(subtests: Subtests) -> None:
     with subtests.test("get by index"):
         item = JSONPointer.parse("/arr/0")
