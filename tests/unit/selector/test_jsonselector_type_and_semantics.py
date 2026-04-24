@@ -8,13 +8,20 @@ import pytest
 from pydantic import TypeAdapter
 from pydantic.experimental.missing_sentinel import MISSING
 from pytest import Subtests
+from typing_extensions import TypeVar
 
 from jsonpatchx.backend import _DEFAULT_SELECTOR_CLS, SelectorBackend
 from jsonpatchx.exceptions import InvalidJSONSelector, PatchConflictError
 from jsonpatchx.pointer import JSONPointer
 from jsonpatchx.selector import JSONSelector
 from jsonpatchx.types import JSONNumber, JSONValue
-from tests.support.selectors import SimpleSelector
+from tests.support.selectors import (
+    AnotherIncompleteSelectorBackend,
+    BadSimpleSelector,
+    IncompleteSelectorBackend,
+    SelectorMissingFinditer,
+    SimpleSelector,
+)
 from tests.support.type_suite import TypeSuite
 
 
@@ -322,6 +329,124 @@ def test_jsonselector_backend_reuse(subtests: Subtests) -> None:
         reparsed = JSONSelector.parse(selector1a, backend=SimpleSelectorSubclass)
         assert isinstance(reparsed.ptr, SimpleSelectorSubclass)
         assert reparsed.ptr is not selector1a.ptr
+
+
+def test_jsonselector_type_args_validation(subtests: Subtests) -> None:
+    with subtests.test("invalid type param"):
+        with pytest.raises(InvalidJSONSelector):
+            TypeAdapter(JSONSelector[int()])
+
+    with subtests.test("not enough args"):
+        with pytest.raises(TypeError):
+            TypeAdapter(JSONSelector)
+
+    with subtests.test("too many args"):
+        with pytest.raises(TypeError):
+            TypeAdapter(JSONSelector[JSONValue, SimpleSelector, int])
+
+    with subtests.test("invalid backend"):
+        for invalid_backend in [
+            object,
+            object(),
+            JSONValue,
+            str,
+            IncompleteSelectorBackend,
+            AnotherIncompleteSelectorBackend,
+            SelectorMissingFinditer,
+            SelectorBackend,
+            BadSimpleSelector,
+            SimpleSelector("a"),
+            "SimpleSelector",
+        ]:
+            with pytest.raises(InvalidJSONSelector):
+                adapter = TypeAdapter(JSONSelector[JSONValue, invalid_backend])
+                adapter.validate_python("a")
+
+    with subtests.test("valid backend"):
+        default_adapter = TypeAdapter(JSONSelector[JSONValue, _DEFAULT_SELECTOR_CLS])
+        default_adapter.validate_python("$.a")
+
+        custom_adapter = TypeAdapter(JSONSelector[JSONValue, SimpleSelector])
+        custom_adapter.validate_python("a")
+
+    with subtests.test(
+        "backend typevar bound to SelectorBackend requires specialization or default"
+    ):
+        S_backend = TypeVar("S_backend", bound=SelectorBackend)
+        adapter = TypeAdapter(JSONSelector[JSONValue, S_backend])
+        with pytest.raises(InvalidJSONSelector):
+            adapter.validate_python("$.a")
+
+    with subtests.test("backend typevar constraints require specialization or default"):
+        S_constrained = TypeVar("S_constrained", SimpleSelector, _DEFAULT_SELECTOR_CLS)
+        adapter = TypeAdapter(JSONSelector[JSONValue, S_constrained])
+        with pytest.raises(InvalidJSONSelector):
+            adapter.validate_python("$.a")
+
+    with subtests.test("backend typevar non-backend bound fails at runtime"):
+        S_invalid_bound = TypeVar("S_invalid_bound", bound=str)
+        adapter = TypeAdapter(JSONSelector[JSONValue, S_invalid_bound])
+        with pytest.raises(InvalidJSONSelector):
+            adapter.validate_python("$.a")
+
+    with subtests.test("backend typevar without constraints or bound is rejected"):
+        S_unbound = TypeVar("S_unbound")
+        adapter = TypeAdapter(JSONSelector[JSONValue, S_unbound])
+        with pytest.raises(InvalidJSONSelector):
+            adapter.validate_python("$.a")
+
+    with subtests.test("backend typevar default is honored at runtime"):
+
+        class DefaultSimpleSelector(SimpleSelector):
+            pass
+
+        S_default = TypeVar(
+            "S_default", bound=SelectorBackend, default=DefaultSimpleSelector
+        )
+        adapter = TypeAdapter(JSONSelector[JSONValue, S_default])
+        selector = adapter.validate_python("a")
+        assert isinstance(selector.ptr, DefaultSimpleSelector)
+
+    with subtests.test("backend typevar nested default typevar is resolved"):
+        S_inner = TypeVar("S_inner", bound=SelectorBackend, default=SimpleSelector)
+        S_outer = TypeVar("S_outer", bound=SelectorBackend, default=S_inner)
+        adapter = TypeAdapter(JSONSelector[JSONValue, S_outer])
+        selector = adapter.validate_python("a")
+        assert isinstance(selector.ptr, SimpleSelector)
+
+    with subtests.test("backend typevar non-type default is rejected"):
+        S_non_type_default = TypeVar(
+            "S_non_type_default", bound=SelectorBackend, default=123
+        )
+        adapter = TypeAdapter(JSONSelector[JSONValue, S_non_type_default])
+        with pytest.raises(InvalidJSONSelector):
+            adapter.validate_python("$.a")
+
+    with subtests.test("backend typevar SelectorBackend default is rejected"):
+        S_protocol_default = TypeVar(
+            "S_protocol_default", bound=SelectorBackend, default=SelectorBackend
+        )
+        adapter = TypeAdapter(JSONSelector[JSONValue, S_protocol_default])
+        with pytest.raises(InvalidJSONSelector):
+            adapter.validate_python("$.a")
+
+    with subtests.test("TypeVar without default works in Python 3.12 and below"):
+        import typing
+
+        S_backend = typing.TypeVar("S_backend", bound=SelectorBackend)
+        adapter = TypeAdapter(JSONSelector[JSONValue, S_backend])
+        with pytest.raises(InvalidJSONSelector):
+            adapter.validate_python("$.a")
+
+    with subtests.test("reject invalid default backend string syntax"):
+        adapter = TypeAdapter(JSONSelector[JSONValue])
+        with pytest.raises(InvalidJSONSelector):
+            adapter.validate_python("a")
+
+    with subtests.test("reject invalid custom backend string syntax"):
+        adapter = TypeAdapter(JSONSelector[JSONValue, SimpleSelector])
+        with pytest.raises(InvalidJSONSelector):
+            adapter.validate_python("$.a")
 
 
 def test_jsonselector_json_schema() -> None:

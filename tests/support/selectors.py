@@ -122,3 +122,32 @@ class SimpleSelector(SelectorBackend):
     @override
     def __repr__(self) -> str:
         return f"SimpleSelector({self._selector!r})"
+
+
+class IncompleteSelectorBackend:
+    """A SelectorBackend missing required methods."""
+
+    __init__ = SimpleSelector.__init__
+
+    __str__ = SimpleSelector.__str__
+
+
+class AnotherIncompleteSelectorBackend(IncompleteSelectorBackend, SelectorBackend):
+    """IncompleteSelectorBackend but it technically inherits from SelectorBackend."""
+
+    pass
+
+
+class BadSimpleSelector(SimpleSelector):
+    """Looks like a valid SimpleSelector until runtime."""
+
+    def __new__(cls, selector: str) -> str:
+        return "nope"
+
+
+class SelectorMissingFinditer(SelectorBackend):
+    """SimpleSelector but without finditer()."""
+
+    __init__ = SimpleSelector.__init__
+
+    __str__ = SimpleSelector.__str__
