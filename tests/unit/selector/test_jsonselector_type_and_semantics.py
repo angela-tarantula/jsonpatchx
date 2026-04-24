@@ -2,10 +2,10 @@ from __future__ import annotations
 
 import copy
 from functools import partial
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Generic
 
 import pytest
-from pydantic import TypeAdapter
+from pydantic import BaseModel, TypeAdapter
 from pydantic.experimental.missing_sentinel import MISSING
 from pytest import Subtests
 from typing_extensions import TypeVar
@@ -447,6 +447,26 @@ def test_jsonselector_type_args_validation(subtests: Subtests) -> None:
         adapter = TypeAdapter(JSONSelector[JSONValue, SimpleSelector])
         with pytest.raises(InvalidJSONSelector):
             adapter.validate_python("$.a")
+
+
+def test_selector_backend_typevar_explicit_policy_cases(subtests: Subtests) -> None:
+    with subtests.test("explicit SelectorBackend parameter is rejected at runtime"):
+        adapter = TypeAdapter(JSONSelector[JSONValue, SelectorBackend])
+        with pytest.raises(InvalidJSONSelector):
+            adapter.validate_python("$.a")
+
+    with subtests.test("direct specialization uses explicit backend"):
+
+        class OtherSimpleSelector(SimpleSelector):
+            pass
+
+        S_backend = TypeVar("S_backend", bound=SelectorBackend, default=SimpleSelector)
+
+        class GenericModel(BaseModel, Generic[S_backend]):
+            path: JSONSelector[JSONValue, S_backend]
+
+        model = GenericModel[OtherSimpleSelector].model_validate({"path": "a"})
+        assert isinstance(model.path.ptr, OtherSimpleSelector)
 
 
 def test_jsonselector_json_schema() -> None:
