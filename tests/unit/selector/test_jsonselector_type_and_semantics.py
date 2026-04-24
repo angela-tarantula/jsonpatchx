@@ -469,6 +469,47 @@ def test_selector_backend_typevar_explicit_policy_cases(subtests: Subtests) -> N
         assert isinstance(model.path.ptr, OtherSimpleSelector)
 
 
+def test_jsonselector_json_schema_backend_resolution(subtests: Subtests) -> None:
+    with subtests.test("default backend reports json-path format"):
+        schema = TypeAdapter(JSONSelector[JSONValue]).json_schema()
+        assert schema["format"] == "json-path"
+
+    with subtests.test("concrete custom backend reports custom format"):
+        schema = TypeAdapter(JSONSelector[JSONValue, SimpleSelector]).json_schema()
+        assert schema["format"] == "x-json-selector"
+
+    with subtests.test("backend TypeVar without default cannot produce JSON schema"):
+        S_backend = TypeVar("S_backend", bound=SelectorBackend)
+        with pytest.raises(InvalidJSONSelector):
+            TypeAdapter(JSONSelector[JSONValue, S_backend]).json_schema()
+
+    with subtests.test(
+        "backend TypeVar defaulting to built-in backend reports json-path format"
+    ):
+        S_default_default_selector = TypeVar(
+            "S_default_default_selector",
+            bound=SelectorBackend,
+            default=_DEFAULT_SELECTOR_CLS,
+        )
+        schema = TypeAdapter(
+            JSONSelector[JSONValue, S_default_default_selector]
+        ).json_schema()
+        assert schema["format"] == "json-path"
+
+    with subtests.test(
+        "backend TypeVar defaulting to custom backend reports custom format"
+    ):
+        S_default_custom_selector = TypeVar(
+            "S_default_custom_selector",
+            bound=SelectorBackend,
+            default=SimpleSelector,
+        )
+        schema = TypeAdapter(
+            JSONSelector[JSONValue, S_default_custom_selector]
+        ).json_schema()
+        assert schema["format"] == "x-json-selector"
+
+
 def test_jsonselector_json_schema() -> None:
     default_schema = TypeAdapter(JSONSelector[JSONNumber]).json_schema()
     assert default_schema["type"] == "string"
