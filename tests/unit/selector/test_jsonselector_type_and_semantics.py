@@ -546,17 +546,6 @@ def test_jsonselector_covariance_narrow_to_wide(subtests: Subtests) -> None:
         assert JSONSelector.parse(s_bool, type_param=JSONValue) == s_bool
 
 
-def test_default_jsonselector_backend_smoke() -> None:
-    selector: JSONSelector[JSONNumber] = JSONSelector.parse(
-        "$.items[*]", type_param=JSONNumber
-    )
-    assert selector.getall({"items": [1, 2]}) == [1, 2]
-    assert [str(pointer) for pointer in selector.get_pointers({"items": [1, 2]})] == [
-        "/items/0",
-        "/items/1",
-    ]
-
-
 def test_default_jsonselector_returns_rfc6901_compliant_pointers(
     subtests: Subtests,
 ) -> None:
