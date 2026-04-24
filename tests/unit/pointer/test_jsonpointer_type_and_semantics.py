@@ -506,11 +506,15 @@ def test_backend_typevar_explicit_policy_cases(subtests: Subtests) -> None:
 def test_jsonpointer_json_schema_backend_resolution(subtests: Subtests) -> None:
     with subtests.test("default backend reports RFC json-pointer format"):
         schema = TypeAdapter(JSONPointer[JSONValue]).json_schema()
+        assert schema["type"] == "string"
         assert schema["format"] == "json-pointer"
+        assert schema["x-pointer-type-schema"] == {}
 
     with subtests.test("concrete custom backend reports custom format"):
-        schema = TypeAdapter(JSONPointer[JSONValue, DotPointer]).json_schema()
+        schema = TypeAdapter(JSONPointer[JSONNumber, DotPointer]).json_schema()
+        assert schema["type"] == "string"
         assert schema["format"] == "x-json-pointer"
+        assert schema["x-pointer-type-schema"] == {"type": "number"}
 
     with subtests.test("backend TypeVar without default cannot produce JSON schema"):
         P_backend = TypeVar("P_backend", bound=PointerBackend)
