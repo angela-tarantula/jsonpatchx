@@ -58,6 +58,8 @@ class BadDotPointer(DotPointer):
 
 
 class PointerMissingParts(PointerBackend):
+    """DotPointer but without the parts attribute."""
+
     __init__ = DotPointer.__init__
 
     from_parts = DotPointer.from_parts

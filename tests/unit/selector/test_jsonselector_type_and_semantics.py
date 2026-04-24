@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import copy
+from functools import partial
 from typing import Any
 
 import pytest
@@ -121,6 +122,77 @@ def test_default_jsonselector_zero_matches() -> None:
     assert missing.is_removable({"a": 1}) is True
     assert missing.addall({"a": 1}, 1) == {"a": 1}
     assert missing.removeall({"a": 1}) == {"a": 1}
+
+
+@pytest.mark.parametrize(
+    ("custom_selector_cls", "selector_str", "missing_str"),
+    [
+        (None, "$.record.*", "$.missing[*]"),
+        (SimpleSelector, "record_values", "missing"),
+    ],
+)
+def test_jsonselector_public_methods_are_backend_agnostic(
+    subtests: Subtests,
+    custom_selector_cls: type[SimpleSelector] | None,
+    selector_str: str,
+    missing_str: str,
+) -> None:
+    doc: JSONValue = {"record": {"a": 1, "b": 2}, "a": True}
+
+    if custom_selector_cls is None:
+        parse = JSONSelector.parse
+    else:
+        parse = partial(JSONSelector.parse, backend=custom_selector_cls)
+
+    selector = parse(selector_str, type_param=JSONNumber)
+    missing = parse(missing_str, type_param=JSONNumber)
+
+    with subtests.test("ptr"):
+        assert selector.ptr is not None
+
+    with subtests.test("type_param"):
+        assert selector.type_param is JSONNumber
+
+    with subtests.test("is_valid_type"):
+        assert selector.is_valid_type(1) is True
+        assert selector.is_valid_type(True) is False
+
+    with subtests.test("getall"):
+        assert selector.getall(doc) == [1, 2]
+
+    with subtests.test("get_pointers"):
+        assert [str(pointer) for pointer in selector.get_pointers(doc)] == [
+            "/record/a",
+            "/record/b",
+        ]
+
+    with subtests.test("is_gettable"):
+        assert selector.is_gettable(doc) is True
+        assert missing.is_gettable(doc) is True
+
+    with subtests.test("is_addable"):
+        assert selector.is_addable(copy.deepcopy(doc), 9) is True
+        assert selector.is_addable(copy.deepcopy(doc), object()) is False
+        assert missing.is_addable(copy.deepcopy(doc), 9) is True
+
+    with subtests.test("addall"):
+        assert selector.addall(copy.deepcopy(doc), 9) == {
+            "record": {"a": 9, "b": 9},
+            "a": True,
+        }
+
+    with subtests.test("is_removable"):
+        assert selector.is_removable(doc) is True
+        assert missing.is_removable(doc) is True
+
+    with subtests.test("removeall"):
+        assert selector.removeall(copy.deepcopy(doc)) == {
+            "record": {},
+            "a": True,
+        }
+
+    with subtests.test("__str__"):
+        assert str(selector) == selector_str
 
 
 def test_default_jsonselector_invalid_matches_from_backend_raise(
