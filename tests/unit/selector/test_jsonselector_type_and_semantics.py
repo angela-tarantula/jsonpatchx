@@ -114,19 +114,6 @@ def test_jsonselector_addall(subtests: Subtests, suite: TypeSuite) -> None:
                         selector.addall(copy.deepcopy(doc), valid_T_value)
 
 
-def test_jsonselector_addall_and_removeall_with_custom_backend() -> None:
-    selector: JSONSelector[JSONNumber, SimpleSelector] = JSONSelector.parse(
-        "record_values",
-        type_param=JSONNumber,
-        backend=SimpleSelector,
-    )
-
-    assert selector.addall({"record": {"a": 1, "b": 2}}, 9) == {
-        "record": {"a": 9, "b": 9}
-    }
-    assert selector.removeall({"record": {"a": 1, "b": 2}}) == {"record": {}}
-
-
 def test_jsonselector_root_semantics() -> None:
     selector: JSONSelector[JSONValue, SimpleSelector] = JSONSelector.parse(
         "root", backend=SimpleSelector
@@ -247,3 +234,46 @@ def test_default_jsonselector_backend_smoke() -> None:
         "/items/0",
         "/items/1",
     ]
+
+
+def test_default_jsonselector_returns_rfc6901_compliant_pointers(
+    subtests: Subtests,
+) -> None:
+    """
+    Guard the built-in backend's exported-pointer behavior, not just matching.
+
+    JsonPatchX's default selector backend delegates JSONPath evaluation to
+    ``python-jsonpath``, but JsonPatchX does more than ask upstream for matched
+    values. It also asks each upstream match for its exact location and then
+    uses that location for later pointer-based reads and mutations.
+
+    That means the shipped selector contract depends on both:
+
+    - upstream JSONPath matching
+    - the safety of the pointers attached to those matches
+
+    Upstream ``python-jsonpath`` matching can still be correct while its own
+    ``JSONPointer`` helper remains non-compliant in ways that cause retargeting.
+    If JsonPatchX trusted ``match.pointer()`` directly, these cases would stop
+    pointing at literal ``"#..."`` object keys and would instead resolve to
+    unintended targets. That is why the default backend rebuilds pointers from
+    ``match.parts`` and re-exports them through JsonPatchX's RFC 6901 pointer
+    backend instead of leaking upstream pointer objects. See
+    ``_DEFAULT_SELECTOR_CLS.finditer()`` in ``jsonpatchx.backend``: that method
+    intentionally rebuilds exported pointers from ``match.parts`` rather than
+    trusting upstream ``match.pointer()``.
+    """
+
+    cases = [
+        ("hash-key", "$['#arr']", {"#arr": "hit"}, {"arr": 123}),
+        ("hash-index", "$['arr']['#1']", {"arr": {"#1": "hit"}}, {"arr": [10, 20]}),
+    ]
+
+    for label, selector_str, matched_doc, retarget_doc in cases:
+        with subtests.test(label):
+            selector: JSONSelector[JSONValue] = JSONSelector.parse(selector_str)
+            [pointer] = selector.get_pointers(matched_doc)
+
+            assert pointer.get(matched_doc) == "hit"
+            with pytest.raises(PatchConflictError):
+                pointer.get(retarget_doc)

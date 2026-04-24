@@ -1,6 +1,7 @@
 import re
 from abc import abstractmethod
 from collections.abc import Iterable, Sequence
+from dataclasses import dataclass
 from enum import Enum, auto
 from typing import (
     Protocol,
@@ -308,6 +309,24 @@ class SelectorBackend(Protocol):
 _DEFAULT_SELECTOR_ENV = JSONPathEnvironment(strict=True)
 
 
+@dataclass(frozen=True, slots=True)
+class _DEFAULT_SELECTOR_MATCH(SelectorMatch):
+    """
+    Thin wrapper around an upstream python-jsonpath match.
+
+    The built-in selector backend uses upstream JSONPath matching, but it
+    exports exact locations through JsonPatchX's default RFC 6901 pointer
+    backend instead of upstream's non-standard JSONPointer extensions.
+    """
+
+    obj: JSONValue
+    parts: tuple[int | str, ...]
+
+    @override
+    def pointer(self) -> PointerBackend:
+        return cast(PointerBackend, _DEFAULT_POINTER_CLS.from_parts(self.parts))
+
+
 class _DEFAULT_SELECTOR_CLS:
     """
     Default JSONPath selector backend powered by ``python-jsonpath``.
@@ -326,10 +345,11 @@ class _DEFAULT_SELECTOR_CLS:
         self._selector = _DEFAULT_SELECTOR_ENV.compile(selector)
 
     def finditer(self, doc: JSONValue) -> Iterable[SelectorMatch]:
-        # Upstream python-jsonpath annotates match.obj as object and returns its
-        # own JSONPointer class from match.pointer(). JsonPatchX still accepts
-        # those matches because that pointer type satisfies PointerBackend.
-        return cast(Iterable[SelectorMatch], self._selector.finditer(doc))
+        for match in self._selector.finditer(doc):
+            yield _DEFAULT_SELECTOR_MATCH(
+                obj=cast(JSONValue, match.obj),
+                parts=match.parts,
+            )
 
     @override
     def __str__(self) -> str:
