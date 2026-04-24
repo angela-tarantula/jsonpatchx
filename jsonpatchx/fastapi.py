@@ -45,13 +45,15 @@ class PatchErrorResponse(BaseModel):
 
 
 def install_jsonpatch_error_handlers(app: FastAPI) -> None:
-    """Register a FastAPI exception handler for PatchError.
+    """Register a FastAPI exception handler for `PatchError`.
 
-    Example:
+    Arguments:
+        app: The FastAPI application to configure.
+
+    Examples:
 
         app = FastAPI()
         install_jsonpatch_error_handlers(app)
-
     """
 
     @app.exception_handler(PatchError)
@@ -62,7 +64,11 @@ def install_jsonpatch_error_handlers(app: FastAPI) -> None:
 def patch_error_openapi_responses() -> dict[int | str, dict[str, Any]]:
     """Return OpenAPI response schema entries for JSON Patch errors.
 
-    Example:
+    Returns:
+        A `responses` mapping suitable for FastAPI route decorators or
+        `openapi_extra`.
+
+    Examples:
 
         @app.patch("/items/{item_id}", responses=patch_error_openapi_responses())
         def patch_item(...):
@@ -121,7 +127,14 @@ def patch_content_type_dependency(
 ) -> list[DependsParam]:
     """Return a dependency list that enforces the JSON Patch media type.
 
-    Example:
+    Arguments:
+        enabled: Whether content-type enforcement should be enabled.
+        media_type: The accepted JSON Patch media type.
+
+    Returns:
+        A dependency list suitable for FastAPI route decorators.
+
+    Examples:
 
         @app.patch("/items/{item_id}", dependencies=patch_content_type_dependency(True))
         def patch_item(...):
@@ -146,16 +159,26 @@ def patch_request_body(
 ) -> dict[str, Any]:
     """Build an OpenAPI requestBody for JSON Patch with optional examples.
 
-    Convention: JSON Patch requests should use ``application/json-patch+json``.
-    This opinionated library advertises only that media type by default.
-    Set ``allow_application_json=True`` to also document ``application/json`` for
-    compatibility when you choose to accept it.
+    Arguments:
+        patch_model: The generated `JsonPatchFor[...]` model exposed in OpenAPI.
+        examples: Optional OpenAPI examples keyed by example name.
+        allow_application_json: Whether `application/json` should also be
+            documented alongside the JSON Patch media type.
+        media_type: The primary JSON Patch media type to document.
+        request_body_overrides: Optional shallow overrides for the generated
+            top-level `requestBody` object. A provided `content` map is merged
+            into the generated content entries.
 
-    ``request_body_overrides`` lets you override top-level requestBody fields and
-    shallow-merge the ``content`` map. If you pass ``content``, its entries are
-    merged into the generated content; all other keys replace generated values.
+    Returns:
+        An `openapi_extra` fragment containing a `requestBody` entry.
 
-    Example:
+    Notes:
+        JSON Patch requests should use `application/json-patch+json`. This
+        library advertises only that media type by default. Set
+        `allow_application_json=True` to also document `application/json` when
+        you intentionally accept both.
+
+    Examples:
 
         @app.patch(
             "/configs/{config_id}",
@@ -206,13 +229,22 @@ def patch_route_kwargs(
 ) -> dict[str, Any]:
     """Return FastAPI decorator kwargs that keep docs and enforcement aligned.
 
-    This opinionated helper adds:
-    - ``responses`` for JSON Patch errors
-    - ``dependencies`` that enforce JSON Patch media type by default
-    - ``openapi_extra`` for the request body when ``patch_model`` is provided
+    Arguments:
+        patch_model: Optional patch model used to generate request-body docs.
+        examples: Optional OpenAPI examples for the patch request body.
+        allow_application_json: Whether `application/json` should be documented
+            and accepted alongside the JSON Patch media type.
+        media_type: The primary JSON Patch media type to document.
+        request_body_overrides: Optional shallow overrides for the generated
+            `requestBody`.
 
-    If ``allow_application_json`` is True, ``application/json`` is documented
-    and enforcement is disabled to allow both.
+    Returns:
+        A FastAPI route kwargs mapping containing `responses`,
+        `dependencies`, and optionally `openapi_extra`.
+
+    Notes:
+        If `allow_application_json` is true, `application/json` is documented
+        and content-type enforcement is disabled to allow both media types.
     """
     kwargs: dict[str, Any] = {
         "responses": patch_error_openapi_responses(),
@@ -244,6 +276,7 @@ class JsonPatchRoute:
     request_param_overrides: dict[str, Any] | None = None
 
     def route_kwargs(self) -> dict[str, Any]:
+        """Return FastAPI route kwargs for this JSON Patch contract."""
         return patch_route_kwargs(
             self.patch_model,
             examples=self.examples,
@@ -253,6 +286,7 @@ class JsonPatchRoute:
         )
 
     def Body(self) -> BodyParam:
+        """Return the configured FastAPI `Body(...)` parameter."""
         body_kwargs = dict(self.request_param_overrides or {})
         if self.strict_content_type:
             body_kwargs.setdefault("media_type", self.media_type)

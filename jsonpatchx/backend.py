@@ -1,19 +1,22 @@
 import re
 from abc import abstractmethod
 from collections.abc import Iterable, Sequence
+from dataclasses import dataclass
 from enum import Enum, auto
 from typing import (
     Protocol,
     Self,
     assert_never,
+    cast,
     override,
     runtime_checkable,
 )
 
+from jsonpath import JSONPathEnvironment
 from jsonpointer import JsonPointer  # type: ignore[import-untyped]
 from jsonpointer import JsonPointerException as JPException
 
-from jsonpatchx.exceptions import InvalidJSONPointer
+from jsonpatchx.exceptions import InvalidJSONPointer, InvalidJSONSelector
 from jsonpatchx.types import JSONValue, _is_array, _is_container, _is_object
 
 # strict RFC 6901 array index
@@ -28,23 +31,23 @@ class PointerBackend(Protocol):
     NOTE: also require that parent pointers are constructable from parts[:-1] OR require that in certain methods!
     Protocol for custom JSON Pointer backends.
 
-    This library is pointer-backend agnostic. By default it uses ``jsonpointer.JsonPointer``,
+    This library is pointer-backend agnostic. By default it uses `jsonpointer.JsonPointer`,
     but advanced users may plug in a custom backend (different parsing or escaping rules, richer
     pointer objects, alternative traversal semantics, and so on).
 
     A backend only needs to provide a small pointer-shaped surface area:
 
     - Constructible from a pointer string.
-    - Exposes unescaped path tokens via ``parts``.
-    - Can be reconstructed from tokens via ``from_parts``.
-    - Can resolve a pointer against a document via ``resolve``.
-    - Has a round-trippable string form via ``__str__``.
+    - Exposes unescaped path tokens via `parts`.
+    - Can be reconstructed from tokens via `from_parts`.
+    - Can resolve a pointer against a document via `resolve`.
+    - Has a round-trippable string form via `__str__`.
 
     Notes:
         - The backend defines its own pointer syntax; there is no universal "root" string.
         - Round-trip invariants should hold for the backend's canonical string form:
-          ``PointerBackend(x)`` equals ``PointerBackend(str(PointerBackend(x)))`` and
-          ``PointerBackend(x)`` equals ``PointerBackend.from_parts(PointerBackend(x).parts)``.
+          `PointerBackend(x)` equals `PointerBackend(str(PointerBackend(x)))` and
+          `PointerBackend(x)` equals `PointerBackend.from_parts(PointerBackend(x).parts)`.
         - The library may cache backend instances; implementations should be immutable or otherwise
           safe to reuse across calls.
         - Backends may raise whatever exceptions are natural for them. Higher-level APIs normalize
@@ -62,7 +65,7 @@ class PointerBackend(Protocol):
         Construct a pointer from unescaped tokens.
 
         Implementations may accept tokens beyond strings (e.g. ints) and stringify them,
-        but must preserve the invariant that ``from_parts(ptr.parts)`` round-trips.
+        but must preserve the invariant that `from_parts(ptr.parts)` round-trips.
         """
 
     @abstractmethod
@@ -80,7 +83,7 @@ class PointerBackend(Protocol):
         """
         Return the backend's canonical string form (escaped tokens, if applicable).
 
-        Must round-trip such that ``PointerBackend(str(ptr))`` yields an equivalent pointer.
+        Must round-trip such that `PointerBackend(str(ptr))` yields an equivalent pointer.
         """
 
     @property
@@ -137,12 +140,12 @@ def _pointer_backend_instance[PB: PointerBackend](
     """
     Internal: construct a PointerBackend instance for a path string.
 
-    Args:
+    Arguments:
         path: Pointer string to parse.
         pointer_cls: Backend class used to parse the pointer.
 
     Returns:
-        A backend instance for ``path``.
+        A backend instance for `path`.
 
     Raises:
         InvalidJSONPointer: If construction fails.
@@ -231,3 +234,162 @@ def classify_state(ptr: PointerBackend, doc: JSONValue) -> TargetState:
 
     else:  # pragma: no cover
         assert_never(container)
+
+
+# -- JSONSelector Backend --
+
+
+@runtime_checkable
+class SelectorMatch(Protocol):
+    """
+    Minimal match shape returned by `SelectorBackend.finditer()`.
+
+    Selector-backed mutation works by turning each match into an exact pointer,
+    then reusing the existing `JSONPointer` mutation rules.
+    """
+
+    @property
+    @abstractmethod
+    def obj(self) -> JSONValue:
+        """Return the matched value."""
+
+    @property
+    @abstractmethod
+    def parts(self) -> Sequence[int | str]:
+        """Return the exact path parts for this match."""
+
+    @abstractmethod
+    def pointer(self) -> PointerBackend:
+        """
+        Return an exact-location pointer for this match.
+
+        Backend authors should return a concrete pointer object that satisfies
+        the `PointerBackend` protocol.
+        """
+
+
+@runtime_checkable
+class SelectorBackend(Protocol):
+    """
+    Protocol for custom query selector backends.
+
+    A selector backend is the query analogue of `PointerBackend`:
+    it parses a selector string and can iterate exact matches against a JSON
+    document.
+    """
+
+    @abstractmethod
+    def __init__(self, selector: str) -> None:
+        """Parse and construct a backend-specific selector."""
+
+    @abstractmethod
+    def finditer(self, doc: JSONValue) -> Iterable[SelectorMatch]:
+        """Yield backend-specific matches against `doc`."""
+
+    @abstractmethod
+    @override
+    def __str__(self) -> str:
+        """Return the backend's canonical string form."""
+
+
+# Out of the box, JsonPatchX's default JSONPath backend follows upstream
+# python-jsonpath's RFC 9535 path.
+#
+# The exception is Python 3.14 and later, where the upstream iregexp-check
+# dependency behind python-jsonpath[strict] is not yet compatible with
+# free-threaded Python. JsonPatchX still uses JSONPathEnvironment(strict=True)
+# there, so this only affects regex compliance:
+# - match() and search() use Python's built-in re instead of the third-party
+#   regex engine.
+# - regex patterns are not validated against RFC 9485 I-Regexp.
+#
+# Clients can still use python-jsonpath directly with their own environment
+# settings, or bind a custom selector backend in JsonPatchX. They just cannot
+# change the fixed environment behind _DEFAULT_SELECTOR_CLS itself.
+_DEFAULT_SELECTOR_ENV = JSONPathEnvironment(strict=True)
+
+
+@dataclass(frozen=True, slots=True)
+class _DEFAULT_SELECTOR_MATCH(SelectorMatch):
+    """
+    Thin wrapper around an upstream python-jsonpath match.
+
+    The built-in selector backend uses upstream JSONPath matching, but it
+    exports exact locations through JsonPatchX's default RFC 6901 pointer
+    backend instead of upstream's non-standard JSONPointer extensions.
+    """
+
+    obj: JSONValue
+    parts: tuple[int | str, ...]
+
+    @override
+    def pointer(self) -> PointerBackend:
+        return cast(PointerBackend, _DEFAULT_POINTER_CLS.from_parts(self.parts))
+
+
+class _DEFAULT_SELECTOR_CLS:
+    """
+    Default JSONPath selector backend powered by `python-jsonpath`.
+
+    The wrapped selector is compiled from a string using the fixed shared
+    `_DEFAULT_SELECTOR_ENV`. Out of the box, this follows upstream's RFC 9535
+    path. On Python 3.14 and later, the upstream `iregexp-check` dependency
+    behind `python-jsonpath[strict]` is not yet compatible with free-threaded
+    Python, so only regex-related RFC behavior falls back.
+    """
+
+    __slots__ = ("_path", "_selector")
+
+    def __init__(self, selector: str) -> None:
+        self._path = selector
+        self._selector = _DEFAULT_SELECTOR_ENV.compile(selector)
+
+    def finditer(self, doc: JSONValue) -> Iterable[SelectorMatch]:
+        for match in self._selector.finditer(doc):
+            yield _DEFAULT_SELECTOR_MATCH(
+                obj=cast(JSONValue, match.obj),
+                parts=match.parts,
+            )
+
+    @override
+    def __str__(self) -> str:
+        return self._path
+
+    @override
+    def __repr__(self) -> str:
+        return "JsonPathRFC9535(" + repr(self._path) + ")"
+
+
+def _selector_backend_instance[SB: SelectorBackend](
+    selector: str, *, selector_cls: type[SB]
+) -> SB:
+    """
+    Internal: construct a SelectorBackend instance for a selector string.
+
+    Arguments:
+        selector: Selector string to parse.
+        selector_cls: Backend class used to parse the selector.
+
+    Returns:
+        A backend instance for `selector`.
+
+    Raises:
+        InvalidJSONSelector: If construction fails.
+    """
+    try:
+        compiled = selector_cls(selector)
+    except Exception as e:
+        if selector_cls is _DEFAULT_SELECTOR_CLS:
+            raise InvalidJSONSelector(
+                f"invalid JSONPath selector for default backend: {selector!r}"
+            ) from e
+        raise InvalidJSONSelector(
+            f"invalid JSON selector for {selector_cls!r}: {selector!r}"
+        ) from e
+
+    if not isinstance(compiled, SelectorBackend):
+        raise InvalidJSONSelector(
+            f"selector_cls {selector_cls!r} instances must implement the SelectorBackend protocol"
+        )
+
+    return compiled

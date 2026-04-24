@@ -154,7 +154,8 @@ That kind of rule belongs on the operation itself:
 
 ```python
 from typing import Literal, Self, override
-from pydantic import model_validator, PydanticCustomError
+from pydantic import model_validator
+from pydantic_core import PydanticCustomError
 from jsonpatchx import JSONPointer, JSONValue, OperationSchema, ReplaceOp
 
 class SwapOp(OperationSchema):
@@ -285,10 +286,6 @@ failures into a single "not allowed" outcome, it lets a custom operation respond
 differently to each case. This keeps the operation logic focused on intent
 rather than reimplementing pointer resolution.
 
-> Note: An implementation of `AddMissingKeyOp` with more structured and detailed
-> error messages is available in the recipes folder should you want to use a
-> production-ready version of this.
-
 ## Schema-Rich Operations
 
 Because custom operations are ordinary Pydantic models, they can also express
@@ -304,7 +301,7 @@ be present.
 ```python
 from typing import Literal, Self, override
 from pydantic import ConfigDict, Field, model_validator
-from pydantic.experimental.missing_sentinel import MISSING
+from pydantic_core import MISSING
 from jsonpatchx import JSONPointer, JSONValue, OperationSchema, ReplaceOp
 from jsonpatchx.types import JSONNumber
 
@@ -383,7 +380,8 @@ documentation. The operation is not just something your server can run. It is
 also something your API can describe clearly.
 
 > I must admit, I didn't write that operation myself. I used JsonPatchX's
-> AGENTS.md context to give my coding agent everything it needed to produce it.
+> [`examples/AGENTS.md`](https://github.com/angela-tarantula/jsonpatchx/blob/main/examples/AGENTS.md)
+> context to give my coding agent everything it needed to produce it.
 
 ## Use Operation Instances Directly
 

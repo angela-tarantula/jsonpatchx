@@ -5,7 +5,7 @@
       "label": "type-check",
       "type": "shell",
       "command": "bash",
-      "args": ["-c", "uv run ruff check && uv run mypy ."],
+      "args": ["-c", "uv run ruff check && uv run mypy --no-incremental ."],
       "group": "test",
       "problemMatcher": []
     },

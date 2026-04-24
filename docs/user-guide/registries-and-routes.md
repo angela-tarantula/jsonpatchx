@@ -39,7 +39,8 @@ type WriteOnlyRegistry = AddOp | RemoveOp | ReplaceOp | MoveOp | CopyOp
 type StandardRegistry = WriteOnlyRegistry | TestOp
 ```
 
-Both `JsonPatch` and `JsonPatchFor` use `StandardRegistry` by default.
+Both `JsonPatch` and `JsonPatchFor` use `StandardRegistry` (the six standard RFC
+6902 operations) by default.
 
 But you can use your own:
 
@@ -61,7 +62,7 @@ registry using `Union[*ops]`:
 ```python
 from typing import Union
 
-registry_ops = [name_to_op(name) for name in load_config("registry.json")]
+registry_ops = [operation_by_name[name] for name in load_config("registry.json")]
 type MyRegistry = Union[*registry_ops]
 ```
 
@@ -75,9 +76,9 @@ import os
 from typing import Union
 from jsonpatchx import StandardRegistry
 
-extras = [name_to_op(name) for name in names if os.getenv(name)]
+extras = [operation_by_name[name] for name in names if os.getenv(name)]
 type MyRegistry = Union[StandardRegistry, *extras]
 ```
 
-Operations can also be rolled back on application restart by changing the
-startup environment.
+This allows you to enable or disable specific API capabilities via environment
+flags or config files without modifying your route logic.

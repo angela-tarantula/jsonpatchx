@@ -4,7 +4,7 @@ from typing import Any, Literal, Self, cast, override
 
 import pytest
 from pydantic import ConfigDict, Field, TypeAdapter, ValidationError, model_validator
-from pydantic.experimental.missing_sentinel import MISSING
+from pydantic_core import MISSING
 from pytest import Subtests
 
 from jsonpatchx import ReplaceOp
