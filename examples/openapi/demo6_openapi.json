@@ -270,7 +270,7 @@
       },
       "RemoveOp": {
         "additionalProperties": true,
-        "description": "RFC 6902 remove operation. Removal of the root sets it to null.",
+        "description": "RFC 6902 remove operation. Removal of the root returns MISSING.",
         "properties": {
           "op": {
             "const": "remove",

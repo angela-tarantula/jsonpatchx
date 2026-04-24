@@ -1,27 +1,15 @@
 import copy
-from typing import Generic, Literal, Self, override
+from typing import Literal, Self, override
 
 from pydantic import ConfigDict, Field, model_validator
-from typing_extensions import TypeVar
 
 from jsonpatchx.exceptions import OperationValidationError, TestOpFailed
 from jsonpatchx.pointer import JSONPointer
 from jsonpatchx.schema import OperationSchema
-from jsonpatchx.types import (
-    JSONBound,
-    JSONValue,
-)
-
-# Advanced: RFC ops are actually generic: AddOp[T], RemoveOp[T], ReplaceOp[T], MoveOp[T], CopyOp[T], TestOp[T] (default T=JSONValue).
-# This lets custom ops use precise pointer targets like JSONPointer[JSONArray[JSONNumber]] and still compose safely.
-# Users don't need to make their own ops generic unless for advanced use case they intend to commpose them with type-safety.
-# So RFC ops are not advertised as generic in order to lower the barrier to entry.
+from jsonpatchx.types import JSONValue
 
 
-T = TypeVar("T", default=JSONValue, bound=JSONBound)
-
-
-class AddOp(OperationSchema, Generic[T]):
+class AddOp(OperationSchema):
     """RFC 6902 add operation."""
 
     model_config = ConfigDict(
@@ -30,33 +18,33 @@ class AddOp(OperationSchema, Generic[T]):
     )
 
     op: Literal["add"] = "add"
-    path: JSONPointer[T]
-    value: T
+    path: JSONPointer[JSONValue]
+    value: JSONValue
 
     @override
     def apply(self, doc: JSONValue) -> JSONValue:
         return self.path.add(doc, self.value)
 
 
-class RemoveOp(OperationSchema, Generic[T]):
-    """RFC 6902 remove operation. Removal of the root sets it to null."""
+class RemoveOp(OperationSchema):
+    """RFC 6902 remove operation. Removal of the root returns MISSING."""
 
     model_config = ConfigDict(
         title="Remove operation",
         json_schema_extra={
-            "description": "RFC 6902 remove operation. Removal of the root sets it to null."
+            "description": "RFC 6902 remove operation. Removal of the root returns MISSING."
         },
     )
 
     op: Literal["remove"] = "remove"
-    path: JSONPointer[T]
+    path: JSONPointer[JSONValue]
 
     @override
     def apply(self, doc: JSONValue) -> JSONValue:
         return self.path.remove(doc)
 
 
-class ReplaceOp(OperationSchema, Generic[T]):
+class ReplaceOp(OperationSchema):
     """RFC 6902 replace operation."""
 
     model_config = ConfigDict(
@@ -65,16 +53,16 @@ class ReplaceOp(OperationSchema, Generic[T]):
     )
 
     op: Literal["replace"] = "replace"
-    path: JSONPointer[T]
-    value: T
+    path: JSONPointer[JSONValue]
+    value: JSONValue
 
     @override
     def apply(self, doc: JSONValue) -> JSONValue:
-        doc = RemoveOp[T](path=self.path).apply(doc)
-        return AddOp[T](path=self.path, value=self.value).apply(doc)
+        doc = RemoveOp(path=self.path).apply(doc)
+        return AddOp(path=self.path, value=self.value).apply(doc)
 
 
-class MoveOp(OperationSchema, Generic[T]):
+class MoveOp(OperationSchema):
     """RFC 6902 move operation."""
 
     model_config = ConfigDict(
@@ -83,8 +71,8 @@ class MoveOp(OperationSchema, Generic[T]):
     )
 
     op: Literal["move"] = "move"
-    from_: JSONPointer[T] = Field(alias="from")
-    path: JSONPointer[T]
+    from_: JSONPointer[JSONValue] = Field(alias="from")
+    path: JSONPointer[JSONValue]
 
     @model_validator(mode="after")
     def _reject_proper_prefixes(self) -> Self:
@@ -97,11 +85,11 @@ class MoveOp(OperationSchema, Generic[T]):
     @override
     def apply(self, doc: JSONValue) -> JSONValue:
         value = self.from_.get(doc)
-        doc = RemoveOp[T](path=self.from_).apply(doc)
-        return AddOp[T](path=self.path, value=value).apply(doc)
+        doc = RemoveOp(path=self.from_).apply(doc)
+        return AddOp(path=self.path, value=value).apply(doc)
 
 
-class CopyOp(OperationSchema, Generic[T]):
+class CopyOp(OperationSchema):
     """RFC 6902 copy operation."""
 
     model_config = ConfigDict(
@@ -110,17 +98,17 @@ class CopyOp(OperationSchema, Generic[T]):
     )
 
     op: Literal["copy"] = "copy"
-    from_: JSONPointer[T] = Field(alias="from")
-    path: JSONPointer[T]
+    from_: JSONPointer[JSONValue] = Field(alias="from")
+    path: JSONPointer[JSONValue]
 
     @override
     def apply(self, doc: JSONValue) -> JSONValue:
         value = self.from_.get(doc)
         duplicate = copy.deepcopy(value)
-        return AddOp[T](path=self.path, value=duplicate).apply(doc)
+        return AddOp(path=self.path, value=duplicate).apply(doc)
 
 
-class TestOp(OperationSchema, Generic[T]):
+class TestOp(OperationSchema):
     """RFC 6902 test operation."""
 
     __test__ = False  # Suppress pytest warning
@@ -131,8 +119,8 @@ class TestOp(OperationSchema, Generic[T]):
     )
 
     op: Literal["test"] = "test"
-    path: JSONPointer[T]
-    value: T
+    path: JSONPointer[JSONValue]
+    value: JSONValue
 
     @override
     def apply(self, doc: JSONValue) -> JSONValue:

@@ -9,3 +9,6 @@ skip-check:
 skip-path:
   # This fixture intentionally includes non-standard JSON numeric literals (NaN/Infinity).
   - tests/compliance/rfc6902/jsonpatchx_nonfinite_tests.json
+  # Vendored upstream compliance suites are test data, not this repo's workflow/config surface.
+  - tests/compliance/rfc6902/external/
+  - tests/compliance/rfc9535/external/

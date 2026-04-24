@@ -59,20 +59,20 @@ class JsonPatch(Sequence[OperationSchema]):
     """
     A parsed JSON Patch document (RFC 6902-style) bound to a registry declaration.
 
-    ``JsonPatch`` is a convenience wrapper that:
+    `JsonPatch` is a convenience wrapper that:
 
-    - parses and validates an input patch document using a registry of ``OperationSchema`` models,
-    - stores the resulting typed ``OperationSchema`` instances,
+    - parses and validates an input patch document using a registry of `OperationSchema` models,
+    - stores the resulting typed `OperationSchema` instances,
     - applies them to JSON documents via the shared patch engine.
 
     Notes:
-        - ``apply`` delegates to the core engine ``_apply_ops`` and follows the same copy and mutation
+        - `apply` delegates to the core engine `_apply_ops` and follows the same copy and mutation
           semantics.
-        - ``inplace=False`` (default): the engine deep-copies ``doc`` first; operations may mutate the copy.
-        - ``inplace=True``: operations run against the provided ``doc`` object (no rollback on failure).
+        - `inplace=False` (default): the engine deep-copies `doc` first; operations may mutate the copy.
+        - `inplace=True`: operations run against the provided `doc` object (no rollback on failure).
           This is a copy policy, not an object-identity guarantee for the returned value.
-        - ``JsonPatch`` is immutable with respect to its operation list after construction, but the
-          documents you apply it to may be mutated depending on ``inplace``.
+        - `JsonPatch` is immutable with respect to its operation list after construction, but the
+          documents you apply it to may be mutated depending on `inplace`.
     """
 
     __slots__ = ("_ops", "_registry")
@@ -86,10 +86,10 @@ class JsonPatch(Sequence[OperationSchema]):
         """
         Construct a JsonPatch from a sequence of operation dicts.
 
-        Args:
+        Arguments:
             patch: A sequence of JSON Patch operations as dicts.
             registry: A union of concrete OperationSchemas used for parsing and
-                validation (``OpA | OpB | ...``). If omitted, the standard RFC
+                validation (`OpA | OpB | ...`). If omitted, the standard RFC
                 6902 operations are used.
         """
         if registry is None:
@@ -108,14 +108,20 @@ class JsonPatch(Sequence[OperationSchema]):
         """
         Construct a JsonPatch from a JSON-formatted string.
 
-        JSON decoding follows last-write-wins just like ``json.loads()``
-        If you want strict duplicate-key rejection, parse JSON yourself and pass the result to ``JsonPatch()``.
-
-        Args:
-            text: JSON-formatted string/bytes/bytearray for a JSON Patch document.
+        Arguments:
+            text: JSON-formatted string, bytes, or bytearray containing a JSON
+                Patch document.
             registry: A union of concrete OperationSchemas used for parsing and
-                validation (``OpA | OpB | ...``). If omitted, the standard RFC
+                validation (`OpA | OpB | ...`). If omitted, the standard RFC
                 6902 operations are used.
+
+        Returns:
+            A parsed `JsonPatch` instance.
+
+        Notes:
+            JSON decoding follows last-write-wins, just like `json.loads()`.
+            If you need strict duplicate-key rejection, decode JSON yourself
+            and pass the resulting Python value to `JsonPatch(...)`.
         """
         instance = cls.__new__(cls)
         if registry is None:
@@ -143,21 +149,21 @@ class JsonPatch(Sequence[OperationSchema]):
         inplace: bool = False,
     ) -> JSONValue:
         """
-        Apply this patch to ``doc`` and return the patched document.
+        Apply this patch to `doc` and return the patched document.
 
-        Args:
+        Arguments:
             doc: The target JSON document.
-            inplace: Copy policy. ``False`` deep-copies ``doc`` before applying operations.
-                ``True`` skips that copy and applies operations against ``doc``, but does not
+            inplace: Copy policy. `False` deep-copies `doc` before applying operations.
+                `True` skips that copy and applies operations against `doc`, but does not
                 guarantee returned object identity for root-targeting operations.
 
-        Return:
+        Returns:
             patched: The patched JSON document.
 
         Raises:
-            ValidationError: If the input is not a mutable ``JSONValue``.
+            PatchValidationError: If `doc` is not a valid JSON document.
             PatchError: Any patch-domain error raised by operations, including conflicts.
-                ``PatchInternalError`` is a ``PatchError`` raised for unexpected failures.
+                `PatchInternalError` is a `PatchError` raised for unexpected failures.
         """
         try:
             _validate_JSONValue(doc)
@@ -221,21 +227,28 @@ def apply_patch(
     inplace: bool = False,
 ) -> JSONValue:
     """
-    Apply a standard RFC 6902 JSON Patch document to ``doc``.
+    Apply a standard RFC 6902 JSON Patch document to `doc`.
 
-    This is a small convenience wrapper around ``JsonPatch`` using the standard registry.
-
-    Args:
+    Arguments:
         doc: Target JSON document.
         patch: Patch document as a sequence of operation mappings.
         registry: A union of concrete OperationSchemas used for parsing and
-            validation (``OpA | OpB | ...``). If omitted, the standard RFC
+            validation (`OpA | OpB | ...`). If omitted, the standard RFC
             6902 operations are used.
-        inplace: Copy policy. ``False`` deep-copies ``doc`` first; ``True`` skips that copy.
+        inplace: Copy policy. `False` deep-copies `doc` first; `True` skips that copy.
             This is not a guarantee that the returned object is the exact same root object.
-            See ``_apply_ops(..., inplace=...)`` for full semantics.
+            See `_apply_ops(..., inplace=...)` for full semantics.
 
     Returns:
         The patched document.
+
+    Raises:
+        PatchValidationError: If `doc` is not a valid JSON document.
+        PatchError: Any patch-domain error raised by patch parsing or
+            application.
+
+    Notes:
+        This is a small convenience wrapper around `JsonPatch` using the
+        standard registry.
     """
     return JsonPatch(patch, registry=registry).apply(doc, inplace=inplace)

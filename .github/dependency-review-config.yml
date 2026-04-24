@@ -22,6 +22,7 @@ allow-licenses:
   - 0BSD
   - Python-2.0
   - Python-2.0.1
+  - CNRI-Python
   - GPL-1.0-or-later
   - GPL-2.0-or-later
 
@@ -31,6 +32,7 @@ allow-dependencies-licenses:
   - pkg:pypi/click@8.3.2 # BSD-3-Clause
   - pkg:pypi/fastapi@0.135.3 # MIT
   - pkg:pypi/griffelib@2.0.2 # ISC
+  - pkg:pypi/iregexp-check@0.1.4 # MIT
   - pkg:pypi/jsonpointer@3.1.1 # Modified BSD License
   - pkg:pypi/mkdocs-autorefs@1.4.4 # ISC
   - pkg:pypi/mkdocs-get-deps@0.2.2 # MIT
@@ -47,6 +49,7 @@ allow-dependencies-licenses:
   - pkg:pypi/pyinstaller@6.19.0 # GPL-2.0-or-later
   - pkg:pypi/python-jsonpath@2.0.2 # MIT
   - pkg:pypi/pyinstaller-hooks-contrib@2026.4 # GPL-2.0-or-later
+  - pkg:pypi/regex@2026.4.4 # Apache-2.0 AND CNRI-Python; currently reported as unknown
   - pkg:pypi/uv@0.10.12 # Apache-2.0 OR MIT
 
 

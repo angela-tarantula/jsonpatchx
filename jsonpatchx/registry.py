@@ -36,7 +36,7 @@ from jsonpatchx.builtins import (
 )
 from jsonpatchx.exceptions import InvalidOperationRegistry, OperationNotRecognized
 from jsonpatchx.schema import OperationSchema
-from jsonpatchx.types import JSONValue, _type_adapter_for
+from jsonpatchx.types import JSONValue
 
 
 def _iter_union_members[T](value: TypeForm[T]) -> Generator[type[T]]:
@@ -47,7 +47,7 @@ def _iter_union_members[T](value: TypeForm[T]) -> Generator[type[T]]:
     - flattens unions
 
     It intentionally does not validate member types or forward references.
-    Pydantic enforces that in ``_RegistrySpec.ops``.
+    Pydantic enforces that in `_RegistrySpec.ops`.
     """
     if isinstance(value, TypeAliasType):
         yield from _iter_union_members(value.__value__)
@@ -81,7 +81,7 @@ class _RegistrySpec(BaseModel):
     def from_typeform(cls, typeform: TypeForm[OperationSchema] | Any) -> _RegistrySpec:
         """Build a validated spec from a type-form operation declaration.
 
-        Args:
+        Arguments:
             typeform: A single operation model or union of models, including
                 nested type aliases of those forms.
 
@@ -99,10 +99,10 @@ class _RegistrySpec(BaseModel):
 
     @model_validator(mode="after")
     def _validate_ops(self) -> _RegistrySpec:
-        """Validate registry invariants for ``ops``.
+        """Validate registry invariants for `ops`.
 
         Ensures the registry contains only concrete operation models and that
-        both model names and ``op`` discriminator literals are unique.
+        both model names and `op` discriminator literals are unique.
 
         This is a model validator rather than a field validator because that
         makes it future-proof if additional fields start mattering.
@@ -159,7 +159,7 @@ class _RegistrySpec(BaseModel):
 
     @cached_property
     def model_map(self) -> Mapping[str, type[OperationSchema]]:
-        """Mapping of each allowed ``op`` literal to its operation model."""
+        """Mapping of each allowed `op` literal to its operation model."""
         return {
             op_literal: model
             for model in self.ordered_ops
@@ -170,7 +170,7 @@ class _RegistrySpec(BaseModel):
     def union_type(self) -> TypeForm[OperationSchema]:
         """Discriminated union alias for this registry's operation models.
 
-        Used for Pydantic validation and JSON Schema generation with ``op`` as
+        Used for Pydantic validation and JSON Schema generation with `op` as
         the discriminator.
         """
         RegistryPatchOperation = Annotated[
@@ -182,15 +182,15 @@ class _RegistrySpec(BaseModel):
     @cached_property
     def op_adapter(self) -> TypeAdapter[OperationSchema]:
         """TypeAdapter for validating a single registry-bound operation."""
-        return _type_adapter_for(self.union_type)
+        return TypeAdapter(self.union_type)
 
     @cached_property
     def patch_adapter(self) -> TypeAdapter[list[OperationSchema]]:
         """TypeAdapter for validating a registry-bound patch document."""
-        return _type_adapter_for(list[self.union_type])  # type: ignore[name-defined]
+        return TypeAdapter(list[self.union_type])  # type: ignore[name-defined]
 
     def model_for(self, instruction: str) -> type[OperationSchema]:
-        """Resolve an ``op`` literal to its registered operation model."""
+        """Resolve an `op` literal to its registered operation model."""
         model = self.model_map.get(instruction)
         if model is None:
             raise OperationNotRecognized(

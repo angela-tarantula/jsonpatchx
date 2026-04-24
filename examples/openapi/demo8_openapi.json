@@ -1,25 +1,36 @@
 {
   "components": {
     "schemas": {
-      "AddOp": {
+      "ConfigId": {
+        "enum": [
+          "service"
+        ],
+        "title": "ConfigId",
+        "type": "string"
+      },
+      "GenericIncrementEachOp_JSONPathSelectorV2_": {
         "additionalProperties": true,
-        "description": "RFC 6902 add operation.",
+        "description": "Increment every numeric match produced by a generic JSONSelector backend.",
         "properties": {
           "op": {
-            "const": "add",
+            "const": "generic_increment_each",
             "description": "The operation to perform.",
             "title": "Op",
             "type": "string"
           },
           "path": {
-            "description": "JSON Pointer (RFC 6901) string",
-            "format": "json-pointer",
+            "description": "JSON selector string (custom backend syntax)",
+            "format": "x-json-selector",
             "title": "Path",
             "type": "string",
-            "x-pointer-type-schema": {}
+            "x-selector-type-schema": {
+              "type": "number"
+            }
           },
           "value": {
-            "title": "Value"
+            "gt": 0,
+            "title": "Value",
+            "type": "number"
           }
         },
         "required": [
@@ -27,143 +38,8 @@
           "path",
           "value"
         ],
-        "title": "Add operation",
+        "title": "Increment selected numbers",
         "type": "object"
-      },
-      "CopyOp": {
-        "additionalProperties": true,
-        "description": "RFC 6902 copy operation.",
-        "properties": {
-          "from": {
-            "description": "JSON Pointer (RFC 6901) string",
-            "format": "json-pointer",
-            "title": "From",
-            "type": "string",
-            "x-pointer-type-schema": {}
-          },
-          "op": {
-            "const": "copy",
-            "description": "The operation to perform.",
-            "title": "Op",
-            "type": "string"
-          },
-          "path": {
-            "description": "JSON Pointer (RFC 6901) string",
-            "format": "json-pointer",
-            "title": "Path",
-            "type": "string",
-            "x-pointer-type-schema": {}
-          }
-        },
-        "required": [
-          "from",
-          "op",
-          "path"
-        ],
-        "title": "Copy operation",
-        "type": "object"
-      },
-      "Customer": {
-        "properties": {
-          "address": {
-            "title": "Address",
-            "type": "string"
-          },
-          "email": {
-            "title": "Email",
-            "type": "string"
-          },
-          "id": {
-            "title": "Id",
-            "type": "integer"
-          },
-          "marketing_opt_in": {
-            "default": false,
-            "title": "Marketing Opt In",
-            "type": "boolean"
-          },
-          "name": {
-            "title": "Name",
-            "type": "string"
-          },
-          "phone": {
-            "title": "Phone",
-            "type": "string"
-          },
-          "status": {
-            "default": "active",
-            "title": "Status",
-            "type": "string"
-          },
-          "tags": {
-            "items": {
-              "type": "string"
-            },
-            "title": "Tags",
-            "type": "array"
-          }
-        },
-        "required": [
-          "id",
-          "name",
-          "email",
-          "phone",
-          "address"
-        ],
-        "title": "Customer",
-        "type": "object"
-      },
-      "CustomerId": {
-        "enum": [
-          1,
-          2
-        ],
-        "title": "CustomerId",
-        "type": "integer"
-      },
-      "CustomerPatchOperation": {
-        "description": "Discriminated union of patch operations for Customer.",
-        "discriminator": {
-          "mapping": {
-            "add": "#/components/schemas/AddOp",
-            "copy": "#/components/schemas/CopyOp",
-            "move": "#/components/schemas/MoveOp",
-            "remove": "#/components/schemas/RemoveOp",
-            "replace": "#/components/schemas/ReplaceOp",
-            "test": "#/components/schemas/TestOp"
-          },
-          "propertyName": "op"
-        },
-        "oneOf": [
-          {
-            "$ref": "#/components/schemas/AddOp"
-          },
-          {
-            "$ref": "#/components/schemas/CopyOp"
-          },
-          {
-            "$ref": "#/components/schemas/MoveOp"
-          },
-          {
-            "$ref": "#/components/schemas/RemoveOp"
-          },
-          {
-            "$ref": "#/components/schemas/ReplaceOp"
-          },
-          {
-            "$ref": "#/components/schemas/TestOp"
-          }
-        ],
-        "title": "Customer Patch Operation"
-      },
-      "CustomerPatchRequest": {
-        "description": "Array of patch operations for Customer. Applied to model_dump() and re-validated against the model schema.",
-        "items": {
-          "$ref": "#/components/schemas/CustomerPatchOperation"
-        },
-        "title": "Customer Patch Request",
-        "type": "array",
-        "x-target-model": "Customer"
       },
       "HTTPValidationError": {
         "properties": {
@@ -178,83 +54,59 @@
         "title": "HTTPValidationError",
         "type": "object"
       },
-      "MoveOp": {
-        "additionalProperties": true,
-        "description": "RFC 6902 move operation.",
-        "properties": {
-          "from": {
-            "description": "JSON Pointer (RFC 6901) string",
-            "format": "json-pointer",
-            "title": "From",
-            "type": "string",
-            "x-pointer-type-schema": {}
+      "ServiceConfigPatchOperation": {
+        "description": "Discriminated union of patch operations for ServiceConfig.",
+        "discriminator": {
+          "mapping": {
+            "generic_increment_each": "#/components/schemas/GenericIncrementEachOp_JSONPathSelectorV2_",
+            "set_selected_flags": "#/components/schemas/SetSelectedFlagsOp",
+            "toggle_selected_flags": "#/components/schemas/ToggleSelectedFlagsOp"
           },
-          "op": {
-            "const": "move",
-            "description": "The operation to perform.",
-            "title": "Op",
-            "type": "string"
-          },
-          "path": {
-            "description": "JSON Pointer (RFC 6901) string",
-            "format": "json-pointer",
-            "title": "Path",
-            "type": "string",
-            "x-pointer-type-schema": {}
-          }
+          "propertyName": "op"
         },
-        "required": [
-          "from",
-          "op",
-          "path"
-        ],
-        "title": "Move operation",
-        "type": "object"
-      },
-      "RemoveOp": {
-        "additionalProperties": true,
-        "description": "RFC 6902 remove operation. Removal of the root returns MISSING.",
-        "properties": {
-          "op": {
-            "const": "remove",
-            "description": "The operation to perform.",
-            "title": "Op",
-            "type": "string"
+        "oneOf": [
+          {
+            "$ref": "#/components/schemas/GenericIncrementEachOp_JSONPathSelectorV2_"
           },
-          "path": {
-            "description": "JSON Pointer (RFC 6901) string",
-            "format": "json-pointer",
-            "title": "Path",
-            "type": "string",
-            "x-pointer-type-schema": {}
+          {
+            "$ref": "#/components/schemas/SetSelectedFlagsOp"
+          },
+          {
+            "$ref": "#/components/schemas/ToggleSelectedFlagsOp"
           }
-        },
-        "required": [
-          "op",
-          "path"
         ],
-        "title": "Remove operation",
-        "type": "object"
+        "title": "ServiceConfig Patch Operation"
       },
-      "ReplaceOp": {
+      "ServiceConfigPatchRequest": {
+        "description": "Array of patch operations for ServiceConfig.",
+        "items": {
+          "$ref": "#/components/schemas/ServiceConfigPatchOperation"
+        },
+        "title": "ServiceConfig Patch Request",
+        "type": "array"
+      },
+      "SetSelectedFlagsOp": {
         "additionalProperties": true,
-        "description": "RFC 6902 replace operation.",
+        "description": "Set every boolean matched by a custom selector backend to the same value.",
         "properties": {
           "op": {
-            "const": "replace",
+            "const": "set_selected_flags",
             "description": "The operation to perform.",
             "title": "Op",
             "type": "string"
           },
           "path": {
-            "description": "JSON Pointer (RFC 6901) string",
-            "format": "json-pointer",
+            "description": "JSON selector string (custom backend syntax)",
+            "format": "x-json-selector",
             "title": "Path",
             "type": "string",
-            "x-pointer-type-schema": {}
+            "x-selector-type-schema": {
+              "type": "boolean"
+            }
           },
           "value": {
-            "title": "Value"
+            "title": "Value",
+            "type": "boolean"
           }
         },
         "required": [
@@ -262,36 +114,34 @@
           "path",
           "value"
         ],
-        "title": "Replace operation",
+        "title": "Set selected flags",
         "type": "object"
       },
-      "TestOp": {
+      "ToggleSelectedFlagsOp": {
         "additionalProperties": true,
-        "description": "RFC 6902 test operation.",
+        "description": "Toggle every boolean matched by JsonPatchX's built-in JSONPath selector backend.",
         "properties": {
           "op": {
-            "const": "test",
+            "const": "toggle_selected_flags",
             "description": "The operation to perform.",
             "title": "Op",
             "type": "string"
           },
           "path": {
-            "description": "JSON Pointer (RFC 6901) string",
-            "format": "json-pointer",
+            "description": "JSONPath (RFC 9535) string",
+            "format": "json-path",
             "title": "Path",
             "type": "string",
-            "x-pointer-type-schema": {}
-          },
-          "value": {
-            "title": "Value"
+            "x-selector-type-schema": {
+              "type": "boolean"
+            }
           }
         },
         "required": [
           "op",
-          "path",
-          "value"
+          "path"
         ],
-        "title": "Test operation",
+        "title": "Toggle selected flags",
         "type": "object"
       },
       "ValidationError": {
@@ -337,23 +187,23 @@
     }
   },
   "info": {
-    "description": "Demo 1: Standard JSON Patch on customer profiles using `JsonPatchFor[Model, StandardRegistry]`.",
-    "title": "Support desk corrections",
+    "description": "Demo 8: Config patching with JSONSelector operations using the built-in JSONPath backend, a generic selector-backend parameter, and a custom selector backend implementation.",
+    "title": "JSONSelector-powered config patches",
     "version": "0.1.0"
   },
   "openapi": "3.1.0",
   "paths": {
-    "/customers/{customer_id}": {
+    "/configs/{config_id}": {
       "get": {
-        "description": "Fetch a customer by id.",
-        "operationId": "get_customer_endpoint_customers__customer_id__get",
+        "description": "Fetch a service config by id.",
+        "operationId": "get_config_endpoint_configs__config_id__get",
         "parameters": [
           {
             "in": "path",
-            "name": "customer_id",
+            "name": "config_id",
             "required": true,
             "schema": {
-              "$ref": "#/components/schemas/CustomerId"
+              "$ref": "#/components/schemas/ConfigId"
             }
           }
         ],
@@ -362,7 +212,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Customer"
+                  "title": "Response Get Config Endpoint Configs  Config Id  Get"
                 }
               }
             },
@@ -379,21 +229,21 @@
             "description": "Validation Error"
           }
         },
-        "summary": "Get a customer",
+        "summary": "Get a service config",
         "tags": [
-          "customers"
+          "configs"
         ]
       },
       "patch": {
-        "description": "Apply a JSON Patch document to a Customer profile.",
-        "operationId": "patch_customer_customers__customer_id__patch",
+        "description": "Apply JSONSelector-based custom operations to a service config.",
+        "operationId": "patch_config_configs__config_id__patch",
         "parameters": [
           {
             "in": "path",
-            "name": "customer_id",
+            "name": "config_id",
             "required": true,
             "schema": {
-              "$ref": "#/components/schemas/CustomerId"
+              "$ref": "#/components/schemas/ConfigId"
             }
           }
         ],
@@ -401,54 +251,33 @@
           "content": {
             "application/json-patch+json": {
               "examples": {
-                "address-glowup": {
-                  "summary": "Update phone and address",
+                "jsonpath-default": {
+                  "summary": "toggle every feature flag via the built-in JSONPath backend",
                   "value": [
                     {
-                      "op": "replace",
-                      "path": "/phone",
-                      "value": "+1-555-0111"
-                    },
-                    {
-                      "op": "replace",
-                      "path": "/address",
-                      "value": "456 Pine Rd, Seattle, WA"
+                      "op": "toggle_selected_flags",
+                      "path": "$.features.*"
                     }
                   ]
                 },
-                "confetti-fix": {
-                  "summary": "Fix email and opt into marketing",
+                "selector-sweep": {
+                  "summary": "increment every numeric limit and enable every feature flag",
                   "value": [
                     {
-                      "op": "replace",
-                      "path": "/email",
-                      "value": "morgan@example.com"
+                      "op": "generic_increment_each",
+                      "path": "$.limits.*",
+                      "value": 5
                     },
                     {
-                      "op": "replace",
-                      "path": "/marketing_opt_in",
+                      "op": "set_selected_flags",
+                      "path": "features.*",
                       "value": true
-                    }
-                  ]
-                },
-                "vip-sprinkles": {
-                  "summary": "Add VIP tag and update status",
-                  "value": [
-                    {
-                      "op": "add",
-                      "path": "/tags/-",
-                      "value": "vip"
-                    },
-                    {
-                      "op": "replace",
-                      "path": "/status",
-                      "value": "priority"
                     }
                   ]
                 }
               },
               "schema": {
-                "$ref": "#/components/schemas/CustomerPatchRequest"
+                "$ref": "#/components/schemas/ServiceConfigPatchRequest"
               }
             }
           },
@@ -459,7 +288,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Customer"
+                  "title": "Response Patch Config Configs  Config Id  Patch"
                 }
               }
             },
@@ -661,9 +490,9 @@
             "description": "Patch execution error"
           }
         },
-        "summary": "Patch a customer",
+        "summary": "Patch a service config with selectors",
         "tags": [
-          "customers"
+          "configs"
         ]
       }
     }

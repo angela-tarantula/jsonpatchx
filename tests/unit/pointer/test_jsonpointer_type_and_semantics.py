@@ -8,6 +8,7 @@ import pytest
 from jsonpath import JSONPointer as ExtendedJsonPointer
 from jsonpointer import JsonPointer as CustomJsonPointer
 from pydantic import BaseModel, TypeAdapter
+from pydantic_core import MISSING
 from pytest import Subtests
 from typing_extensions import TypeVar
 
@@ -110,12 +111,58 @@ def test_jsonpointer_add(subtests: Subtests, suite: TypeSuite) -> None:
                         ptr.add(copy.deepcopy(doc), valid_T_value)
 
 
-def test_jsonpointer_root_semantics(subtests: Subtests) -> None:
-    with subtests.test("root semantics"):
-        root = JSONPointer.parse("")
-        assert root.get({"a": 1}) == {"a": 1}
-        assert root.add({"a": 1}, {"b": 2}) == {"b": 2}
-        assert root.remove({"a": 1}) is None
+def test_jsonpointer_root_semantics() -> None:
+    root = JSONPointer.parse("")
+    assert root.get({"a": 1}) == {"a": 1}
+    assert root.add({"a": 1}, {"b": 2}) == {"b": 2}
+    assert root.remove({"a": 1}) is MISSING
+
+
+def test_jsonpointer_backend_corruption_paths(
+    subtests: Subtests,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    class BrokenResolveBackend:
+        def __init__(self, parts: tuple[str, ...]) -> None:
+            self._parts = parts
+
+        @property
+        def parts(self) -> tuple[str, ...]:
+            return self._parts
+
+        @classmethod
+        def from_parts(
+            cls, parts: list[object] | tuple[object, ...]
+        ) -> BrokenResolveBackend:
+            return cls(tuple(str(part) for part in parts))
+
+        def resolve(self, _doc: JSONValue) -> object:
+            raise RuntimeError("broken pointer backend")
+
+        def __str__(self) -> str:
+            return "/" + "/".join(self._parts)
+
+    with subtests.test(
+        "read-path backend corruption raises normalized conflict and returns False from read booleans"
+    ):
+        ptr = JSONPointer.parse("/a")
+        monkeypatch.setattr(ptr, "_ptr", BrokenResolveBackend(("a",)))
+        with pytest.raises(PatchConflictError):
+            ptr.get({"a": 1})
+        assert ptr.is_gettable({"a": 1}) is False
+        assert ptr.is_removable({"a": 1}) is False
+
+    with subtests.test(
+        "mutation-path backend corruption is normalized through classify_state"
+    ):
+        ptr = JSONPointer.parse("/a/b")
+        monkeypatch.setattr(ptr, "_ptr", BrokenResolveBackend(("a", "b")))
+        with pytest.raises(PatchConflictError):
+            ptr.add({"a": {"b": 1}}, 2)
+        with pytest.raises(PatchConflictError):
+            ptr.remove({"a": {"b": 1}})
+        assert ptr.is_addable({"a": {"b": 1}}) is False
+        assert ptr.is_addable({"a": {"b": 1}}, 2) is False
 
 
 def test_jsonpointer_array_index_handling(subtests: Subtests) -> None:
@@ -329,6 +376,7 @@ def test_pointer_backend_binding(subtests: Subtests) -> None:
 def test_jsonpointer_backend_reuse(subtests: Subtests) -> None:
     ptr1a = JSONPointer.parse("a.b", backend=DotPointer)
     ptr1b = JSONPointer.parse(ptr1a, backend=DotPointer)
+    ptr1c = JSONPointer.parse(ptr1a)
     ptr2a = JSONPointer.parse(DotPointer("a.b"), backend=DotPointer)
     ptr2b = JSONPointer.parse(ptr2a, backend=DotPointer)
     ptr3a = JSONPointer.parse(DotPointerSubclass("c.d"), backend=DotPointer)
@@ -336,12 +384,19 @@ def test_jsonpointer_backend_reuse(subtests: Subtests) -> None:
 
     with subtests.test("reuse compatible backend instances"):
         assert ptr1a.ptr is ptr1b.ptr
+        assert ptr1a.ptr is ptr1c.ptr
         assert ptr2a.ptr is ptr2b.ptr
         assert ptr3a.ptr is ptr3b.ptr
 
     with subtests.test("don't coerce backend superclass instances"):
         with pytest.raises(InvalidJSONPointer):
             JSONPointer.parse(DotPointer("e.f"), backend=DotPointerSubclass)
+
+    with subtests.test(
+        "reject raw backend instances when omitted backend defaults to RFC 6901"
+    ):
+        with pytest.raises(InvalidJSONPointer):
+            JSONPointer.parse(DotPointer("e.f"))
 
     with subtests.test("reject incompatible backend instances"):
         with pytest.raises(InvalidJSONPointer):
@@ -498,11 +553,15 @@ def test_backend_typevar_explicit_policy_cases(subtests: Subtests) -> None:
 def test_jsonpointer_json_schema_backend_resolution(subtests: Subtests) -> None:
     with subtests.test("default backend reports RFC json-pointer format"):
         schema = TypeAdapter(JSONPointer[JSONValue]).json_schema()
+        assert schema["type"] == "string"
         assert schema["format"] == "json-pointer"
+        assert schema["x-pointer-type-schema"] == {}
 
     with subtests.test("concrete custom backend reports custom format"):
-        schema = TypeAdapter(JSONPointer[JSONValue, DotPointer]).json_schema()
+        schema = TypeAdapter(JSONPointer[JSONNumber, DotPointer]).json_schema()
+        assert schema["type"] == "string"
         assert schema["format"] == "x-json-pointer"
+        assert schema["x-pointer-type-schema"] == {"type": "number"}
 
     with subtests.test("backend TypeVar without default cannot produce JSON schema"):
         P_backend = TypeVar("P_backend", bound=PointerBackend)

@@ -38,16 +38,16 @@ class _RegistryBoundPatchRoot(RootModel[Any]):
     Internal base for registry-backed JSON Patch RootModels.
 
     Notes:
-        - ``root`` is a JSON Patch document: ``list[registry.union_type]`` built dynamically via
-          ``create_model``.
-        - ``__registry__`` is set on subclasses.
+        - `root` is a JSON Patch document: `list[registry.union_type]` built dynamically via
+          `create_model`.
+        - `__registry__` is set on subclasses.
     """
 
     # Choice: This base intentionally uses RootModel[Any].
     # Why: The concrete root type (list[registry.union]) is supplied dynamically
     #      by factories via create_model(). Making this generic would either lie
     #      to the type checker or require pervasive casting with no real benefit.
-    #      (``registry.union_type`` in current implementation.)
+    #      (`registry.union_type` in current implementation.)
 
     model_config = ConfigDict(frozen=True, strict=True)
 
@@ -67,8 +67,8 @@ class _BasePatchModel(_RegistryBoundPatchRoot, Generic[ModelT]):
     Internal patch RootModel for model-aware patching (Pydantic BaseModel targets).
 
     Notes:
-        - ``apply(target)`` patches ``target.model_dump()`` using the shared engine.
-        - The patched output is validated back into ``__target_model__`` via ``model_validate``.
+        - `apply(target)` patches `target.model_dump()` using the shared engine.
+        - The patched output is validated back into `__target_model__` via `model_validate`.
         - The input model instance is not mutated.
     """
 
@@ -78,6 +78,21 @@ class _BasePatchModel(_RegistryBoundPatchRoot, Generic[ModelT]):
     __target_model__: ClassVar[type[ModelT]]
 
     def apply(self, target: ModelT) -> ModelT:
+        """
+        Apply this patch to a Pydantic model instance.
+
+        Arguments:
+            target: The target model instance.
+
+        Returns:
+            The patched model instance after re-validation.
+
+        Raises:
+            TypeError: If `target` is not an instance of the bound model type.
+            PatchValidationError: If the model dump is not valid JSON or the
+                patched output fails validation against the model schema.
+            PatchError: Any patch-domain error raised during application.
+        """
         if not isinstance(target, self.__target_model__):
             raise TypeError(
                 f"{self.__class__.__name__}.apply() expects a {self.__target_model__.__name__} instance, "
@@ -103,7 +118,7 @@ class _BasePatchBody(_RegistryBoundPatchRoot):
     Internal patch RootModel for typed operations applied to an untyped JSON document.
 
     Notes:
-        - ``apply(doc, inplace=...)`` delegates to ``_apply_ops`` (engine defines copy and mutation semantics).
+        - `apply(doc, inplace=...)` delegates to `_apply_ops` (engine defines copy and mutation semantics).
     """
 
     def apply(
@@ -112,6 +127,20 @@ class _BasePatchBody(_RegistryBoundPatchRoot):
         *,
         inplace: bool = False,
     ) -> JSONValue:
+        """
+        Apply this patch to an untyped JSON document.
+
+        Arguments:
+            doc: Target JSON document.
+            inplace: Copy policy passed through to the patch engine.
+
+        Returns:
+            The patched JSON document.
+
+        Raises:
+            PatchValidationError: If `doc` is not valid JSON.
+            PatchError: Any patch-domain error raised during application.
+        """
         try:
             _validate_JSONValue(doc)
         except Exception as e:
@@ -145,10 +174,11 @@ class JsonPatchFor(_RegistryBoundPatchRoot, Generic[TargetT, RegistryT]):
     """
     Factory for creating typed JSON Patch models bound to a registry declaration.
 
-    ``JsonPatchFor[Target]`` produces a patch model using ``StandardRegistry``.
-    ``JsonPatchFor[Target, Registry]`` produces a patch model using an explicit registry.
-    ``Target`` is either a Pydantic model or ``Literal["SchemaName"]`` for JSON documents.
-    ``Registry`` is a union of concrete OperationSchemas (``OpA | OpB | ...``).
+    `JsonPatchFor[Target]` produces a patch model using `StandardRegistry`.
+    `JsonPatchFor[Target, Registry]` produces a patch model using an explicit
+    registry. `Target` is either a Pydantic model or `Literal["SchemaName"]`
+    for JSON documents. `Registry` is a union of concrete OperationSchemas
+    (`OpA | OpB | ...`).
     """
 
     if TYPE_CHECKING:
@@ -160,18 +190,18 @@ class JsonPatchFor(_RegistryBoundPatchRoot, Generic[TargetT, RegistryT]):
             self: JsonPatchFor[TargetModelM, RegistryT], target: TargetModelM
         ) -> TargetModelM:
             """
-            Apply this patch to ``target`` and return the patched Model.
+            Apply this patch to `target` and return the patched model.
 
-            Args:
-                target: The target BaseModel.
+            Arguments:
+                target: The target BaseModel instance.
 
             Returns:
-                patched: The patched BaseModel.
+                The patched BaseModel instance.
 
             Raises:
                 PatchValidationError: Patched data fails validation for the target model.
                 PatchError: Any patch-domain error raised by operations, including conflicts.
-                    ``PatchInternalError`` is a ``PatchError`` raised for unexpected failures.
+                    `PatchInternalError` is a `PatchError` raised for unexpected failures.
             """
             pass
 
@@ -183,21 +213,21 @@ class JsonPatchFor(_RegistryBoundPatchRoot, Generic[TargetT, RegistryT]):
             inplace: bool = False,
         ) -> JSONValue:
             """
-            Apply this patch to ``doc`` and return the patched document.
+            Apply this patch to `doc` and return the patched document.
 
-            Args:
+            Arguments:
                 doc: The target JSON document.
-                inplace: Copy policy. ``False`` deep-copies ``doc`` first; ``True``
-                    applies operations against ``doc`` without that copy. This does
+                inplace: Copy policy. `False` deep-copies `doc` first; `True`
+                    applies operations against `doc` without that copy. This does
                     not guarantee returned root object identity.
 
-            Return:
-                patched: The patched JSON document.
+            Returns:
+                The patched JSON document.
 
             Raises:
-                ValidationError: If the input is not a mutable ``JSONValue``.
+                PatchValidationError: If the input is not a valid `JSONValue`.
                 PatchError: Any patch-domain error raised by operations, including conflicts.
-                    ``PatchInternalError`` is a ``PatchError`` raised for unexpected failures.
+                    `PatchInternalError` is a `PatchError` raised for unexpected failures.
             """
             pass
 
@@ -205,12 +235,15 @@ class JsonPatchFor(_RegistryBoundPatchRoot, Generic[TargetT, RegistryT]):
             """
             Apply a JSON Patch document.
 
+            Returns:
+                The patched model or JSON document, depending on specialization.
+
             Raises:
                 TypeError: Model variant expects a Pydantic BaseModel instance.
-                ValidationError: If the input is not a mutable ``JSONValue``.
+                PatchValidationError: If the input is not a valid `JSONValue`.
                 PatchValidationError: Patched data fails validation for the target model.
                 PatchError: Any patch-domain error raised by operations, including conflicts.
-                    ``PatchInternalError`` is a ``PatchError`` raised for unexpected failures.
+                    `PatchInternalError` is a `PatchError` raised for unexpected failures.
             """
             pass
 

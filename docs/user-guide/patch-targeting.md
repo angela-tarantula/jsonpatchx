@@ -3,7 +3,8 @@
 JsonPatchX supports three ways to target a mutation:
 
 - exact locations with `JSONPointer[T]` (default:
-  [RFC 6902](https://datatracker.ietf.org/doc/html/rfc6902) JSON Pointer)
+  [RFC 6901](https://datatracker.ietf.org/doc/html/rfc6901) JSON Pointer, as
+  used by RFC 6902)
 - query-based targeting with `JSONSelector[T]` (default:
   [RFC 9535](https://datatracker.ietf.org/doc/html/rfc9535) JSON Path)
 - custom backends when the defaults are not the right fit
@@ -37,21 +38,34 @@ Path syntax standardized in
 "$.invoices[?(@.status == 'unpaid')].dueDate"
 ```
 
+> Note: The
+> [built-in JSONPath backend](https://github.com/jg-rp/python-jsonpath) is
+> RFC-compliant out of the box, except on Python 3.14 and later, where
+> [python-jsonpath](https://github.com/jg-rp/python-jsonpath)'s
+> [`iregexp-check`](https://github.com/jg-rp/rust-iregexp) dependency is not yet
+> compatible with free-threaded Python. On Python 3.14+, this only affects regex
+> compliance: `match()` and `search()` fall back to Python's built-in `re`, and
+> regex patterns are not validated against
+> [RFC 9485](https://datatracker.ietf.org/doc/html/rfc9485) I-Regexp.
+
 ### Selector Semantics
 
 Selectors are more expressive than pointers. They also raise questions that
 pointer-based operations do not. JsonPatchX takes a simple default position:
 
-- zero matches is a resolution error
-- multiple matches are all returned
-- stable match ordering is not guaranteed
+- zero matches return `[]` from `getall()` and leave `addall()` or `removeall()`
+  unchanged
+- multiple matches are all returned without any ordering guarantee
+- mutation helpers apply matches sequentially without any ordering guarantee
 
 ### Selector Methods
 
 Similar to `JSONPointer[T]`, it parses the query expression string upfront, and
 its target type is enforced when you exercise it:
 
-- `get(doc)`, `add(doc, value)`, and `remove(doc)`
+- `getall(doc)`, `addall(doc, value)`, and `removeall(doc)`
+- `get_pointers(doc)` when you want the matched exact pointers for case-by-case
+  handling
 - `is_gettable()`, `is_addable()`, and `is_removable()`
 - `is_valid_type(target)`
 

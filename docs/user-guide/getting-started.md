@@ -105,14 +105,15 @@ What changed is the contract around it.
 
 - the request body is parsed as a patch document, not a bare `list[dict]`
 - the operations are validated before mutation
+- document-dependent checks happen during `patch.apply(...)`
 - the patched result is validated as `User`
-- the route gets a real PATCH request schema instead of undocumented patch dicts
 
-That is the smallest useful JsonPatchX route.
+It also gives your FastAPI route a real PATCH request schema in OpenAPI/Swagger
+instead of undocumented patch dicts.
 
 > Most routes should use a Pydantic model target. If you are patching raw JSON,
-> `JsonPatchFor` also supports string-literal targets:
-> `JsonPatchFor[Literal["DeploymentSpec"]]`.
+> you can still define a PATCH contract by giving it a name instead of a schema,
+> for example: `JsonPatchFor[Literal["DeploymentSpec"]]`.
 
 ## Optional: FastAPI Helpers
 

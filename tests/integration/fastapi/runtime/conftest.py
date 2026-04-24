@@ -55,3 +55,9 @@ async def demo5_client() -> AsyncGenerator[AsyncClient]:
 async def demo6_client() -> AsyncGenerator[AsyncClient]:
     async with make_client(DEMO_MAP["6"].app) as client:
         yield client
+
+
+@pytest.fixture
+async def demo8_client() -> AsyncGenerator[AsyncClient]:
+    async with make_client(DEMO_MAP["8"].app) as client:
+        yield client

@@ -1,5 +1,11 @@
 # Contributing
 
+> Note: JsonPatchX is in alpha. If you're interested in contributing, feel free
+> to join the
+> [Discussions](https://github.com/angela-tarantula/jsonpatchx/discussions) to
+> ask any questions you have! We want to know what's confusing and how to help
+> you.
+
 Thank you for being interested in contributing to JsonPatchX. There are many
 ways to contribute to the project:
 

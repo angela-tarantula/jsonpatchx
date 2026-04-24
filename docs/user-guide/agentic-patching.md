@@ -16,7 +16,8 @@ Agentic patching has four parts:
 - OpenAPI is the discovery surface.
 - The Python operation package is the SDK.
 - `JsonPatch(...)` is the validator and executor.
-- MCP is optional glue if discovery or execution needs to happen remotely.
+- [MCP](https://modelcontextprotocol.io/) is optional glue if discovery or
+  execution needs to happen remotely.
 
 This matches the direction described by
 [Cloudflare's Code Mode](https://blog.cloudflare.com/code-mode-mcp/) and
@@ -85,7 +86,7 @@ surface stay in sync:
 from typing import Literal, Self, override
 
 from pydantic import ConfigDict, Field, model_validator
-from pydantic.experimental.missing_sentinel import MISSING
+from pydantic_core import MISSING
 
 from jsonpatchx import JSONPointer, JSONValue, OperationSchema, ReplaceOp
 from jsonpatchx.types import JSONNumber
@@ -195,7 +196,8 @@ This pattern gives the agent a better retry loop than "emit JSON and hope":
 
 - invalid operation inputs fail during model construction or `JsonPatch(...)`
   validation
-- operation-level validation can raise structured `PydanticCustomError`
+- operation-level validation can raise structured `PydanticCustomError` values
+  with stable error codes and context
 - runtime document-state failures raise `PatchConflictError`
 
 ## Iterate on the Toolkit

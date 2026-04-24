@@ -154,7 +154,8 @@ That kind of rule belongs on the operation itself:
 
 ```python
 from typing import Literal, Self, override
-from pydantic import model_validator, PydanticCustomError
+from pydantic import model_validator
+from pydantic_core import PydanticCustomError
 from jsonpatchx import JSONPointer, JSONValue, OperationSchema, ReplaceOp
 
 class SwapOp(OperationSchema):
@@ -285,10 +286,6 @@ failures into a single "not allowed" outcome, it lets a custom operation respond
 differently to each case. This keeps the operation logic focused on intent
 rather than reimplementing pointer resolution.
 
-> Note: An implementation of `AddMissingKeyOp` with more structured and detailed
-> error messages is available in the recipes folder should you want to use a
-> production-ready version of this.
-
 ## Schema-Rich Operations
 
 Because custom operations are ordinary Pydantic models, they can also express
@@ -304,7 +301,7 @@ be present.
 ```python
 from typing import Literal, Self, override
 from pydantic import ConfigDict, Field, model_validator
-from pydantic.experimental.missing_sentinel import MISSING
+from pydantic_core import MISSING
 from jsonpatchx import JSONPointer, JSONValue, OperationSchema, ReplaceOp
 from jsonpatchx.types import JSONNumber
 
@@ -359,26 +356,32 @@ class ClampOp(OperationSchema):
         return ReplaceOp(path=self.path, value=current).apply(doc)
 ```
 
-This example is intentionally as much about the schema as it is about the
-mutation.
-
-On the schema side, Pydantic gives you:
+This example is as much about contract design as it is about mutation logic.
+Pydantic carries most of that contract surface:
 
 - `ConfigDict(...)` to give the operation a title and description in generated
   schema.
 
-- `json_schema_extra` to express richer schema rules directly, in this case that
-  a request must provide `min`, `max`, or both.
-
 - `Field(...)` metadata to document individual fields, including the typed
   pointer itself.
+
+- `MISSING` so that `min` and `max` are optional by omission, not by
+  nullability. That lets `model_fields_set` distinguish “not provided” from
+  “provided with a numeric bound” without widening the wire contract to
+  `number | null`.
+
+- `json_schema_extra` to express richer schema rules directly, in this case that
+  a request must provide
+  [`anyOf`](https://json-schema.org/understanding-json-schema/reference/combining#anyOf)
+  `min` or `max`.
 
 The result is that the same model can drive parsing, validation, execution, and
 documentation. The operation is not just something your server can run. It is
 also something your API can describe clearly.
 
 > I must admit, I didn't write that operation myself. I used JsonPatchX's
-> AGENTS.md context to give my coding agent everything it needed to produce it.
+> [`examples/AGENTS.md`](https://github.com/angela-tarantula/jsonpatchx/blob/main/examples/AGENTS.md)
+> context to give my coding agent everything it needed to produce it.
 
 ## Use Operation Instances Directly
 
