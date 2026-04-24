@@ -16,9 +16,11 @@ from pydantic import (
     GetCoreSchemaHandler,
     GetJsonSchemaHandler,
     TypeAdapter,
+    ValidationError,
 )
 from pydantic.experimental.missing_sentinel import MISSING
 from pydantic.json_schema import JsonSchemaValue
+from pydantic_core import ValidationError as CoreValidationError
 from pydantic_core import core_schema as cs
 from typing_extensions import TypeForm, TypeVar
 
@@ -50,6 +52,7 @@ from jsonpatchx.types import (
 )
 
 _Nothing = object()
+_PYDANTIC_VALIDATION_ERRORS = (ValidationError, CoreValidationError)
 # NOTE: maybe add pydantic_core.MISSING to JSONPointer.get() on failure
 
 
@@ -64,55 +67,55 @@ class JSONPointer(str, Generic[T_co, P_co]):
     """
     A typed RFC 6901 JSON Pointer with Pydantic integration.
 
-    ``JSONPointer[T]`` (or ``JSONPointer[T, Backend]``) is a string-like value (subclasses ``str``)
+    `JSONPointer[T]` (or `JSONPointer[T, Backend]`) is a string-like value (subclasses `str`)
     that additionally:
 
-    - stores a parsed pointer backend (see ``PointerBackend``),
-    - tracks a covariant type parameter ``T`` used to validate resolved targets,
-    - provides convenience methods used by patch operations: ``get``, ``add``, ``remove``.
+    - stores a parsed pointer backend (see `PointerBackend`),
+    - tracks a covariant type parameter `T` used to validate resolved targets,
+    - provides convenience methods used by patch operations: `get`, `add`, `remove`.
 
     ## Important design semantics (intentional)
 
     **Typed pointers are enforced at runtime.**
-    The type parameter ``T`` is not “just typing”; it is enforced whenever a value is read
+    The type parameter `T` is not “just typing”; it is enforced whenever a value is read
     through the pointer.
 
-    - ``get(doc)`` always validates the resolved value against ``T``.
-    - ``add(doc, value)`` optionally validates the written value against ``T`` (default: True).
-    - ``remove(doc)`` is intentionally *type-gated*: it first “reads” the target through the pointer,
-      so removal can fail if the current value is not of type ``T``.
+    - `get(doc)` always validates the resolved value against `T`.
+    - `add(doc, value)` optionally validates the written value against `T` (default: True).
+    - `remove(doc)` is intentionally *type-gated*: it first “reads” the target through the pointer,
+      so removal can fail if the current value is not of type `T`.
 
     This makes patch semantics explicit:
-    - ``JSONPointer[JSONValue]`` is permissive (“remove anything JSON”).
-    - ``JSONPointer[JSONBoolean]`` is restrictive (“remove only if it is currently a boolean”).
-    - If you want to remove regardless of the current type, use a wider pointer type (e.g. ``JSONValue``)
+    - `JSONPointer[JSONValue]` is permissive (“remove anything JSON”).
+    - `JSONPointer[JSONBoolean]` is restrictive (“remove only if it is currently a boolean”).
+    - If you want to remove regardless of the current type, use a wider pointer type (e.g. `JSONValue`)
       or define a dedicated permissive remove operation.
 
     **Pointer covariance is intentional.**
-    ``JSONPointer`` is covariant in ``T``. In practice this means you can often reuse a pointer instance
+    `JSONPointer` is covariant in `T`. In practice this means you can often reuse a pointer instance
     (including across composed operations) and preserve stricter guarantees.
-    Example: if a custom op carries a ``JSONPointer[JSONBoolean]``, composing that op internally
-    using ``AddOp`` should keep the boolean-specific enforcement at runtime.
+    Examples: if a custom op carries a `JSONPointer[JSONBoolean]`, composing that op internally
+    using `AddOp` should keep the boolean-specific enforcement at runtime.
 
     ## Backend semantics (advanced)
 
-    - Default backend: ``jsonpointer.JsonPointer``.
-    - Custom backend: bound directly via ``JSONPointer[T, Backend]``.
-    - Invalid pointer strings raise ``InvalidJSONPointer``.
-    - Backend traversal failures in ``get``/``add``/``remove`` are normalized into
-      ``PatchConflictError``.
+    - Default backend: `jsonpointer.JsonPointer`.
+    - Custom backend: bound directly via `JSONPointer[T, Backend]`.
+    - Invalid pointer strings raise `InvalidJSONPointer`.
+    - Backend traversal failures in `get`/`add`/`remove` are normalized into
+      `PatchConflictError`.
 
     Mutation semantics:
-    - ``add`` and ``remove`` may mutate the document object they are given (or containers reachable
-      from it). The root pointer ``""`` is the exception: setting the root returns a new document
+    - `add` and `remove` may mutate the document object they are given (or containers reachable
+      from it). The root pointer `""` is the exception: setting the root returns a new document
       value rather than mutating an existing container. Removing the root returns
-      ``MISSING`` to represent document deletion rather than a JSON ``null`` value.
+      `MISSING` to represent document deletion rather than a JSON `null` value.
       If you want to forbid root removal, it's easy to make a custom op!
     - Whether these mutations affect the original caller-owned document is determined by the patch
-      engine (see ``_apply_ops(..., inplace=...)``), which may deep-copy the input document.
+      engine (see `_apply_ops(..., inplace=...)`), which may deep-copy the input document.
 
-    ``JSONPointer`` values are intended to be created by Pydantic validation. Direct instantiation
-    is not permitted (except when running as ``__main__`` for debugging).
+    `JSONPointer` values are intended to be created by Pydantic validation. Direct instantiation
+    is not permitted (except when running as `__main__` for debugging).
     """
 
     # Choice: JSONPointer is str subclass, as opposed to Annotated[str, StringConstraints(...)].
@@ -137,7 +140,7 @@ class JSONPointer(str, Generic[T_co, P_co]):
         The underlying pointer backend instance.
 
         This is exposed for advanced users who provide a custom PointerBackend with additional APIs.
-        The patch engine relies only on the ``PointerBackend`` protocol.
+        The patch engine relies only on the `PointerBackend` protocol.
         """
         # TODO: Somehow 'Any' to the actual JSON Pointer class they pass in.
         # Choice: expose ptr as the user's custom PointerBackend for stronger type inferencing.
@@ -152,7 +155,7 @@ class JSONPointer(str, Generic[T_co, P_co]):
 
     @property
     def type_param(self) -> TypeForm[T_co]:
-        """The expected type parameter ``T`` used to validate resolved targets."""
+        """The expected type parameter `T` used to validate resolved targets."""
         return self._type
 
     @property
@@ -179,7 +182,7 @@ class JSONPointer(str, Generic[T_co, P_co]):
         """
         Validator function for JSONPointer.
 
-        Assumes ``type_param`` and ``bound_backend`` are already validated.
+        Assumes `type_param` and `bound_backend` are already validated.
         """
         resolved_backend = cls._resolve_runtime_backend_param(concrete_backend)
         ptr: PointerBackend
@@ -288,7 +291,7 @@ class JSONPointer(str, Generic[T_co, P_co]):
     def _parse_pointer_type_args(
         cls, *args: TypeForm[Any]
     ) -> tuple[TypeForm[Any], type[PointerBackend] | TypeVar]:
-        """Validate the JSONPointer's parameter tuple, e.g. ``(JSONValue, DotPointer)`` for ``JSONPointer[JSONValue, DotPointer]``."""
+        """Validate the JSONPointer's parameter tuple, e.g. `(JSONValue, DotPointer)` for `JSONPointer[JSONValue, DotPointer]`."""
         if not args:
             raise TypeError(f"{cls} requires at least one type parameter")
         unverified_typeform = args[0]
@@ -355,18 +358,84 @@ class JSONPointer(str, Generic[T_co, P_co]):
         return candidate
 
     def _validate_target(self, target: object) -> T_co:
-        """Strictly validate the ``target`` with this JSONPointer's TypeAdapter."""
+        """
+        Validate a resolved or replacement value against this pointer's type.
+
+        Arguments:
+            target: Candidate value to validate strictly against `T`.
+
+        Returns:
+            The validated value, typed as `T`.
+
+        Raises:
+            PatchConflictError: If `target` does not conform to `T`.
+        """
         try:
             return self._adapter.validate_python(target, strict=True)
-        except Exception as e:
+        except _PYDANTIC_VALIDATION_ERRORS as e:
             raise PatchConflictError(
                 f"expected target type {self.type_param} for pointer {str(self)!r}, got: {type(target)}"
             ) from e
 
     def _enforce_existence(self, target: object) -> None:
-        """Enforce that the target exists (is not MISSING)."""
+        """
+        Enforce that a resolved target exists.
+
+        Arguments:
+            target: Resolved target value.
+
+        Raises:
+            PatchConflictError: If `target` is `MISSING`.
+        """
         if target is MISSING:
             raise PatchConflictError(f"target {str(self)!r} does not exist")
+
+    def _validate_replacement(self, value: object) -> JSONValue:
+        """
+        Validate a replacement value for pointer-backed mutation.
+
+        Arguments:
+            value: Candidate value to write at this pointer.
+
+        Returns:
+            A strictly validated JSON value.
+
+        Raises:
+            PatchConflictError: If `value` does not conform to this pointer's
+                type parameter or is not a valid `JSONValue`.
+        """
+        value_T = self._validate_target(target=value)
+        try:
+            return _validate_JSONValue(value_T)
+        except _PYDANTIC_VALIDATION_ERRORS as e:
+            raise PatchConflictError(f"value {value!r} is not a valid JSONValue") from e
+
+    def _resolve_parent_container(self, doc: JSONValue) -> JSONContainer[JSONValue]:
+        """
+        Resolve this pointer's parent and normalize backend traversal failures.
+
+        Arguments:
+            doc: Target JSON document.
+
+        Returns:
+            The parent container for this pointer.
+
+        Raises:
+            PatchConflictError: If the parent path cannot be resolved or does
+                not resolve to an object or array.
+        """
+        parent_ptr = self.parent_ptr
+        try:
+            parent = parent_ptr.resolve(doc)
+        except Exception as e:
+            raise PatchConflictError(
+                f"parent path {str(parent_ptr)!r} could not be resolved: {e}"
+            ) from e
+        if not _is_container(parent):
+            raise PatchConflictError(
+                f"parent path {str(parent_ptr)!r} is not a container"
+            )
+        return parent
 
     # Constructor - for convenience
 
@@ -381,7 +450,18 @@ class JSONPointer(str, Generic[T_co, P_co]):
         """
         Parse a pointer string or instance using Pydantic validation.
 
-        This is a convenience wrapper around ``TypeAdapter(JSONPointer[...])``.
+        Arguments:
+            path: Pointer string, parsed pointer, or pointer backend instance.
+            type_param: Type enforced when the pointer is exercised.
+            backend: Optional concrete backend class. When omitted, the built-in
+                RFC 6901 backend is used.
+
+        Returns:
+            A validated `JSONPointer` instance.
+
+        Raises:
+            InvalidJSONPointer: If the pointer string, backend, or generic
+                parameters are invalid.
         """
         pointer_args: tuple[TypeForm[Any], ...]
         if backend is None:
@@ -454,25 +534,34 @@ class JSONPointer(str, Generic[T_co, P_co]):
     # Runtime helpers
 
     def is_valid_type(self, target: object) -> bool:
-        """Validate whether a target conforms to this pointer's type."""
+        """
+        Return `True` if `target` conforms to this pointer's type.
+
+        Arguments:
+            target: Candidate value to validate.
+
+        Returns:
+            `True` when `target` validates strictly against `T`,
+            otherwise `False`.
+        """
         try:
             self._adapter.validate_python(target, strict=True)
             return True
-        except Exception:
+        except _PYDANTIC_VALIDATION_ERRORS:
             return False
 
     def get(self, doc: JSONValue) -> T_co:
         """
-        Resolve this pointer against ``doc`` and return the target value (type-gated).
+        Resolve this pointer against `doc` and return the target value (type-gated).
 
-        Args:
+        Arguments:
             doc: Target JSON document.
 
         Returns:
-            The resolved value, validated against ``T``.
+            The resolved value, validated against `T`.
 
         Raises:
-            PatchConflictError: If the target does not exist, or it is not type ``T``.
+            PatchConflictError: If the target does not exist, or it is not type `T`.
         """
         # Choice: always defer to the PointerBackend implementation for pointer resolution.
         # Why: Don't reinvent the wheel (and maintain it). Plus, give more power to custom PointerBackends.
@@ -485,10 +574,19 @@ class JSONPointer(str, Generic[T_co, P_co]):
         return val
 
     def is_gettable(self, doc: JSONValue) -> bool:
-        """Return True if ``get`` would succeed for this document, else False."""
+        """
+        Return `True` if `get(doc)` would succeed.
+
+        Arguments:
+            doc: Target JSON document.
+
+        Returns:
+            `True` if the pointer resolves to an existing value of type
+            `T`, otherwise `False`.
+        """
         try:
             self.get(doc)
-        except Exception:
+        except PatchConflictError:
             return False
         else:
             return True
@@ -497,23 +595,18 @@ class JSONPointer(str, Generic[T_co, P_co]):
         """
         RFC 6902 add (type-gated).
 
-        Args:
+        Arguments:
             doc: Target JSON document.
-            value: Value to add at this path, validated against ``T``.
+            value: Value to add at this path, validated against `T`.
 
         Returns:
             The updated document.
 
         Raises:
-            PatchConflictError: If the target does not exist, if the target is not type ``T``,
-                or if the value being added is not type ``T``.
+            PatchConflictError: If the target does not exist, if the target is not type `T`,
+                or if the value being added is not type `T`.
         """
-        # Type errors first
-        value_T: T_co = self._validate_target(target=value)
-        try:
-            target = _validate_JSONValue(value_T)
-        except Exception as e:
-            raise PatchConflictError(f"value {value!r} is not a valid JSONValue") from e
+        target = self._validate_replacement(value)
 
         match classify_state(self._ptr, doc):
             case TargetState.ROOT:
@@ -528,7 +621,7 @@ class JSONPointer(str, Generic[T_co, P_co]):
                     f"cannot add value at {str(self)!r} because parent is not a container"
                 )
             case TargetState.ARRAY_INDEX_APPEND | TargetState.ARRAY_INDEX_AT_END:
-                array = cast(JSONArray[JSONValue], self.parent_ptr.resolve(doc))
+                array = cast(JSONArray[JSONValue], self._resolve_parent_container(doc))
                 array.append(target)
                 return doc
             case TargetState.ARRAY_INDEX_OUT_OF_RANGE:
@@ -536,7 +629,9 @@ class JSONPointer(str, Generic[T_co, P_co]):
                     f"cannot add value at {str(self)!r} because array index {self.parts[-1]!r} is out of range"
                 )
             case TargetState.OBJECT_KEY_MISSING:
-                object = cast(JSONObject[JSONValue], self.parent_ptr.resolve(doc))
+                object = cast(
+                    JSONObject[JSONValue], self._resolve_parent_container(doc)
+                )
                 key = self.parts[-1]
                 object[key] = target
                 return doc
@@ -548,7 +643,7 @@ class JSONPointer(str, Generic[T_co, P_co]):
                     f"cannot add value at {str(self)!r} because key {self.parts[-1]!r} is an invalid array index"
                 )
             case TargetState.VALUE_PRESENT:
-                container = cast(JSONContainer[JSONValue], self.parent_ptr.resolve(doc))
+                container = self._resolve_parent_container(doc)
                 token = self.parts[-1]
                 if _is_object(container):
                     self._validate_target(container[token])
@@ -566,21 +661,30 @@ class JSONPointer(str, Generic[T_co, P_co]):
         value: object = _Nothing,
     ) -> bool:
         """
-        Return True if RFC 6902 ``add`` would succeed for this document, else False.
-        If ``value`` is provided, it must conform to the pointer's type parameter ``T``.
+        Return `True` if RFC 6902 `add` would succeed for this document.
+
+        Arguments:
+            doc: Target JSON document.
+            value: Optional value that would be written at this pointer. When
+                provided, it must conform to `T` and to `JSONValue`.
+
+        Returns:
+            `True` if add semantics would succeed, otherwise `False`.
         """
         if value is not _Nothing:
             try:
-                self._validate_target(target=value)
-                _validate_JSONValue(value)
-            except Exception:
+                self._validate_replacement(value)
+            except PatchConflictError:
                 return False
 
         match classify_state(self._ptr, doc):
             case TargetState.ROOT:
                 return self.is_valid_type(doc)
             case TargetState.VALUE_PRESENT:
-                container = self.parent_ptr.resolve(doc)
+                try:
+                    container = self._resolve_parent_container(doc)
+                except PatchConflictError:
+                    return False
                 token = self.parts[-1]
                 if _is_object(container):
                     return self.is_valid_type(container[token])
@@ -596,16 +700,16 @@ class JSONPointer(str, Generic[T_co, P_co]):
 
     def remove(self, doc: JSONValue) -> JSONValue:
         """
-        RFC 6902 remove (type-gated). Removal of the root returns ``MISSING``.
+        RFC 6902 remove (type-gated). Removal of the root returns `MISSING`.
 
-        Args:
+        Arguments:
             doc: Target JSON document.
 
         Returns:
             The updated document.
 
         Raises:
-            PatchConflictError: If the target does not exist, or it is not type ``T``.
+            PatchConflictError: If the target does not exist, or it is not type `T`.
         """
         match classify_state(self._ptr, doc):
             case TargetState.ROOT:
@@ -642,10 +746,7 @@ class JSONPointer(str, Generic[T_co, P_co]):
                     f"cannot remove value at {str(self)!r} because key {self.parts[-1]!r} is an invalid array index"
                 )
             case TargetState.VALUE_PRESENT:
-                container = self.parent_ptr.resolve(doc)
-                assert _is_container(container), (
-                    "classify_state regression: VALUE_PRESENT"
-                )
+                container = self._resolve_parent_container(doc)
                 token = self.parts[-1]
                 key = int(token) if _is_array(container) else token
                 self._validate_target(container[key])  # type: ignore[index]
@@ -656,7 +757,15 @@ class JSONPointer(str, Generic[T_co, P_co]):
                 assert_never(unreachable)
 
     def is_removable(self, doc: JSONValue) -> bool:
-        """Return True if RFC 6902 ``remove`` would succeed for this document, else False."""
+        """
+        Return `True` if RFC 6902 `remove` would succeed for this document.
+
+        Arguments:
+            doc: Target JSON document.
+
+        Returns:
+            `True` if remove semantics would succeed, otherwise `False`.
+        """
         return self.is_gettable(doc)
 
     @override

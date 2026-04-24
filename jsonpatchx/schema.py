@@ -31,38 +31,38 @@ class OperationSchema(BaseModel, ABC):
     """
     Base class for typed JSON Patch operations.
 
-    An ``OperationSchema`` is a Pydantic model representing one JSON Patch operation:
-    standard RFC 6902 operations (``add``/``remove``/``replace``/...) and custom domain operations.
+    An `OperationSchema` is a Pydantic model representing one JSON Patch operation:
+    standard RFC 6902 operations (`add`/`remove`/`replace`/...) and custom domain operations.
 
     The library's workflow is:
 
     - Define operations as Pydantic models.
-    - Register them in an ``OperationRegistry``.
+    - Register them in an `OperationRegistry`.
     - Parse incoming patch documents into concrete operation instances via a discriminated union
-      keyed by ``op``.
-    - Apply operations sequentially by calling ``apply``.
+      keyed by `op`.
+    - Apply operations sequentially by calling `apply`.
 
-    Example:
-        Required ``op`` field:
+    Examples:
+        Required `op` field:
 
-        ``class ReplaceOp(OperationSchema):``
-        ``    op: Literal["replace"] = "replace"``
-        ``    path: JSONPointer[JSONValue]``
-        ``    value: JSONValue``
+        class ReplaceOp(OperationSchema):
+            op: Literal["replace"] = "replace"
+            path: JSONPointer[JSONValue]
+            value: JSONValue
 
         Multiple identifiers (aliases):
 
-        ``class CreateOp(OperationSchema):``
-        ``    op: Literal["create", "add"] = "create"``
+        class CreateOp(OperationSchema):
+            op: Literal["create", "add"] = "create"
 
     Notes:
-        - ``op`` must be a normal annotated attribute, not a ``ClassVar``. ``ClassVar`` values are not
+        - `op` must be a normal annotated attribute, not a `ClassVar`. `ClassVar` values are not
           Pydantic fields and cannot participate in discriminated-union dispatch.
         - Instances are frozen and strict by default.
         - Instances are revalidated when parsed, which matters for fields that depend on validation
           context (for example, registry-scoped pointer backends).
-        - Subclasses are validated at class-definition time. If ``op`` is not declared correctly, the
-          class raises ``InvalidOperationDefinition`` during import.
+        - Subclasses are validated at class-definition time. If `op` is not declared correctly, the
+          class raises `InvalidOperationDefinition` during import.
     """
 
     model_config = ConfigDict(
@@ -81,7 +81,7 @@ class OperationSchema(BaseModel, ABC):
 
     _op_literals: ClassVar[tuple[str, ...]]
     """
-    Internal: cached tuple of string op identifiers declared by the subclass' ``op: Literal[...]``.
+    Internal: cached tuple of string op identifiers declared by the subclass' `op: Literal[...]`.
 
     This is populated during subclass creation and is used by OperationRegistry to build the mapping
     from operation name to schema type.
@@ -93,7 +93,7 @@ class OperationSchema(BaseModel, ABC):
         Hook that validates subclasses at definition time.
 
         Public subclasses normally do not need to call this directly. The base class ensures that
-        every OperationSchema has a properly declared ``op`` field, and caches the allowed op
+        every OperationSchema has a properly declared `op` field, and caches the allowed op
         identifiers for registry dispatch.
         """
         super().__init_subclass__(**kwargs)
@@ -102,15 +102,15 @@ class OperationSchema(BaseModel, ABC):
     @classmethod
     def _get_op_literals(cls) -> tuple[str, ...]:
         """
-        Internal: extract the string literal values from the subclass' ``op`` annotation.
+        Internal: extract the string literal values from the subclass' `op` annotation.
 
         Supported forms:
 
-        - ``op: Literal["add"]``
-        - ``op: Literal["add", "create"]``
+        - `op: Literal["add"]`
+        - `op: Literal["add", "create"]`
 
-        Raises ``InvalidOperationDefinition`` if the subclass does not declare a valid ``Literal[str, ...]``
-        annotation for ``op``.
+        Raises `InvalidOperationDefinition` if the subclass does not declare a valid `Literal[str, ...]`
+        annotation for `op`.
         """
         if (
             (annotations := get_type_hints(cls, include_extras=True))
@@ -129,15 +129,21 @@ class OperationSchema(BaseModel, ABC):
     @abstractmethod
     def apply(self, doc: JSONValue) -> JSONValue:
         """
-        Apply this operation to ``doc`` and return the updated document.
+        Apply this operation to `doc` and return the updated document.
+
+        Arguments:
+            doc: Target JSON document.
+
+        Returns:
+            The updated document.
 
         Notes:
-            - Implementations may mutate the provided ``doc`` object in-place and should return the
+            - Implementations may mutate the provided `doc` object in-place and should return the
               updated document (often the same object).
-            - Raise ``PatchError`` subclasses for expected patch failures. Unexpected exceptions will
+            - Raise `PatchError` subclasses for expected patch failures. Unexpected exceptions will
               be wrapped by the patch engine.
             - Whether the caller-owned document is mutated is controlled by the patch engine
-              (see ``_apply_ops(..., inplace=...)``), not by this method.
+              (see `_apply_ops(..., inplace=...)`), not by this method.
         """
 
     @classmethod
@@ -169,11 +175,11 @@ def _apply_ops(
 
     This function is the single source of truth for the library's copy and mutation semantics.
 
-    Args:
+    Arguments:
         ops: Operations to apply, in order.
         doc: Target JSON document.
-        inplace: Copy policy. ``False`` deep-copies ``doc`` before applying operations.
-            ``True`` applies operations against ``doc`` without that initial copy.
+        inplace: Copy policy. `False` deep-copies `doc` before applying operations.
+            `True` applies operations against `doc` without that initial copy.
 
     Returns:
         The patched document value produced by applying all operations.
@@ -183,10 +189,10 @@ def _apply_ops(
         PatchInternalError: Unexpected exceptions wrapped with structured context.
 
     Notes:
-        - ``inplace=False`` (default): the engine deep-copies ``doc`` first, then applies operations
+        - `inplace=False` (default): the engine deep-copies `doc` first, then applies operations
           to that copy. Operation implementations may mutate the document object they receive. The
           original input object is not modified.
-        - ``inplace=True``: operations are applied directly to the provided ``doc`` object. This is faster
+        - `inplace=True`: operations are applied directly to the provided `doc` object. This is faster
           and avoids a deep copy, but it is **not transactional**. If an operation fails mid-patch, earlier
           operations will already have mutated the document (no rollback).
           This is a **copy policy**, not an object-identity guarantee for the returned root value

@@ -79,7 +79,7 @@ So the "ugly" pattern here is intentional:
 
 
 def _allow_missing(schema: core_schema.CoreSchema) -> core_schema.CoreSchema:
-    """Allow the Pydantic ``MISSING`` sentinel at runtime without changing JSON Schema."""
+    """Allow the Pydantic `MISSING` sentinel at runtime without changing JSON Schema."""
     return core_schema.union_schema([core_schema.missing_sentinel_schema(), schema])
 
 
@@ -125,7 +125,7 @@ else:
             return {"type": "boolean"}
 
     class JSONNumber:
-        """Strict JSON number helper accepting ``int`` or finite ``float`` values."""
+        """Strict JSON number helper accepting `int` or finite `float` values."""
 
         @classmethod
         def __get_pydantic_core_schema__(
@@ -183,7 +183,7 @@ else:
             return {"type": "null"}
 
     class JSONArray[T]:
-        """Strict JSON array helper restricted to concrete ``list`` values."""
+        """Strict JSON array helper restricted to concrete `list` values."""
 
         @classmethod
         def __get_pydantic_core_schema__(
@@ -202,7 +202,7 @@ else:
             return handler(_core_schema)
 
     class JSONObject[T]:
-        """Strict JSON object helper restricted to ``dict[str, ...]`` values."""
+        """Strict JSON object helper restricted to `dict[str, ...]` values."""
 
         @classmethod
         def __get_pydantic_core_schema__(
@@ -258,11 +258,11 @@ if TYPE_CHECKING:
     Pydantic-friendly type representing a strict JSON value.
 
     Notes:
-        - The standard JSON Patch operation schemas use it for ``value`` fields.
-        - ``JSONPointer`` uses it as the document type for ``get``/``add``/``remove``.
+        - The standard JSON Patch operation schemas use it for `value` fields.
+        - `JSONPointer` uses it as the document type for `get`/`add`/`remove`.
         - Patch application helpers can optionally validate that inputs are legitimate JSON.
-        - Containers are restricted to ``list`` and ``dict[str, ...]``.
-        - Numeric values are restricted to ``int`` or finite ``float`` (no NaN/Infinity).
+        - Containers are restricted to `list` and `dict[str, ...]`.
+        - Numeric values are restricted to `int` or finite `float` (no NaN/Infinity).
         - Pydantic validation is strict (no implicit coercions).
     """
 else:
@@ -272,7 +272,7 @@ else:
         Runtime JSON value type with strict validation and minimal OpenAPI schema.
 
         Validation delegates to the strict JSON union, while
-        JSON schema is deliberately inlined as ``{}`` to avoid a named component.
+        JSON schema is deliberately inlined as `{}` to avoid a named component.
         """
 
         @classmethod
@@ -314,5 +314,5 @@ def _validate_typeform(unverified: object, exc_type: type[Exception]) -> TypeFor
 
 type JSONBound = JSONScalar | Sequence[JSONBound] | Mapping[str, JSONBound]
 """Bound for recursively JSON-shaped values accepted by generic helpers such as
-``JSONPointer[T]``."""
-# Use it like ``T = TypeVar("T", default=JSONValue, bound=JSONBound)``
+`JSONPointer[T]`."""
+# Use it like `T = TypeVar("T", default=JSONValue, bound=JSONBound)`

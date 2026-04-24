@@ -35,8 +35,8 @@ class InvalidOperationDefinition(PatchError):
     An OperationSchema definition is invalid (developer error).
 
     Examples:
-        - ``op`` is missing or not declared as ``Literal[...]``.
-        - ``op`` is declared as a ClassVar, so it is not a model field.
+        - `op` is missing or not declared as `Literal[...]`.
+        - `op` is declared as a ClassVar, so it is not a model field.
     """
 
 
@@ -84,7 +84,7 @@ class InvalidOperationRegistry(PatchError):
     An OperationRegistry has incompatible OperationSchemas (developer error).
 
     Examples:
-        - Duplicate ``op`` identifiers across schemas.
+        - Duplicate `op` identifiers across schemas.
         - Non-OperationSchema classes provided to the registry.
     """
 
@@ -163,7 +163,7 @@ class PatchInternalError(PatchError):
         - points at the exact op index
         - includes the full op payload (best-effort JSON shape)
 
-    Example:
+    Examples:
         A ZeroDivisionError raised inside a custom op implementation that fails
         to catch it.
 

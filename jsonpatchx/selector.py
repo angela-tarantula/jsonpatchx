@@ -5,8 +5,14 @@ from functools import partial
 from inspect import isabstract
 from typing import Any, Generic, Self, assert_never, cast, final, get_args, override
 
-from pydantic import GetCoreSchemaHandler, GetJsonSchemaHandler, TypeAdapter
+from pydantic import (
+    GetCoreSchemaHandler,
+    GetJsonSchemaHandler,
+    TypeAdapter,
+    ValidationError,
+)
 from pydantic.json_schema import JsonSchemaValue
+from pydantic_core import ValidationError as CoreValidationError
 from pydantic_core import core_schema as cs
 from typing_extensions import TypeForm, TypeVar
 
@@ -32,6 +38,7 @@ from jsonpatchx.types import (
 )
 
 _Nothing = object()
+_PYDANTIC_VALIDATION_ERRORS = (ValidationError, CoreValidationError)
 
 T_co = TypeVar("T_co", bound=JSONBound, covariant=True)
 S_co = TypeVar(
@@ -44,22 +51,22 @@ class JSONSelector(str, Generic[T_co, S_co]):
     """
     A typed query selector with Pydantic integration.
 
-    ``JSONSelector[T]`` is the query analogue of ``JSONPointer[T]``:
+    `JSONSelector[T]` is the query analogue of `JSONPointer[T]`:
     it parses a selector string up front, keeps the parsed backend around, and
-    enforces the type parameter ``T`` when matches are exercised.
+    enforces the type parameter `T` when matches are exercised.
 
     Query selectors differ from pointers in one important way: they can resolve
     to many locations. So the convenience surface is plural:
 
-    - ``getall(doc)`` validates and returns every matched value.
-    - ``addall(doc, value)`` validates the current matches and writes to every
+    - `getall(doc)` validates and returns every matched value.
+    - `addall(doc, value)` validates the current matches and writes to every
       matched location.
-    - ``removeall(doc)`` validates the current matches and removes every matched
+    - `removeall(doc)` validates the current matches and removes every matched
       location.
 
     Mutation is implemented by converting each match into an exact
-    ``JSONPointer`` and delegating to pointer mutation rules. Each match's
-    ``pointer()`` result is the source of truth for which pointer backend is
+    `JSONPointer` and delegating to pointer mutation rules. Each match's
+    `pointer()` result is the source of truth for which pointer backend is
     being used.
     """
 
@@ -74,13 +81,13 @@ class JSONSelector(str, Generic[T_co, S_co]):
         The underlying selector backend instance.
 
         This is exposed for advanced users who provide a custom
-        ``SelectorBackend`` with additional APIs.
+        `SelectorBackend` with additional APIs.
         """
         return self._selector
 
     @property
     def type_param(self) -> TypeForm[T_co]:
-        """The expected type parameter ``T`` used to validate matched targets."""
+        """The expected type parameter `T` used to validate matched targets."""
         return self._type
 
     @property
@@ -265,12 +272,44 @@ class JSONSelector(str, Generic[T_co, S_co]):
         return candidate
 
     def _validate_target(self, target: object) -> T_co:
+        """
+        Validate a matched or replacement value against this selector's type.
+
+        Arguments:
+            target: Candidate value to validate strictly against `T`.
+
+        Returns:
+            The validated value, typed as `T`.
+
+        Raises:
+            PatchConflictError: If `target` does not conform to `T`.
+        """
         try:
             return self._adapter.validate_python(target, strict=True)
-        except Exception as e:
+        except _PYDANTIC_VALIDATION_ERRORS as e:
             raise PatchConflictError(
                 f"expected target type {self.type_param} for selector {str(self)!r}, got: {type(target)}"
             ) from e
+
+    def _validate_replacement(self, value: object) -> JSONValue:
+        """
+        Validate a replacement value for selector-backed mutation.
+
+        Arguments:
+            value: Candidate value that will be written to each matched target.
+
+        Returns:
+            A strictly validated JSON value.
+
+        Raises:
+            PatchConflictError: If `value` does not conform to the selector's
+                type parameter or is not a valid `JSONValue`.
+        """
+        value_T = self._validate_target(value)
+        try:
+            return _validate_JSONValue(value_T)
+        except _PYDANTIC_VALIDATION_ERRORS as e:
+            raise PatchConflictError(f"value {value!r} is not a valid JSONValue") from e
 
     @classmethod
     def parse(
@@ -283,7 +322,19 @@ class JSONSelector(str, Generic[T_co, S_co]):
         """
         Parse a selector string or instance using Pydantic validation.
 
-        This is a convenience wrapper around ``TypeAdapter(JSONSelector[...])``.
+        Arguments:
+            selector: Selector string, parsed selector, or selector backend
+                instance.
+            type_param: Type enforced when matched values are exercised.
+            backend: Optional concrete backend class. When omitted, the built-in
+                JSONPath backend is used.
+
+        Returns:
+            A validated `JSONSelector` instance.
+
+        Raises:
+            InvalidJSONSelector: If the selector string, backend, or generic
+                parameters are invalid.
         """
         selector_args: tuple[TypeForm[Any], ...]
         if backend is None:
@@ -305,13 +356,38 @@ class JSONSelector(str, Generic[T_co, S_co]):
         return adapter.validate_python(selector)
 
     def is_valid_type(self, target: object) -> bool:
+        """
+        Return `True` if `target` conforms to this selector's type.
+
+        Arguments:
+            target: Candidate value to validate.
+
+        Returns:
+            `True` when `target` validates strictly against `T`,
+            otherwise `False`.
+        """
         try:
             self._adapter.validate_python(target, strict=True)
             return True
-        except Exception:
+        except _PYDANTIC_VALIDATION_ERRORS:
             return False
 
     def _raw_matches(self, doc: JSONValue) -> list[SelectorMatch]:
+        """
+        Resolve this selector to raw backend matches.
+
+        Arguments:
+            doc: Target JSON document.
+
+        Returns:
+            A list of backend matches satisfying `SelectorMatch`.
+
+        Raises:
+            PatchConflictError: If the selector backend raises while resolving
+                matches against `doc`.
+            InvalidJSONSelector: If the backend yields an object that does not
+                satisfy `SelectorMatch`.
+        """
         try:
             raw_matches = list(self._selector.finditer(doc))
         except Exception as e:
@@ -329,6 +405,19 @@ class JSONSelector(str, Generic[T_co, S_co]):
         return matches
 
     def _get_pointer_instance(self, match: SelectorMatch) -> PointerBackend:
+        """
+        Extract the backend pointer for a selector match.
+
+        Arguments:
+            match: A selector match yielded by the backend.
+
+        Returns:
+            The backend pointer exported by `match.pointer()`.
+
+        Raises:
+            InvalidJSONSelector: If `match.pointer()` does not return a
+                `PointerBackend` instance.
+        """
         raw_pointer = match.pointer()
         if not isinstance(raw_pointer, PointerBackend):
             raise InvalidJSONSelector(
@@ -337,14 +426,37 @@ class JSONSelector(str, Generic[T_co, S_co]):
         return raw_pointer
 
     def _pointer_instances(self, doc: JSONValue) -> list[PointerBackend]:
+        """
+        Resolve this selector and return backend pointer instances.
+
+        Arguments:
+            doc: Target JSON document.
+
+        Returns:
+            Backend pointers for each resolved match.
+
+        Raises:
+            PatchConflictError: If the selector backend cannot resolve the
+                selector against `doc`.
+            InvalidJSONSelector: If the backend yields invalid matches or
+                invalid pointer objects.
+        """
         return [self._get_pointer_instance(match) for match in self._raw_matches(doc)]
 
     def get_pointers(self, doc: JSONValue) -> list[JSONPointer[T_co, PointerBackend]]:
         """
-        Resolve this selector against ``doc`` and return exact matched pointers.
+        Resolve this selector against `doc` and return exact matched pointers.
 
-        This exposes the matched locations as typed ``JSONPointer`` values, so
-        callers can use familiar pointer utilities case by case.
+        Arguments:
+            doc: Target JSON document.
+
+        Returns:
+            Typed `JSONPointer` values for each matched location.
+
+        Raises:
+            PatchConflictError: If selector resolution fails.
+            InvalidJSONSelector: If the backend yields invalid matches or a
+                match pointer that cannot be re-bound as a `JSONPointer`.
         """
         json_pointers: list[JSONPointer[T_co, PointerBackend]] = []
         for pointer in self._pointer_instances(doc):
@@ -365,18 +477,37 @@ class JSONSelector(str, Generic[T_co, S_co]):
 
     def getall(self, doc: JSONValue) -> list[T_co]:
         """
-        Resolve this selector against ``doc`` and return all matched values.
+        Resolve this selector against `doc` and return all matched values.
 
-        Every matched pointer is exercised through ``JSONPointer.get()``, so the
-        selector's type parameter ``T`` is enforced at read time. If the
-        selector matches nothing, this returns an empty list.
+        Arguments:
+            doc: Target JSON document.
+
+        Returns:
+            A list of matched values validated against `T`. If the selector
+            matches nothing, the list will be empty.
+
+        Raises:
+            PatchConflictError: If selector resolution fails or a matched
+                pointer cannot be read as type `T`.
+            InvalidJSONSelector: If the backend yields invalid matches or
+                invalid pointer data.
         """
         return [pointer.get(doc) for pointer in self.get_pointers(doc)]
 
     def is_gettable(self, doc: JSONValue) -> bool:
+        """
+        Return `True` if `getall(doc)` would succeed.
+
+        Arguments:
+            doc: Target JSON document.
+
+        Returns:
+            `True` if selector resolution and per-match reads succeed,
+            otherwise `False`.
+        """
         try:
             self.getall(doc)
-        except Exception:
+        except (InvalidJSONSelector, PatchConflictError):
             return False
         else:
             return True
@@ -385,17 +516,21 @@ class JSONSelector(str, Generic[T_co, S_co]):
         """
         Apply RFC 6902-style add semantics at every matched location.
 
-        JsonPatchX currently applies matched pointers one at a time after
-        resolving them, but callers should not rely on any specific ordering or
-        extra overlap guarantees beyond ordinary pointer semantics.
-        """
-        # Validate up front in case there are no matches to trigger pointer-level validation
-        value_T: T_co = self._validate_target(value)
-        try:
-            target = _validate_JSONValue(value_T)
-        except Exception as e:
-            raise PatchConflictError(f"value {value!r} is not a valid JSONValue") from e
+        Arguments:
+            doc: Target JSON document.
+            value: Replacement value written to every matched location.
 
+        Returns:
+            The updated document.
+
+        Raises:
+            PatchConflictError: If `value` is not valid for this selector, if
+                selector resolution fails, or if any matched pointer cannot be
+                updated.
+            InvalidJSONSelector: If the backend yields invalid matches or
+                invalid pointer data.
+        """
+        target = self._validate_replacement(value)
         for pointer in self.get_pointers(doc):
             doc = pointer.add(doc, copy.deepcopy(target))
         return doc
@@ -405,32 +540,50 @@ class JSONSelector(str, Generic[T_co, S_co]):
         doc: JSONValue,
         value: object = _Nothing,
     ) -> bool:
+        """
+        Return `True` if `addall()` would succeed.
+
+        Arguments:
+            doc: Target JSON document.
+            value: Optional value that would be written to every matched
+                location. When omitted, only the current matched targets are
+                checked.
+
+        Returns:
+            `True` if the selector can be resolved and every matched pointer
+            accepts the requested add semantics, otherwise `False`.
+        """
         if value is _Nothing:
             try:
                 return all(
                     pointer.is_addable(doc) for pointer in self.get_pointers(doc)
                 )
-            except Exception:
+            except (InvalidJSONSelector, PatchConflictError):
                 return False
 
         try:
-            # Validate up front in case there are no matches to trigger pointer-level validation
-            value_T: T_co = self._validate_target(value)
-            target = _validate_JSONValue(value_T)
-
+            target = self._validate_replacement(value)
             return all(
                 pointer.is_addable(doc, target) for pointer in self.get_pointers(doc)
             )
-        except Exception:
+        except (InvalidJSONSelector, PatchConflictError):
             return False
 
     def removeall(self, doc: JSONValue) -> JSONValue:
         """
         Apply RFC 6902-style remove semantics at every matched location.
 
-        JsonPatchX currently applies matched pointers one at a time after
-        resolving them, but callers should not rely on any specific ordering or
-        extra overlap guarantees beyond ordinary pointer semantics.
+        Arguments:
+            doc: Target JSON document.
+
+        Returns:
+            The updated document.
+
+        Raises:
+            PatchConflictError: If selector resolution fails or any matched
+                pointer cannot be removed.
+            InvalidJSONSelector: If the backend yields invalid matches or
+                invalid pointer data.
         """
         for pointer in self.get_pointers(doc):
             doc = pointer.remove(doc)
@@ -438,12 +591,20 @@ class JSONSelector(str, Generic[T_co, S_co]):
 
     def is_removable(self, doc: JSONValue) -> bool:
         """
-        Return True if all matched targets are currently removable in principle.
+        Return `True` if all matched targets are removable in principle.
 
-        This is intentionally looser than ``removeall()``: selector removal
-        does not promise a stable or safety-maximizing order, so this predicate
-        only checks whether the current matches are gettable/removable targets,
-        not whether the backend's present iteration order will succeed.
+        Arguments:
+            doc: Target JSON document.
+
+        Returns:
+            `True` if the selector resolves and the current matches are
+            gettable/removable targets, otherwise `False`.
+
+        Notes:
+            This is intentionally looser than `removeall()`. Selector
+            removal does not promise a stable or safety-maximizing order, so
+            this predicate only checks the current matches, not whether any
+            particular backend iteration order will succeed.
         """
         return self.is_gettable(doc)
 
