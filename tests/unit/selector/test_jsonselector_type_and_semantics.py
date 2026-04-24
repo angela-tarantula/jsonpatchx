@@ -131,6 +131,86 @@ def test_default_jsonselector_zero_matches() -> None:
     assert missing.removeall({"a": 1}) == {"a": 1}
 
 
+def test_default_jsonselector_backend_corruption_paths(
+    subtests: Subtests,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    with subtests.test(
+        "resolution failure raises in accessors/mutators and returns False from boolean helpers"
+    ):
+        selector = JSONSelector.parse("a.b", backend=SimpleSelector)
+        with pytest.raises(PatchConflictError):
+            selector.get_pointers({"a": 1})
+        with pytest.raises(PatchConflictError):
+            selector.getall({"a": 1})
+        with pytest.raises(PatchConflictError):
+            selector.addall({"a": 1}, 1)
+        with pytest.raises(PatchConflictError):
+            selector.removeall({"a": 1})
+        assert selector.is_gettable({"a": 1}) is False
+        assert selector.is_addable({"a": 1}) is False
+        assert selector.is_addable({"a": 1}, 1) is False
+        assert selector.is_removable({"a": 1}) is False
+
+    with subtests.test(
+        "invalid backend match raises in accessors and returns False in boolean helpers"
+    ):
+
+        class InvalidMatchBackend:
+            def finditer(self, _doc: JSONValue) -> list[object]:
+                return [object()]
+
+        selector: JSONSelector[JSONValue] = JSONSelector.parse("$.a")
+        monkeypatch.setattr(selector, "_selector", InvalidMatchBackend())
+        with pytest.raises(InvalidJSONSelector):
+            selector.get_pointers({"a": 1})
+        with pytest.raises(InvalidJSONSelector):
+            selector.getall({"a": 1})
+        with pytest.raises(InvalidJSONSelector):
+            selector.addall({"a": 1}, 1)
+        with pytest.raises(InvalidJSONSelector):
+            selector.removeall({"a": 1})
+        assert selector.is_gettable({"a": 1}) is False
+        assert selector.is_addable({"a": 1}) is False
+        assert selector.is_addable({"a": 1}, 1) is False
+        assert selector.is_removable({"a": 1}) is False
+
+    with subtests.test(
+        "broken match.pointer() raises in accessors and returns False in boolean helpers"
+    ):
+
+        class BadPointerMatch:
+            @property
+            def obj(self) -> JSONValue:
+                return 1
+
+            @property
+            def parts(self) -> tuple[str, ...]:
+                return ("a",)
+
+            def pointer(self) -> object:
+                return object()
+
+        class BrokenPointerBackend:
+            def finditer(self, _doc: JSONValue) -> list[BadPointerMatch]:
+                return [BadPointerMatch()]
+
+        selector = JSONSelector.parse("$.a")
+        monkeypatch.setattr(selector, "_selector", BrokenPointerBackend())
+        with pytest.raises(InvalidJSONSelector):
+            selector.get_pointers({"a": 1})
+        with pytest.raises(InvalidJSONSelector):
+            selector.getall({"a": 1})
+        with pytest.raises(InvalidJSONSelector):
+            selector.addall({"a": 1}, 1)
+        with pytest.raises(InvalidJSONSelector):
+            selector.removeall({"a": 1})
+        assert selector.is_gettable({"a": 1}) is False
+        assert selector.is_addable({"a": 1}) is False
+        assert selector.is_addable({"a": 1}, 1) is False
+        assert selector.is_removable({"a": 1}) is False
+
+
 @pytest.mark.parametrize(
     ("custom_selector_cls", "selector_str", "missing_str", "wrong_type_str", "doc"),
     [
@@ -223,20 +303,6 @@ def test_jsonselector_public_methods_are_backend_agnostic(
 
     with subtests.test("__str__"):
         assert str(selector) == selector_str
-
-
-def test_default_jsonselector_invalid_matches_from_backend_raise(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    class BrokenBackend:
-        def finditer(self, _doc: JSONValue) -> list[object]:
-            return [object()]
-
-    bad_match: JSONSelector[JSONValue] = JSONSelector.parse("$.a")
-    monkeypatch.setattr(bad_match, "_selector", BrokenBackend())
-
-    with pytest.raises(InvalidJSONSelector):
-        bad_match.getall({"a": 1})
 
 
 @pytest.mark.xfail(
