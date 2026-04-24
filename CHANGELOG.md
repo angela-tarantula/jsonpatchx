@@ -10,18 +10,11 @@ and this project adheres to
 
 ## [Unreleased]
 
-### TBA
-
-## [1.0.0] - YYYY-MM-DD
-
 ### Added
 
-- Change one
-- Change two
-- Change three
+- Initial public release.
 
 [unreleased]:
-  https://github.com/angela-tarantula/jsonpatchx/compare/v1.0.0...HEAD
-[1.0.0]: https://github.com/angela-tarantula/jsonpatchx/releases/tag/v1.0.0
+  https://github.com/angela-tarantula/jsonpatchx/compare/v0.1.0...HEAD
 
 <!-- textlint-enable -->
