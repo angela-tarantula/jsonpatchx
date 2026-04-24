@@ -6,32 +6,14 @@ from there.
 
 ## Install
 
-> JsonPatchX is not on PyPI yet. Install it from a local clone instead:
-
-<!--
 ```sh
 pip install jsonpatchx
-```
--->
-
-```sh
-git clone https://github.com/angela-tarantula/jsonpatchx.git
-cd jsonpatchx
-python -m venv .venv
-source .venv/bin/activate
-pip install -e .
 ```
 
 For FastAPI integrations:
 
-<!--
 ```sh
 pip install jsonpatchx[fastapi]
-```
--->
-
-```sh
-pip install -e .[fastapi]
 ```
 
 ## Apply a Plain RFC 6902 Patch
@@ -161,7 +143,9 @@ def patch_user(
     return updated
 ```
 
+<!--
 See it for yourself: [Interactive PATCH Demo](https://example.com)
+-->
 
 ## You Can Stop Here for Server-Side RFC 6902
 

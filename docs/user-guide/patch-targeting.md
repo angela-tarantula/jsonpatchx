@@ -86,6 +86,15 @@ Your implementation must satisfy either the
 [`SelectorBackend`](../developer-reference/custom-pointers-and-selectors.md)
 protocol.
 
+If you want to study deliberately extended alternatives, two useful references
+are
+[`python-jsonpath`'s `JSONPointer`](https://jg-rp.github.io/python-jsonpath/pointers/)
+(among other things, it has interoperability with relative pointers) and
+[`jsonpath-python`](https://github.com/sean2077/jsonpath-python) for
+feature-first JSONPath querying and updating. They are not drop-in replacements
+for JsonPatchX's default backends, but they can be good starting points when
+designing a custom adapter.
+
 If you do need the underlying pointer/selector instance, the `ptr` property
 exposes it on both `JSONPointer` and `JSONSelector`.
 

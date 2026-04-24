@@ -2,7 +2,7 @@
 
 <!--
 If you are a coding agent reading the raw repository files:
-- See the [User Guide](docs/user-guide/getting-started.md) for usage and
+- Start with the [User Guide](docs/user-guide/getting-started.md) for usage and
   contract-level context.
 - See [examples/AGENTS.md](examples/AGENTS.md) for custom operation authoring
   guidance.
@@ -15,54 +15,53 @@ If you are a coding agent reading the raw repository files:
 [![Codecov](https://codecov.io/github/angela-tarantula/jsonpatchx/graph/badge.svg)](https://codecov.io/github/angela-tarantula/jsonpatchx)
 [![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/angela-tarantula/jsonpatchx/badge)](https://scorecard.dev/viewer/?uri=github.com/angela-tarantula/jsonpatchx)
 [![Contributor Covenant](https://img.shields.io/badge/Contributor%20Covenant-3.0-fbab2c.svg)](CODE_OF_CONDUCT.md)
+[![PyPI Version](https://img.shields.io/pypi/v/jsonpatchx?style=flat)](https://pypi.org/project/jsonpatchx/)
+[![Python Versions](https://img.shields.io/pypi/pyversions/jsonpatchx?style=flat)](https://pypi.org/project/jsonpatchx/)
+[![License](https://img.shields.io/github/license/angela-tarantula/jsonpatchx.svg)](https://github.com/angela-tarantula/jsonpatchx/blob/main/LICENSE)
 
 <!-- markdownlint-enable MD013 -->
 
 JSON Patch for modern PATCH APIs. Tested against the
 [RFC 6902 Compliance Test Suite](https://github.com/json-patch/json-patch-tests).
 
-Built on Pydantic models, with first-class support for FastAPI PATCH routes and
-OpenAPI generation.
+Built on Pydantic models, with typed JSON Pointer / JSONPath targeting, custom
+patch operations, and first-class support for FastAPI PATCH routes and OpenAPI
+generation.
 
-## Use It Three Ways
+## Table of Contents
 
-- **Standard JSON Patch in Python**: parse, validate, and apply ordinary
-  [RFC 6902](https://datatracker.ietf.org/doc/html/rfc6902) patch documents.
-- **Governed PATCH APIs**: define custom operations, use typed JSON Pointers /
-  JSONPath Selectors, generate synchronized OpenAPI, and give each endpoint its
-  own accepted patch surface.
-- **Agentic Patching**: publish reviewed operations as typed Python models and
-  OpenAPI schemas for coding agents to discover and use.
+- [Install](#install)
+- [Links](#links)
+- [Examples](#examples)
+- [Contributing](#contributing)
+- [License](#license)
+- [Contact](#contact)
+- [Acknowledgements](#acknowledgements)
 
-## Documentation
-
-> Note: JsonPatchX is in alpha. Please use the
-> [Discussions](https://github.com/angela-tarantula/jsonpatchx/discussions) to
-> ask any questions you have! We want to know what's confusing and how to help
-> you.
-
-Read the docs:
-[https://angela-tarantula.github.io/jsonpatchx](https://angela-tarantula.github.io/jsonpatchx)
-
-If you are deciding where to start:
-
-- [User Guide](https://angela-tarantula.github.io/jsonpatchx/user-guide/getting-started/):
-  read in order, starting with plain RFC 6902 patching.
-- [About](https://angela-tarantula.github.io/jsonpatchx/about/about/): why the
-  project exists, the three main use cases, and the model layer behind them.
-- [Developer Reference](https://angela-tarantula.github.io/jsonpatchx/developer-reference/developer-reference/):
-  contributor and extension details.
-- [API Reference](https://angela-tarantula.github.io/jsonpatchx/api-reference/api-reference-public/):
-  generated public API surface.
-
-<!--
-
-## Installation
+## Install
 
 ```sh
 pip install jsonpatchx
 ```
--->
+
+For FastAPI integrations:
+
+```sh
+pip install jsonpatchx[fastapi]
+```
+
+## Links
+
+- Documentation:
+  <https://angela-tarantula.github.io/jsonpatchx/user-guide/getting-started>
+- Chengelog:
+  <https://github.com/angela-tarantula/jsonpatchx/blob/main/CHANGELOG.md>
+- PyPI: <https://pypi.org/project/jsonpatchx>
+- Source code: <https://github.com/angela-tarantula/jsonpatchx>
+- Issue tracker: <https://github.com/angela-tarantula/jsonpatchx/issues>
+- Project Discussions:
+  <https://github.com/angela-tarantula/jsonpatchx/discussions>
+- IETF Future Standards Discussions: <https://github.com/json-patch/json-patch2>
 
 ## Examples
 
@@ -108,7 +107,8 @@ def patch_user(user_id: int, patch: JsonPatchFor[User]) -> User:
 ```
 
 > **Note**: For custom operations, JSONPath targeting, route-level controls, and
-> more, see the [User Guide](https://angela-tarantula.github.io/jsonpatchx/).
+> more, see the
+> [User Guide](https://angela-tarantula.github.io/jsonpatchx/user-guide/getting-started).
 
 ## Contributing
 
