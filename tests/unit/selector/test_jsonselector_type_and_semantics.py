@@ -282,21 +282,46 @@ def test_selector_backend_binding(subtests: Subtests) -> None:
             JSONSelector.parse("$.a", backend=SelectorBackend)
 
 
-def test_jsonselector_backend_reuse_and_mismatch() -> None:
-    original: JSONSelector[JSONValue, SimpleSelector] = JSONSelector.parse(
-        "a", backend=SimpleSelector
-    )
-    reparsed: JSONSelector[JSONValue, SimpleSelector] = JSONSelector.parse(
-        original, backend=SimpleSelector
-    )
-    default_reparsed: JSONSelector[JSONValue] = JSONSelector.parse(original)
-    raw_backend = SimpleSelector("a")
+def test_jsonselector_backend_reuse(subtests: Subtests) -> None:
+    class SimpleSelectorSubclass(SimpleSelector):
+        pass
 
-    assert reparsed.ptr is original.ptr
-    assert default_reparsed.ptr is original.ptr
+    selector1a = JSONSelector.parse("a", backend=SimpleSelector)
+    selector1b = JSONSelector.parse(selector1a, backend=SimpleSelector)
+    selector1c = JSONSelector.parse(selector1a)
+    raw_selector = SimpleSelector("a")
+    selector2a = JSONSelector.parse(raw_selector, backend=SimpleSelector)
+    selector2b = JSONSelector.parse(selector2a, backend=SimpleSelector)
+    selector3a = JSONSelector.parse(SimpleSelectorSubclass("a"), backend=SimpleSelector)
+    selector3b = JSONSelector.parse(selector3a, backend=SimpleSelector)
 
-    with pytest.raises(InvalidJSONSelector):
-        JSONSelector.parse(raw_backend)
+    with subtests.test("reuse compatible backend instances"):
+        assert selector1a.ptr is selector1b.ptr
+        assert selector1a.ptr is selector1c.ptr
+        assert selector2a.ptr is raw_selector
+        assert selector2a.ptr is selector2b.ptr
+        assert selector3a.ptr is selector3b.ptr
+
+    with subtests.test("don't coerce backend superclass instances"):
+        with pytest.raises(InvalidJSONSelector):
+            JSONSelector.parse(SimpleSelector("a"), backend=SimpleSelectorSubclass)
+
+    with subtests.test(
+        "reject raw backend instances when omitted backend defaults to RFC 9535"
+    ):
+        with pytest.raises(InvalidJSONSelector):
+            JSONSelector.parse(SimpleSelector("a"))
+
+    with subtests.test("reject incompatible backend instances"):
+        with pytest.raises(InvalidJSONSelector):
+            JSONSelector.parse(_DEFAULT_SELECTOR_CLS("$.a"), backend=SimpleSelector)
+
+    with subtests.test(
+        "reparse JSONSelector into different but compatible-syntax backend"
+    ):
+        reparsed = JSONSelector.parse(selector1a, backend=SimpleSelectorSubclass)
+        assert isinstance(reparsed.ptr, SimpleSelectorSubclass)
+        assert reparsed.ptr is not selector1a.ptr
 
 
 def test_jsonselector_json_schema() -> None:
