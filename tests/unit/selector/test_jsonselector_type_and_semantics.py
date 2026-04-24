@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import copy
 from functools import partial
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import pytest
 from pydantic import TypeAdapter
@@ -261,6 +261,9 @@ def test_jsonselector_is_removable_future_rejects_duplicate_matches() -> None:
 def test_selector_backend_binding(subtests: Subtests) -> None:
     class BoundSelector(SimpleSelector):
         pass
+
+    if TYPE_CHECKING:
+        _dont_raise_mypy_error_1: SelectorBackend = _DEFAULT_SELECTOR_CLS("")
 
     with subtests.test("no backends"):
         selector = JSONSelector.parse("$.a", backend=None)
