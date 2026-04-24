@@ -192,7 +192,15 @@ boundary, it is still ordinary JSON Patch on the wire.
 
 ## Use Validation and Patch Errors for Course Correction
 
-This pattern gives the agent a better retry loop than "emit JSON and hope":
+Many agent runtimes treat JSON structured output as a repair loop rather than a
+one-shot success condition. Claude Code, for example,
+[documents](https://code.claude.com/docs/en/agent-sdk/structured-outputs#error-handling)
+re-prompting on schema mismatch until the output validates or a retry limit is
+hit. OpenAI's JSON mode doesn't document internal retries but
+[requires applications to detect and handle edge cases](https://developers.openai.com/api/docs/guides/structured-outputs#json-mode:~:text=the%20model%E2%80%99s%20output%20is%20ensured%20to%20be%20valid%20JSON%2C%20except%20for%20in%20some%20edge%20cases%20that%20you%20should%20detect%20and%20handle%20appropriately).
+
+JsonPatchX gives the agent tighter course-correction points inside the patching
+layer itself:
 
 - invalid operation inputs fail during model construction or `JsonPatch(...)`
   validation
