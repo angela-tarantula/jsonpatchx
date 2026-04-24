@@ -538,6 +538,14 @@ def test_jsonselector_path_validation(subtests: Subtests) -> None:
         JSONSelector.parse(SimpleSelectorSubclass("a"), backend=SimpleSelector)
 
 
+def test_jsonselector_covariance_narrow_to_wide(subtests: Subtests) -> None:
+    with subtests.test("narrow to wide passes"):
+        s_bool = JSONSelector.parse("$.x", type_param=bool)
+        assert JSONSelector.parse(s_bool, type_param=int) == s_bool
+        assert JSONSelector.parse(s_bool, type_param=JSONNumber) == s_bool
+        assert JSONSelector.parse(s_bool, type_param=JSONValue) == s_bool
+
+
 def test_default_jsonselector_backend_smoke() -> None:
     selector: JSONSelector[JSONNumber] = JSONSelector.parse(
         "$.items[*]", type_param=JSONNumber
