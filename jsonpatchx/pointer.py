@@ -18,10 +18,8 @@ from pydantic import (
     TypeAdapter,
     ValidationError,
 )
-from pydantic.experimental.missing_sentinel import MISSING
 from pydantic.json_schema import JsonSchemaValue
-from pydantic_core import ValidationError as CoreValidationError
-from pydantic_core import core_schema as cs
+from pydantic_core import MISSING, core_schema as cs
 from typing_extensions import TypeForm, TypeVar
 
 from jsonpatchx.backend import (
@@ -51,7 +49,6 @@ from jsonpatchx.types import (
 )
 
 _Nothing = object()
-_PYDANTIC_VALIDATION_ERRORS = (ValidationError, CoreValidationError)
 # NOTE: maybe add pydantic_core.MISSING to JSONPointer.get() on failure
 
 
@@ -432,7 +429,7 @@ class JSONPointer(str, Generic[T_co, P_co]):
         """
         try:
             return self._adapter.validate_python(target, strict=True)
-        except _PYDANTIC_VALIDATION_ERRORS as e:
+        except ValidationError as e:
             raise PatchConflictError(
                 f"expected target type {self.type_param} for pointer {str(self)!r}, got: {type(target)}"
             ) from e
@@ -467,7 +464,7 @@ class JSONPointer(str, Generic[T_co, P_co]):
         value_T = self._validate_target(target=value)
         try:
             return _validate_JSONValue(value_T)
-        except _PYDANTIC_VALIDATION_ERRORS as e:
+        except ValidationError as e:
             raise PatchConflictError(f"value {value!r} is not a valid JSONValue") from e
 
     # Constructor - for convenience
@@ -580,7 +577,7 @@ class JSONPointer(str, Generic[T_co, P_co]):
         try:
             self._adapter.validate_python(target, strict=True)
             return True
-        except _PYDANTIC_VALIDATION_ERRORS:
+        except ValidationError:
             return False
 
     def get(self, doc: JSONValue) -> T_co:

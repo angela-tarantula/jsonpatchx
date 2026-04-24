@@ -8,7 +8,7 @@ import pytest
 from jsonpath import JSONPointer as ExtendedJsonPointer
 from jsonpointer import JsonPointer as CustomJsonPointer
 from pydantic import BaseModel, TypeAdapter
-from pydantic.experimental.missing_sentinel import MISSING
+from pydantic_core import MISSING
 from pytest import Subtests
 from typing_extensions import TypeVar
 

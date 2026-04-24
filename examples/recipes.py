@@ -10,7 +10,7 @@ import json
 from typing import Literal, Self, cast, override
 
 from pydantic import ConfigDict, Field, model_validator
-from pydantic.experimental.missing_sentinel import MISSING
+from pydantic_core import MISSING
 
 from jsonpatchx import (
     AddOp,

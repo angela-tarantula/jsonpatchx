@@ -6,12 +6,15 @@ from typing import TYPE_CHECKING, Any, Generic
 
 import pytest
 from pydantic import BaseModel, TypeAdapter
-from pydantic.experimental.missing_sentinel import MISSING
+from pydantic_core import MISSING
 from pytest import Subtests
 from typing_extensions import TypeVar
 
 from jsonpatchx.backend import _DEFAULT_SELECTOR_CLS, SelectorBackend
-from jsonpatchx.exceptions import InvalidJSONSelector, PatchConflictError
+from jsonpatchx.exceptions import (
+    InvalidJSONSelector,
+    PatchConflictError,
+)
 from jsonpatchx.pointer import JSONPointer
 from jsonpatchx.selector import JSONSelector
 from jsonpatchx.types import JSONNumber, JSONValue

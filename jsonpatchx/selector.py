@@ -12,7 +12,6 @@ from pydantic import (
     ValidationError,
 )
 from pydantic.json_schema import JsonSchemaValue
-from pydantic_core import ValidationError as CoreValidationError
 from pydantic_core import core_schema as cs
 from typing_extensions import TypeForm, TypeVar
 
@@ -38,8 +37,6 @@ from jsonpatchx.types import (
 )
 
 _Nothing = object()
-_PYDANTIC_VALIDATION_ERRORS = (ValidationError, CoreValidationError)
-
 T_co = TypeVar("T_co", bound=JSONBound, covariant=True)
 S_co = TypeVar(
     "S_co", bound=SelectorBackend, covariant=True, default=_DEFAULT_SELECTOR_CLS
@@ -367,7 +364,7 @@ class JSONSelector(str, Generic[T_co, S_co]):
         """
         try:
             return self._adapter.validate_python(target, strict=True)
-        except _PYDANTIC_VALIDATION_ERRORS as e:
+        except ValidationError as e:
             raise PatchConflictError(
                 f"expected target type {self.type_param} for selector {str(self)!r}, got: {type(target)}"
             ) from e
@@ -389,7 +386,7 @@ class JSONSelector(str, Generic[T_co, S_co]):
         value_T = self._validate_target(value)
         try:
             return _validate_JSONValue(value_T)
-        except _PYDANTIC_VALIDATION_ERRORS as e:
+        except ValidationError as e:
             raise PatchConflictError(f"value {value!r} is not a valid JSONValue") from e
 
     @classmethod
@@ -450,7 +447,7 @@ class JSONSelector(str, Generic[T_co, S_co]):
         try:
             self._adapter.validate_python(target, strict=True)
             return True
-        except _PYDANTIC_VALIDATION_ERRORS:
+        except ValidationError:
             return False
 
     def _raw_matches(self, doc: JSONValue) -> list[SelectorMatch]:
