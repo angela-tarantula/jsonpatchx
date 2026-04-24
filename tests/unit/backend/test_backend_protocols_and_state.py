@@ -10,6 +10,7 @@ from jsonpointer import JsonPointer as CustomJsonPointer
 from pytest import Subtests
 
 from jsonpatchx.backend import (
+    _DEFAULT_POINTER_CLS,
     _DEFAULT_SELECTOR_CLS,
     PointerBackend,
     SelectorBackend,
@@ -23,6 +24,9 @@ from tests.support.selectors import SimpleSelector
 
 
 def test_pointer_backend(subtests: Subtests) -> None:
+    with subtests.test("built-in RFC 6901 backend"):
+        assert isinstance(_DEFAULT_POINTER_CLS("/a"), PointerBackend)
+
     with subtests.test("Custom JsonPointer backend"):
         assert isinstance(CustomJsonPointer(""), PointerBackend)
     with subtests.test("Extended JsonPointer backend"):
@@ -30,11 +34,23 @@ def test_pointer_backend(subtests: Subtests) -> None:
 
 
 def test_selector_backend(subtests: Subtests) -> None:
-    with subtests.test("built-in JSONPath backend"):
+    with subtests.test("built-in RFC 9535 backend"):
         assert isinstance(_DEFAULT_SELECTOR_CLS("$.a"), SelectorBackend)
 
     with subtests.test("simple selector backend"):
         assert isinstance(SimpleSelector("a"), SelectorBackend)
+
+
+def test_default_backend_string_representations(subtests: Subtests) -> None:
+    with subtests.test("built-in RFC 6901 pointer backend"):
+        pointer = _DEFAULT_POINTER_CLS("/a")
+        assert str(pointer) == "/a"
+        assert repr(pointer) == "JsonPointerRFC6901('/a')"
+
+    with subtests.test("built-in RFC 9535 selector backend"):
+        selector = _DEFAULT_SELECTOR_CLS("$.a")
+        assert str(selector) == "$.a"
+        assert repr(selector) == "JsonPathRFC9535('$.a')"
 
 
 def test_selector_match(subtests: Subtests) -> None:

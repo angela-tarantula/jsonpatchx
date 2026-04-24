@@ -357,7 +357,7 @@ class _DEFAULT_SELECTOR_CLS:
 
     @override
     def __repr__(self) -> str:
-        return "JsonPathDefault(" + repr(self._path) + ")"
+        return "JsonPathRFC9535(" + repr(self._path) + ")"
 
 
 def _selector_backend_instance[SB: SelectorBackend](
