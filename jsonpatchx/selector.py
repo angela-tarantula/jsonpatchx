@@ -385,9 +385,9 @@ class JSONSelector(str, Generic[T_co, S_co]):
         """
         Apply RFC 6902-style add semantics at every matched location.
 
-        Matched pointers are applied sequentially in backend iteration order.
-        JsonPatchX does not add extra overlap or ordering guarantees beyond
-        ordinary pointer semantics.
+        JsonPatchX currently applies matched pointers one at a time after
+        resolving them, but callers should not rely on any specific ordering or
+        extra overlap guarantees beyond ordinary pointer semantics.
         """
         # Validate up front in case there are no matches to trigger pointer-level validation
         value_T: T_co = self._validate_target(value)
@@ -428,9 +428,9 @@ class JSONSelector(str, Generic[T_co, S_co]):
         """
         Apply RFC 6902-style remove semantics at every matched location.
 
-        Matched pointers are applied sequentially in backend iteration order.
-        JsonPatchX does not add extra overlap or ordering guarantees beyond
-        ordinary pointer semantics.
+        JsonPatchX currently applies matched pointers one at a time after
+        resolving them, but callers should not rely on any specific ordering or
+        extra overlap guarantees beyond ordinary pointer semantics.
         """
         for pointer in self.get_pointers(doc):
             doc = pointer.remove(doc)

@@ -9,7 +9,7 @@ from pydantic import TypeAdapter
 from pydantic.experimental.missing_sentinel import MISSING
 from pytest import Subtests
 
-from jsonpatchx.backend import _DEFAULT_SELECTOR_CLS
+from jsonpatchx.backend import _DEFAULT_SELECTOR_CLS, SelectorBackend
 from jsonpatchx.exceptions import InvalidJSONSelector, PatchConflictError
 from jsonpatchx.pointer import JSONPointer
 from jsonpatchx.selector import JSONSelector
@@ -125,10 +125,22 @@ def test_default_jsonselector_zero_matches() -> None:
 
 
 @pytest.mark.parametrize(
-    ("custom_selector_cls", "selector_str", "missing_str"),
+    ("custom_selector_cls", "selector_str", "missing_str", "wrong_type_str", "doc"),
     [
-        (None, "$.record.*", "$.missing[*]"),
-        (SimpleSelector, "record_values", "missing"),
+        (
+            None,
+            "$.record.*",
+            "$.missing[*]",
+            "$.bool",
+            {"record": {"number_a": 1, "number_b": 2}, "bool": True},
+        ),
+        (
+            SimpleSelector,
+            "record_values",
+            "missing",
+            "a",
+            {"record": {"a": 1, "b": 2}, "a": True},
+        ),
     ],
 )
 def test_jsonselector_public_methods_are_backend_agnostic(
@@ -136,9 +148,9 @@ def test_jsonselector_public_methods_are_backend_agnostic(
     custom_selector_cls: type[SimpleSelector] | None,
     selector_str: str,
     missing_str: str,
+    wrong_type_str: str,
+    doc: JSONValue,
 ) -> None:
-    doc: JSONValue = {"record": {"a": 1, "b": 2}, "a": True}
-
     if custom_selector_cls is None:
         parse = JSONSelector.parse
     else:
@@ -146,6 +158,7 @@ def test_jsonselector_public_methods_are_backend_agnostic(
 
     selector = parse(selector_str, type_param=JSONNumber)
     missing = parse(missing_str, type_param=JSONNumber)
+    wrong_type = parse(wrong_type_str, type_param=JSONNumber)
 
     with subtests.test("ptr"):
         assert selector.ptr is not None
@@ -161,35 +174,45 @@ def test_jsonselector_public_methods_are_backend_agnostic(
         assert selector.getall(doc) == [1, 2]
 
     with subtests.test("get_pointers"):
-        assert [str(pointer) for pointer in selector.get_pointers(doc)] == [
-            "/record/a",
-            "/record/b",
-        ]
+        expected_pointers = (
+            ["/record/number_a", "/record/number_b"]
+            if custom_selector_cls is None
+            else ["/record/a", "/record/b"]
+        )
+        assert [
+            str(pointer) for pointer in selector.get_pointers(doc)
+        ] == expected_pointers
 
     with subtests.test("is_gettable"):
         assert selector.is_gettable(doc) is True
         assert missing.is_gettable(doc) is True
 
     with subtests.test("is_addable"):
+        assert selector.is_addable(copy.deepcopy(doc)) is True
         assert selector.is_addable(copy.deepcopy(doc), 9) is True
         assert selector.is_addable(copy.deepcopy(doc), object()) is False
+        assert wrong_type.is_addable(copy.deepcopy(doc)) is False
         assert missing.is_addable(copy.deepcopy(doc), 9) is True
 
     with subtests.test("addall"):
-        assert selector.addall(copy.deepcopy(doc), 9) == {
-            "record": {"a": 9, "b": 9},
-            "a": True,
-        }
+        expected_added = (
+            {"record": {"number_a": 9, "number_b": 9}, "bool": True}
+            if custom_selector_cls is None
+            else {"record": {"a": 9, "b": 9}, "a": True}
+        )
+        assert selector.addall(copy.deepcopy(doc), 9) == expected_added
 
     with subtests.test("is_removable"):
         assert selector.is_removable(doc) is True
         assert missing.is_removable(doc) is True
 
     with subtests.test("removeall"):
-        assert selector.removeall(copy.deepcopy(doc)) == {
-            "record": {},
-            "a": True,
-        }
+        expected_removed = (
+            {"record": {}, "bool": True}
+            if custom_selector_cls is None
+            else {"record": {}, "a": True}
+        )
+        assert selector.removeall(copy.deepcopy(doc)) == expected_removed
 
     with subtests.test("__str__"):
         assert str(selector) == selector_str
@@ -198,41 +221,15 @@ def test_jsonselector_public_methods_are_backend_agnostic(
 def test_default_jsonselector_invalid_matches_from_backend_raise(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    def broken_finditer(_self: object, _doc: JSONValue) -> list[object]:
-        return [object()]
-
-    monkeypatch.setattr(_DEFAULT_SELECTOR_CLS, "finditer", broken_finditer)
+    class BrokenBackend:
+        def finditer(self, _doc: JSONValue) -> list[object]:
+            return [object()]
 
     bad_match: JSONSelector[JSONValue] = JSONSelector.parse("$.a")
+    monkeypatch.setattr(bad_match, "_selector", BrokenBackend())
+
     with pytest.raises(InvalidJSONSelector):
         bad_match.getall({"a": 1})
-
-
-def test_jsonselector_is_addable_without_value_uses_pointer_semantics() -> None:
-    selector: JSONSelector[JSONNumber, SimpleSelector] = JSONSelector.parse(
-        "a",
-        type_param=JSONNumber,
-        backend=SimpleSelector,
-    )
-
-    assert selector.is_addable({"a": 1}) is True
-    assert selector.is_addable({"a": "nope"}) is False
-
-
-def test_jsonselector_applies_matches_sequentially_in_backend_order() -> None:
-    selector: JSONSelector[JSONValue, SimpleSelector] = JSONSelector.parse(
-        "root_and_a", backend=SimpleSelector
-    )
-    doc: JSONValue = {"a": {"b": 1}}
-    assert selector.is_addable(doc, {"replaced": True}) is True
-    assert selector.is_removable(doc) is True
-
-    assert selector.addall(doc, {"replaced": True}) == {
-        "replaced": True,
-        "a": {"replaced": True},
-    }
-    with pytest.raises(PatchConflictError):
-        selector.removeall({"a": {"b": 1}})
 
 
 @pytest.mark.xfail(
@@ -259,6 +256,27 @@ def test_jsonselector_is_removable_future_rejects_duplicate_matches() -> None:
     )
 
     assert selector.is_removable({"a": 1}) is False
+
+
+def test_selector_backend_binding(subtests: Subtests) -> None:
+    class BoundSelector(SimpleSelector):
+        pass
+
+    with subtests.test("no backends"):
+        selector = JSONSelector.parse("$.a", backend=None)
+        assert isinstance(selector.ptr, _DEFAULT_SELECTOR_CLS)
+
+    with subtests.test("bound backend"):
+        selector = JSONSelector.parse("a", backend=BoundSelector)
+        assert isinstance(selector.ptr, BoundSelector)
+
+    with subtests.test("explicit default backend class behaves like omitted backend"):
+        selector = JSONSelector.parse("$.a", backend=_DEFAULT_SELECTOR_CLS)
+        assert isinstance(selector.ptr, _DEFAULT_SELECTOR_CLS)
+
+    with subtests.test("bound SelectorBackend is invalid"):
+        with pytest.raises(InvalidJSONSelector):
+            JSONSelector.parse("$.a", backend=SelectorBackend)
 
 
 def test_jsonselector_backend_reuse_and_mismatch() -> None:
