@@ -4,17 +4,23 @@ from collections.abc import Iterable
 from dataclasses import dataclass
 from typing import assert_never, cast, override
 
-from jsonpatchx.backend import _DEFAULT_POINTER_CLS, SelectorBackend, SelectorMatch
+from jsonpatchx.backend import (
+    _DEFAULT_POINTER_CLS,
+    PointerBackend,
+    SelectorBackend,
+    SelectorMatch,
+)
 from jsonpatchx.types import JSONValue
 
 
 @dataclass(frozen=True, slots=True)
-class SimpleSelectorMatch:
+class SimpleSelectorMatch(SelectorMatch):
     obj: JSONValue
     parts: tuple[int | str, ...]
 
-    def pointer(self) -> _DEFAULT_POINTER_CLS:
-        return cast(_DEFAULT_POINTER_CLS, _DEFAULT_POINTER_CLS.from_parts(self.parts))
+    @override
+    def pointer(self) -> PointerBackend:
+        return _DEFAULT_POINTER_CLS.from_parts(self.parts)
 
 
 class SimpleSelector(SelectorBackend):
