@@ -60,6 +60,19 @@ git submodule update --init
 uv sync
 ```
 
+If you want the package import to resolve from your checkout instead of the
+managed environment, install it in editable mode:
+
+```sh
+pip install -e .
+```
+
+For local FastAPI extra work:
+
+```sh
+pip install -e .[fastapi]
+```
+
 Install [prek](https://github.com/j178/prek):
 
 ```sh
@@ -78,6 +91,21 @@ Run the test suite with:
 uv run pytest -v
 uv run --managed-python -p 3.12 pytest
 ```
+
+To manually regression-test
+[`examples/AGENTS.md`](/Users/angelaliss/code/Python/json-patch-x/examples/AGENTS.md)
+with a coding agent, use the harness in
+[`tests/agents/README.md`](/Users/angelaliss/code/Python/json-patch-x/tests/agents/README.md).
+For a quick check, you can give the agent this prompt:
+
+```text
+Read tests/agents/README.md and run the standard prompt-only check for
+tests/agents/lowercase-op.md against examples/AGENTS.md. Return the generated
+Python and a short rubric-based evaluation.
+```
+
+Those agent-guide fixtures are manual regression checks, not part of the
+automated pytest suite.
 
 Run type checks with:
 

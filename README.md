@@ -54,7 +54,6 @@ pip install jsonpatchx[fastapi]
 
 - Documentation:
   <https://angela-tarantula.github.io/jsonpatchx/user-guide/getting-started>
-- RFC 6902: <https://datatracker.ietf.org/doc/html/rfc6902>
 - Chengelog:
   <https://github.com/angela-tarantula/jsonpatchx/blob/main/CHANGELOG.md>
 - PyPI: <https://pypi.org/project/jsonpatchx>
