@@ -510,6 +510,30 @@ def test_jsonselector_json_schema_backend_resolution(subtests: Subtests) -> None
         assert schema["format"] == "x-json-selector"
 
 
+def test_jsonselector_path_validation(subtests: Subtests) -> None:
+    class SimpleSelectorSubclass(SimpleSelector):
+        pass
+
+    with subtests.test("accept strings"):
+        JSONSelector.parse("a", backend=SimpleSelector)
+
+    with subtests.test("accept compatible SelectorBackend instances"):
+        JSONSelector.parse(SimpleSelector("a"), backend=SimpleSelector)
+
+    with subtests.test("accept other JSONSelectors"):
+        selector = JSONSelector.parse("a", backend=SimpleSelector)
+        JSONSelector.parse(selector, backend=SimpleSelector)
+
+    with subtests.test("reject incompatible SelectorBackends"):
+        with pytest.raises(InvalidJSONSelector):
+            JSONSelector.parse(_DEFAULT_SELECTOR_CLS("$.a"), backend=SimpleSelector)
+        with pytest.raises(InvalidJSONSelector):
+            JSONSelector.parse(SimpleSelector("a"), backend=_DEFAULT_SELECTOR_CLS)
+
+    with subtests.test("accepts narrower SelectorBackends"):
+        JSONSelector.parse(SimpleSelectorSubclass("a"), backend=SimpleSelector)
+
+
 def test_jsonselector_json_schema() -> None:
     default_schema = TypeAdapter(JSONSelector[JSONNumber]).json_schema()
     assert default_schema["type"] == "string"
