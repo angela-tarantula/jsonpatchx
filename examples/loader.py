@@ -8,7 +8,7 @@ from typing import Any, Final, cast
 
 from fastapi import FastAPI
 
-from examples.fastapi import demo1, demo2, demo3, demo4, demo5, demo6, demo7
+from examples.fastapi import demo1, demo2, demo3, demo4, demo5, demo6, demo7, demo8
 from examples.fastapi.shared import reset_store
 
 SNAPSHOT_DIR: Final[Path] = Path(__file__).resolve().parent / "openapi"
@@ -44,6 +44,7 @@ DEMO_MAP: Final[dict[str, Demo]] = {
     "5": Demo(demo5, 8004),
     "6": Demo(demo6, 8005),
     "7": Demo(demo7, 8006),
+    "8": Demo(demo8, 8007),
 }
 
 
