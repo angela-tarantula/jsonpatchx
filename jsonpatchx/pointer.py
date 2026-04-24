@@ -45,7 +45,6 @@ from jsonpatchx.types import (
     JSONValue,
     _cached_adapter,
     _is_array,
-    _is_container,
     _is_object,
     _validate_JSONValue,
     _validate_typeform,
@@ -471,33 +470,6 @@ class JSONPointer(str, Generic[T_co, P_co]):
         except _PYDANTIC_VALIDATION_ERRORS as e:
             raise PatchConflictError(f"value {value!r} is not a valid JSONValue") from e
 
-    def _resolve_parent_container(self, doc: JSONValue) -> JSONContainer[JSONValue]:
-        """
-        Resolve this pointer's parent and normalize backend traversal failures.
-
-        Arguments:
-            doc: Target JSON document.
-
-        Returns:
-            The parent container for this pointer.
-
-        Raises:
-            PatchConflictError: If the parent path cannot be resolved or does
-                not resolve to an object or array.
-        """
-        parent_ptr = self.parent_ptr
-        try:
-            parent = parent_ptr.resolve(doc)
-        except Exception as e:
-            raise PatchConflictError(
-                f"parent path {str(parent_ptr)!r} could not be resolved: {e}"
-            ) from e
-        if not _is_container(parent):
-            raise PatchConflictError(
-                f"parent path {str(parent_ptr)!r} is not a container"
-            )
-        return parent
-
     # Constructor - for convenience
 
     @classmethod
@@ -682,7 +654,7 @@ class JSONPointer(str, Generic[T_co, P_co]):
                     f"cannot add value at {str(self)!r} because parent is not a container"
                 )
             case TargetState.ARRAY_INDEX_APPEND | TargetState.ARRAY_INDEX_AT_END:
-                array = cast(JSONArray[JSONValue], self._resolve_parent_container(doc))
+                array = cast(JSONArray[JSONValue], self.parent_ptr.resolve(doc))
                 array.append(target)
                 return doc
             case TargetState.ARRAY_INDEX_OUT_OF_RANGE:
@@ -690,9 +662,7 @@ class JSONPointer(str, Generic[T_co, P_co]):
                     f"cannot add value at {str(self)!r} because array index {self.parts[-1]!r} is out of range"
                 )
             case TargetState.OBJECT_KEY_MISSING:
-                object = cast(
-                    JSONObject[JSONValue], self._resolve_parent_container(doc)
-                )
+                object = cast(JSONObject[JSONValue], self.parent_ptr.resolve(doc))
                 key = self.parts[-1]
                 object[key] = target
                 return doc
@@ -704,7 +674,7 @@ class JSONPointer(str, Generic[T_co, P_co]):
                     f"cannot add value at {str(self)!r} because key {self.parts[-1]!r} is an invalid array index"
                 )
             case TargetState.VALUE_PRESENT:
-                container = self._resolve_parent_container(doc)
+                container = cast(JSONContainer[JSONValue], self.parent_ptr.resolve(doc))
                 token = self.parts[-1]
                 if _is_object(container):
                     self._validate_target(container[token])
@@ -742,10 +712,7 @@ class JSONPointer(str, Generic[T_co, P_co]):
             case TargetState.ROOT:
                 return self.is_valid_type(doc)
             case TargetState.VALUE_PRESENT:
-                try:
-                    container = self._resolve_parent_container(doc)
-                except PatchConflictError:
-                    return False
+                container = cast(JSONContainer[JSONValue], self.parent_ptr.resolve(doc))
                 token = self.parts[-1]
                 if _is_object(container):
                     return self.is_valid_type(container[token])
@@ -807,7 +774,7 @@ class JSONPointer(str, Generic[T_co, P_co]):
                     f"cannot remove value at {str(self)!r} because key {self.parts[-1]!r} is an invalid array index"
                 )
             case TargetState.VALUE_PRESENT:
-                container = self._resolve_parent_container(doc)
+                container = cast(JSONContainer[JSONValue], self.parent_ptr.resolve(doc))
                 token = self.parts[-1]
                 key = int(token) if _is_array(container) else token
                 self._validate_target(container[key])  # type: ignore[index]
