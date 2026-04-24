@@ -10,11 +10,25 @@ and this project adheres to
 
 ## [Unreleased]
 
+## [0.1.0] - 2026-04-24
+
 ### Added
 
-- Initial public release.
+- Initial public release of JsonPatchX as a typed JSON Patch toolkit for Python.
+- RFC 6902 parsing, validation, and application, including compliance coverage
+  against the upstream JSON Patch test suite.
+- Typed `JSONPointer` and `JSONSelector` surfaces, including built-in backends,
+  custom backend hooks, and standards-oriented coverage for RFC 6901 and RFC
+  9535 behavior.
+- Pydantic-first operation models, `JsonPatchFor[...]`, route-scoped registries,
+  and schema generation for governed PATCH contracts.
+- FastAPI integration helpers and OpenAPI generation for plain RFC 6902, custom
+  operations, and selector-based patch APIs.
+- User guide, developer reference, API reference, and runnable demo apps,
+  including FastAPI examples and OpenAPI snapshots.
 
 [unreleased]:
   https://github.com/angela-tarantula/jsonpatchx/compare/v0.1.0...HEAD
+[0.1.0]: https://github.com/angela-tarantula/jsonpatchx/releases/tag/v0.1.0
 
 <!-- textlint-enable -->
