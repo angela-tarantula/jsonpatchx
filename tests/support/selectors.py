@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from collections.abc import Iterable
 from dataclasses import dataclass
-from typing import cast, override
+from typing import assert_never, cast, override
 
 from jsonpatchx.backend import _DEFAULT_POINTER_CLS, SelectorBackend, SelectorMatch
 from jsonpatchx.types import JSONValue
@@ -96,8 +96,8 @@ class SimpleSelector(SelectorBackend):
                 ]
             case "bad_match":
                 return [cast(SelectorMatch, object())]
-            case _ as unreachable:  # pragma: no cover
-                raise AssertionError(unreachable)
+            case _ as unreachable:
+                assert_never(unreachable)
 
     @override
     def __str__(self) -> str:
