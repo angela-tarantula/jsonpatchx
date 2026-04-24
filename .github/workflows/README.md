@@ -48,6 +48,17 @@ This keeps write operations explicit and reduces default token blast radius.
 - Environment permissions are not a token-scope model. `GITHUB_TOKEN` scopes are
   still controlled by workflow/job `permissions`.
 
+## Publishing Releases
+
+- [`publish-to-pypi.yml`](publish-to-pypi.yml) uses PyPI Trusted Publishing, not
+  long-lived PyPI API tokens.
+- The `build` job creates the wheel and sdist once, then publishing jobs reuse
+  the exact same artifacts.
+- `workflow_dispatch` publishes to the `testpypi` environment.
+- Publishing a GitHub Release publishes to the `pypi` environment.
+- The `pypi` environment should require manual approval before production
+  release jobs proceed.
+
 ## Codecov Coverage Model
 
 - Coverage uploads run once per supported runtime in the Python matrix (`3.12`,
