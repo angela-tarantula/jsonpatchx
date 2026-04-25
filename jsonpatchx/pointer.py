@@ -438,19 +438,6 @@ class JSONPointer(str, Generic[T_co, P_co]):
                 f"expected target type {self.type_param} for pointer {str(self)!r}, got: {type(target)}"
             ) from e
 
-    def _enforce_existence(self, target: object) -> None:
-        """
-        Enforce that a resolved target exists.
-
-        Arguments:
-            target: Resolved target value.
-
-        Raises:
-            PatchConflictError: If `target` is `MISSING`.
-        """
-        if target is MISSING:
-            raise PatchConflictError(f"target {str(self)!r} does not exist")
-
     def _validate_replacement(self, value: object) -> JSONValue:
         """
         Validate a replacement value for pointer-backed mutation.
@@ -629,6 +616,9 @@ class JSONPointer(str, Generic[T_co, P_co]):
         Raises:
             PatchConflictError: If the target does not exist, or it is not type `T`.
         """
+        if classify_state(self._ptr, doc) is TargetState.MISSING:
+            raise PatchConflictError(f"target {str(self)!r} does not exist")
+
         # Choice: always defer to the PointerBackend implementation for pointer resolution.
         # Why: Don't reinvent the wheel (and maintain it). Plus, give more power to custom PointerBackends.
         try:
@@ -636,7 +626,6 @@ class JSONPointer(str, Generic[T_co, P_co]):
         except Exception as e:
             raise PatchConflictError(f"path {str(self)!r} not found: {e}") from e
         val = self._validate_target(target)
-        self._enforce_existence(val)
         return val
 
     def is_gettable(self, doc: JSONValue) -> bool:
@@ -675,6 +664,8 @@ class JSONPointer(str, Generic[T_co, P_co]):
         target = self._validate_replacement(value)
 
         match classify_state(self._ptr, doc):
+            case TargetState.MISSING:
+                return target
             case TargetState.ROOT:
                 self._validate_target(doc)
                 return target
@@ -742,6 +733,8 @@ class JSONPointer(str, Generic[T_co, P_co]):
                 return False
 
         match classify_state(self._ptr, doc):
+            case TargetState.MISSING:
+                return True
             case TargetState.ROOT:
                 return self.is_valid_type(doc)
             case TargetState.VALUE_PRESENT:
@@ -773,11 +766,12 @@ class JSONPointer(str, Generic[T_co, P_co]):
             PatchConflictError: If the target does not exist, or it is not type `T`.
         """
         match classify_state(self._ptr, doc):
+            case TargetState.MISSING:
+                raise PatchConflictError(f"target {str(self)!r} does not exist")
             case TargetState.ROOT:
                 # Choice: Removal of root returns MISSING.
                 # Why: Root removal is document deletion, not replacement with JSON null.
                 self._validate_target(doc)
-                self._enforce_existence(doc)
                 return cast(JSONValue, MISSING)
             case TargetState.PARENT_NOT_FOUND:
                 raise PatchConflictError(
@@ -811,7 +805,6 @@ class JSONPointer(str, Generic[T_co, P_co]):
                 token = self.parts[-1]
                 key = int(token) if _is_array(container) else token
                 self._validate_target(container[key])  # type: ignore[index]
-                self._enforce_existence(container[key])  # type: ignore[index]
                 del container[key]  # type: ignore[arg-type]
                 return doc
             case _ as unreachable:

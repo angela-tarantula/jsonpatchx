@@ -2,11 +2,12 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from operator import attrgetter
-from typing import Final
+from typing import Final, cast
 
 import pytest
 from jsonpath import JSONPointer as ExtendedJsonPointer
 from jsonpointer import JsonPointer as CustomJsonPointer
+from pydantic_core import MISSING
 from pytest import Subtests
 
 from jsonpatchx.backend import (
@@ -75,6 +76,7 @@ class StateScenario:
 
 
 STATE_SCENARIOS: Final[tuple[StateScenario, ...]] = (
+    StateScenario("missing-root", cast(JSONValue, MISSING), "", TargetState.MISSING),
     StateScenario("root", {"a": 1}, "", TargetState.ROOT),
     StateScenario(
         "parent-not-found", {"a": {}}, "/a/missing/b", TargetState.PARENT_NOT_FOUND

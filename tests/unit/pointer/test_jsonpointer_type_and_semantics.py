@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import copy
 from functools import partial
-from typing import TYPE_CHECKING, Any, Generic
+from typing import TYPE_CHECKING, Any, Generic, cast
 
 import pytest
 from jsonpath import JSONPointer as ExtendedJsonPointer
@@ -111,11 +111,24 @@ def test_jsonpointer_add(subtests: Subtests, suite: TypeSuite) -> None:
                         ptr.add(copy.deepcopy(doc), valid_T_value)
 
 
-def test_jsonpointer_root_semantics() -> None:
+def test_jsonpointer_root_semantics(subtests: Subtests) -> None:
     root = JSONPointer.parse("")
-    assert root.get({"a": 1}) == {"a": 1}
-    assert root.add({"a": 1}, {"b": 2}) == {"b": 2}
-    assert root.remove({"a": 1}) is MISSING
+
+    with subtests.test("root pointer with existing document"):
+        assert root.get({"a": 1}) == {"a": 1}
+        assert root.add({"a": 1}, {"b": 2}) == {"b": 2}
+        assert root.remove({"a": 1}) is MISSING
+
+    with subtests.test("root pointer with missing document"):
+        deleted = cast(JSONValue, MISSING)
+        assert root.is_gettable(deleted) is False
+        assert root.is_removable(deleted) is False
+        assert root.is_addable(deleted, {"c": 3}) is True
+        assert root.add(deleted, {"c": 3}) == {"c": 3}
+        with pytest.raises(PatchConflictError):
+            root.get(deleted)
+        with pytest.raises(PatchConflictError):
+            root.remove(deleted)
 
 
 def test_jsonpointer_backend_corruption_paths(

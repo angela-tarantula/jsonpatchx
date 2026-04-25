@@ -15,6 +15,7 @@ and this project adheres to
 - `DEFAULT_POINTER_CLS` and `DEFAULT_SELECTOR_CLS` are now documented as
   supported public API for binding JsonPatchX's built-in pointer and selector
   backends explicitly.
+- Added `TargetState.MISSING` for the root-document `MISSING` sentinel case.
 
 ### Changed
 
