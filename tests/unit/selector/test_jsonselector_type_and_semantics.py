@@ -17,7 +17,7 @@ from jsonpatchx.exceptions import (
 )
 from jsonpatchx.pointer import JSONPointer
 from jsonpatchx.selector import JSONSelector
-from jsonpatchx.types import JSONNumber, JSONValue
+from jsonpatchx.types import JSONBoolean, JSONNumber, JSONValue
 from tests.support.selectors import (
     AnotherIncompleteSelectorBackend,
     BadSimpleSelector,
@@ -138,6 +138,16 @@ def test_jsonselector_root_semantics(subtests: Subtests) -> None:
         assert selector.addall(doc, {"b": 2}) == {"b": 2}
         with pytest.raises(PatchConflictError):
             selector.removeall(doc)
+
+
+@pytest.mark.xfail(
+    reason="JSON helper types still accept the Pydantic MISSING sentinel at validation time",
+    strict=True,
+)
+def test_jsonselector_is_valid_type_rejects_missing_for_narrowed_types() -> None:
+    selector = JSONSelector.parse("$.flag", type_param=JSONBoolean)
+
+    assert selector.is_valid_type(MISSING) is False
 
 
 def test_default_jsonselector_zero_matches() -> None:

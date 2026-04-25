@@ -131,6 +131,16 @@ def test_jsonpointer_root_semantics(subtests: Subtests) -> None:
             root.remove(deleted)
 
 
+@pytest.mark.xfail(
+    reason="JSON helper types still accept the Pydantic MISSING sentinel at validation time",
+    strict=True,
+)
+def test_jsonpointer_is_valid_type_rejects_missing_for_narrowed_types() -> None:
+    ptr = JSONPointer.parse("/flag", type_param=JSONBoolean)
+
+    assert ptr.is_valid_type(MISSING) is False
+
+
 def test_jsonpointer_backend_corruption_paths(
     subtests: Subtests,
     monkeypatch: pytest.MonkeyPatch,
