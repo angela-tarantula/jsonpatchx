@@ -9,6 +9,7 @@ from typing import (
     cast,
     final,
     get_args,
+    overload,
     override,
 )
 
@@ -24,7 +25,7 @@ from pydantic_core import core_schema as cs
 from typing_extensions import TypeForm, TypeVar
 
 from jsonpatchx.backend import (
-    _DEFAULT_POINTER_CLS,
+    DEFAULT_POINTER_CLS,
     PointerBackend,
     TargetState,
     _is_root_ptr,
@@ -55,8 +56,10 @@ _Nothing = object()
 
 T_co = TypeVar("T_co", bound=JSONBound, covariant=True)
 P_co = TypeVar(
-    "P_co", bound=PointerBackend, covariant=True, default=_DEFAULT_POINTER_CLS
+    "P_co", bound=PointerBackend, covariant=True, default=DEFAULT_POINTER_CLS
 )
+T_parse = TypeVar("T_parse", bound=JSONBound, covariant=True)
+P_parse = TypeVar("P_parse", bound=PointerBackend, default=DEFAULT_POINTER_CLS)
 
 
 @final
@@ -107,6 +110,8 @@ class JSONPointer(str, Generic[T_co, P_co]):
       from it). The root pointer `""` is the exception: setting the root returns a new document
       value rather than mutating an existing container. Removing the root returns
       `MISSING` to represent document deletion rather than a JSON `null` value.
+      A missing root document is handled as its own state: root `get` and root `remove`
+      fail, while root `add` recreates the document.
       If you want to forbid root removal, it's easy to make a custom op!
     - Whether these mutations affect the original caller-owned document is determined by the patch
       engine (see `_apply_ops(..., inplace=...)`), which may deep-copy the input document.
@@ -197,7 +202,7 @@ class JSONPointer(str, Generic[T_co, P_co]):
         ptr: PointerBackend
         if isinstance(path, JSONPointer):
             path_str = str(path)
-            if resolved_backend is _DEFAULT_POINTER_CLS:
+            if resolved_backend is DEFAULT_POINTER_CLS:
                 ptr = path._ptr
             elif isinstance(path._ptr, resolved_backend):
                 ptr = path._ptr
@@ -269,13 +274,13 @@ class JSONPointer(str, Generic[T_co, P_co]):
     ) -> JsonSchemaValue:
 
         pointer_backend: type[PointerBackend]
-        pointer_backend_param = schema["metadata"]["pointer_backend_param"]
+        pointer_backend_param = schema.get("metadata", {}).get("pointer_backend_param")
         if isinstance(pointer_backend_param, TypeVar):
             pointer_backend = cls._resolve_runtime_backend_param(pointer_backend_param)
         else:
             pointer_backend = pointer_backend_param
 
-        if pointer_backend is _DEFAULT_POINTER_CLS:
+        if pointer_backend is DEFAULT_POINTER_CLS:
             pointer_format = "json-pointer"
             pointer_description = "JSON Pointer (RFC 6901) string"
         else:
@@ -292,7 +297,7 @@ class JSONPointer(str, Generic[T_co, P_co]):
         )
 
         # enrich with json schema of type param
-        type_param = schema["metadata"]["type_param"]
+        type_param = schema.get("metadata", {}).get("type_param")
         json_schema["x-pointer-type-schema"] = _cached_adapter(type_param).json_schema()
         return json_schema
 
@@ -304,7 +309,7 @@ class JSONPointer(str, Generic[T_co, P_co]):
         if not args:
             raise TypeError(f"{cls} requires at least one type parameter")
         unverified_typeform = args[0]
-        unverified_bound_backend = args[1] if len(args) > 1 else _DEFAULT_POINTER_CLS
+        unverified_bound_backend = args[1] if len(args) > 1 else DEFAULT_POINTER_CLS
 
         backend_param = cls._resolve_backend_type_param(unverified_bound_backend)
         type_param = _validate_typeform(unverified_typeform, InvalidJSONPointer)
@@ -435,19 +440,6 @@ class JSONPointer(str, Generic[T_co, P_co]):
                 f"expected target type {self.type_param} for pointer {str(self)!r}, got: {type(target)}"
             ) from e
 
-    def _enforce_existence(self, target: object) -> None:
-        """
-        Enforce that a resolved target exists.
-
-        Arguments:
-            target: Resolved target value.
-
-        Raises:
-            PatchConflictError: If `target` is `MISSING`.
-        """
-        if target is MISSING:
-            raise PatchConflictError(f"target {str(self)!r} does not exist")
-
     def _validate_replacement(self, value: object) -> JSONValue:
         """
         Validate a replacement value for pointer-backed mutation.
@@ -470,14 +462,33 @@ class JSONPointer(str, Generic[T_co, P_co]):
 
     # Constructor - for convenience
 
+    @overload
     @classmethod
     def parse(
         cls,
         path: str | Self | PointerBackend,
         *,
-        type_param: TypeForm[T_co] = JSONValue,  # type: ignore[assignment]
+        backend: type[P_parse] | None = None,
+    ) -> "JSONPointer[JSONValue, P_parse]": ...
+
+    @overload
+    @classmethod
+    def parse(
+        cls,
+        path: str | Self | PointerBackend,
+        *,
+        type_param: TypeForm[T_parse],
+        backend: type[P_parse] | None = None,
+    ) -> "JSONPointer[T_parse, P_parse]": ...
+
+    @classmethod
+    def parse(
+        cls,
+        path: str | Self | PointerBackend,
+        *,
+        type_param: TypeForm[Any] | object = _Nothing,
         backend: type[PointerBackend] | None = None,
-    ) -> Self:
+    ) -> "JSONPointer[Any, PointerBackend]":
         """
         Parse a pointer string or instance using Pydantic validation.
 
@@ -503,11 +514,15 @@ class JSONPointer(str, Generic[T_co, P_co]):
             `JSONPointer[...]` type, so callers are not meant to treat
             `parse()` as the primary semantic surface for consuming `T`.
         """
+        resolved_type_param = (
+            JSONValue if type_param is _Nothing else cast(TypeForm[Any], type_param)
+        )
+
         pointer_args: tuple[TypeForm[Any], ...]
         if backend is None:
-            pointer_args = (type_param,)
+            pointer_args = (resolved_type_param,)
         else:
-            pointer_args = (type_param, backend)
+            pointer_args = (resolved_type_param, backend)
         validated_type, validated_backend = cls._parse_pointer_type_args(*pointer_args)
 
         if backend is None:
@@ -603,6 +618,9 @@ class JSONPointer(str, Generic[T_co, P_co]):
         Raises:
             PatchConflictError: If the target does not exist, or it is not type `T`.
         """
+        if classify_state(self._ptr, doc) is TargetState.MISSING:
+            raise PatchConflictError(f"target {str(self)!r} does not exist")
+
         # Choice: always defer to the PointerBackend implementation for pointer resolution.
         # Why: Don't reinvent the wheel (and maintain it). Plus, give more power to custom PointerBackends.
         try:
@@ -610,7 +628,6 @@ class JSONPointer(str, Generic[T_co, P_co]):
         except Exception as e:
             raise PatchConflictError(f"path {str(self)!r} not found: {e}") from e
         val = self._validate_target(target)
-        self._enforce_existence(val)
         return val
 
     def is_gettable(self, doc: JSONValue) -> bool:
@@ -649,6 +666,8 @@ class JSONPointer(str, Generic[T_co, P_co]):
         target = self._validate_replacement(value)
 
         match classify_state(self._ptr, doc):
+            case TargetState.MISSING:
+                return target
             case TargetState.ROOT:
                 self._validate_target(doc)
                 return target
@@ -716,6 +735,8 @@ class JSONPointer(str, Generic[T_co, P_co]):
                 return False
 
         match classify_state(self._ptr, doc):
+            case TargetState.MISSING:
+                return True
             case TargetState.ROOT:
                 return self.is_valid_type(doc)
             case TargetState.VALUE_PRESENT:
@@ -747,11 +768,12 @@ class JSONPointer(str, Generic[T_co, P_co]):
             PatchConflictError: If the target does not exist, or it is not type `T`.
         """
         match classify_state(self._ptr, doc):
+            case TargetState.MISSING:
+                raise PatchConflictError(f"target {str(self)!r} does not exist")
             case TargetState.ROOT:
                 # Choice: Removal of root returns MISSING.
                 # Why: Root removal is document deletion, not replacement with JSON null.
                 self._validate_target(doc)
-                self._enforce_existence(doc)
                 return cast(JSONValue, MISSING)
             case TargetState.PARENT_NOT_FOUND:
                 raise PatchConflictError(
@@ -785,7 +807,6 @@ class JSONPointer(str, Generic[T_co, P_co]):
                 token = self.parts[-1]
                 key = int(token) if _is_array(container) else token
                 self._validate_target(container[key])  # type: ignore[index]
-                self._enforce_existence(container[key])  # type: ignore[index]
                 del container[key]  # type: ignore[arg-type]
                 return doc
             case _ as unreachable:

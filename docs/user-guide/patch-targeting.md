@@ -28,6 +28,11 @@ you exercise it.
 - As a subtype of `str`, it behaves like a pointer string when you want
   string-compatible comparison, hashing, and logging
 
+Root-level deletion and recreation use a separate missing-document state rather
+than treating “no document” as a JSON value. See
+[Type System Notes](../developer-reference/type-system-notes.md#missing-document-sentinel)
+for the precise `MISSING` semantics.
+
 ## The `JSONSelector` Surface
 
 `JSONSelector[T]` is for query-based targeting. By default, it uses the JSON

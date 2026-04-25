@@ -2,19 +2,19 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from operator import attrgetter
-from typing import Final
+from typing import Final, cast
 
 import pytest
 from jsonpath import JSONPointer as ExtendedJsonPointer
 from jsonpointer import JsonPointer as CustomJsonPointer
+from pydantic_core import MISSING
 from pytest import Subtests
 
 from jsonpatchx.backend import (
-    _DEFAULT_POINTER_CLS,
-    _DEFAULT_SELECTOR_CLS,
+    DEFAULT_POINTER_CLS,
+    DEFAULT_SELECTOR_CLS,
     PointerBackend,
     SelectorBackend,
-    SelectorMatch,
     TargetState,
     classify_state,
 )
@@ -25,7 +25,7 @@ from tests.support.selectors import SimpleSelector
 
 def test_pointer_backend(subtests: Subtests) -> None:
     with subtests.test("built-in RFC 6901 backend"):
-        assert isinstance(_DEFAULT_POINTER_CLS("/a"), PointerBackend)
+        assert isinstance(DEFAULT_POINTER_CLS("/a"), PointerBackend)
 
     with subtests.test("Custom JsonPointer backend"):
         assert isinstance(CustomJsonPointer(""), PointerBackend)
@@ -35,40 +35,36 @@ def test_pointer_backend(subtests: Subtests) -> None:
 
 def test_selector_backend(subtests: Subtests) -> None:
     with subtests.test("built-in RFC 9535 backend"):
-        assert isinstance(_DEFAULT_SELECTOR_CLS("$.a"), SelectorBackend)
+        assert isinstance(DEFAULT_SELECTOR_CLS("$.a"), SelectorBackend)
 
     with subtests.test("simple selector backend"):
         assert isinstance(SimpleSelector("a"), SelectorBackend)
 
 
+def test_selector_backend_pointers(subtests: Subtests) -> None:
+    cases = [
+        ("built-in RFC 9535 backend", DEFAULT_SELECTOR_CLS("$.a"), {"a": 1}),
+        ("simple selector backend", SimpleSelector("a"), {"a": 1}),
+    ]
+
+    for label, selector, doc in cases:
+        with subtests.test(label):
+            pointers = list(selector.pointers(doc))
+            assert len(pointers) == 1
+            assert isinstance(pointers[0], PointerBackend)
+            assert str(pointers[0]) == "/a"
+
+
 def test_default_backend_string_representations(subtests: Subtests) -> None:
     with subtests.test("built-in RFC 6901 pointer backend"):
-        pointer = _DEFAULT_POINTER_CLS("/a")
+        pointer = DEFAULT_POINTER_CLS("/a")
         assert str(pointer) == "/a"
         assert repr(pointer) == "JsonPointerRFC6901('/a')"
 
     with subtests.test("built-in RFC 9535 selector backend"):
-        selector = _DEFAULT_SELECTOR_CLS("$.a")
+        selector = DEFAULT_SELECTOR_CLS("$.a")
         assert str(selector) == "$.a"
         assert repr(selector) == "JsonPathRFC9535('$.a')"
-
-
-def test_selector_match(subtests: Subtests) -> None:
-    cases = [
-        (
-            "built-in JSONPath match",
-            next(iter(_DEFAULT_SELECTOR_CLS("$.a").finditer({"a": 1}))),
-        ),
-        ("simple selector match", next(iter(SimpleSelector("a").finditer({"a": 1})))),
-    ]
-
-    for label, match in cases:
-        with subtests.test(label):
-            assert isinstance(match, SelectorMatch)
-            assert match.obj == 1
-            assert tuple(match.parts) == ("a",)
-            assert isinstance(match.pointer(), PointerBackend)
-            assert str(match.pointer()) == "/a"
 
 
 @dataclass(frozen=True)
@@ -80,6 +76,7 @@ class StateScenario:
 
 
 STATE_SCENARIOS: Final[tuple[StateScenario, ...]] = (
+    StateScenario("missing-root", cast(JSONValue, MISSING), "", TargetState.MISSING),
     StateScenario("root", {"a": 1}, "", TargetState.ROOT),
     StateScenario(
         "parent-not-found", {"a": {}}, "/a/missing/b", TargetState.PARENT_NOT_FOUND

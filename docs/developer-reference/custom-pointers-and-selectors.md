@@ -6,6 +6,9 @@ JsonPatchX is targeting-backend agnostic.
 bind alternative implementations when a domain needs different parsing,
 traversal, or query rules.
 
+The built-in defaults are `DEFAULT_POINTER_CLS` and `DEFAULT_SELECTOR_CLS` in
+`jsonpatchx.backend`.
+
 That flexibility is useful. It also needs guardrails.
 
 ## What a pointer backend is
@@ -79,36 +82,22 @@ A selector backend is the object behind `JSONSelector[T, Backend]`.
 JsonPatchX expects it to do two things:
 
 - parse a selector string
-- yield exact matches against a JSON document
-
-Each match must expose:
-
-- `obj`: the matched JSON value
-- `parts`: the concrete path parts to that value
-- `pointer()`: an exact-location pointer for that value
+- yield exact matched pointers against a JSON document
 
 ## Minimal selector backend shape
 
 ```python
-from collections.abc import Iterable, Sequence
+from collections.abc import Iterable
 
 from jsonpatchx.backend import PointerBackend
 from jsonpatchx.types import JSONValue
-
-
-class MySelectorMatch:
-    obj: JSONValue
-    parts: Sequence[int | str]
-
-    def pointer(self) -> PointerBackend:
-        ...
 
 
 class MySelectorBackend:
     def __init__(self, selector: str) -> None:
         ...
 
-    def finditer(self, doc: JSONValue) -> Iterable[MySelectorMatch]:
+    def pointers(self, doc: JSONValue) -> Iterable[PointerBackend]:
         ...
 
     def __str__(self) -> str:
@@ -117,30 +106,26 @@ class MySelectorBackend:
 
 ## Selector Rules That Matter In Practice
 
-`finditer(doc)` should yield zero or more concrete matches, not abstract query
-nodes.
+`pointers(doc)` should yield zero or more concrete pointer objects, not abstract
+query nodes or backend-specific match wrappers.
 
-`pointer()` should identify the same location as the match's `obj`. If those
-drift apart, selector-backed mutation will target the wrong place.
+Each yielded pointer should identify the exact location selected by the query.
+If the selector and the yielded pointers drift apart, selector-backed mutation
+will target the wrong place.
 
-`pointer()` should return a concrete object that satisfies `PointerBackend`.
-JsonPatchX uses that returned pointer object itself when it wraps matches as
-typed `JSONPointer` values.
+Each yielded pointer should satisfy `PointerBackend`. JsonPatchX uses those
+returned pointer objects directly when it wraps matches as typed `JSONPointer`
+values.
 
 Selector mutation is intentionally thin. JsonPatchX applies matched pointers
 sequentially in the backend's iteration order and does not impose extra
 overlap-resolution or ordering rules on top.
 
 JsonPatchX is slightly more permissive at runtime than this protocol surface for
-the built-in JSONPath backend. Upstream `python-jsonpath` annotates `match.obj`
-as `object`, but that is mostly a static typing limitation, not a runtime one.
-JsonPatchX only applies the default selector backend to `JSONValue` documents
-anyway, and matched values are still revalidated through `JSONSelector[T]` and
+the built-in JSONPath backend. Upstream `python-jsonpath` exposes richer match
+objects, but JsonPatchX only exports exact locations through `PointerBackend`
+instances. Matched values are still revalidated through `JSONSelector[T]` and
 `JSONPointer[T]` before typed operations use them.
-
-Upstream also returns its own JSON Pointer type from `match.pointer()`.
-JsonPatchX accepts that because the returned object satisfies `PointerBackend`,
-so it can be wrapped as a typed `JSONPointer`.
 
 The more important limitation is standards compliance, not upstream's `object`
 annotation. Out of the box, JsonPatchX's built-in JSONPath backend follows the
@@ -160,4 +145,4 @@ For a feature-first JSONPath implementation with deliberate non-standard query
 operators, sorting, and `update()` support, see
 [`jsonpath-python`](https://github.com/sean2077/jsonpath-python). It is useful
 inspiration for custom selector backends, but JsonPatchX still needs concrete
-matches with exact `parts` and a `pointer()` that returns a `PointerBackend`.
+`PointerBackend` values for each matched location.

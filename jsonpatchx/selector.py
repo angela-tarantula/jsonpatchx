@@ -3,7 +3,17 @@ from __future__ import annotations
 import copy
 from functools import partial
 from inspect import isabstract
-from typing import Any, Generic, Self, assert_never, cast, final, get_args, override
+from typing import (
+    Any,
+    Generic,
+    Self,
+    assert_never,
+    cast,
+    final,
+    get_args,
+    overload,
+    override,
+)
 
 from pydantic import (
     GetCoreSchemaHandler,
@@ -16,10 +26,9 @@ from pydantic_core import core_schema as cs
 from typing_extensions import TypeForm, TypeVar
 
 from jsonpatchx.backend import (
-    _DEFAULT_SELECTOR_CLS,
+    DEFAULT_SELECTOR_CLS,
     PointerBackend,
     SelectorBackend,
-    SelectorMatch,
     _selector_backend_instance,
 )
 from jsonpatchx.exceptions import (
@@ -38,8 +47,10 @@ from jsonpatchx.types import (
 _Nothing = object()
 T_co = TypeVar("T_co", bound=JSONBound, covariant=True)
 S_co = TypeVar(
-    "S_co", bound=SelectorBackend, covariant=True, default=_DEFAULT_SELECTOR_CLS
+    "S_co", bound=SelectorBackend, covariant=True, default=DEFAULT_SELECTOR_CLS
 )
+T_parse = TypeVar("T_parse", bound=JSONBound)
+S_parse = TypeVar("S_parse", bound=SelectorBackend, default=DEFAULT_SELECTOR_CLS)
 
 
 @final
@@ -60,10 +71,14 @@ class JSONSelector(str, Generic[T_co, S_co]):
     - `removeall(doc)` validates the current matches and removes every matched
       location.
 
-    Mutation is implemented by converting each match into an exact
-    `JSONPointer` and delegating to pointer mutation rules. Each match's
-    `pointer()` result is the source of truth for which pointer backend is
-    being used.
+    Mutation is implemented by resolving the selector into exact
+    `JSONPointer` locations and delegating to pointer mutation rules. The
+    selector backend's `pointers()` output is the source of truth for which
+    pointer backend is being used.
+
+    At the root selector `$`, a missing document is handled as its own runtime
+    state: `getall()` and `removeall()` fail, while `addall()` recreates the
+    document.
     """
 
     __slots__ = ("_selector", "_type")
@@ -119,7 +134,7 @@ class JSONSelector(str, Generic[T_co, S_co]):
         compiled: SelectorBackend
         if isinstance(selector, JSONSelector):
             selector_str = str(selector)
-            if resolved_backend is _DEFAULT_SELECTOR_CLS:
+            if resolved_backend is DEFAULT_SELECTOR_CLS:
                 compiled = selector._selector
             elif isinstance(selector._selector, resolved_backend):
                 compiled = selector._selector
@@ -185,7 +200,9 @@ class JSONSelector(str, Generic[T_co, S_co]):
     ) -> JsonSchemaValue:
 
         selector_backend: type[SelectorBackend]
-        selector_backend_param = schema["metadata"]["selector_backend_param"]
+        selector_backend_param = schema.get("metadata", {}).get(
+            "selector_backend_param"
+        )
         if isinstance(selector_backend_param, TypeVar):
             selector_backend = cls._resolve_runtime_backend_param(
                 selector_backend_param
@@ -193,7 +210,7 @@ class JSONSelector(str, Generic[T_co, S_co]):
         else:
             selector_backend = selector_backend_param
 
-        if selector_backend is _DEFAULT_SELECTOR_CLS:
+        if selector_backend is DEFAULT_SELECTOR_CLS:
             selector_format = "json-path"
             selector_description = "JSONPath (RFC 9535) string"
         else:
@@ -210,7 +227,7 @@ class JSONSelector(str, Generic[T_co, S_co]):
         )
 
         # enrich with json schema of type param
-        type_param = schema["metadata"]["type_param"]
+        type_param = schema.get("metadata", {}).get("type_param")
         json_schema["x-selector-type-schema"] = _cached_adapter(
             type_param
         ).json_schema()
@@ -237,7 +254,7 @@ class JSONSelector(str, Generic[T_co, S_co]):
         if not args:
             raise TypeError(f"{cls} requires at least one type parameter")
         unverified_typeform = args[0]
-        unverified_backend = args[1] if len(args) > 1 else _DEFAULT_SELECTOR_CLS
+        unverified_backend = args[1] if len(args) > 1 else DEFAULT_SELECTOR_CLS
 
         backend_param = cls._resolve_backend_type_param(unverified_backend)
         type_param = _validate_typeform(unverified_typeform, InvalidJSONSelector)
@@ -388,14 +405,33 @@ class JSONSelector(str, Generic[T_co, S_co]):
         except ValidationError as e:
             raise PatchConflictError(f"value {value!r} is not a valid JSONValue") from e
 
+    @overload
     @classmethod
     def parse(
         cls,
         selector: str | Self | SelectorBackend,
         *,
-        type_param: TypeForm[T_co] = JSONValue,  # type: ignore[assignment]
+        backend: type[S_parse] | None = None,
+    ) -> "JSONSelector[JSONValue, S_parse]": ...
+
+    @overload
+    @classmethod
+    def parse(
+        cls,
+        selector: str | Self | SelectorBackend,
+        *,
+        type_param: TypeForm[T_parse],
+        backend: type[S_parse] | None = None,
+    ) -> "JSONSelector[T_parse, S_parse]": ...
+
+    @classmethod
+    def parse(
+        cls,
+        selector: str | Self | SelectorBackend,
+        *,
+        type_param: TypeForm[Any] | object = _Nothing,
         backend: type[SelectorBackend] | None = None,
-    ) -> Self:
+    ) -> "JSONSelector[Any, SelectorBackend]":
         """
         Parse a selector string or instance using Pydantic validation.
 
@@ -422,11 +458,15 @@ class JSONSelector(str, Generic[T_co, S_co]):
             `JSONSelector[...]` type, so callers are not meant to treat
             `parse()` as the primary semantic surface for consuming `T`.
         """
+        resolved_type_param = (
+            JSONValue if type_param is _Nothing else cast(TypeForm[Any], type_param)
+        )
+
         selector_args: tuple[TypeForm[Any], ...]
         if backend is None:
-            selector_args = (type_param,)
+            selector_args = (resolved_type_param,)
         else:
-            selector_args = (type_param, backend)
+            selector_args = (resolved_type_param, backend)
         validated_type, validated_backend = cls._parse_selector_type_args(
             *selector_args
         )
@@ -458,59 +498,6 @@ class JSONSelector(str, Generic[T_co, S_co]):
         except ValidationError:
             return False
 
-    def _raw_matches(self, doc: JSONValue) -> list[SelectorMatch]:
-        """
-        Resolve this selector to raw backend matches.
-
-        Arguments:
-            doc: Target JSON document.
-
-        Returns:
-            A list of backend matches satisfying `SelectorMatch`.
-
-        Raises:
-            PatchConflictError: If the selector backend raises while resolving
-                matches against `doc`.
-            InvalidJSONSelector: If the backend yields an object that does not
-                satisfy `SelectorMatch`.
-        """
-        try:
-            raw_matches = list(self._selector.finditer(doc))
-        except Exception as e:
-            raise PatchConflictError(
-                f"selector {str(self)!r} could not be resolved: {e}"
-            ) from e
-
-        matches: list[SelectorMatch] = []
-        for match in raw_matches:
-            if not isinstance(match, SelectorMatch):
-                raise InvalidJSONSelector(
-                    f"selector backend returned invalid match {match!r}"
-                )
-            matches.append(match)
-        return matches
-
-    def _get_pointer_instance(self, match: SelectorMatch) -> PointerBackend:
-        """
-        Extract the backend pointer for a selector match.
-
-        Arguments:
-            match: A selector match yielded by the backend.
-
-        Returns:
-            The backend pointer exported by `match.pointer()`.
-
-        Raises:
-            InvalidJSONSelector: If `match.pointer()` does not return a
-                `PointerBackend` instance.
-        """
-        raw_pointer = match.pointer()
-        if not isinstance(raw_pointer, PointerBackend):
-            raise InvalidJSONSelector(
-                f"selector backend returned invalid match {match!r}: pointer() must return PointerBackend"
-            )
-        return raw_pointer
-
     def _pointer_instances(self, doc: JSONValue) -> list[PointerBackend]:
         """
         Resolve this selector and return backend pointer instances.
@@ -524,10 +511,23 @@ class JSONSelector(str, Generic[T_co, S_co]):
         Raises:
             PatchConflictError: If the selector backend cannot resolve the
                 selector against `doc`.
-            InvalidJSONSelector: If the backend yields invalid matches or
-                invalid pointer objects.
+            InvalidJSONSelector: If the backend yields invalid pointer objects.
         """
-        return [self._get_pointer_instance(match) for match in self._raw_matches(doc)]
+        try:
+            raw_pointers = list(self._selector.pointers(doc))
+        except Exception as e:
+            raise PatchConflictError(
+                f"selector {str(self)!r} could not be resolved: {e}"
+            ) from e
+
+        pointers: list[PointerBackend] = []
+        for pointer in raw_pointers:
+            if not isinstance(pointer, PointerBackend):
+                raise InvalidJSONSelector(
+                    f"selector backend returned invalid pointer {pointer!r}"
+                )
+            pointers.append(pointer)
+        return pointers
 
     def get_pointers(self, doc: JSONValue) -> list[JSONPointer[T_co, PointerBackend]]:
         """

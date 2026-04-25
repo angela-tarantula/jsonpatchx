@@ -3,8 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Iterable
-from dataclasses import dataclass
-from typing import Annotated, Generic, Literal, cast, override
+from typing import Annotated, Generic, Literal, override
 
 from fastapi import HTTPException, Path
 from pydantic import ConfigDict, Field
@@ -13,11 +12,10 @@ from typing_extensions import TypeVar
 from examples.fastapi.shared import ConfigId, create_app, get_config, save_config
 from jsonpatchx import JSONSelector, JSONValue, OperationSchema
 from jsonpatchx.backend import (
-    _DEFAULT_POINTER_CLS,
-    _DEFAULT_SELECTOR_CLS,
+    DEFAULT_POINTER_CLS,
+    DEFAULT_SELECTOR_CLS,
     PointerBackend,
     SelectorBackend,
-    SelectorMatch,
 )
 from jsonpatchx.fastapi import JsonPatchRoute
 from jsonpatchx.pydantic import JsonPatchFor
@@ -26,21 +24,11 @@ from jsonpatchx.types import JSONBoolean, JSONNumber
 STRICT_JSON_PATCH = True
 
 
-class JSONPathSelectorV2(_DEFAULT_SELECTOR_CLS):
+class JSONPathSelectorV2(DEFAULT_SELECTOR_CLS):
     """Marker subclass used when specializing a generic selector backend."""
 
 
 S = TypeVar("S", bound=JSONPathSelectorV2, covariant=True, default=JSONPathSelectorV2)
-
-
-@dataclass(frozen=True, slots=True)
-class DotStarMatch(SelectorMatch):
-    obj: JSONValue
-    parts: tuple[int | str, ...]
-
-    @override
-    def pointer(self) -> PointerBackend:
-        return cast(PointerBackend, _DEFAULT_POINTER_CLS.from_parts(self.parts))
 
 
 class DotStarSelector(SelectorBackend):
@@ -65,13 +53,12 @@ class DotStarSelector(SelectorBackend):
         self._segments = parts
 
     @override
-    def finditer(self, doc: JSONValue) -> Iterable[SelectorMatch]:
-        matches: list[DotStarMatch] = [DotStarMatch(doc, ())]
+    def pointers(self, doc: JSONValue) -> Iterable[PointerBackend]:
+        matches: list[tuple[JSONValue, tuple[int | str, ...]]] = [(doc, ())]
 
         for segment in self._segments:
-            next_matches: list[DotStarMatch] = []
-            for match in matches:
-                current = match.obj
+            next_matches: list[tuple[JSONValue, tuple[int | str, ...]]] = []
+            for current, parts in matches:
                 if not isinstance(current, dict):
                     raise TypeError(
                         f"selector segment {segment!r} requires an object target"
@@ -79,18 +66,18 @@ class DotStarSelector(SelectorBackend):
 
                 if segment == "*":
                     next_matches.extend(
-                        DotStarMatch(value, match.parts + (key,))
-                        for key, value in current.items()
+                        (value, parts + (key,)) for key, value in current.items()
                     )
                     continue
 
-                next_matches.append(
-                    DotStarMatch(current[segment], match.parts + (segment,))
-                )
+                next_matches.append((current[segment], parts + (segment,)))
 
             matches = next_matches
 
-        return matches
+        return [
+            DEFAULT_POINTER_CLS.from_parts((str(part) for part in parts))
+            for _, parts in matches
+        ]
 
     @override
     def __str__(self) -> str:

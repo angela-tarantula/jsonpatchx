@@ -11,13 +11,13 @@ If you are a coding agent reading the raw repository files:
 
 <!-- markdownlint-disable MD013 -->
 
+[![PyPI Version](https://img.shields.io/pypi/v/jsonpatchx?style=flat)](https://pypi.org/project/jsonpatchx/)
+[![Python Versions](https://img.shields.io/pypi/pyversions/jsonpatchx?style=flat)](https://pypi.org/project/jsonpatchx/)
 [![Tests](https://img.shields.io/github/actions/workflow/status/angela-tarantula/jsonpatchx/python-tests.yml?branch=main&label=Tests&style=flat)](https://github.com/angela-tarantula/jsonpatchx/actions)
 [![Codecov](https://codecov.io/github/angela-tarantula/jsonpatchx/graph/badge.svg)](https://codecov.io/github/angela-tarantula/jsonpatchx)
 [![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/angela-tarantula/jsonpatchx/badge)](https://scorecard.dev/viewer/?uri=github.com/angela-tarantula/jsonpatchx)
-[![Contributor Covenant](https://img.shields.io/badge/Contributor%20Covenant-3.0-fbab2c.svg)](CODE_OF_CONDUCT.md)
-[![PyPI Version](https://img.shields.io/pypi/v/jsonpatchx?style=flat)](https://pypi.org/project/jsonpatchx/)
-[![Python Versions](https://img.shields.io/pypi/pyversions/jsonpatchx?style=flat)](https://pypi.org/project/jsonpatchx/)
 [![License](https://img.shields.io/github/license/angela-tarantula/jsonpatchx.svg)](https://github.com/angela-tarantula/jsonpatchx/blob/main/LICENSE)
+[![Contributor Covenant](https://img.shields.io/badge/Contributor%20Covenant-3.0-fbab2c.svg)](CODE_OF_CONDUCT.md)
 
 <!-- markdownlint-enable MD013 -->
 

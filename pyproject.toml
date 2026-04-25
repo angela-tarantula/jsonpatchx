@@ -156,6 +156,9 @@ enable_error_code = [
   "untyped-decorator",
 ]
 
+[tool.pyright]
+enableExperimentalFeatures = true
+
 [tool.pytest.ini_options]
 minversion = "9.0"
 pythonpath = ["."]

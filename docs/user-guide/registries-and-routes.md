@@ -80,5 +80,6 @@ extras = [operation_by_name[name] for name in names if os.getenv(name)]
 type MyRegistry = Union[StandardRegistry, *extras]
 ```
 
-This allows you to enable or disable specific API capabilities via environment
-flags or config files without modifying your route logic.
+This makes registry changes deployment-driven: you can enable, disable, or roll
+back operations by changing config or environment flags and restarting or
+redeploying the application.

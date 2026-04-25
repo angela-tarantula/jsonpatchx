@@ -148,26 +148,47 @@ For more about why it has to be this way, see
 
 `MISSING` is the runtime sentinel for “the document no longer exists.”
 
+### Operation Results
+
 A custom operation that intends to delete the whole document should return
 `MISSING`, not `None`. `None` is JSON `null`. `MISSING` means document deletion.
 
-That is allowed at the operation layer because it keeps composed operations
-simple. `ReplaceOp`, for example, can implement root replacement as `RemoveOp`
-followed by `AddOp` without a root-only special case.
+This sentinel exists at the operation-result layer so composed operations can
+pass along “the document was deleted” without pretending that state is a JSON
+value. `ReplaceOp`, for example, literally implements root replacement as
+`RemoveOp` followed by `AddOp`: root removal returns `MISSING`, and root add
+recreates the document from that state.
 
-For the purpose of runtime type compatibility with a missing document, `MISSING`
-is accepted by the JSON helper family:
+### Validation Boundaries
 
-- `JSONBoolean`
-- `JSONNumber`
-- `JSONString`
-- `JSONNull`
-- `JSONArray[T]`
-- `JSONObject[T]`
-- `JSONValue`
+`MISSING` is not itself treated as a JSON value. The JSON helper family
+(`JSONBoolean`, `JSONNumber`, `JSONString`, `JSONNull`, `JSONArray[T]`,
+`JSONObject[T]`, and `JSONValue`) rejects it during normal Pydantic validation.
 
-So an individual operation is allowed to delete the document even if the
-enclosing patch contract later rejects that final state. This is useful for
-composability, but a completed patch is still usually expected to finish as a
-real document at higher-level boundaries such as model revalidation or HTTP
-response serialization.
+So “document missing” is a runtime state that pointer- and selector-based
+operations handle before type validation, not a value that happens to satisfy a
+JSON helper type.
+
+### JSONPointer Defaults
+
+Root-targetable pointer operations handle document absence like this:
+
+- root `get` fails because there is no document to read
+- root `remove` fails when the document is already missing
+- root `add` recreates the document
+- root `remove` on an existing document returns `MISSING`
+
+### JSONSelector Defaults
+
+At the root selector `$`, the default selector behavior mirrors the root
+pointer:
+
+- root `getall` fails because there is no document to read
+- root `removeall` fails when the document is already missing
+- root `addall` recreates the document
+
+An individual operation can therefore still delete or recreate the whole
+document without implying that `MISSING` is intrinsically compatible with types
+such as `JSONBoolean` or `JSONValue`. Higher-level boundaries such as model
+revalidation or HTTP response serialization can still reject a final missing
+document if that contract requires a real JSON value.

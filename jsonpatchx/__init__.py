@@ -1,5 +1,9 @@
 """Typed JSON Patch (RFC 6902) utilities powered by Pydantic."""
 
+from jsonpatchx.backend import (
+    DEFAULT_POINTER_CLS,
+    DEFAULT_SELECTOR_CLS,
+)
 from jsonpatchx.builtins import (
     AddOp,
     CopyOp,
@@ -51,6 +55,8 @@ __all__ = [
     "JSONPointer",
     "JSONSelector",
     "JSONValue",
+    "DEFAULT_POINTER_CLS",
+    "DEFAULT_SELECTOR_CLS",
     # operation specs
     "OperationSchema",
     "StandardRegistry",

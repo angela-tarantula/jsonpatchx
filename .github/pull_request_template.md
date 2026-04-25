@@ -23,6 +23,7 @@ much longer to review, or result in it not being reviewed at all.
 - [ ] Existing issues have been referenced (where applicable)
 - [ ] I have verified this change is not present in other open pull requests
 - [ ] Functionality is documented
+- [ ] `CHANGELOG.md` has been updated where appropriate
 - [ ] All code style checks pass
 - [ ] New code contribution is covered by automated tests
 - [ ] All new and existing tests pass

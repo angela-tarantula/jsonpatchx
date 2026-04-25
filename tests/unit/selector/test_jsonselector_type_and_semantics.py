@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import copy
 from functools import partial
-from typing import TYPE_CHECKING, Any, Generic
+from typing import TYPE_CHECKING, Any, Generic, cast
 
 import pytest
 from pydantic import BaseModel, TypeAdapter
@@ -10,7 +10,7 @@ from pydantic_core import MISSING
 from pytest import Subtests
 from typing_extensions import TypeVar
 
-from jsonpatchx.backend import _DEFAULT_SELECTOR_CLS, SelectorBackend
+from jsonpatchx.backend import DEFAULT_SELECTOR_CLS, SelectorBackend
 from jsonpatchx.exceptions import (
     InvalidJSONSelector,
     PatchConflictError,
@@ -22,7 +22,7 @@ from tests.support.selectors import (
     AnotherIncompleteSelectorBackend,
     BadSimpleSelector,
     IncompleteSelectorBackend,
-    SelectorMissingFinditer,
+    SelectorMissingPointers,
     SimpleSelector,
 )
 from tests.support.type_suite import TypeSuite
@@ -114,12 +114,31 @@ def test_jsonselector_addall(subtests: Subtests, suite: TypeSuite) -> None:
                         selector.addall(copy.deepcopy(doc), valid_T_value)
 
 
-def test_jsonselector_root_semantics() -> None:
+def test_jsonselector_root_semantics(subtests: Subtests) -> None:
     selector: JSONSelector[JSONValue] = JSONSelector.parse("$")
-    assert selector.getall({"a": 1}) == [{"a": 1}]
-    assert selector.get_pointers({"a": 1}) == [JSONPointer.parse("")]
-    assert selector.addall({"a": 1}, {"b": 2}) == {"b": 2}
-    assert selector.removeall({"a": 1}) is MISSING
+
+    with subtests.test("root selector with existing document"):
+        doc: JSONValue = {"a": 1}
+        assert selector.getall(doc) == [doc]
+        assert selector.get_pointers(doc) == [JSONPointer.parse("")]
+        assert selector.is_gettable(doc) is True
+        assert selector.is_removable(doc) is True
+        assert selector.is_addable(doc, {"b": 2}) is True
+        assert selector.addall(copy.deepcopy(doc), {"b": 2}) == {"b": 2}
+        assert selector.removeall(copy.deepcopy(doc)) is MISSING
+
+    with subtests.test("root selector with missing document"):
+        doc: JSONValue = cast(JSONValue, MISSING)
+        assert selector.is_valid_type(MISSING) is False
+        with pytest.raises(PatchConflictError):
+            selector.getall(doc)
+        assert selector.get_pointers(doc) == [JSONPointer.parse("")]
+        assert selector.is_gettable(doc) is False
+        assert selector.is_removable(doc) is False
+        assert selector.is_addable(doc, {"b": 2}) is True
+        assert selector.addall(doc, {"b": 2}) == {"b": 2}
+        with pytest.raises(PatchConflictError):
+            selector.removeall(doc)
 
 
 def test_default_jsonselector_zero_matches() -> None:
@@ -156,50 +175,15 @@ def test_default_jsonselector_backend_corruption_paths(
         assert selector.is_removable({"a": 1}) is False
 
     with subtests.test(
-        "invalid backend match raises in accessors and returns False in boolean helpers"
+        "invalid backend pointer raises in accessors and returns False in boolean helpers"
     ):
 
-        class InvalidMatchBackend:
-            def finditer(self, _doc: JSONValue) -> list[object]:
+        class InvalidPointerBackend:
+            def pointers(self, _doc: JSONValue) -> list[object]:
                 return [object()]
 
         selector: JSONSelector[JSONValue] = JSONSelector.parse("$.a")
-        monkeypatch.setattr(selector, "_selector", InvalidMatchBackend())
-        with pytest.raises(InvalidJSONSelector):
-            selector.get_pointers({"a": 1})
-        with pytest.raises(InvalidJSONSelector):
-            selector.getall({"a": 1})
-        with pytest.raises(InvalidJSONSelector):
-            selector.addall({"a": 1}, 1)
-        with pytest.raises(InvalidJSONSelector):
-            selector.removeall({"a": 1})
-        assert selector.is_gettable({"a": 1}) is False
-        assert selector.is_addable({"a": 1}) is False
-        assert selector.is_addable({"a": 1}, 1) is False
-        assert selector.is_removable({"a": 1}) is False
-
-    with subtests.test(
-        "broken match.pointer() raises in accessors and returns False in boolean helpers"
-    ):
-
-        class BadPointerMatch:
-            @property
-            def obj(self) -> JSONValue:
-                return 1
-
-            @property
-            def parts(self) -> tuple[str, ...]:
-                return ("a",)
-
-            def pointer(self) -> object:
-                return object()
-
-        class BrokenPointerBackend:
-            def finditer(self, _doc: JSONValue) -> list[BadPointerMatch]:
-                return [BadPointerMatch()]
-
-        selector = JSONSelector.parse("$.a")
-        monkeypatch.setattr(selector, "_selector", BrokenPointerBackend())
+        monkeypatch.setattr(selector, "_selector", InvalidPointerBackend())
         with pytest.raises(InvalidJSONSelector):
             selector.get_pointers({"a": 1})
         with pytest.raises(InvalidJSONSelector):
@@ -339,19 +323,19 @@ def test_selector_backend_binding(subtests: Subtests) -> None:
         pass
 
     if TYPE_CHECKING:
-        _dont_raise_mypy_error_1: SelectorBackend = _DEFAULT_SELECTOR_CLS("")
+        _dont_raise_mypy_error_1: SelectorBackend = DEFAULT_SELECTOR_CLS("")
 
     with subtests.test("no backends"):
         selector = JSONSelector.parse("$.a", backend=None)
-        assert isinstance(selector.ptr, _DEFAULT_SELECTOR_CLS)
+        assert isinstance(selector.ptr, DEFAULT_SELECTOR_CLS)
 
     with subtests.test("bound backend"):
         selector = JSONSelector.parse("a", backend=BoundSelector)
         assert isinstance(selector.ptr, BoundSelector)
 
     with subtests.test("explicit default backend class behaves like omitted backend"):
-        selector = JSONSelector.parse("$.a", backend=_DEFAULT_SELECTOR_CLS)
-        assert isinstance(selector.ptr, _DEFAULT_SELECTOR_CLS)
+        selector = JSONSelector.parse("$.a", backend=DEFAULT_SELECTOR_CLS)
+        assert isinstance(selector.ptr, DEFAULT_SELECTOR_CLS)
 
     with subtests.test("bound SelectorBackend is invalid"):
         with pytest.raises(InvalidJSONSelector):
@@ -390,7 +374,7 @@ def test_jsonselector_backend_reuse(subtests: Subtests) -> None:
 
     with subtests.test("reject incompatible backend instances"):
         with pytest.raises(InvalidJSONSelector):
-            JSONSelector.parse(_DEFAULT_SELECTOR_CLS("$.a"), backend=SimpleSelector)
+            JSONSelector.parse(DEFAULT_SELECTOR_CLS("$.a"), backend=SimpleSelector)
 
     with subtests.test(
         "reparse JSONSelector into different but compatible-syntax backend"
@@ -421,7 +405,7 @@ def test_jsonselector_type_args_validation(subtests: Subtests) -> None:
             str,
             IncompleteSelectorBackend,
             AnotherIncompleteSelectorBackend,
-            SelectorMissingFinditer,
+            SelectorMissingPointers,
             SelectorBackend,
             BadSimpleSelector,
             SimpleSelector("a"),
@@ -432,7 +416,7 @@ def test_jsonselector_type_args_validation(subtests: Subtests) -> None:
                 adapter.validate_python("a")
 
     with subtests.test("valid backend"):
-        default_adapter = TypeAdapter(JSONSelector[JSONValue, _DEFAULT_SELECTOR_CLS])
+        default_adapter = TypeAdapter(JSONSelector[JSONValue, DEFAULT_SELECTOR_CLS])
         default_adapter.validate_python("$.a")
 
         custom_adapter = TypeAdapter(JSONSelector[JSONValue, SimpleSelector])
@@ -447,7 +431,7 @@ def test_jsonselector_type_args_validation(subtests: Subtests) -> None:
             adapter.validate_python("$.a")
 
     with subtests.test("backend typevar constraints require specialization or default"):
-        S_constrained = TypeVar("S_constrained", SimpleSelector, _DEFAULT_SELECTOR_CLS)
+        S_constrained = TypeVar("S_constrained", SimpleSelector, DEFAULT_SELECTOR_CLS)
         adapter = TypeAdapter(JSONSelector[JSONValue, S_constrained])
         with pytest.raises(InvalidJSONSelector):
             adapter.validate_python("$.a")
@@ -562,7 +546,7 @@ def test_jsonselector_json_schema_backend_resolution(subtests: Subtests) -> None
         S_default_default_selector = TypeVar(
             "S_default_default_selector",
             bound=SelectorBackend,
-            default=_DEFAULT_SELECTOR_CLS,
+            default=DEFAULT_SELECTOR_CLS,
         )
         schema = TypeAdapter(
             JSONSelector[JSONValue, S_default_default_selector]
@@ -599,9 +583,9 @@ def test_jsonselector_path_validation(subtests: Subtests) -> None:
 
     with subtests.test("reject incompatible SelectorBackends"):
         with pytest.raises(InvalidJSONSelector):
-            JSONSelector.parse(_DEFAULT_SELECTOR_CLS("$.a"), backend=SimpleSelector)
+            JSONSelector.parse(DEFAULT_SELECTOR_CLS("$.a"), backend=SimpleSelector)
         with pytest.raises(InvalidJSONSelector):
-            JSONSelector.parse(SimpleSelector("a"), backend=_DEFAULT_SELECTOR_CLS)
+            JSONSelector.parse(SimpleSelector("a"), backend=DEFAULT_SELECTOR_CLS)
 
     with subtests.test("accepts narrower SelectorBackends"):
         JSONSelector.parse(SimpleSelectorSubclass("a"), backend=SimpleSelector)
@@ -633,14 +617,14 @@ def test_default_jsonselector_returns_rfc6901_compliant_pointers(
 
     Upstream ``python-jsonpath`` matching can still be correct while its own
     ``JSONPointer`` helper remains non-compliant in ways that cause retargeting.
-    If JsonPatchX trusted ``match.pointer()`` directly, these cases would stop
-    pointing at literal ``"#..."`` object keys and would instead resolve to
-    unintended targets. That is why the default backend rebuilds pointers from
-    ``match.parts`` and re-exports them through JsonPatchX's RFC 6901 pointer
-    backend instead of leaking upstream pointer objects. See
-    ``_DEFAULT_SELECTOR_CLS.finditer()`` in ``jsonpatchx.backend``: that method
-    intentionally rebuilds exported pointers from ``match.parts`` rather than
-    trusting upstream ``match.pointer()``.
+    If JsonPatchX trusted upstream pointer objects directly, these cases would
+    stop pointing at literal ``"#..."`` object keys and would instead resolve
+    to unintended targets. That is why the default backend rebuilds pointers
+    from ``match.parts`` and re-exports them through JsonPatchX's RFC 6901
+    pointer backend instead of leaking upstream pointer objects. See
+    ``DEFAULT_SELECTOR_CLS.pointers()`` in ``jsonpatchx.backend``: that
+    method intentionally rebuilds exported pointers from ``match.parts``
+    instead of trusting upstream pointer objects.
     """
 
     cases = [
