@@ -14,7 +14,7 @@ and this project adheres to
 
 ### Added
 
-- Initial public release of JsonPatchX as a typed JSON Patch toolkit for Python.
+- Initial public release of JsonPatchX as a PATCH framework for Python.
 - RFC 6902 parsing, validation, and application, including compliance coverage
   against the upstream JSON Patch test suite.
 - Typed `JSONPointer` and `JSONSelector` surfaces, including built-in backends,
