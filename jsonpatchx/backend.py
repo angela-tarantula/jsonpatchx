@@ -29,6 +29,18 @@ class _FixedJsonPointer(JsonPointer):  # type: ignore[misc]
     @override
     @classmethod
     def get_part(cls, doc, part):  # type: ignore[no-untyped-def]
+        """Resolve one pointer token against a container.
+
+        Arguments:
+            doc: Container currently being traversed.
+            part: Raw pointer token to resolve.
+
+        Returns:
+            The normalized key or index for `part`.
+
+        Raises:
+            JPException: If `doc` is a string and cannot be traversed further.
+        """
         if isinstance(doc, str):
             raise JPException(
                 f"Cannot apply token {part!r} to non-container type {type(doc)}"
@@ -38,6 +50,15 @@ class _FixedJsonPointer(JsonPointer):  # type: ignore[misc]
 
     @override
     def walk(self, doc, part):  # type: ignore[no-untyped-def]
+        """Resolve and traverse one pointer token.
+
+        Arguments:
+            doc: Container currently being traversed.
+            part: Raw pointer token to traverse.
+
+        Returns:
+            The child value reached by `part`.
+        """
         part = self.get_part(doc, part)  # type: ignore[no-untyped-call]
         return super().walk(doc, part)
 
@@ -45,102 +66,141 @@ class _FixedJsonPointer(JsonPointer):  # type: ignore[misc]
 @runtime_checkable
 class PointerBackend(Protocol):
     """
-    NOTE: also require that parent pointers are constructable from parts[:-1] OR require that in certain methods!
-    Protocol for custom JSON Pointer backends.
+    Protocol for pointer implementations used by `JSONPointer`.
 
-    This library is pointer-backend agnostic. By default it uses `jsonpointer.JsonPointer`,
-    but advanced users may plug in a custom backend (different parsing or escaping rules, richer
-    pointer objects, alternative traversal semantics, and so on).
+    A pointer backend parses a pointer string, exposes unescaped `parts`,
+    reconstructs itself from those parts, resolves against a JSON document, and
+    round-trips through `str()`.
 
-    A backend only needs to provide a small pointer-shaped surface area:
+    Required Invariants:
+        - `str(type(ptr)(str(ptr))) == str(ptr)`
+        - `str(type(ptr).from_parts(ptr.parts)) == str(ptr)`
 
-    - Constructible from a pointer string.
-    - Exposes unescaped path tokens via `parts`.
-    - Can be reconstructed from tokens via `from_parts`.
-    - Can resolve a pointer against a document via `resolve`.
-    - Has a round-trippable string form via `__str__`.
-
-    Notes:
-        - The backend defines its own pointer syntax; there is no universal "root" string.
-        - Round-trip invariants should hold for the backend's canonical string form:
-          `PointerBackend(x)` equals `PointerBackend(str(PointerBackend(x)))` and
-          `PointerBackend(x)` equals `PointerBackend.from_parts(PointerBackend(x).parts)`.
-        - The library may cache backend instances; implementations should be immutable or otherwise
-          safe to reuse across calls.
-        - Backends may raise whatever exceptions are natural for them. Higher-level APIs normalize
-          backend failures into library patch errors for a consistent user experience.
+        Backends define their own syntax and root representation. Higher-level
+        JsonPatchX APIs normalize backend-raised errors, and backend instances
+        should be safe to reuse across calls.
     """
 
     @abstractmethod
     def __init__(self, pointer: str) -> None:
-        """Parse and construct a backend-specific pointer."""
+        """Parse a backend-specific pointer string.
+
+        Arguments:
+            pointer: Pointer string in the backend's syntax.
+        """
 
     @classmethod
     @abstractmethod
     def from_parts(cls, parts: Iterable[str]) -> Self:
-        """
-        Construct a pointer from unescaped tokens.
+        """Build a pointer from unescaped parts.
 
-        Implementations may accept tokens beyond strings (e.g. ints) and stringify them,
-        but must preserve the invariant that `from_parts(ptr.parts)` round-trips.
+        Arguments:
+            parts: Unescaped pointer parts in traversal order.
+
+        Returns:
+            A pointer equivalent to those parts.
         """
 
     @abstractmethod
     def resolve(self, doc: JSONValue) -> JSONValue:
-        """
-        Resolve the pointer against a document using backend-defined traversal semantics.
+        """Resolve this pointer against a JSON document.
 
-        Implementations typically follow dict/list traversal rules, but the library
-        does not require a particular exception type on failure.
+        Arguments:
+            doc: JSON document to resolve against.
+
+        Returns:
+            The value targeted by the pointer.
         """
 
     @override
     @abstractmethod
     def __str__(self) -> str:
-        """
-        Return the backend's canonical string form (escaped tokens, if applicable).
+        """Return the backend's canonical string form.
 
-        Must round-trip such that `PointerBackend(str(ptr))` yields an equivalent pointer.
+        Returns:
+            The canonical string representation of this pointer.
         """
 
     @property
     @abstractmethod
     def parts(self) -> Sequence[str]:
-        """Unescaped backend-specific tokens."""
+        """Return unescaped pointer parts.
+
+        Returns:
+            The pointer's unescaped parts in traversal order.
+        """
 
 
 class DEFAULT_POINTER_CLS:
     """
     Default JSON Pointer backend powered by `jsonpointer.JsonPointer`.
 
-    This backend follows RFC 6901 syntax and semantics.
+    This implementation parses RFC 6901 pointer strings, exposes unescaped
+    parts, reconstructs canonical pointers from parts, and resolves pointers
+    against JSON documents.
     """
 
     __slots__ = ("_parts", "_pointer")
 
     @override
     def __init__(self, pointer: str) -> None:
+        """Parse an RFC 6901 pointer string and cache its unescaped parts.
+
+        Arguments:
+            pointer: RFC 6901 pointer string to parse.
+        """
         self._pointer = _FixedJsonPointer(pointer)
         self._parts = cast(Sequence[str], self._pointer.parts)
 
     @property
     def parts(self) -> Sequence[str]:
+        """Return the pointer's unescaped RFC 6901 reference tokens.
+
+        Returns:
+            The pointer's unescaped reference tokens.
+        """
         return self._parts
 
     @classmethod
     def from_parts(cls, parts: Iterable[str]) -> Self:
+        """Build a canonical RFC 6901 pointer from unescaped reference tokens.
+
+        Arguments:
+            parts: Unescaped RFC 6901 reference tokens.
+
+        Returns:
+            A canonical RFC 6901 pointer for those tokens.
+        """
         canonical = _FixedJsonPointer.from_parts(parts)
         return cls(str(canonical))
 
     def resolve(self, doc: JSONValue) -> JSONValue:
+        """Resolve this pointer against a JSON document.
+
+        Arguments:
+            doc: JSON document to resolve against.
+
+        Returns:
+            The value targeted by this pointer.
+        """
         return cast(JSONValue, self._pointer.resolve(doc))
 
     @override
     def __str__(self) -> str:
+        """Return the canonical RFC 6901 string form.
+
+        Returns:
+            The canonical RFC 6901 string representation.
+        """
         return str(self._pointer)
 
     @override
     def __repr__(self) -> str:
+        """Return a debugging representation of this backend instance.
+
+        Returns:
+            A representation showing the backend name and source pointer.
+        """
         return "JsonPointerRFC6901(" + repr(self._pointer.path) + ")"
 
 
@@ -148,8 +208,16 @@ def _is_root_ptr(ptr: PointerBackend, doc: JSONValue) -> bool:
     """
     Check whether this pointer backend's target is the root.
 
-    Custom backends are not required to accept `""` as the root,
-    nor are they required to have exclusively one reference to the root.
+    Arguments:
+        ptr: Pointer to test.
+        doc: Document to resolve against.
+
+    Returns:
+        `True` if `ptr` resolves to `doc` itself, else `False`.
+
+    Notes:
+        Custom backends are not required to accept `""` as the root, nor are
+        they required to have exactly one root representation.
     """
     try:
         target = ptr.resolve(doc)
@@ -159,7 +227,19 @@ def _is_root_ptr(ptr: PointerBackend, doc: JSONValue) -> bool:
 
 
 def _parent_ptr_of[PB: PointerBackend](ptr: PB) -> PB:
-    """Get the parent pointer."""
+    """Build the parent pointer.
+
+    Arguments:
+        ptr: Pointer whose parent should be returned.
+
+    Returns:
+        A pointer to the parent location.
+
+    Notes:
+        This reconstructs the parent from `ptr.parts[:-1]`. Backends that want
+        to cache parent information can still expose that through their own
+        implementation details.
+    """
     # NOTE: potentially check if ptr.parent property exists, if they want to cache it for example
     return ptr.from_parts(ptr.parts[:-1])
 
@@ -207,9 +287,26 @@ def _pointer_backend_instance[PB: PointerBackend](
 
 class TargetState(Enum):
     """
-    Internal: classification of JSONPointer target resolution states.
+    Resolution state for applying a pointer-like operation to a document.
 
-    Only use when subclassing JSONPointer for custom stateful behaviors.
+    Values:
+        - `ROOT`: The pointer targets the document root.
+        - `PARENT_NOT_FOUND`: A parent pointer segment could not be resolved.
+        - `PARENT_NOT_CONTAINER`: The parent resolved, but is neither an object nor
+        an array.
+        - `OBJECT_KEY_MISSING`: The parent is an object, and the final key is not
+        present.
+        - `ARRAY_KEY_INVALID`: The parent is an array, and the final token is not a
+        valid array index or append token.
+        - `ARRAY_INDEX_OUT_OF_RANGE`: The parent is an array, and the numeric index
+        is outside the accepted range.
+        - `ARRAY_INDEX_AT_END`: The parent is an array, and the numeric index is
+        exactly `len(array)`.
+        - `ARRAY_INDEX_APPEND`: The parent is an array, and the final token is
+        `"-"`.
+        - `VALUE_PRESENT`: The pointer names an existing value.
+        - `VALUE_PRESENT_AT_NEGATIVE_ARRAY_INDEX`: The pointer names an existing
+        array element through a negative index.
     """
 
     ROOT = auto()
@@ -226,9 +323,17 @@ class TargetState(Enum):
 
 def classify_state(ptr: PointerBackend, doc: JSONValue) -> TargetState:
     """
-    Internal: Classify the state of a JSONPointer resolution against a document.
+    Classify how a pointer relates to a document without mutating it.
 
-    Only use when subclassing JSONPointer for custom stateful behaviors.
+    Useful for determining the applicability of an operation before attempting
+    to apply it, and for generating informative error messages on failure.
+
+    Arguments:
+        ptr: Pointer to classify.
+        doc: Document to classify the pointer against.
+
+    Returns:
+        The resolution state that best describes how `ptr` relates to `doc`.
     """
     if _is_root_ptr(ptr, doc):
         return TargetState.ROOT
@@ -274,23 +379,41 @@ class SelectorBackend(Protocol):
     """
     Protocol for custom query selector backends.
 
-    A selector backend is the query analogue of `PointerBackend`:
-    it parses a selector string and can iterate exact matched pointers against a
-    JSON document.
+    A selector backend is the query analogue of `PointerBackend`: it parses a
+    selector string and can iterate exact matched pointers against a JSON
+    document.
+
+    Required invariants:
+        - `str(type(sel)(str(sel))) == str(sel)`
     """
 
     @abstractmethod
     def __init__(self, selector: str) -> None:
-        """Parse and construct a backend-specific selector."""
+        """Parse and construct a backend-specific selector.
+
+        Arguments:
+            selector: Selector string in the backend's syntax.
+        """
 
     @abstractmethod
     def pointers(self, doc: JSONValue) -> Iterable[PointerBackend]:
-        """Yield exact matched pointers against `doc`."""
+        """Yield exact matched pointers against a document.
+
+        Arguments:
+            doc: JSON document to evaluate against.
+
+        Returns:
+            An iterable of exact matched pointers.
+        """
 
     @abstractmethod
     @override
     def __str__(self) -> str:
-        """Return the backend's canonical string form."""
+        """Return the backend's canonical string form.
+
+        Returns:
+            The canonical string representation of this selector.
+        """
 
 
 # Out of the box, JsonPatchX's default JSONPath backend follows upstream
@@ -314,28 +437,55 @@ class DEFAULT_SELECTOR_CLS:
     """
     Default JSONPath selector backend powered by `python-jsonpath`.
 
-    This backend follows RFC 9535 path syntax and semantics, with the exception
-    of Python 3.14 and later, where regex-related behavior falls back to Python's
-    built-in re module due to upstream dependency `iregexp-check` not yet being
-    compatible with free-threaded Python.
+    This implementation compiles JSONPath expressions with the shared strict
+    environment and yields exact pointer locations for each match.
+
+    Disclaimer:
+        This backend follows RFC 9535 path syntax and semantics, except on
+        Python 3.14 and later where regex-related behavior falls back to
+        Python's built-in `re` module because the upstream `iregexp-check`
+        dependency is not yet compatible with free-threaded Python.
     """
 
     __slots__ = ("_path", "_selector")
 
     def __init__(self, selector: str) -> None:
+        """Compile a JSONPath selector string with the built-in strict environment.
+
+        Arguments:
+            selector: JSONPath selector string to compile.
+        """
         self._path = selector
         self._selector = _DEFAULT_SELECTOR_ENV.compile(selector)
 
     def pointers(self, doc: JSONValue) -> Iterable[DEFAULT_POINTER_CLS]:
+        """Yield canonical RFC 6901 pointers for each matched location.
+
+        Arguments:
+            doc: JSON document to evaluate against.
+
+        Returns:
+            An iterable of canonical RFC 6901 pointers for each match.
+        """
         for match in self._selector.finditer(doc):
             yield DEFAULT_POINTER_CLS.from_parts((str(part) for part in match.parts))
 
     @override
     def __str__(self) -> str:
+        """Return the selector's original source string.
+
+        Returns:
+            The original selector source string.
+        """
         return self._path
 
     @override
     def __repr__(self) -> str:
+        """Return a debugging representation of this backend instance.
+
+        Returns:
+            A representation showing the backend name and source selector.
+        """
         return "JsonPathRFC9535(" + repr(self._path) + ")"
 
 

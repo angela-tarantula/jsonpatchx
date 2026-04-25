@@ -24,6 +24,20 @@ and a Model Context Protocol (MCP) client would.
 - Avoid lookahead prose such as "later on this page..."
 - Optimize for semantic hierarchy, scanability, and machine-readable structure.
 
+## Docstring Style
+
+When editing public Python docstrings, match the repo's Google-style section
+labels and the way Zensical renders them.
+
+- Prefer explicit section labels such as `Arguments`, `Returns`, `Raises`,
+  `Examples`, and `Notes` when they add real structure.
+- Use `Notes` for guarantees, caveats, invariants, and explanatory prose that
+  should render as a distinct block.
+- Use `Examples` when a concrete example materially helps an API reader; do not
+  add placeholder examples just to fill the section.
+- Keep the opening sentence concrete and descriptive, then use sections for the
+  rest.
+
 ## Testing the Examples Agent Guide
 
 Use a prompt-only subagent check when you need to evaluate
