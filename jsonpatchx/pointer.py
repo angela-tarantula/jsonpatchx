@@ -9,6 +9,7 @@ from typing import (
     cast,
     final,
     get_args,
+    overload,
     override,
 )
 
@@ -57,6 +58,8 @@ T_co = TypeVar("T_co", bound=JSONBound, covariant=True)
 P_co = TypeVar(
     "P_co", bound=PointerBackend, covariant=True, default=_DEFAULT_POINTER_CLS
 )
+T_parse = TypeVar("T_parse", bound=JSONBound, covariant=True)
+P_parse = TypeVar("P_parse", bound=PointerBackend, default=_DEFAULT_POINTER_CLS)
 
 
 @final
@@ -269,7 +272,7 @@ class JSONPointer(str, Generic[T_co, P_co]):
     ) -> JsonSchemaValue:
 
         pointer_backend: type[PointerBackend]
-        pointer_backend_param = schema["metadata"]["pointer_backend_param"]
+        pointer_backend_param = schema.get("metadata", {}).get("pointer_backend_param")
         if isinstance(pointer_backend_param, TypeVar):
             pointer_backend = cls._resolve_runtime_backend_param(pointer_backend_param)
         else:
@@ -292,7 +295,7 @@ class JSONPointer(str, Generic[T_co, P_co]):
         )
 
         # enrich with json schema of type param
-        type_param = schema["metadata"]["type_param"]
+        type_param = schema.get("metadata", {}).get("type_param")
         json_schema["x-pointer-type-schema"] = _cached_adapter(type_param).json_schema()
         return json_schema
 
@@ -470,14 +473,33 @@ class JSONPointer(str, Generic[T_co, P_co]):
 
     # Constructor - for convenience
 
+    @overload
     @classmethod
     def parse(
         cls,
         path: str | Self | PointerBackend,
         *,
-        type_param: TypeForm[T_co] = JSONValue,  # type: ignore[assignment]
+        backend: type[P_parse] | None = None,
+    ) -> "JSONPointer[JSONValue, P_parse]": ...
+
+    @overload
+    @classmethod
+    def parse(
+        cls,
+        path: str | Self | PointerBackend,
+        *,
+        type_param: TypeForm[T_parse],
+        backend: type[P_parse] | None = None,
+    ) -> "JSONPointer[T_parse, P_parse]": ...
+
+    @classmethod
+    def parse(
+        cls,
+        path: str | Self | PointerBackend,
+        *,
+        type_param: TypeForm[Any] | object = _Nothing,
         backend: type[PointerBackend] | None = None,
-    ) -> Self:
+    ) -> "JSONPointer[Any, PointerBackend]":
         """
         Parse a pointer string or instance using Pydantic validation.
 
@@ -503,11 +525,15 @@ class JSONPointer(str, Generic[T_co, P_co]):
             `JSONPointer[...]` type, so callers are not meant to treat
             `parse()` as the primary semantic surface for consuming `T`.
         """
+        resolved_type_param = (
+            JSONValue if type_param is _Nothing else cast(TypeForm[Any], type_param)
+        )
+
         pointer_args: tuple[TypeForm[Any], ...]
         if backend is None:
-            pointer_args = (type_param,)
+            pointer_args = (resolved_type_param,)
         else:
-            pointer_args = (type_param, backend)
+            pointer_args = (resolved_type_param, backend)
         validated_type, validated_backend = cls._parse_pointer_type_args(*pointer_args)
 
         if backend is None:

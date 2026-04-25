@@ -3,7 +3,17 @@ from __future__ import annotations
 import copy
 from functools import partial
 from inspect import isabstract
-from typing import Any, Generic, Self, assert_never, cast, final, get_args, override
+from typing import (
+    Any,
+    Generic,
+    Self,
+    assert_never,
+    cast,
+    final,
+    get_args,
+    overload,
+    override,
+)
 
 from pydantic import (
     GetCoreSchemaHandler,
@@ -39,6 +49,8 @@ T_co = TypeVar("T_co", bound=JSONBound, covariant=True)
 S_co = TypeVar(
     "S_co", bound=SelectorBackend, covariant=True, default=_DEFAULT_SELECTOR_CLS
 )
+T_parse = TypeVar("T_parse", bound=JSONBound)
+S_parse = TypeVar("S_parse", bound=SelectorBackend, default=_DEFAULT_SELECTOR_CLS)
 
 
 @final
@@ -184,7 +196,9 @@ class JSONSelector(str, Generic[T_co, S_co]):
     ) -> JsonSchemaValue:
 
         selector_backend: type[SelectorBackend]
-        selector_backend_param = schema["metadata"]["selector_backend_param"]
+        selector_backend_param = schema.get("metadata", {}).get(
+            "selector_backend_param"
+        )
         if isinstance(selector_backend_param, TypeVar):
             selector_backend = cls._resolve_runtime_backend_param(
                 selector_backend_param
@@ -209,7 +223,7 @@ class JSONSelector(str, Generic[T_co, S_co]):
         )
 
         # enrich with json schema of type param
-        type_param = schema["metadata"]["type_param"]
+        type_param = schema.get("metadata", {}).get("type_param")
         json_schema["x-selector-type-schema"] = _cached_adapter(
             type_param
         ).json_schema()
@@ -387,14 +401,33 @@ class JSONSelector(str, Generic[T_co, S_co]):
         except ValidationError as e:
             raise PatchConflictError(f"value {value!r} is not a valid JSONValue") from e
 
+    @overload
     @classmethod
     def parse(
         cls,
         selector: str | Self | SelectorBackend,
         *,
-        type_param: TypeForm[T_co] = JSONValue,  # type: ignore[assignment]
+        backend: type[S_parse] | None = None,
+    ) -> "JSONSelector[JSONValue, S_parse]": ...
+
+    @overload
+    @classmethod
+    def parse(
+        cls,
+        selector: str | Self | SelectorBackend,
+        *,
+        type_param: TypeForm[T_parse],
+        backend: type[S_parse] | None = None,
+    ) -> "JSONSelector[T_parse, S_parse]": ...
+
+    @classmethod
+    def parse(
+        cls,
+        selector: str | Self | SelectorBackend,
+        *,
+        type_param: TypeForm[Any] | object = _Nothing,
         backend: type[SelectorBackend] | None = None,
-    ) -> Self:
+    ) -> "JSONSelector[Any, SelectorBackend]":
         """
         Parse a selector string or instance using Pydantic validation.
 
@@ -421,11 +454,15 @@ class JSONSelector(str, Generic[T_co, S_co]):
             `JSONSelector[...]` type, so callers are not meant to treat
             `parse()` as the primary semantic surface for consuming `T`.
         """
+        resolved_type_param = (
+            JSONValue if type_param is _Nothing else cast(TypeForm[Any], type_param)
+        )
+
         selector_args: tuple[TypeForm[Any], ...]
         if backend is None:
-            selector_args = (type_param,)
+            selector_args = (resolved_type_param,)
         else:
-            selector_args = (type_param, backend)
+            selector_args = (resolved_type_param, backend)
         validated_type, validated_backend = cls._parse_selector_type_args(
             *selector_args
         )
