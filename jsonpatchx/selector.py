@@ -26,7 +26,7 @@ from pydantic_core import core_schema as cs
 from typing_extensions import TypeForm, TypeVar
 
 from jsonpatchx.backend import (
-    _DEFAULT_SELECTOR_CLS,
+    DEFAULT_SELECTOR_CLS,
     PointerBackend,
     SelectorBackend,
     _selector_backend_instance,
@@ -47,10 +47,10 @@ from jsonpatchx.types import (
 _Nothing = object()
 T_co = TypeVar("T_co", bound=JSONBound, covariant=True)
 S_co = TypeVar(
-    "S_co", bound=SelectorBackend, covariant=True, default=_DEFAULT_SELECTOR_CLS
+    "S_co", bound=SelectorBackend, covariant=True, default=DEFAULT_SELECTOR_CLS
 )
 T_parse = TypeVar("T_parse", bound=JSONBound)
-S_parse = TypeVar("S_parse", bound=SelectorBackend, default=_DEFAULT_SELECTOR_CLS)
+S_parse = TypeVar("S_parse", bound=SelectorBackend, default=DEFAULT_SELECTOR_CLS)
 
 
 @final
@@ -130,7 +130,7 @@ class JSONSelector(str, Generic[T_co, S_co]):
         compiled: SelectorBackend
         if isinstance(selector, JSONSelector):
             selector_str = str(selector)
-            if resolved_backend is _DEFAULT_SELECTOR_CLS:
+            if resolved_backend is DEFAULT_SELECTOR_CLS:
                 compiled = selector._selector
             elif isinstance(selector._selector, resolved_backend):
                 compiled = selector._selector
@@ -206,7 +206,7 @@ class JSONSelector(str, Generic[T_co, S_co]):
         else:
             selector_backend = selector_backend_param
 
-        if selector_backend is _DEFAULT_SELECTOR_CLS:
+        if selector_backend is DEFAULT_SELECTOR_CLS:
             selector_format = "json-path"
             selector_description = "JSONPath (RFC 9535) string"
         else:
@@ -250,7 +250,7 @@ class JSONSelector(str, Generic[T_co, S_co]):
         if not args:
             raise TypeError(f"{cls} requires at least one type parameter")
         unverified_typeform = args[0]
-        unverified_backend = args[1] if len(args) > 1 else _DEFAULT_SELECTOR_CLS
+        unverified_backend = args[1] if len(args) > 1 else DEFAULT_SELECTOR_CLS
 
         backend_param = cls._resolve_backend_type_param(unverified_backend)
         type_param = _validate_typeform(unverified_typeform, InvalidJSONSelector)

@@ -4,7 +4,7 @@ from collections.abc import Iterable
 from typing import assert_never, cast, override
 
 from jsonpatchx.backend import (
-    _DEFAULT_POINTER_CLS,
+    DEFAULT_POINTER_CLS,
     PointerBackend,
     SelectorBackend,
 )
@@ -42,7 +42,7 @@ class SimpleSelector(SelectorBackend):
     @override
     def pointers(self, doc: JSONValue) -> Iterable[PointerBackend]:
         def ptr(parts: tuple[int | str, ...]) -> PointerBackend:
-            return _DEFAULT_POINTER_CLS.from_parts(parts)
+            return DEFAULT_POINTER_CLS.from_parts(parts)
 
         match self._selector:
             case "root":

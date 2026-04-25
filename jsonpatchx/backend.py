@@ -109,11 +109,11 @@ class PointerBackend(Protocol):
         """Unescaped backend-specific tokens."""
 
 
-class _DEFAULT_POINTER_CLS:
+class DEFAULT_POINTER_CLS:
     """
     Default JSON Pointer backend powered by `jsonpointer.JsonPointer`.
 
-    This backend follows RFC 6901 syntax and semantics, with a minor fix for string indexing.
+    This backend follows RFC 6901 syntax and semantics.
     """
 
     __slots__ = ("_parts", "_pointer")
@@ -184,7 +184,7 @@ def _pointer_backend_instance[PB: PointerBackend](
         ptr = pointer_cls(path)
     except Exception as e:
         if (
-            pointer_cls is _DEFAULT_POINTER_CLS
+            pointer_cls is DEFAULT_POINTER_CLS
         ):  # the string is not valid jsonpointer syntax
             raise InvalidJSONPointer(f"invalid RFC6901 JSON Pointer: {path!r}") from e
         else:  # the string and class are incompatible
@@ -306,19 +306,18 @@ class SelectorBackend(Protocol):
 #
 # Clients can still use python-jsonpath directly with their own environment
 # settings, or bind a custom selector backend in JsonPatchX. They just cannot
-# change the fixed environment behind _DEFAULT_SELECTOR_CLS itself.
+# change the fixed environment behind DEFAULT_SELECTOR_CLS itself.
 _DEFAULT_SELECTOR_ENV = JSONPathEnvironment(strict=True)
 
 
-class _DEFAULT_SELECTOR_CLS:
+class DEFAULT_SELECTOR_CLS:
     """
     Default JSONPath selector backend powered by `python-jsonpath`.
 
-    The wrapped selector is compiled from a string using the fixed shared
-    `_DEFAULT_SELECTOR_ENV`. Out of the box, this follows upstream's RFC 9535
-    path. On Python 3.14 and later, the upstream `iregexp-check` dependency
-    behind `python-jsonpath[strict]` is not yet compatible with free-threaded
-    Python, so only regex-related RFC behavior falls back.
+    This backend follows RFC 9535 path syntax and semantics, with the exception
+    of Python 3.14 and later, where regex-related behavior falls back to Python's
+    built-in re module due to upstream dependency `iregexp-check` not yet being
+    compatible with free-threaded Python.
     """
 
     __slots__ = ("_path", "_selector")
@@ -327,9 +326,9 @@ class _DEFAULT_SELECTOR_CLS:
         self._path = selector
         self._selector = _DEFAULT_SELECTOR_ENV.compile(selector)
 
-    def pointers(self, doc: JSONValue) -> Iterable[PointerBackend]:
+    def pointers(self, doc: JSONValue) -> Iterable[DEFAULT_POINTER_CLS]:
         for match in self._selector.finditer(doc):
-            yield _DEFAULT_POINTER_CLS.from_parts((str(part) for part in match.parts))
+            yield DEFAULT_POINTER_CLS.from_parts((str(part) for part in match.parts))
 
     @override
     def __str__(self) -> str:
@@ -359,7 +358,7 @@ def _selector_backend_instance[SB: SelectorBackend](
     try:
         compiled = selector_cls(selector)
     except Exception as e:
-        if selector_cls is _DEFAULT_SELECTOR_CLS:
+        if selector_cls is DEFAULT_SELECTOR_CLS:
             raise InvalidJSONSelector(
                 f"invalid JSONPath selector for default backend: {selector!r}"
             ) from e

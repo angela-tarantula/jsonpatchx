@@ -12,7 +12,7 @@ from pydantic_core import MISSING
 from pytest import Subtests
 from typing_extensions import TypeVar
 
-from jsonpatchx.backend import _DEFAULT_POINTER_CLS, PointerBackend
+from jsonpatchx.backend import DEFAULT_POINTER_CLS, PointerBackend
 from jsonpatchx.exceptions import InvalidJSONPointer, PatchConflictError
 from jsonpatchx.pointer import JSONPointer
 from jsonpatchx.types import JSONBoolean, JSONNumber, JSONValue
@@ -354,19 +354,19 @@ def test_pointer_backend_binding(subtests: Subtests) -> None:
         pass
 
     if TYPE_CHECKING:
-        _dont_raise_mypy_error_1: PointerBackend = _DEFAULT_POINTER_CLS("")
+        _dont_raise_mypy_error_1: PointerBackend = DEFAULT_POINTER_CLS("")
 
     with subtests.test("no backends"):
         ptr = JSONPointer.parse("/a", backend=None)
-        assert isinstance(ptr.ptr, _DEFAULT_POINTER_CLS)
+        assert isinstance(ptr.ptr, DEFAULT_POINTER_CLS)
 
     with subtests.test("bound backend"):
         ptr = JSONPointer.parse("a.b", backend=BoundPointer)
         assert isinstance(ptr.ptr, BoundPointer)
 
     with subtests.test("explicit default backend class behaves like omitted backend"):
-        ptr = JSONPointer.parse("/a", backend=_DEFAULT_POINTER_CLS)
-        assert isinstance(ptr.ptr, _DEFAULT_POINTER_CLS)
+        ptr = JSONPointer.parse("/a", backend=DEFAULT_POINTER_CLS)
+        assert isinstance(ptr.ptr, DEFAULT_POINTER_CLS)
 
     with subtests.test("bound PointerBackend is invalid"):
         with pytest.raises(InvalidJSONPointer):
@@ -443,7 +443,7 @@ def test_jsonpointer_type_args_validation(subtests: Subtests) -> None:
 
     with subtests.test("valid backend"):
         for valid_backend in [
-            _DEFAULT_POINTER_CLS,
+            DEFAULT_POINTER_CLS,
             DotPointer,
             CustomJsonPointer,
         ]:
@@ -572,7 +572,7 @@ def test_jsonpointer_json_schema_backend_resolution(subtests: Subtests) -> None:
         P_default_default_ptr = TypeVar(
             "P_default_default_ptr",
             bound=PointerBackend,
-            default=_DEFAULT_POINTER_CLS,
+            default=DEFAULT_POINTER_CLS,
         )
         schema = TypeAdapter(
             JSONPointer[JSONValue, P_default_default_ptr]

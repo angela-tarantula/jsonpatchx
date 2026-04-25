@@ -6,6 +6,9 @@ JsonPatchX is targeting-backend agnostic.
 bind alternative implementations when a domain needs different parsing,
 traversal, or query rules.
 
+The built-in defaults are `DEFAULT_POINTER_CLS` and `DEFAULT_SELECTOR_CLS` in
+`jsonpatchx.backend`.
+
 That flexibility is useful. It also needs guardrails.
 
 ## What a pointer backend is

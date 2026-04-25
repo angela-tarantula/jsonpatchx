@@ -12,8 +12,8 @@ from typing_extensions import TypeVar
 from examples.fastapi.shared import ConfigId, create_app, get_config, save_config
 from jsonpatchx import JSONSelector, JSONValue, OperationSchema
 from jsonpatchx.backend import (
-    _DEFAULT_POINTER_CLS,
-    _DEFAULT_SELECTOR_CLS,
+    DEFAULT_POINTER_CLS,
+    DEFAULT_SELECTOR_CLS,
     PointerBackend,
     SelectorBackend,
 )
@@ -24,7 +24,7 @@ from jsonpatchx.types import JSONBoolean, JSONNumber
 STRICT_JSON_PATCH = True
 
 
-class JSONPathSelectorV2(_DEFAULT_SELECTOR_CLS):
+class JSONPathSelectorV2(DEFAULT_SELECTOR_CLS):
     """Marker subclass used when specializing a generic selector backend."""
 
 
@@ -75,7 +75,7 @@ class DotStarSelector(SelectorBackend):
             matches = next_matches
 
         return [
-            _DEFAULT_POINTER_CLS.from_parts((str(part) for part in parts))
+            DEFAULT_POINTER_CLS.from_parts((str(part) for part in parts))
             for _, parts in matches
         ]
 

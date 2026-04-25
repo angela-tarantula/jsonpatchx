@@ -10,7 +10,7 @@ from pydantic_core import MISSING
 from pytest import Subtests
 from typing_extensions import TypeVar
 
-from jsonpatchx.backend import _DEFAULT_SELECTOR_CLS, SelectorBackend
+from jsonpatchx.backend import DEFAULT_SELECTOR_CLS, SelectorBackend
 from jsonpatchx.exceptions import (
     InvalidJSONSelector,
     PatchConflictError,
@@ -304,19 +304,19 @@ def test_selector_backend_binding(subtests: Subtests) -> None:
         pass
 
     if TYPE_CHECKING:
-        _dont_raise_mypy_error_1: SelectorBackend = _DEFAULT_SELECTOR_CLS("")
+        _dont_raise_mypy_error_1: SelectorBackend = DEFAULT_SELECTOR_CLS("")
 
     with subtests.test("no backends"):
         selector = JSONSelector.parse("$.a", backend=None)
-        assert isinstance(selector.ptr, _DEFAULT_SELECTOR_CLS)
+        assert isinstance(selector.ptr, DEFAULT_SELECTOR_CLS)
 
     with subtests.test("bound backend"):
         selector = JSONSelector.parse("a", backend=BoundSelector)
         assert isinstance(selector.ptr, BoundSelector)
 
     with subtests.test("explicit default backend class behaves like omitted backend"):
-        selector = JSONSelector.parse("$.a", backend=_DEFAULT_SELECTOR_CLS)
-        assert isinstance(selector.ptr, _DEFAULT_SELECTOR_CLS)
+        selector = JSONSelector.parse("$.a", backend=DEFAULT_SELECTOR_CLS)
+        assert isinstance(selector.ptr, DEFAULT_SELECTOR_CLS)
 
     with subtests.test("bound SelectorBackend is invalid"):
         with pytest.raises(InvalidJSONSelector):
@@ -355,7 +355,7 @@ def test_jsonselector_backend_reuse(subtests: Subtests) -> None:
 
     with subtests.test("reject incompatible backend instances"):
         with pytest.raises(InvalidJSONSelector):
-            JSONSelector.parse(_DEFAULT_SELECTOR_CLS("$.a"), backend=SimpleSelector)
+            JSONSelector.parse(DEFAULT_SELECTOR_CLS("$.a"), backend=SimpleSelector)
 
     with subtests.test(
         "reparse JSONSelector into different but compatible-syntax backend"
@@ -397,7 +397,7 @@ def test_jsonselector_type_args_validation(subtests: Subtests) -> None:
                 adapter.validate_python("a")
 
     with subtests.test("valid backend"):
-        default_adapter = TypeAdapter(JSONSelector[JSONValue, _DEFAULT_SELECTOR_CLS])
+        default_adapter = TypeAdapter(JSONSelector[JSONValue, DEFAULT_SELECTOR_CLS])
         default_adapter.validate_python("$.a")
 
         custom_adapter = TypeAdapter(JSONSelector[JSONValue, SimpleSelector])
@@ -412,7 +412,7 @@ def test_jsonselector_type_args_validation(subtests: Subtests) -> None:
             adapter.validate_python("$.a")
 
     with subtests.test("backend typevar constraints require specialization or default"):
-        S_constrained = TypeVar("S_constrained", SimpleSelector, _DEFAULT_SELECTOR_CLS)
+        S_constrained = TypeVar("S_constrained", SimpleSelector, DEFAULT_SELECTOR_CLS)
         adapter = TypeAdapter(JSONSelector[JSONValue, S_constrained])
         with pytest.raises(InvalidJSONSelector):
             adapter.validate_python("$.a")
@@ -527,7 +527,7 @@ def test_jsonselector_json_schema_backend_resolution(subtests: Subtests) -> None
         S_default_default_selector = TypeVar(
             "S_default_default_selector",
             bound=SelectorBackend,
-            default=_DEFAULT_SELECTOR_CLS,
+            default=DEFAULT_SELECTOR_CLS,
         )
         schema = TypeAdapter(
             JSONSelector[JSONValue, S_default_default_selector]
@@ -564,9 +564,9 @@ def test_jsonselector_path_validation(subtests: Subtests) -> None:
 
     with subtests.test("reject incompatible SelectorBackends"):
         with pytest.raises(InvalidJSONSelector):
-            JSONSelector.parse(_DEFAULT_SELECTOR_CLS("$.a"), backend=SimpleSelector)
+            JSONSelector.parse(DEFAULT_SELECTOR_CLS("$.a"), backend=SimpleSelector)
         with pytest.raises(InvalidJSONSelector):
-            JSONSelector.parse(SimpleSelector("a"), backend=_DEFAULT_SELECTOR_CLS)
+            JSONSelector.parse(SimpleSelector("a"), backend=DEFAULT_SELECTOR_CLS)
 
     with subtests.test("accepts narrower SelectorBackends"):
         JSONSelector.parse(SimpleSelectorSubclass("a"), backend=SimpleSelector)
@@ -603,7 +603,7 @@ def test_default_jsonselector_returns_rfc6901_compliant_pointers(
     to unintended targets. That is why the default backend rebuilds pointers
     from ``match.parts`` and re-exports them through JsonPatchX's RFC 6901
     pointer backend instead of leaking upstream pointer objects. See
-    ``_DEFAULT_SELECTOR_CLS.pointers()`` in ``jsonpatchx.backend``: that
+    ``DEFAULT_SELECTOR_CLS.pointers()`` in ``jsonpatchx.backend``: that
     method intentionally rebuilds exported pointers from ``match.parts``
     instead of trusting upstream pointer objects.
     """

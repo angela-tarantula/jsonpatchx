@@ -25,7 +25,7 @@ from pydantic_core import core_schema as cs
 from typing_extensions import TypeForm, TypeVar
 
 from jsonpatchx.backend import (
-    _DEFAULT_POINTER_CLS,
+    DEFAULT_POINTER_CLS,
     PointerBackend,
     TargetState,
     _is_root_ptr,
@@ -56,10 +56,10 @@ _Nothing = object()
 
 T_co = TypeVar("T_co", bound=JSONBound, covariant=True)
 P_co = TypeVar(
-    "P_co", bound=PointerBackend, covariant=True, default=_DEFAULT_POINTER_CLS
+    "P_co", bound=PointerBackend, covariant=True, default=DEFAULT_POINTER_CLS
 )
 T_parse = TypeVar("T_parse", bound=JSONBound, covariant=True)
-P_parse = TypeVar("P_parse", bound=PointerBackend, default=_DEFAULT_POINTER_CLS)
+P_parse = TypeVar("P_parse", bound=PointerBackend, default=DEFAULT_POINTER_CLS)
 
 
 @final
@@ -200,7 +200,7 @@ class JSONPointer(str, Generic[T_co, P_co]):
         ptr: PointerBackend
         if isinstance(path, JSONPointer):
             path_str = str(path)
-            if resolved_backend is _DEFAULT_POINTER_CLS:
+            if resolved_backend is DEFAULT_POINTER_CLS:
                 ptr = path._ptr
             elif isinstance(path._ptr, resolved_backend):
                 ptr = path._ptr
@@ -278,7 +278,7 @@ class JSONPointer(str, Generic[T_co, P_co]):
         else:
             pointer_backend = pointer_backend_param
 
-        if pointer_backend is _DEFAULT_POINTER_CLS:
+        if pointer_backend is DEFAULT_POINTER_CLS:
             pointer_format = "json-pointer"
             pointer_description = "JSON Pointer (RFC 6901) string"
         else:
@@ -307,7 +307,7 @@ class JSONPointer(str, Generic[T_co, P_co]):
         if not args:
             raise TypeError(f"{cls} requires at least one type parameter")
         unverified_typeform = args[0]
-        unverified_bound_backend = args[1] if len(args) > 1 else _DEFAULT_POINTER_CLS
+        unverified_bound_backend = args[1] if len(args) > 1 else DEFAULT_POINTER_CLS
 
         backend_param = cls._resolve_backend_type_param(unverified_bound_backend)
         type_param = _validate_typeform(unverified_typeform, InvalidJSONPointer)

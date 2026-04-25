@@ -10,6 +10,12 @@ and this project adheres to
 
 ## [Unreleased]
 
+### Added
+
+- `DEFAULT_POINTER_CLS` and `DEFAULT_SELECTOR_CLS` are now documented as
+  supported public API for binding JsonPatchX's built-in pointer and selector
+  backends explicitly.
+
 ### Changed
 
 - Simplified `SelectorBackend` so custom selector backends yield
