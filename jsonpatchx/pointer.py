@@ -110,6 +110,8 @@ class JSONPointer(str, Generic[T_co, P_co]):
       from it). The root pointer `""` is the exception: setting the root returns a new document
       value rather than mutating an existing container. Removing the root returns
       `MISSING` to represent document deletion rather than a JSON `null` value.
+      A missing root document is handled as its own state: root `get` and root `remove`
+      fail, while root `add` recreates the document.
       If you want to forbid root removal, it's easy to make a custom op!
     - Whether these mutations affect the original caller-owned document is determined by the patch
       engine (see `_apply_ops(..., inplace=...)`), which may deep-copy the input document.

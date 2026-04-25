@@ -75,6 +75,10 @@ class JSONSelector(str, Generic[T_co, S_co]):
     `JSONPointer` locations and delegating to pointer mutation rules. The
     selector backend's `pointers()` output is the source of truth for which
     pointer backend is being used.
+
+    At the root selector `$`, a missing document is handled as its own runtime
+    state: `getall()` and `removeall()` fail, while `addall()` recreates the
+    document.
     """
 
     __slots__ = ("_selector", "_type")

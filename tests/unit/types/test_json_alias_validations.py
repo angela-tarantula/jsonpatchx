@@ -2,8 +2,10 @@ from __future__ import annotations
 
 import pytest
 from pydantic import TypeAdapter, ValidationError
+from pydantic_core import MISSING
 from pytest import Subtests
 
+from jsonpatchx.types import JSONBound
 from tests.support.type_suite import TypeSuite
 
 
@@ -22,3 +24,10 @@ def test_json_type_validations(subtests: Subtests, suite: TypeSuite) -> None:
                 else:
                     with pytest.raises(ValidationError):
                         adapter.validate_python(example.value, strict=True)
+
+
+def test_runtime_json_types_reject_missing(suite: TypeSuite) -> None:
+    for json_type in (*suite.types, JSONBound):
+        adapter = TypeAdapter(json_type)
+        with pytest.raises(ValidationError):
+            adapter.validate_python(MISSING)

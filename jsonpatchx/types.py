@@ -78,11 +78,6 @@ So the "ugly" pattern here is intentional:
 """
 
 
-def _allow_missing(schema: core_schema.CoreSchema) -> core_schema.CoreSchema:
-    """Allow the Pydantic `MISSING` sentinel at runtime without changing JSON Schema."""
-    return core_schema.union_schema([core_schema.missing_sentinel_schema(), schema])
-
-
 def _strict_validator(typeform: TypeForm[Any]) -> core_schema.CoreSchema:
     """
     Build a strict validator for a TypeForm using a cached TypeAdapter.
@@ -95,7 +90,7 @@ def _strict_validator(typeform: TypeForm[Any]) -> core_schema.CoreSchema:
     def _validate(value: object) -> object:
         return adapter.validate_python(value, strict=True)
 
-    return _allow_missing(core_schema.no_info_plain_validator_function(_validate))
+    return core_schema.no_info_plain_validator_function(_validate)
 
 
 if TYPE_CHECKING:
@@ -191,7 +186,7 @@ else:
         ) -> core_schema.CoreSchema:
             (item_type,) = get_args(source_type) or (Any,)
             item_schema = handler.generate_schema(item_type)
-            return _allow_missing(core_schema.list_schema(item_schema, strict=True))
+            return core_schema.list_schema(item_schema, strict=True)
 
         @classmethod
         def __get_pydantic_json_schema__(
@@ -210,10 +205,8 @@ else:
         ) -> core_schema.CoreSchema:
             (value_type,) = get_args(source_type) or (Any,)
             value_schema = handler.generate_schema(value_type)
-            return _allow_missing(
-                core_schema.dict_schema(
-                    core_schema.str_schema(), value_schema, strict=True
-                )
+            return core_schema.dict_schema(
+                core_schema.str_schema(), value_schema, strict=True
             )
 
         @classmethod
