@@ -10,6 +10,12 @@ and this project adheres to
 
 ## [Unreleased]
 
+### Changed
+
+- Simplified `SelectorBackend` so custom selector backends yield
+  `PointerBackend` instances directly through `pointers(doc)`, removing the
+  separate `SelectorMatch` wrapper protocol.
+
 ## [0.1.0] - 2026-04-24
 
 ### Added
