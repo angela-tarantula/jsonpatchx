@@ -274,8 +274,8 @@ class SelectorBackend(Protocol):
     Protocol for custom query selector backends.
 
     A selector backend is the query analogue of `PointerBackend`:
-    it parses a selector string and can iterate exact matches against a JSON
-    document.
+    it parses a selector string and can iterate exact matched pointers against a
+    JSON document.
     """
 
     @abstractmethod
@@ -283,8 +283,12 @@ class SelectorBackend(Protocol):
         """Parse and construct a backend-specific selector."""
 
     @abstractmethod
+    def pointers(self, doc: JSONValue) -> Iterable[PointerBackend]:
+        """Yield exact matched pointers against `doc`."""
+
+    @abstractmethod
     def finditer(self, doc: JSONValue) -> Iterable[SelectorMatch]:
-        """Yield backend-specific matches against `doc`."""
+        """Yield backend-specific matches against `doc` for compatibility."""
 
     @abstractmethod
     @override
@@ -343,6 +347,10 @@ class _DEFAULT_SELECTOR_CLS:
     def __init__(self, selector: str) -> None:
         self._path = selector
         self._selector = _DEFAULT_SELECTOR_ENV.compile(selector)
+
+    def pointers(self, doc: JSONValue) -> Iterable[PointerBackend]:
+        for match in self._selector.finditer(doc):
+            yield cast(PointerBackend, _DEFAULT_POINTER_CLS.from_parts(match.parts))
 
     def finditer(self, doc: JSONValue) -> Iterable[SelectorMatch]:
         for match in self._selector.finditer(doc):

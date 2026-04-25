@@ -41,6 +41,20 @@ def test_selector_backend(subtests: Subtests) -> None:
         assert isinstance(SimpleSelector("a"), SelectorBackend)
 
 
+def test_selector_backend_pointers(subtests: Subtests) -> None:
+    cases = [
+        ("built-in RFC 9535 backend", _DEFAULT_SELECTOR_CLS("$.a"), {"a": 1}),
+        ("simple selector backend", SimpleSelector("a"), {"a": 1}),
+    ]
+
+    for label, selector, doc in cases:
+        with subtests.test(label):
+            pointers = list(selector.pointers(doc))
+            assert len(pointers) == 1
+            assert isinstance(pointers[0], PointerBackend)
+            assert str(pointers[0]) == "/a"
+
+
 def test_default_backend_string_representations(subtests: Subtests) -> None:
     with subtests.test("built-in RFC 6901 pointer backend"):
         pointer = _DEFAULT_POINTER_CLS("/a")

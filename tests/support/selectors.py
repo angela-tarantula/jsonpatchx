@@ -52,6 +52,10 @@ class SimpleSelector(SelectorBackend):
         self._selector = selector
 
     @override
+    def pointers(self, doc: JSONValue) -> Iterable[PointerBackend]:
+        return [match.pointer() for match in self.finditer(doc)]
+
+    @override
     def finditer(self, doc: JSONValue) -> Iterable[SelectorMatch]:
         match self._selector:
             case "root":
@@ -149,5 +153,17 @@ class SelectorMissingFinditer(SelectorBackend):
     """SimpleSelector but without finditer()."""
 
     __init__ = SimpleSelector.__init__
+
+    pointers = SimpleSelector.pointers
+
+    __str__ = SimpleSelector.__str__
+
+
+class SelectorMissingPointers(SelectorBackend):
+    """SimpleSelector but without pointers()."""
+
+    __init__ = SimpleSelector.__init__
+
+    finditer = SimpleSelector.finditer
 
     __str__ = SimpleSelector.__str__

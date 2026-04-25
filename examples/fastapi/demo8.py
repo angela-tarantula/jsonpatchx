@@ -65,6 +65,10 @@ class DotStarSelector(SelectorBackend):
         self._segments = parts
 
     @override
+    def pointers(self, doc: JSONValue) -> Iterable[PointerBackend]:
+        return [match.pointer() for match in self.finditer(doc)]
+
+    @override
     def finditer(self, doc: JSONValue) -> Iterable[SelectorMatch]:
         matches: list[DotStarMatch] = [DotStarMatch(doc, ())]
 

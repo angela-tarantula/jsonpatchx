@@ -23,6 +23,7 @@ from tests.support.selectors import (
     BadSimpleSelector,
     IncompleteSelectorBackend,
     SelectorMissingFinditer,
+    SelectorMissingPointers,
     SimpleSelector,
 )
 from tests.support.type_suite import TypeSuite
@@ -422,6 +423,7 @@ def test_jsonselector_type_args_validation(subtests: Subtests) -> None:
             IncompleteSelectorBackend,
             AnotherIncompleteSelectorBackend,
             SelectorMissingFinditer,
+            SelectorMissingPointers,
             SelectorBackend,
             BadSimpleSelector,
             SimpleSelector("a"),
