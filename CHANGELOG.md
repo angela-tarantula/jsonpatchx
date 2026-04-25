@@ -12,16 +12,23 @@ and this project adheres to
 
 ### Added
 
-- `DEFAULT_POINTER_CLS` and `DEFAULT_SELECTOR_CLS` are now documented as
-  supported public API for binding JsonPatchX's built-in pointer and selector
-  backends explicitly.
-- Added `TargetState.MISSING` for the root-document `MISSING` sentinel case.
+- `DEFAULT_POINTER_CLS` and `DEFAULT_SELECTOR_CLS` are now explicitly supported
+  public API and can be imported directly when you want to bind JsonPatchX's
+  built-in pointer and selector backends.
+- `TargetState.MISSING` now distinguishes the root-document `MISSING` sentinel
+  case from other pointer target states.
 
 ### Changed
 
 - Simplified `SelectorBackend` so custom selector backends yield
   `PointerBackend` instances directly through `pointers(doc)`, removing the
   separate `SelectorMatch` wrapper protocol.
+- Root `JSONPointer` and root `JSONSelector` operations now treat a missing
+  document as a distinct runtime state: root reads and removals fail when no
+  document exists, while root adds recreate the document.
+- The JSON helper family (`JSONBoolean`, `JSONNumber`, `JSONString`, `JSONNull`,
+  `JSONArray[T]`, `JSONObject[T]`, and `JSONValue`) now rejects `MISSING` during
+  runtime validation again instead of treating it as a type-compatible value.
 - Tightened `JSONPointer.parse()` and `JSONSelector.parse()` type hints with
   overloads so omitted `type_param` defaults no longer require ignore comments
   and default/custom backend return types are preserved more accurately.
