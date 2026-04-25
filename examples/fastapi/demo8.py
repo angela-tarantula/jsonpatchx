@@ -74,7 +74,10 @@ class DotStarSelector(SelectorBackend):
 
             matches = next_matches
 
-        return [_DEFAULT_POINTER_CLS.from_parts(parts) for _, parts in matches]
+        return [
+            _DEFAULT_POINTER_CLS.from_parts((str(part) for part in parts))
+            for _, parts in matches
+        ]
 
     @override
     def __str__(self) -> str:

@@ -24,6 +24,24 @@ _NONNEGATIVE_ARRAY_INDEX_PATTERN = re.compile(r"^(0|[1-9][0-9]*)$")
 _INTEGER_ARRAY_INDEX_PATTERN = re.compile(r"^-?(0|[1-9][0-9]*)$")
 
 
+class _FixedJsonPointer(JsonPointer):  # type: ignore[misc]
+    # fixes https://github.com/stefankoegl/python-json-pointer/issues/70
+    @override
+    @classmethod
+    def get_part(cls, doc, part):  # type: ignore[no-untyped-def]
+        if isinstance(doc, str):
+            raise JPException(
+                f"Cannot apply token {part!r} to non-container type {type(doc)}"
+            )
+        key = super().get_part(doc, part)
+        return key
+
+    @override
+    def walk(self, doc, part):  # type: ignore[no-untyped-def]
+        part = self.get_part(doc, part)  # type: ignore[no-untyped-call]
+        return super().walk(doc, part)
+
+
 @runtime_checkable
 class PointerBackend(Protocol):
     """
@@ -91,26 +109,39 @@ class PointerBackend(Protocol):
         """Unescaped backend-specific tokens."""
 
 
-class _DEFAULT_POINTER_CLS(JsonPointer):  # type: ignore[misc]
-    # fixes https://github.com/stefankoegl/python-json-pointer/issues/70
-    @override
-    @classmethod
-    def get_part(cls, doc, part):  # type: ignore[no-untyped-def]
-        if isinstance(doc, str):
-            raise JPException(
-                f"Cannot apply token {part!r} to non-container type {type(doc)}"
-            )
-        key = super().get_part(doc, part)
-        return key
+class _DEFAULT_POINTER_CLS:
+    """
+    Default JSON Pointer backend powered by `jsonpointer.JsonPointer`.
+
+    This backend follows RFC 6901 syntax and semantics, with a minor fix for string indexing.
+    """
+
+    __slots__ = ("_parts", "_pointer")
 
     @override
-    def walk(self, doc, part):  # type: ignore[no-untyped-def]
-        part = self.get_part(doc, part)  # type: ignore[no-untyped-call]
-        return super().walk(doc, part)
+    def __init__(self, pointer: str) -> None:
+        self._pointer = _FixedJsonPointer(pointer)
+        self._parts = cast(Sequence[str], self._pointer.parts)
+
+    @property
+    def parts(self) -> Sequence[str]:
+        return self._parts
+
+    @classmethod
+    def from_parts(cls, parts: Iterable[str]) -> Self:
+        canonical = _FixedJsonPointer.from_parts(parts)
+        return cls(str(canonical))
+
+    def resolve(self, doc: JSONValue) -> JSONValue:
+        return cast(JSONValue, self._pointer.resolve(doc))
+
+    @override
+    def __str__(self) -> str:
+        return str(self._pointer)
 
     @override
     def __repr__(self) -> str:
-        return "JsonPointerRFC6901(" + repr(self.path) + ")"
+        return "JsonPointerRFC6901(" + repr(self._pointer.path) + ")"
 
 
 def _is_root_ptr(ptr: PointerBackend, doc: JSONValue) -> bool:
@@ -298,7 +329,7 @@ class _DEFAULT_SELECTOR_CLS:
 
     def pointers(self, doc: JSONValue) -> Iterable[PointerBackend]:
         for match in self._selector.finditer(doc):
-            yield cast(PointerBackend, _DEFAULT_POINTER_CLS.from_parts(match.parts))
+            yield _DEFAULT_POINTER_CLS.from_parts((str(part) for part in match.parts))
 
     @override
     def __str__(self) -> str:

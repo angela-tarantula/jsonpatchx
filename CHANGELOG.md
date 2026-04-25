@@ -15,6 +15,9 @@ and this project adheres to
 - Simplified `SelectorBackend` so custom selector backends yield
   `PointerBackend` instances directly through `pointers(doc)`, removing the
   separate `SelectorMatch` wrapper protocol.
+- Tightened `JSONPointer.parse()` and `JSONSelector.parse()` type hints with
+  overloads so omitted `type_param` defaults no longer require ignore comments
+  and default/custom backend return types are preserved more accurately.
 
 ## [0.1.0] - 2026-04-24
 
