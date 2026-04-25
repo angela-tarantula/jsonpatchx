@@ -13,6 +13,7 @@ code or dependency updates affect generated OpenAPI. This script is used both:
 
 from __future__ import annotations
 
+import argparse
 import json
 import sys
 from pathlib import Path
@@ -24,17 +25,47 @@ sys.path.insert(0, str(ROOT))  # predictable absolute imports
 from examples.loader import DEMO_MAP  # noqa: E402
 
 
-def main() -> None:
-    """Write all generated OpenAPI snapshot files."""
+def write_snapshots() -> bool:
+    """Write all generated OpenAPI snapshot files.
+
+    Returns:
+        True if any snapshot file content changed.
+    """
+    changed = False
     for demo in DEMO_MAP.values():
         path = demo.snapshot_path
         schema = demo.app.openapi()
+        rendered = json.dumps(schema, indent=2, sort_keys=True) + "\n"
+        previous = path.read_text() if path.exists() else None
 
         path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(json.dumps(schema, indent=2, sort_keys=True) + "\n")
+        path.write_text(rendered)
+        if previous != rendered:
+            changed = True
 
         print(f"wrote {path}")
+    return changed
+
+
+def main() -> int:
+    """Write all generated OpenAPI snapshot files.
+
+    Returns:
+        Process exit code.
+    """
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--exit-non-zero-on-format",
+        action="store_true",
+        help="Return exit code 1 when snapshot files were rewritten.",
+    )
+    args = parser.parse_args()
+
+    changed = write_snapshots()
+    if changed and args.exit_non_zero_on_format:
+        return 1
+    return 0
 
 
 if __name__ == "__main__":
-    main()
+    raise SystemExit(main())

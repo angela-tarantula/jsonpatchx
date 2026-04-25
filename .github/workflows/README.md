@@ -12,7 +12,9 @@ written as they are, with security and auditability as defaults.
   change generated OpenAPI.
 - Implementation script:
   [`scripts/update_openapi_snapshots.py`](../../scripts/update_openapi_snapshots.py).
-- Local refresh: invoke `prek` hooks or direct script execution.
+- Local refresh: invoke `prek` hooks or direct script execution. The script also
+  supports `--exit-non-zero-on-format` for hook-style callers that want writes
+  to fail the current run.
 - CI model:
   [`dependabot-update-openapi-snapshots.yml`](dependabot-update-openapi-snapshots.yml)
   regenerates snapshots on Dependabot dependency updates and commits only when
