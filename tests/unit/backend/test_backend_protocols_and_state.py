@@ -14,7 +14,6 @@ from jsonpatchx.backend import (
     _DEFAULT_SELECTOR_CLS,
     PointerBackend,
     SelectorBackend,
-    SelectorMatch,
     TargetState,
     classify_state,
 )
@@ -65,24 +64,6 @@ def test_default_backend_string_representations(subtests: Subtests) -> None:
         selector = _DEFAULT_SELECTOR_CLS("$.a")
         assert str(selector) == "$.a"
         assert repr(selector) == "JsonPathRFC9535('$.a')"
-
-
-def test_selector_match(subtests: Subtests) -> None:
-    cases = [
-        (
-            "built-in JSONPath match",
-            next(iter(_DEFAULT_SELECTOR_CLS("$.a").finditer({"a": 1}))),
-        ),
-        ("simple selector match", next(iter(SimpleSelector("a").finditer({"a": 1})))),
-    ]
-
-    for label, match in cases:
-        with subtests.test(label):
-            assert isinstance(match, SelectorMatch)
-            assert match.obj == 1
-            assert tuple(match.parts) == ("a",)
-            assert isinstance(match.pointer(), PointerBackend)
-            assert str(match.pointer()) == "/a"
 
 
 @dataclass(frozen=True)

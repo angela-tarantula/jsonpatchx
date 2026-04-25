@@ -19,7 +19,6 @@ from jsonpatchx.backend import (
     _DEFAULT_SELECTOR_CLS,
     PointerBackend,
     SelectorBackend,
-    SelectorMatch,
     _selector_backend_instance,
 )
 from jsonpatchx.exceptions import (
@@ -60,10 +59,10 @@ class JSONSelector(str, Generic[T_co, S_co]):
     - `removeall(doc)` validates the current matches and removes every matched
       location.
 
-    Mutation is implemented by converting each match into an exact
-    `JSONPointer` and delegating to pointer mutation rules. Each match's
-    `pointer()` result is the source of truth for which pointer backend is
-    being used.
+    Mutation is implemented by resolving the selector into exact
+    `JSONPointer` locations and delegating to pointer mutation rules. The
+    selector backend's `pointers()` output is the source of truth for which
+    pointer backend is being used.
     """
 
     __slots__ = ("_selector", "_type")
@@ -458,59 +457,6 @@ class JSONSelector(str, Generic[T_co, S_co]):
         except ValidationError:
             return False
 
-    def _raw_matches(self, doc: JSONValue) -> list[SelectorMatch]:
-        """
-        Resolve this selector to raw backend matches.
-
-        Arguments:
-            doc: Target JSON document.
-
-        Returns:
-            A list of backend matches satisfying `SelectorMatch`.
-
-        Raises:
-            PatchConflictError: If the selector backend raises while resolving
-                matches against `doc`.
-            InvalidJSONSelector: If the backend yields an object that does not
-                satisfy `SelectorMatch`.
-        """
-        try:
-            raw_matches = list(self._selector.finditer(doc))
-        except Exception as e:
-            raise PatchConflictError(
-                f"selector {str(self)!r} could not be resolved: {e}"
-            ) from e
-
-        matches: list[SelectorMatch] = []
-        for match in raw_matches:
-            if not isinstance(match, SelectorMatch):
-                raise InvalidJSONSelector(
-                    f"selector backend returned invalid match {match!r}"
-                )
-            matches.append(match)
-        return matches
-
-    def _get_pointer_instance(self, match: SelectorMatch) -> PointerBackend:
-        """
-        Extract the backend pointer for a selector match.
-
-        Arguments:
-            match: A selector match yielded by the backend.
-
-        Returns:
-            The backend pointer exported by `match.pointer()`.
-
-        Raises:
-            InvalidJSONSelector: If `match.pointer()` does not return a
-                `PointerBackend` instance.
-        """
-        raw_pointer = match.pointer()
-        if not isinstance(raw_pointer, PointerBackend):
-            raise InvalidJSONSelector(
-                f"selector backend returned invalid match {match!r}: pointer() must return PointerBackend"
-            )
-        return raw_pointer
-
     def _pointer_instances(self, doc: JSONValue) -> list[PointerBackend]:
         """
         Resolve this selector and return backend pointer instances.
@@ -524,10 +470,23 @@ class JSONSelector(str, Generic[T_co, S_co]):
         Raises:
             PatchConflictError: If the selector backend cannot resolve the
                 selector against `doc`.
-            InvalidJSONSelector: If the backend yields invalid matches or
-                invalid pointer objects.
+            InvalidJSONSelector: If the backend yields invalid pointer objects.
         """
-        return [self._get_pointer_instance(match) for match in self._raw_matches(doc)]
+        try:
+            raw_pointers = list(self._selector.pointers(doc))
+        except Exception as e:
+            raise PatchConflictError(
+                f"selector {str(self)!r} could not be resolved: {e}"
+            ) from e
+
+        pointers: list[PointerBackend] = []
+        for pointer in raw_pointers:
+            if not isinstance(pointer, PointerBackend):
+                raise InvalidJSONSelector(
+                    f"selector backend returned invalid pointer {pointer!r}"
+                )
+            pointers.append(pointer)
+        return pointers
 
     def get_pointers(self, doc: JSONValue) -> list[JSONPointer[T_co, PointerBackend]]:
         """

@@ -3,8 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Iterable
-from dataclasses import dataclass
-from typing import Annotated, Generic, Literal, cast, override
+from typing import Annotated, Generic, Literal, override
 
 from fastapi import HTTPException, Path
 from pydantic import ConfigDict, Field
@@ -17,7 +16,6 @@ from jsonpatchx.backend import (
     _DEFAULT_SELECTOR_CLS,
     PointerBackend,
     SelectorBackend,
-    SelectorMatch,
 )
 from jsonpatchx.fastapi import JsonPatchRoute
 from jsonpatchx.pydantic import JsonPatchFor
@@ -31,16 +29,6 @@ class JSONPathSelectorV2(_DEFAULT_SELECTOR_CLS):
 
 
 S = TypeVar("S", bound=JSONPathSelectorV2, covariant=True, default=JSONPathSelectorV2)
-
-
-@dataclass(frozen=True, slots=True)
-class DotStarMatch(SelectorMatch):
-    obj: JSONValue
-    parts: tuple[int | str, ...]
-
-    @override
-    def pointer(self) -> PointerBackend:
-        return cast(PointerBackend, _DEFAULT_POINTER_CLS.from_parts(self.parts))
 
 
 class DotStarSelector(SelectorBackend):
@@ -66,16 +54,11 @@ class DotStarSelector(SelectorBackend):
 
     @override
     def pointers(self, doc: JSONValue) -> Iterable[PointerBackend]:
-        return [match.pointer() for match in self.finditer(doc)]
-
-    @override
-    def finditer(self, doc: JSONValue) -> Iterable[SelectorMatch]:
-        matches: list[DotStarMatch] = [DotStarMatch(doc, ())]
+        matches: list[tuple[JSONValue, tuple[int | str, ...]]] = [(doc, ())]
 
         for segment in self._segments:
-            next_matches: list[DotStarMatch] = []
-            for match in matches:
-                current = match.obj
+            next_matches: list[tuple[JSONValue, tuple[int | str, ...]]] = []
+            for current, parts in matches:
                 if not isinstance(current, dict):
                     raise TypeError(
                         f"selector segment {segment!r} requires an object target"
@@ -83,18 +66,15 @@ class DotStarSelector(SelectorBackend):
 
                 if segment == "*":
                     next_matches.extend(
-                        DotStarMatch(value, match.parts + (key,))
-                        for key, value in current.items()
+                        (value, parts + (key,)) for key, value in current.items()
                     )
                     continue
 
-                next_matches.append(
-                    DotStarMatch(current[segment], match.parts + (segment,))
-                )
+                next_matches.append((current[segment], parts + (segment,)))
 
             matches = next_matches
 
-        return matches
+        return [_DEFAULT_POINTER_CLS.from_parts(parts) for _, parts in matches]
 
     @override
     def __str__(self) -> str:

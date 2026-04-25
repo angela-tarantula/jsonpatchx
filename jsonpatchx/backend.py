@@ -1,7 +1,6 @@
 import re
 from abc import abstractmethod
 from collections.abc import Iterable, Sequence
-from dataclasses import dataclass
 from enum import Enum, auto
 from typing import (
     Protocol,
@@ -240,35 +239,6 @@ def classify_state(ptr: PointerBackend, doc: JSONValue) -> TargetState:
 
 
 @runtime_checkable
-class SelectorMatch(Protocol):
-    """
-    Minimal match shape returned by `SelectorBackend.finditer()`.
-
-    Selector-backed mutation works by turning each match into an exact pointer,
-    then reusing the existing `JSONPointer` mutation rules.
-    """
-
-    @property
-    @abstractmethod
-    def obj(self) -> JSONValue:
-        """Return the matched value."""
-
-    @property
-    @abstractmethod
-    def parts(self) -> Sequence[int | str]:
-        """Return the exact path parts for this match."""
-
-    @abstractmethod
-    def pointer(self) -> PointerBackend:
-        """
-        Return an exact-location pointer for this match.
-
-        Backend authors should return a concrete pointer object that satisfies
-        the `PointerBackend` protocol.
-        """
-
-
-@runtime_checkable
 class SelectorBackend(Protocol):
     """
     Protocol for custom query selector backends.
@@ -285,10 +255,6 @@ class SelectorBackend(Protocol):
     @abstractmethod
     def pointers(self, doc: JSONValue) -> Iterable[PointerBackend]:
         """Yield exact matched pointers against `doc`."""
-
-    @abstractmethod
-    def finditer(self, doc: JSONValue) -> Iterable[SelectorMatch]:
-        """Yield backend-specific matches against `doc` for compatibility."""
 
     @abstractmethod
     @override
@@ -313,24 +279,6 @@ class SelectorBackend(Protocol):
 _DEFAULT_SELECTOR_ENV = JSONPathEnvironment(strict=True)
 
 
-@dataclass(frozen=True, slots=True)
-class _DEFAULT_SELECTOR_MATCH(SelectorMatch):
-    """
-    Thin wrapper around an upstream python-jsonpath match.
-
-    The built-in selector backend uses upstream JSONPath matching, but it
-    exports exact locations through JsonPatchX's default RFC 6901 pointer
-    backend instead of upstream's non-standard JSONPointer extensions.
-    """
-
-    obj: JSONValue
-    parts: tuple[int | str, ...]
-
-    @override
-    def pointer(self) -> PointerBackend:
-        return cast(PointerBackend, _DEFAULT_POINTER_CLS.from_parts(self.parts))
-
-
 class _DEFAULT_SELECTOR_CLS:
     """
     Default JSONPath selector backend powered by `python-jsonpath`.
@@ -351,13 +299,6 @@ class _DEFAULT_SELECTOR_CLS:
     def pointers(self, doc: JSONValue) -> Iterable[PointerBackend]:
         for match in self._selector.finditer(doc):
             yield cast(PointerBackend, _DEFAULT_POINTER_CLS.from_parts(match.parts))
-
-    def finditer(self, doc: JSONValue) -> Iterable[SelectorMatch]:
-        for match in self._selector.finditer(doc):
-            yield _DEFAULT_SELECTOR_MATCH(
-                obj=cast(JSONValue, match.obj),
-                parts=match.parts,
-            )
 
     @override
     def __str__(self) -> str:

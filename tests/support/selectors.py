@@ -1,26 +1,14 @@
 from __future__ import annotations
 
 from collections.abc import Iterable
-from dataclasses import dataclass
 from typing import assert_never, cast, override
 
 from jsonpatchx.backend import (
     _DEFAULT_POINTER_CLS,
     PointerBackend,
     SelectorBackend,
-    SelectorMatch,
 )
 from jsonpatchx.types import JSONValue
-
-
-@dataclass(frozen=True, slots=True)
-class SimpleSelectorMatch(SelectorMatch):
-    obj: JSONValue
-    parts: tuple[int | str, ...]
-
-    @override
-    def pointer(self) -> PointerBackend:
-        return _DEFAULT_POINTER_CLS.from_parts(self.parts)
 
 
 class SimpleSelector(SelectorBackend):
@@ -45,7 +33,7 @@ class SimpleSelector(SelectorBackend):
             "record_values",
             "missing",
             "root_and_a",
-            "bad_match",
+            "bad_pointer",
         }
         if selector not in allowed:
             raise ValueError(f"invalid simple selector: {selector!r}")
@@ -53,57 +41,49 @@ class SimpleSelector(SelectorBackend):
 
     @override
     def pointers(self, doc: JSONValue) -> Iterable[PointerBackend]:
-        return [match.pointer() for match in self.finditer(doc)]
+        def ptr(parts: tuple[int | str, ...]) -> PointerBackend:
+            return _DEFAULT_POINTER_CLS.from_parts(parts)
 
-    @override
-    def finditer(self, doc: JSONValue) -> Iterable[SelectorMatch]:
         match self._selector:
             case "root":
-                return [SimpleSelectorMatch(doc, ())]
+                return [ptr(())]
             case "a":
                 root = doc
                 if not isinstance(root, dict):
                     raise TypeError("root is not an object")
-                return [SimpleSelectorMatch(root["a"], ("a",))]
+                return [ptr(("a",))]
             case "a.b":
                 root = doc
                 if not isinstance(root, dict) or not isinstance(root["a"], dict):
                     raise TypeError("a is not an object")
-                return [SimpleSelectorMatch(root["a"]["b"], ("a", "b"))]
+                return [ptr(("a", "b"))]
             case "all_items":
                 root = doc
                 if not isinstance(root, dict) or not isinstance(root["items"], list):
                     raise TypeError("items is not an array")
-                return [
-                    SimpleSelectorMatch(item, ("items", index))
-                    for index, item in enumerate(root["items"])
-                ]
+                return [ptr(("items", index)) for index, _ in enumerate(root["items"])]
             case "double_a":
                 root = doc
                 if not isinstance(root, dict):
                     raise TypeError("root is not an object")
                 return [
-                    SimpleSelectorMatch(root["a"], ("a",)),
-                    SimpleSelectorMatch(root["a"], ("a",)),
+                    ptr(("a",)),
+                    ptr(("a",)),
                 ]
             case "items_0_1":
                 root = doc
                 if not isinstance(root, dict) or not isinstance(root["items"], list):
                     raise TypeError("items is not an array")
-                items = root["items"]
                 return [
-                    SimpleSelectorMatch(items[0], ("items", 0)),
-                    SimpleSelectorMatch(items[1], ("items", 1)),
+                    ptr(("items", 0)),
+                    ptr(("items", 1)),
                 ]
             case "record_values":
                 root = doc
                 if not isinstance(root, dict) or not isinstance(root["record"], dict):
                     raise TypeError("record is not an object")
                 record = root["record"]
-                return [
-                    SimpleSelectorMatch(value, ("record", key))
-                    for key, value in record.items()
-                ]
+                return [ptr(("record", key)) for key in record]
             case "missing":
                 return []
             case "root_and_a":
@@ -111,11 +91,11 @@ class SimpleSelector(SelectorBackend):
                 if not isinstance(root, dict):
                     raise TypeError("root is not an object")
                 return [
-                    SimpleSelectorMatch(root, ()),
-                    SimpleSelectorMatch(root["a"], ("a",)),
+                    ptr(()),
+                    ptr(("a",)),
                 ]
-            case "bad_match":
-                return [cast(SelectorMatch, object())]
+            case "bad_pointer":
+                return [cast(PointerBackend, object())]
             case _ as unreachable:
                 assert_never(unreachable)
 
@@ -149,21 +129,9 @@ class BadSimpleSelector(SimpleSelector):
         return "nope"
 
 
-class SelectorMissingFinditer(SelectorBackend):
-    """SimpleSelector but without finditer()."""
-
-    __init__ = SimpleSelector.__init__
-
-    pointers = SimpleSelector.pointers
-
-    __str__ = SimpleSelector.__str__
-
-
 class SelectorMissingPointers(SelectorBackend):
     """SimpleSelector but without pointers()."""
 
     __init__ = SimpleSelector.__init__
-
-    finditer = SimpleSelector.finditer
 
     __str__ = SimpleSelector.__str__

@@ -22,7 +22,6 @@ from tests.support.selectors import (
     AnotherIncompleteSelectorBackend,
     BadSimpleSelector,
     IncompleteSelectorBackend,
-    SelectorMissingFinditer,
     SelectorMissingPointers,
     SimpleSelector,
 )
@@ -157,50 +156,15 @@ def test_default_jsonselector_backend_corruption_paths(
         assert selector.is_removable({"a": 1}) is False
 
     with subtests.test(
-        "invalid backend match raises in accessors and returns False in boolean helpers"
+        "invalid backend pointer raises in accessors and returns False in boolean helpers"
     ):
 
-        class InvalidMatchBackend:
-            def finditer(self, _doc: JSONValue) -> list[object]:
+        class InvalidPointerBackend:
+            def pointers(self, _doc: JSONValue) -> list[object]:
                 return [object()]
 
         selector: JSONSelector[JSONValue] = JSONSelector.parse("$.a")
-        monkeypatch.setattr(selector, "_selector", InvalidMatchBackend())
-        with pytest.raises(InvalidJSONSelector):
-            selector.get_pointers({"a": 1})
-        with pytest.raises(InvalidJSONSelector):
-            selector.getall({"a": 1})
-        with pytest.raises(InvalidJSONSelector):
-            selector.addall({"a": 1}, 1)
-        with pytest.raises(InvalidJSONSelector):
-            selector.removeall({"a": 1})
-        assert selector.is_gettable({"a": 1}) is False
-        assert selector.is_addable({"a": 1}) is False
-        assert selector.is_addable({"a": 1}, 1) is False
-        assert selector.is_removable({"a": 1}) is False
-
-    with subtests.test(
-        "broken match.pointer() raises in accessors and returns False in boolean helpers"
-    ):
-
-        class BadPointerMatch:
-            @property
-            def obj(self) -> JSONValue:
-                return 1
-
-            @property
-            def parts(self) -> tuple[str, ...]:
-                return ("a",)
-
-            def pointer(self) -> object:
-                return object()
-
-        class BrokenPointerBackend:
-            def finditer(self, _doc: JSONValue) -> list[BadPointerMatch]:
-                return [BadPointerMatch()]
-
-        selector = JSONSelector.parse("$.a")
-        monkeypatch.setattr(selector, "_selector", BrokenPointerBackend())
+        monkeypatch.setattr(selector, "_selector", InvalidPointerBackend())
         with pytest.raises(InvalidJSONSelector):
             selector.get_pointers({"a": 1})
         with pytest.raises(InvalidJSONSelector):
@@ -422,7 +386,6 @@ def test_jsonselector_type_args_validation(subtests: Subtests) -> None:
             str,
             IncompleteSelectorBackend,
             AnotherIncompleteSelectorBackend,
-            SelectorMissingFinditer,
             SelectorMissingPointers,
             SelectorBackend,
             BadSimpleSelector,
@@ -635,14 +598,14 @@ def test_default_jsonselector_returns_rfc6901_compliant_pointers(
 
     Upstream ``python-jsonpath`` matching can still be correct while its own
     ``JSONPointer`` helper remains non-compliant in ways that cause retargeting.
-    If JsonPatchX trusted ``match.pointer()`` directly, these cases would stop
-    pointing at literal ``"#..."`` object keys and would instead resolve to
-    unintended targets. That is why the default backend rebuilds pointers from
-    ``match.parts`` and re-exports them through JsonPatchX's RFC 6901 pointer
-    backend instead of leaking upstream pointer objects. See
-    ``_DEFAULT_SELECTOR_CLS.finditer()`` in ``jsonpatchx.backend``: that method
-    intentionally rebuilds exported pointers from ``match.parts`` rather than
-    trusting upstream ``match.pointer()``.
+    If JsonPatchX trusted upstream pointer objects directly, these cases would
+    stop pointing at literal ``"#..."`` object keys and would instead resolve
+    to unintended targets. That is why the default backend rebuilds pointers
+    from ``match.parts`` and re-exports them through JsonPatchX's RFC 6901
+    pointer backend instead of leaking upstream pointer objects. See
+    ``_DEFAULT_SELECTOR_CLS.pointers()`` in ``jsonpatchx.backend``: that
+    method intentionally rebuilds exported pointers from ``match.parts``
+    instead of trusting upstream pointer objects.
     """
 
     cases = [
