@@ -47,8 +47,8 @@
       { "op": "remove", "path": "" },
       { "op": "add", "path": "", "value": [1, 2, 3] }
     ],
-    "expected": [1, 2, 3],
-    "comment": "remove then add at root should work"
+    "error": "cannot delete the document",
+    "comment": "remove then add at root is rejected"
   },
   {
     "doc": [1, 2, 3],
@@ -56,7 +56,7 @@
       { "op": "remove", "path": "" },
       { "op": "remove", "path": "" }
     ],
-    "error": "remove target must exist beforehand",
+    "error": "cannot delete the document",
     "comment": "removal of missing document"
   },
   {
@@ -65,7 +65,7 @@
       { "op": "remove", "path": "" },
       { "op": "replace", "path": "", "value": [1, 2, 3] }
     ],
-    "error": "replace target must exist beforehand",
+    "error": "cannot delete the document",
     "comment": "replacement of missing document"
   },
   {
@@ -74,7 +74,7 @@
       { "op": "remove", "path": "" },
       { "op": "move", "from": "", "path": "/a/b" }
     ],
-    "error": "move source must exist beforehand",
+    "error": "cannot delete the document",
     "comment": "move from missing document"
   },
   {
@@ -84,7 +84,7 @@
       { "op": "copy", "from": "", "path": "" },
       { "op": "add", "path": "/a/b", "value": 1 }
     ],
-    "error": "copy source must exist beforehand",
+    "error": "cannot delete the document",
     "comment": "copy from missing document"
   },
   {
@@ -94,7 +94,7 @@
       { "op": "copy", "from": "", "path": "/a/b" },
       { "op": "add", "path": "/a/b", "value": 1 }
     ],
-    "error": "copy source must exist beforehand (2)",
+    "error": "cannot delete the document",
     "comment": "copy from missing document"
   },
   {
@@ -103,7 +103,7 @@
       { "op": "remove", "path": "" },
       { "op": "test", "path": "", "value": null }
     ],
-    "error": "root removal is does not produce null",
+    "error": "cannot delete the document",
     "comment": "test on missing document (1)"
   },
   {
@@ -112,7 +112,7 @@
       { "op": "remove", "path": "" },
       { "op": "test", "path": "", "value": "" }
     ],
-    "error": "root removal is does not produce empty string",
+    "error": "cannot delete the document",
     "comment": "test on missing document (2)"
   },
   {

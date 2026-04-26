@@ -3,7 +3,11 @@ from typing import Literal, Self, override
 
 from pydantic import ConfigDict, Field, model_validator
 
-from jsonpatchx.exceptions import OperationValidationError, TestOpFailed
+from jsonpatchx.exceptions import (
+    OperationValidationError,
+    PatchConflictError,
+    TestOpFailed,
+)
 from jsonpatchx.pointer import JSONPointer
 from jsonpatchx.schema import OperationSchema
 from jsonpatchx.types import JSONValue
@@ -27,13 +31,11 @@ class AddOp(OperationSchema):
 
 
 class RemoveOp(OperationSchema):
-    """RFC 6902 remove operation. Removal of the root returns MISSING."""
+    """RFC 6902 remove operation."""
 
     model_config = ConfigDict(
         title="Remove operation",
-        json_schema_extra={
-            "description": "RFC 6902 remove operation. Removal of the root returns MISSING."
-        },
+        json_schema_extra={"description": "RFC 6902 remove operation."},
     )
 
     op: Literal["remove"] = "remove"
@@ -41,6 +43,8 @@ class RemoveOp(OperationSchema):
 
     @override
     def apply(self, doc: JSONValue) -> JSONValue:
+        if self.path.is_root(doc):
+            raise PatchConflictError("cannot delete the root")
         return self.path.remove(doc)
 
 
@@ -58,6 +62,8 @@ class ReplaceOp(OperationSchema):
 
     @override
     def apply(self, doc: JSONValue) -> JSONValue:
+        if self.path.is_root(doc):
+            return AddOp(path=self.path, value=self.value).apply(doc)
         doc = RemoveOp(path=self.path).apply(doc)
         return AddOp(path=self.path, value=self.value).apply(doc)
 

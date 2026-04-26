@@ -23,6 +23,8 @@ and this project adheres to
 - Simplified `SelectorBackend` so custom selector backends yield
   `PointerBackend` instances directly through `pointers(doc)`, removing the
   separate `SelectorMatch` wrapper protocol.
+- Operations no longer delete documents. For example, `RemoveOp` now rejects the
+  root pointer with `PatchConflictError`.
 - Root `JSONPointer` and root `JSONSelector` operations now treat a missing
   document as a distinct runtime state: root reads and removals fail when no
   document exists, while root adds recreate the document.
