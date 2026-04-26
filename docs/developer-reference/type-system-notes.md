@@ -144,51 +144,27 @@ For example, `JSONPointer[tuple[int]]` is "type-safe."
 For more about why it has to be this way, see
 [Limitations in Python's Type System](limitations-in-python-type-system.md).
 
-## Missing Document Sentinel
+## Root-Level Mutation
 
-`MISSING` is the runtime sentinel for “the document no longer exists.”
+JsonPatchX allows whole-document reads and whole-document replacement, but it
+does not model “no current document exists” as a separate runtime state.
 
-### Operation Results
-
-A custom operation that intends to delete the whole document should return
-`MISSING`, not `None`. `None` is JSON `null`. `MISSING` means document deletion.
-
-This sentinel exists at the operation-result layer so composed operations can
-pass along “the document was deleted” without pretending that state is a JSON
-value. `ReplaceOp`, for example, literally implements root replacement as
-`RemoveOp` followed by `AddOp`: root removal returns `MISSING`, and root add
-recreates the document from that state.
-
-### Validation Boundaries
-
-`MISSING` is not itself treated as a JSON value. The JSON helper family
-(`JSONBoolean`, `JSONNumber`, `JSONString`, `JSONNull`, `JSONArray[T]`,
-`JSONObject[T]`, and `JSONValue`) rejects it during normal Pydantic validation.
-
-So “document missing” is a runtime state that pointer- and selector-based
-operations handle before type validation, not a value that happens to satisfy a
-JSON helper type.
+A `MISSING_DOCUMENT` sentinel was considered in `v0.1.0`, but ultimately, it was
+decided that PATCH should be for document _updates_, not creation / deletion.
+The same is true for the patch operations themselves.
 
 ### JSONPointer Defaults
 
-Root-targetable pointer operations handle document absence like this:
+At the root pointer (`""` in RFC 6901), the defaults are:
 
-- root `get` fails because there is no document to read
-- root `remove` fails when the document is already missing
-- root `add` recreates the document
-- root `remove` on an existing document returns `MISSING`
+- `get(doc)` returns `doc`
+- `add(doc, value)` replaces the whole document with `value`
+- `remove(doc)` raises `PatchConflictError`
 
 ### JSONSelector Defaults
 
-At the root selector `$`, the default selector behavior mirrors the root
-pointer:
+At the root selector (`$` in RFC 9535), the defaults mirror the root pointer:
 
-- root `getall` fails because there is no document to read
-- root `removeall` fails when the document is already missing
-- root `addall` recreates the document
-
-An individual operation can therefore still delete or recreate the whole
-document without implying that `MISSING` is intrinsically compatible with types
-such as `JSONBoolean` or `JSONValue`. Higher-level boundaries such as model
-revalidation or HTTP response serialization can still reject a final missing
-document if that contract requires a real JSON value.
+- `getall(doc)` returns `[doc]`
+- `addall(doc, value)` replaces the whole document with `value`
+- `removeall(doc)` raises `PatchConflictError`

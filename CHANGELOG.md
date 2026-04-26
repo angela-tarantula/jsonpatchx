@@ -15,8 +15,6 @@ and this project adheres to
 - `DEFAULT_POINTER_CLS` and `DEFAULT_SELECTOR_CLS` are now explicitly supported
   public API and can be imported directly when you want to bind JsonPatchX's
   built-in pointer and selector backends.
-- `TargetState.MISSING` now distinguishes the root-document `MISSING` sentinel
-  case from other pointer target states.
 
 ### Changed
 
@@ -25,12 +23,6 @@ and this project adheres to
   separate `SelectorMatch` wrapper protocol.
 - Operations no longer delete documents. For example, `RemoveOp` now rejects the
   root pointer with `PatchConflictError`.
-- Root `JSONPointer` and root `JSONSelector` operations now treat a missing
-  document as a distinct runtime state: root reads and removals fail when no
-  document exists, while root adds recreate the document.
-- The JSON helper family (`JSONBoolean`, `JSONNumber`, `JSONString`, `JSONNull`,
-  `JSONArray[T]`, `JSONObject[T]`, and `JSONValue`) now rejects `MISSING` during
-  runtime validation again instead of treating it as a type-compatible value.
 - Tightened `JSONPointer.parse()` and `JSONSelector.parse()` type hints with
   overloads so omitted `type_param` defaults no longer require ignore comments
   and default/custom backend return types are preserved more accurately.

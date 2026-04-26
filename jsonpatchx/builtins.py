@@ -44,7 +44,7 @@ class RemoveOp(OperationSchema):
     @override
     def apply(self, doc: JSONValue) -> JSONValue:
         if self.path.is_root(doc):
-            raise PatchConflictError("cannot delete the root")
+            raise PatchConflictError("cannot delete the document")
         return self.path.remove(doc)
 
 

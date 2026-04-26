@@ -75,10 +75,6 @@ class JSONSelector(str, Generic[T_co, S_co]):
     `JSONPointer` locations and delegating to pointer mutation rules. The
     selector backend's `pointers()` output is the source of truth for which
     pointer backend is being used.
-
-    At the root selector `$`, a missing document is handled as its own runtime
-    state: `getall()` and `removeall()` fail, while `addall()` recreates the
-    document.
     """
 
     __slots__ = ("_selector", "_type")
@@ -681,10 +677,13 @@ class JSONSelector(str, Generic[T_co, S_co]):
         Notes:
             This is intentionally looser than `removeall()`. Selector
             removal does not promise a stable or safety-maximizing order, so
-            this predicate only checks the current matches, not whether any
-            particular backend iteration order will succeed.
+            this predicate checks whether every current match is removable
+            under the pointer layer's rules.
         """
-        return self.is_gettable(doc)
+        try:
+            return all(pointer.is_removable(doc) for pointer in self.get_pointers(doc))
+        except (InvalidJSONSelector, PatchConflictError):
+            return False
 
     @override
     def __repr__(self) -> str:

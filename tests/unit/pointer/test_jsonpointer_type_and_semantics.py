@@ -2,13 +2,12 @@ from __future__ import annotations
 
 import copy
 from functools import partial
-from typing import TYPE_CHECKING, Any, Generic, cast
+from typing import TYPE_CHECKING, Any, Generic
 
 import pytest
 from jsonpath import JSONPointer as ExtendedJsonPointer
 from jsonpointer import JsonPointer as CustomJsonPointer
 from pydantic import BaseModel, TypeAdapter
-from pydantic_core import MISSING
 from pytest import Subtests
 from typing_extensions import TypeVar
 
@@ -115,21 +114,14 @@ def test_jsonpointer_root_semantics(subtests: Subtests) -> None:
     root = JSONPointer.parse("")
 
     with subtests.test("root pointer with existing document"):
-        assert root.get({"a": 1}) == {"a": 1}
-        assert root.add({"a": 1}, {"b": 2}) == {"b": 2}
-        assert root.remove({"a": 1}) is MISSING
-
-    with subtests.test("root pointer with missing document"):
-        deleted = cast(JSONValue, MISSING)
-        assert root.is_valid_type(MISSING) is False
-        assert root.is_gettable(deleted) is False
-        assert root.is_removable(deleted) is False
-        assert root.is_addable(deleted, {"c": 3}) is True
-        assert root.add(deleted, {"c": 3}) == {"c": 3}
-        with pytest.raises(PatchConflictError):
-            root.get(deleted)
-        with pytest.raises(PatchConflictError):
-            root.remove(deleted)
+        doc: JSONValue = {"a": 1}
+        assert root.get(doc) == doc
+        assert root.is_gettable(doc) is True
+        assert root.is_addable(doc, {"b": 2}) is True
+        assert root.add(doc, {"b": 2}) == {"b": 2}
+        assert root.is_removable(doc) is False
+        with pytest.raises(PatchConflictError, match="cannot delete the document"):
+            root.remove(doc)
 
 
 def test_jsonpointer_backend_corruption_paths(

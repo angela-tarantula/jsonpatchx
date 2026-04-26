@@ -20,7 +20,6 @@ from pydantic import (
     ValidationError,
 )
 from pydantic.json_schema import JsonSchemaValue
-from pydantic_core import MISSING
 from pydantic_core import core_schema as cs
 from typing_extensions import TypeForm, TypeVar
 
@@ -51,7 +50,6 @@ from jsonpatchx.types import (
 )
 
 _Nothing = object()
-# NOTE: maybe add pydantic_core.MISSING to JSONPointer.get() on failure
 
 
 T_co = TypeVar("T_co", bound=JSONBound, covariant=True)
@@ -108,11 +106,7 @@ class JSONPointer(str, Generic[T_co, P_co]):
     Mutation semantics:
     - `add` and `remove` may mutate the document object they are given (or containers reachable
       from it). The root pointer `""` is the exception: setting the root returns a new document
-      value rather than mutating an existing container. Removing the root returns
-      `MISSING` to represent document deletion rather than a JSON `null` value.
-      A missing root document is handled as its own state: root `get` and root `remove`
-      fail, while root `add` recreates the document.
-      If you want to forbid root removal, it's easy to make a custom op!
+      value rather than mutating an existing container. Removing the root is not supported.
     - Whether these mutations affect the original caller-owned document is determined by the patch
       engine (see `_apply_ops(..., inplace=...)`), which may deep-copy the input document.
 
@@ -618,9 +612,6 @@ class JSONPointer(str, Generic[T_co, P_co]):
         Raises:
             PatchConflictError: If the target does not exist, or it is not type `T`.
         """
-        if classify_state(self._ptr, doc) is TargetState.MISSING:
-            raise PatchConflictError(f"target {str(self)!r} does not exist")
-
         # Choice: always defer to the PointerBackend implementation for pointer resolution.
         # Why: Don't reinvent the wheel (and maintain it). Plus, give more power to custom PointerBackends.
         try:
@@ -666,8 +657,6 @@ class JSONPointer(str, Generic[T_co, P_co]):
         target = self._validate_replacement(value)
 
         match classify_state(self._ptr, doc):
-            case TargetState.MISSING:
-                return target
             case TargetState.ROOT:
                 self._validate_target(doc)
                 return target
@@ -735,8 +724,6 @@ class JSONPointer(str, Generic[T_co, P_co]):
                 return False
 
         match classify_state(self._ptr, doc):
-            case TargetState.MISSING:
-                return True
             case TargetState.ROOT:
                 return self.is_valid_type(doc)
             case TargetState.VALUE_PRESENT:
@@ -756,7 +743,7 @@ class JSONPointer(str, Generic[T_co, P_co]):
 
     def remove(self, doc: JSONValue) -> JSONValue:
         """
-        RFC 6902 remove (type-gated). Removal of the root returns `MISSING`.
+        RFC 6902 remove (type-gated).
 
         Arguments:
             doc: Target JSON document.
@@ -768,13 +755,9 @@ class JSONPointer(str, Generic[T_co, P_co]):
             PatchConflictError: If the target does not exist, or it is not type `T`.
         """
         match classify_state(self._ptr, doc):
-            case TargetState.MISSING:
-                raise PatchConflictError(f"target {str(self)!r} does not exist")
             case TargetState.ROOT:
-                # Choice: Removal of root returns MISSING.
-                # Why: Root removal is document deletion, not replacement with JSON null.
                 self._validate_target(doc)
-                return cast(JSONValue, MISSING)
+                raise PatchConflictError("cannot delete the document")
             case TargetState.PARENT_NOT_FOUND:
                 raise PatchConflictError(
                     f"cannot remove value at {str(self)!r} because parent does not exist"
@@ -822,7 +805,7 @@ class JSONPointer(str, Generic[T_co, P_co]):
         Returns:
             `True` if remove semantics would succeed, otherwise `False`.
         """
-        return self.is_gettable(doc)
+        return self.is_gettable(doc) and not self.is_root(doc)
 
     @override
     def __repr__(self) -> str:

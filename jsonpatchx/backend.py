@@ -14,7 +14,6 @@ from typing import (
 from jsonpath import JSONPathEnvironment
 from jsonpointer import JsonPointer  # type: ignore[import-untyped]
 from jsonpointer import JsonPointerException as JPException
-from pydantic_core import MISSING
 
 from jsonpatchx.exceptions import InvalidJSONPointer, InvalidJSONSelector
 from jsonpatchx.types import JSONValue, _is_array, _is_container, _is_object
@@ -291,7 +290,6 @@ class TargetState(Enum):
     Resolution state for applying a pointer-like operation to a document.
 
     Values:
-        - `MISSING`: The root pointer targets a missing document.
         - `ROOT`: The pointer targets the document root.
         - `PARENT_NOT_FOUND`: A parent pointer segment could not be resolved.
         - `PARENT_NOT_CONTAINER`: The parent resolved, but is neither an object nor
@@ -311,7 +309,6 @@ class TargetState(Enum):
         array element through a negative index.
     """
 
-    MISSING = auto()
     ROOT = auto()
     PARENT_NOT_FOUND = auto()
     PARENT_NOT_CONTAINER = auto()
@@ -339,8 +336,6 @@ def classify_state(ptr: PointerBackend, doc: JSONValue) -> TargetState:
         The resolution state that best describes how `ptr` relates to `doc`.
     """
     if _is_root_ptr(ptr, doc):
-        if doc is MISSING:  # type: ignore[comparison-overlap]
-            return TargetState.MISSING
         return TargetState.ROOT
 
     try:

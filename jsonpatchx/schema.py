@@ -14,7 +14,6 @@ from typing import (
 
 from pydantic import BaseModel, ConfigDict, GetJsonSchemaHandler
 from pydantic.json_schema import JsonSchemaValue
-from pydantic_core import MISSING
 from pydantic_core import core_schema as cs
 
 from jsonpatchx.exceptions import (
@@ -22,7 +21,6 @@ from jsonpatchx.exceptions import (
     PatchError,
     PatchFailureDetail,
     PatchInternalError,
-    PatchValidationError,
 )
 from jsonpatchx.types import JSONValue
 
@@ -220,8 +218,4 @@ def _apply_ops(
             )
             raise PatchInternalError(detail, cause=e) from e
 
-    if doc is MISSING:  # type: ignore[comparison-overlap]
-        raise PatchValidationError(
-            "The patch deleted the document, which is not allowed."
-        )
     return doc

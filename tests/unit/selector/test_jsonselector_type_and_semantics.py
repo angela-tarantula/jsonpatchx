@@ -2,11 +2,10 @@ from __future__ import annotations
 
 import copy
 from functools import partial
-from typing import TYPE_CHECKING, Any, Generic, cast
+from typing import TYPE_CHECKING, Any, Generic
 
 import pytest
 from pydantic import BaseModel, TypeAdapter
-from pydantic_core import MISSING
 from pytest import Subtests
 from typing_extensions import TypeVar
 
@@ -122,23 +121,11 @@ def test_jsonselector_root_semantics(subtests: Subtests) -> None:
         assert selector.getall(doc) == [doc]
         assert selector.get_pointers(doc) == [JSONPointer.parse("")]
         assert selector.is_gettable(doc) is True
-        assert selector.is_removable(doc) is True
-        assert selector.is_addable(doc, {"b": 2}) is True
-        assert selector.addall(copy.deepcopy(doc), {"b": 2}) == {"b": 2}
-        assert selector.removeall(copy.deepcopy(doc)) is MISSING
-
-    with subtests.test("root selector with missing document"):
-        doc: JSONValue = cast(JSONValue, MISSING)
-        assert selector.is_valid_type(MISSING) is False
-        with pytest.raises(PatchConflictError):
-            selector.getall(doc)
-        assert selector.get_pointers(doc) == [JSONPointer.parse("")]
-        assert selector.is_gettable(doc) is False
         assert selector.is_removable(doc) is False
         assert selector.is_addable(doc, {"b": 2}) is True
-        assert selector.addall(doc, {"b": 2}) == {"b": 2}
-        with pytest.raises(PatchConflictError):
-            selector.removeall(doc)
+        assert selector.addall(copy.deepcopy(doc), {"b": 2}) == {"b": 2}
+        with pytest.raises(PatchConflictError, match="cannot delete the document"):
+            selector.removeall(copy.deepcopy(doc))
 
 
 def test_default_jsonselector_zero_matches() -> None:
