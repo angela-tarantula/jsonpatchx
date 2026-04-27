@@ -1,7 +1,7 @@
-# Standard RFC 6902
+# JSON Patch
 
-This module is the lowest-friction entry point when you want plain JSON Patch
-behavior. It contains `JsonPatch` and the `apply_patch` convenience function.
+This module contains `JsonPatch` and the `apply_patch` convenience function —
+the primary entry point for applying patches to documents.
 
 <!-- prettier-ignore -->
 ::: jsonpatchx.standard

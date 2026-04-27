@@ -1,7 +1,7 @@
-# Pointer Backends
+# Targeting Backends
 
-This module contains the pointer backend protocol and related backend-level
-utilities used by `JSONPointer`.
+This module contains the `PointerBackend` and `SelectorBackend` protocols, the
+default implementations, and related backend-level utilities.
 
 <!-- prettier-ignore -->
 ::: jsonpatchx.backend
