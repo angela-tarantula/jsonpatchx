@@ -139,14 +139,30 @@ class DEFAULT_POINTER_CLS:
         """Parse an RFC 6901 JSON Pointer string.
 
         Arguments:
-            pointer: A string in RFC 6901 syntax.
+            pointer: A string in RFC 6901 syntax. `/` and `~` inside tokens
+                must be escaped as `~1` and `~0` respectively.
+
+        Example:
+            ```python
+            DEFAULT_POINTER_CLS("/foo/bar~1baz/~0qux")
+            ```
         """
         self._pointer = _FixedJsonPointer(pointer)
         self._parts = cast(Sequence[str], self._pointer.parts)
 
     @property
     def parts(self) -> Sequence[str]:
-        """The pointer's unescaped RFC 6901 reference tokens in traversal order."""
+        """The pointer's unescaped RFC 6901 reference tokens in traversal order.
+
+        RFC 6901 escapes `/` as `~1` and `~` as `~0` inside tokens. `parts`
+        returns the decoded values.
+
+        Example:
+            ```python
+            ptr = DEFAULT_POINTER_CLS("/foo/bar~1baz/~0qux")
+            ptr.parts  # ("foo", "bar/baz", "~qux")
+            ```
+        """
         return self._parts
 
     @classmethod
@@ -158,6 +174,12 @@ class DEFAULT_POINTER_CLS:
 
         Returns:
             pointer: A canonical RFC 6901 pointer for those tokens.
+
+        Example:
+            ```python
+            DEFAULT_POINTER_CLS.from_parts(["foo", "bar/baz", "~qux"])
+            # DEFAULT_POINTER_CLS("/foo/bar~1baz/~0qux")
+            ```
         """
         canonical = _FixedJsonPointer.from_parts(parts)
         return cls(str(canonical))
@@ -170,12 +192,25 @@ class DEFAULT_POINTER_CLS:
 
         Returns:
             The value targeted by this pointer.
+
+        Example:
+            ```python
+            ptr = DEFAULT_POINTER_CLS("/users/0/name")
+            ptr.resolve({"users": [{"name": "Alice"}]})  # "Alice"
+            ```
         """
         return cast(JSONValue, self._pointer.resolve(doc))
 
     @override
     def __str__(self) -> str:
-        """The canonical RFC 6901 JSON Pointer string."""
+        """The canonical RFC 6901 JSON Pointer string, with tokens re-escaped.
+
+        Example:
+            ```python
+            ptr = DEFAULT_POINTER_CLS.from_parts(["foo", "bar/baz", "~qux"])
+            str(ptr)  # "/foo/bar~1baz/~0qux"
+            ```
+        """
         return str(self._pointer)
 
     @override
@@ -302,6 +337,17 @@ def classify_state(ptr: PointerBackend, doc: JSONValue) -> TargetState:
 
     Returns:
         The resolution state that best describes how `ptr` relates to `doc`.
+
+    Example:
+        ```python
+        >>> doc = {"items": [1, 2, 3]}
+        >>> classify_state(DEFAULT_POINTER_CLS("/items/1"), doc)
+        TargetState.VALUE_PRESENT
+        >>> classify_state(DEFAULT_POINTER_CLS("/items/9"), doc)
+        TargetState.ARRAY_INDEX_OUT_OF_RANGE
+        >>> classify_state(DEFAULT_POINTER_CLS("/missing"), doc)
+        TargetState.OBJECT_KEY_MISSING
+        ```
     """
     if _is_root_ptr(ptr, doc):
         return TargetState.ROOT
@@ -430,6 +476,13 @@ class DEFAULT_SELECTOR_CLS:
 
         Returns:
             pointers: The RFC 6901 JSON Pointers matched by this JSONPath.
+
+        Example:
+            ```python
+            sel = DEFAULT_SELECTOR_CLS("$.users[*].name")
+            doc = {"users": [{"name": "Alice"}, {"name": "Bob"}]}
+            [str(p) for p in sel.pointers(doc)]  # ["/users/0/name", "/users/1/name"]
+            ```
         """
         for match in self._selector.finditer(doc):
             yield DEFAULT_POINTER_CLS.from_parts((str(part) for part in match.parts))
