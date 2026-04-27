@@ -28,7 +28,7 @@
           "path",
           "value"
         ],
-        "title": "Add operation",
+        "title": "RFC 6902 Add Operation",
         "type": "object"
       },
       "AppendOp": {
@@ -125,7 +125,7 @@
           "op",
           "path"
         ],
-        "title": "Copy operation",
+        "title": "RFC 6902 Copy Operation",
         "type": "object"
       },
       "EnforceMaxLenOp": {
@@ -349,7 +349,7 @@
           "op",
           "path"
         ],
-        "title": "Move operation",
+        "title": "RFC 6902 Move Operation",
         "type": "object"
       },
       "Player": {
@@ -493,7 +493,7 @@
           "op",
           "path"
         ],
-        "title": "Remove operation",
+        "title": "RFC 6902 Remove Operation",
         "type": "object"
       },
       "RemoveValueOp": {
@@ -555,7 +555,7 @@
           "path",
           "value"
         ],
-        "title": "Replace operation",
+        "title": "RFC 6902 Replace Operation",
         "type": "object"
       },
       "RequireMinimumOp": {
@@ -618,7 +618,7 @@
           "path",
           "value"
         ],
-        "title": "Test operation",
+        "title": "RFC 6902 Test Operation",
         "type": "object"
       },
       "ToggleBoolOp": {

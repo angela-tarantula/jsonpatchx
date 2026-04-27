@@ -28,7 +28,7 @@
           "path",
           "value"
         ],
-        "title": "Add operation",
+        "title": "RFC 6902 Add Operation",
         "type": "object"
       },
       "ConfigPatchOperation": {
@@ -108,7 +108,7 @@
           "op",
           "path"
         ],
-        "title": "Copy operation",
+        "title": "RFC 6902 Copy Operation",
         "type": "object"
       },
       "HTTPValidationError": {
@@ -221,7 +221,7 @@
           "op",
           "path"
         ],
-        "title": "Move operation",
+        "title": "RFC 6902 Move Operation",
         "type": "object"
       },
       "RemoveOp": {
@@ -246,7 +246,7 @@
           "op",
           "path"
         ],
-        "title": "Remove operation",
+        "title": "RFC 6902 Remove Operation",
         "type": "object"
       },
       "ReplaceOp": {
@@ -276,7 +276,7 @@
           "path",
           "value"
         ],
-        "title": "Replace operation",
+        "title": "RFC 6902 Replace Operation",
         "type": "object"
       },
       "TestOp": {
@@ -306,7 +306,7 @@
           "path",
           "value"
         ],
-        "title": "Test operation",
+        "title": "RFC 6902 Test Operation",
         "type": "object"
       },
       "ToggleOp": {

@@ -8,7 +8,7 @@ docs_dir = "docs"
 site_dir = "site"
 plugins = [
   "search",
-  { mkdocstrings = { handlers = { python = { paths = ["."], options = { docstring_style = "google", show_signature_annotations = true, separate_signature = true, members_order = "source" } } } } },
+  { mkdocstrings = { handlers = { python = { paths = ["."], options = { docstring_style = "google", show_signature_annotations = true, separate_signature = true, members_order = "source", extensions = ["griffe_pydantic"] } } } } },
 ]
 nav = [
   { "About" = "about/about.md" },

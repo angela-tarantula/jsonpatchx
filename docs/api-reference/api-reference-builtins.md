@@ -10,3 +10,4 @@ This module contains the built-in RFC 6902 operation models: `AddOp`,
       show_root_toc_entry: false
       filters:
         - "!^_"
+        - "!^op$"

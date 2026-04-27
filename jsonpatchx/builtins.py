@@ -1,5 +1,5 @@
 import copy
-from typing import Literal, Self, override
+from typing import ClassVar, Literal, Self, override
 
 from pydantic import ConfigDict, Field, model_validator
 from pydantic_core import PydanticCustomError
@@ -17,7 +17,7 @@ class AddOp(OperationSchema):
     """RFC 6902 add operation."""
 
     model_config = ConfigDict(
-        title="Add operation",
+        title="RFC 6902 Add Operation",
         json_schema_extra={"description": "RFC 6902 add operation."},
     )
 
@@ -42,7 +42,7 @@ class RemoveOp(OperationSchema):
     """RFC 6902 remove operation."""
 
     model_config = ConfigDict(
-        title="Remove operation",
+        title="RFC 6902 Remove Operation",
         json_schema_extra={"description": "RFC 6902 remove operation."},
     )
 
@@ -68,7 +68,7 @@ class ReplaceOp(OperationSchema):
     """RFC 6902 replace operation."""
 
     model_config = ConfigDict(
-        title="Replace operation",
+        title="RFC 6902 Replace Operation",
         json_schema_extra={"description": "RFC 6902 replace operation."},
     )
 
@@ -104,7 +104,7 @@ class MoveOp(OperationSchema):
     """
 
     model_config = ConfigDict(
-        title="Move operation",
+        title="RFC 6902 Move Operation",
         json_schema_extra={"description": "RFC 6902 move operation."},
     )
 
@@ -145,7 +145,7 @@ class CopyOp(OperationSchema):
     """
 
     model_config = ConfigDict(
-        title="Copy operation",
+        title="RFC 6902 Copy Operation",
         json_schema_extra={"description": "RFC 6902 copy operation."},
     )
 
@@ -172,10 +172,10 @@ class CopyOp(OperationSchema):
 class TestOp(OperationSchema):
     """RFC 6902 test operation."""
 
-    __test__ = False  # Suppress pytest warning
+    __test__: ClassVar[bool] = False  # Suppress pytest warning
 
     model_config = ConfigDict(
-        title="Test operation",
+        title="RFC 6902 Test Operation",
         json_schema_extra={"description": "RFC 6902 test operation."},
     )
 
