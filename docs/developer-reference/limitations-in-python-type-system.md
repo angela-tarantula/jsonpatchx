@@ -9,42 +9,53 @@ each.
 
 ---
 
-## Limitation 1: `JSONArray[JSONNumber]` is not assignable to `JSONValue`
+## Limitation 1: Narrowly-typed JSON containers are not assignable to `JSONValue`
 
-The most common practical surprise: you write a custom `apply` that returns a
-narrowly typed JSON value, and your type checker flags it.
+The most common practical surprise: you narrow a pointer's type parameter to get
+a typed resolved value, build a result from it, and the type checker flags the
+return.
+
+The limitation surfaces whenever the pointer's type parameter is a narrower
+container, for example `JSONPointer[JSONArray[JSONNumber]]`, and the result is
+returned directly from `apply`.
 
 ```python
+from typing import Literal
+from jsonpatchx import JSONPointer, JSONArray, JSONNumber, JSONValue
+from jsonpatchx.schema import OperationSchema
+
 class DoubleAllOp(OperationSchema):
     op: Literal["double_all"]
-    path: JSONPointer[JSONValue]
+    path: JSONPointer[JSONArray[JSONNumber]]
 
     def apply(self, doc: JSONValue) -> JSONValue:
-        numbers = self.path.get(doc)
-        return [n * 2 for n in numbers]  # ← type error
-        # list comprehension infers list[JSONValue], not narrower;
-        # but if you annotate it as JSONArray[JSONNumber], the type
-        # checker flags it as not assignable to JSONValue
+        numbers = self.path.get(doc)  # type: JSONArray[JSONNumber] = list[int | float]
+        return [n * 2 for n in numbers]  # type error: list[int | float] not assignable to JSONValue
+        # JSONValue requires list[JSONValue] and list is invariant
 ```
+
+The same issue applies to any narrowly-typed container:
+`JSONObject[JSONString]`, `JSONArray[JSONBoolean]`, and so on; anything where
+the element type is not exactly `JSONValue`.
 
 To understand why, you need to understand invariance.
 
 ### Why `list` is invariant
 
-Imagine Python treated `list` as covariant — so `list[int]` would be a subtype
-of `list[object]`. Then this code would typecheck:
+Imagine Python treated `list` as covariant, so `list[int]` would be a subtype of
+`list[object]`. Then this code would typecheck:
 
 ```python
 ints: list[int] = [1, 2]
 things: list[object] = ints   # pretend covariance
-things.append("oops")         # now ints is [1, 2, "oops"] — broken!
+things.append("oops")         # now ints is [1, 2, "oops"]  # broken
 ```
 
 This would allow inserting wrong-typed values through an alias. So Python
 correctly makes `list` (and `dict`) **invariant**: `list[int]` is only a subtype
 of `list[int]`, not `list[object]` or anything else.
 
-### Why this blocks `JSONArray[JSONNumber]`
+### Why this blocks narrowly-typed containers
 
 `JSONValue` is defined, for type checkers, as:
 
@@ -53,54 +64,41 @@ type JSONValue = JSONScalar | JSONContainer[JSONValue]
 # where JSONContainer[T] = JSONArray[T] | JSONObject[T]
 ```
 
-So `JSONValue` includes `JSONArray[JSONValue]` — a list whose items are
+So `JSONValue` includes `JSONArray[JSONValue]`, a list whose items are
 themselves `JSONValue`. But `JSONArray[JSONNumber]` is a list whose items are
 `JSONNumber`, which is a _narrower_ type than `JSONValue`.
 
 Because `list` is invariant, `list[JSONNumber]` is **not** a subtype of
-`list[JSONValue]`, even though `JSONNumber` is a subtype of `JSONValue`. So the
-type checker rejects it.
+`list[JSONValue]`, even though `JSONNumber` is a subtype of `JSONValue`. The
+same holds for any other narrowing: `list[JSONString]`,
+`dict[str, JSONBoolean]`, and so on. The type checker rejects them all.
 
-This is not a bug in JsonPatchX — it's a correct consequence of invariance.
+This is not a bug in JsonPatchX; it is a correct consequence of invariance.
 
-### What to do
+### What to do: cast at the return site
 
-**Option A — cast at the return site.** If you know your operation produces a
-valid JSON document, cast:
+Cast the return value to `JSONValue`. The limitation is in Python's type system,
+not in the code: you know the value is `JSONNumber`, you are treating it as
+`JSONValue`, and that is correct. `cast` is honest about that reasoning in a way
+that `# type: ignore` is not.
 
 ```python
 from typing import cast
 from jsonpatchx import JSONValue
 
 def apply(self, doc: JSONValue) -> JSONValue:
-    result: list[int] = [n * 2 for n in ...]
+    numbers = self.path.get(doc)             # JSONArray[JSONNumber]
+    result: list[int | float] = [n * 2 for n in numbers]
     return cast(JSONValue, result)
 ```
 
-This silences the type checker. It is safe here because `validate_return=True`
-is set on `OperationSchema`: the patch engine validates every `apply` return
-value against the JSON rules at runtime, so an invalid return raises an error
-even if you cast. You are covered.
-
-**Option B — widen the annotation.** Annotate intermediate variables as
-`JSONValue` rather than narrower types. Less precise, but avoids the cast:
-
-```python
-def apply(self, doc: JSONValue) -> JSONValue:
-    items: JSONValue = self.path.get(doc)
-    ...
-    return result
-```
-
-**Option C — accept the limitation and add a `# type: ignore`.** If the
-operation is simple and correct, a targeted ignore comment is fine.
-
-In all cases, the runtime is reliable: `validate_return=True` ensures
-correctness regardless of what the type checker accepts or rejects.
+This is safe: `validate_return=True` on `OperationSchema` validates every
+`apply` return value at runtime, so an invalid return raises an error even if
+you cast.
 
 ---
 
-## Limitation 2: Why `JSONBound` exists — the TypeVar bound problem
+## Limitation 2: Why `JSONBound` exists: the TypeVar bound problem
 
 `JSONPointer[T]` is a typed pointer parameterized by the type of value it
 resolves to. To constrain `T` to JSON-shaped types, we need a TypeVar bound.
@@ -141,7 +139,7 @@ type JSONBound = JSONScalar | Sequence[JSONBound] | Mapping[str, JSONBound]
 types like `JSONObject[JSONArray[JSONBoolean]]` satisfy the bound.
 
 The trade-off: `Sequence` and `Mapping` are broader than the JSON container
-semantics — they accept `tuple` and custom mappings, which are not valid JSON
+semantics; they accept `tuple` and custom mappings, which are not valid JSON
 containers. The static type system is permissive here; runtime validation
 enforces the actual rules (`list` for arrays, `dict[str, ...]` for objects).
 
@@ -156,13 +154,26 @@ enforces the actual rules (`list` for arrays, `dict[str, ...]` for objects).
 
 ---
 
-## Why not redesign around immutable containers?
+## Why not use `Sequence`/`Mapping` in `JSONValue` and `apply` signatures?
 
-Using immutable types (`tuple`, `frozendict`) would sidestep the invariance
-problem. This was not chosen because JsonPatchX patch semantics intentionally
-operate on standard Python JSON-like data (`list`/`dict`) and support in-place
-mutation. Switching to immutable container primitives would add friction across
-runtime behavior, interoperability, and user expectations.
+`JSONBound` uses `Sequence` and `Mapping` because they are covariant, which
+dissolves the invariance problem. A natural follow-up question is: why not use
+the same covariant types in `JSONValue` and in `apply` return signatures?
+
+The reason is precision. `Sequence` accepts `tuple`, `str`, and any custom
+sequence; `Mapping` accepts any mapping. Neither constrains you to actual JSON
+containers. `JSONValue` uses `list` and `dict[str, ...]` precisely because those
+are the only valid JSON containers, and that precision is enforced by Pydantic
+at validation time.
+
+Patch operations also mutate documents in place. `Sequence` and `Mapping` are
+read-only interfaces; expressing mutation through them would require casting
+back to concrete types at every operation site.
+
+`JSONBound` exists only as a TypeVar bound for static generics, where the
+permissiveness is acceptable because runtime validation still enforces the real
+rules. It is not the right type for method signatures or field annotations,
+which is exactly what `JSONValue` is for.
 
 ---
 
@@ -171,4 +182,12 @@ runtime behavior, interoperability, and user expectations.
 If you want to help draft a PEP (or related typing proposal) for recursive
 existential constraints like this, reach out in JsonPatchX discussions. This
 kind of typing support would help any mutable, recursively nested generic data
-model — not just JSON.
+model, not just JSON.
+
+<!--
+TODO: create a GitHub discussion where readers can upvote support for this PEP.
+      The goal is to gather public signal (upvotes/comments) that demonstrates demand
+      when the PEP is formally proposed. Once the discussion exists, replace this
+      section with a link to it and a call to action: "upvote if you'd like to see
+      this in Python."
+-->
