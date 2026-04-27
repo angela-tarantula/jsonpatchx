@@ -424,7 +424,7 @@ class JSONPointer(str, Generic[T_co, P_co]):
 
     def _validate_target(self, target: object) -> T_co:
         """
-        Validate a resolved or replacement value against this pointer's type.
+        Validate a resolved target value against this pointer's type.
 
         Arguments:
             target: Candidate value to validate strictly against `T`.
@@ -656,10 +656,10 @@ class JSONPointer(str, Generic[T_co, P_co]):
 
         Arguments:
             doc: JSON document to add to.
-            value: Value to add at this path, validated against `T`.
+            value: Value to add at this path. Must conform to `T` and to `JSONValue`.
 
         Returns:
-            The updated document.
+            The updated JSON document.
 
         Raises:
             PatchConflictError: If the target does not exist, if the target is not type `T`,
@@ -760,7 +760,7 @@ class JSONPointer(str, Generic[T_co, P_co]):
             doc: JSON document to remove from.
 
         Returns:
-            The updated document.
+            The updated JSON document.
 
         Raises:
             PatchConflictError: If the target does not exist, or it is not type `T`.

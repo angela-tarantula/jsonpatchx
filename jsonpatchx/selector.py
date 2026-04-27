@@ -60,21 +60,15 @@ class JSONSelector(str, Generic[T_co, S_co]):
 
     `JSONSelector[T]` is the query analogue of `JSONPointer[T]`:
     it parses a selector string up front, keeps the parsed backend around, and
-    enforces the type parameter `T` when matches are exercised.
+    enforces the type parameter `T` when matches are exercised. The string value
+    is the selector query itself, so `JSONSelector` is accepted wherever `str` is.
 
-    Query selectors differ from pointers in one important way: they can resolve
-    to many locations. So the convenience surface is plural:
+    Unlike `JSONPointer`, a selector can match many locations; mutation resolves
+    each match into an exact `JSONPointer` and delegates to pointer mutation rules.
 
-    - `getall(doc)` validates and returns every matched value.
-    - `addall(doc, value)` validates the current matches and writes to every
-      matched location.
-    - `removeall(doc)` validates the current matches and removes every matched
-      location.
-
-    Mutation is implemented by resolving the selector into exact
-    `JSONPointer` locations and delegating to pointer mutation rules. The
-    selector backend's `pointers()` output is the source of truth for which
-    pointer backend is being used.
+    Notes:
+        Instances are produced by Pydantic validation. If you need direct
+        construction, use `JSONSelector.parse()`.
     """
 
     __slots__ = ("_selector", "_type")
@@ -87,25 +81,24 @@ class JSONSelector(str, Generic[T_co, S_co]):
         """
         The underlying selector backend instance.
 
-        This is exposed for advanced users who provide a custom
-        `SelectorBackend` with additional APIs.
+        This is exposed for advanced users who provide a custom SelectorBackend implementation with additional APIs.
         """
         return self._selector
 
     @property
     def type_param(self) -> TypeForm[T_co]:
-        """The expected type parameter `T` used to validate matched targets."""
+        """The type parameter `T` used to validate matched targets."""
         return self._type
 
     @property
     def _adapter(self) -> TypeAdapter[T_co]:
-        """Return the cached Pydantic adapter used for strict `T` validation."""
+        """The cached Pydantic adapter used for strict `T` validation."""
         return _cached_adapter(cast(Any, self._type))
 
     @classmethod
     def _validator(
         cls,
-        selector: str | Self | SelectorBackend,
+        selector: str | SelectorBackend,
         *,
         type_param: TypeForm[Any],
         concrete_backend: type[SelectorBackend] | TypeVar,
@@ -233,20 +226,7 @@ class JSONSelector(str, Generic[T_co, S_co]):
     def _parse_selector_type_args(
         cls, *args: TypeForm[Any]
     ) -> tuple[TypeForm[Any], type[SelectorBackend] | TypeVar]:
-        """
-        Validate the selector generic arguments.
-
-        Arguments:
-            *args: Generic arguments from `JSONSelector[T, Backend]`.
-
-        Returns:
-            The validated type parameter and backend parameter.
-
-        Raises:
-            TypeError: If the selector is missing its required type argument.
-            InvalidJSONSelector: If the type parameter or backend parameter is
-                invalid.
-        """
+        """Validate the JSONSelector's parameter tuple, e.g. `(JSONValue, MyBackend)` for `JSONSelector[JSONValue, MyBackend]`."""
         if not args:
             raise TypeError(f"{cls} requires at least one type parameter")
         unverified_typeform = args[0]
@@ -363,7 +343,7 @@ class JSONSelector(str, Generic[T_co, S_co]):
 
     def _validate_target(self, target: object) -> T_co:
         """
-        Validate a matched or replacement value against this selector's type.
+        Validate a matched target value against this selector's type.
 
         Arguments:
             target: Candidate value to validate strictly against `T`.
@@ -405,7 +385,7 @@ class JSONSelector(str, Generic[T_co, S_co]):
     @classmethod
     def parse(
         cls,
-        selector: str | Self | SelectorBackend,
+        selector: str | SelectorBackend,
         *,
         backend: type[S_parse] | None = None,
     ) -> "JSONSelector[JSONValue, S_parse]": ...
@@ -414,7 +394,7 @@ class JSONSelector(str, Generic[T_co, S_co]):
     @classmethod
     def parse(
         cls,
-        selector: str | Self | SelectorBackend,
+        selector: str | SelectorBackend,
         *,
         type_param: TypeForm[T_parse],
         backend: type[S_parse] | None = None,
@@ -423,7 +403,7 @@ class JSONSelector(str, Generic[T_co, S_co]):
     @classmethod
     def parse(
         cls,
-        selector: str | Self | SelectorBackend,
+        selector: str | SelectorBackend,
         *,
         type_param: TypeForm[Any] | object = _Nothing,
         backend: type[SelectorBackend] | None = None,
@@ -434,9 +414,8 @@ class JSONSelector(str, Generic[T_co, S_co]):
         Arguments:
             selector: Selector string, parsed selector, or selector backend
                 instance.
-            type_param: Type enforced when matched values are exercised.
-            backend: Optional concrete backend class. When omitted, the built-in
-                JSONPath backend is used.
+            type_param: The type that is enforced on matched values.
+            backend: The backend selector implementation. If `None`, defaults to `DEFAULT_SELECTOR_CLS` (RFC 9535).
 
         Returns:
             A validated `JSONSelector` instance.
@@ -445,14 +424,11 @@ class JSONSelector(str, Generic[T_co, S_co]):
             InvalidJSONSelector: If the selector string, backend, or generic
                 parameters are invalid.
 
-        Notes:
-            `type_param` technically places the covariant `T` parameter in an
-            input position, which would normally be an unsound public API
-            shape. That tradeoff is intentional here because `parse()` is only
-            a convenience constructor around Pydantic validation. Normal
-            construction happens through Pydantic on an already-specialized
-            `JSONSelector[...]` type, so callers are not meant to treat
-            `parse()` as the primary semantic surface for consuming `T`.
+        ??? Acknowledment
+            The `type_param` argument places the covariant type parameter `T` in an input position,
+            which is technically unsound. But the intended use case of this classmethod is testing
+            and ad-hoc selector construction, where the ergonomics of direct construction outweigh
+            the theoretical unsoundness.
         """
         resolved_type_param = (
             JSONValue if type_param is _Nothing else cast(TypeForm[Any], type_param)
@@ -479,14 +455,13 @@ class JSONSelector(str, Generic[T_co, S_co]):
 
     def is_valid_type(self, target: object) -> bool:
         """
-        Return `True` if `target` conforms to this selector's type.
+        Check whether `target` conforms to this selector's type parameter `T`.
 
         Arguments:
             target: Candidate value to validate.
 
         Returns:
-            `True` when `target` validates strictly against `T`,
-            otherwise `False`.
+            `True` if `target` validates strictly against `T`, `False` otherwise.
         """
         try:
             self._adapter.validate_python(target, strict=True)
@@ -499,10 +474,10 @@ class JSONSelector(str, Generic[T_co, S_co]):
         Resolve this selector and return backend pointer instances.
 
         Arguments:
-            doc: Target JSON document.
+            doc: JSON document to resolve against.
 
         Returns:
-            Backend pointers for each resolved match.
+            pointer_instances: A list of backend pointer instances for each resolved match.
 
         Raises:
             PatchConflictError: If the selector backend cannot resolve the
@@ -530,10 +505,10 @@ class JSONSelector(str, Generic[T_co, S_co]):
         Resolve this selector against `doc` and return exact matched pointers.
 
         Arguments:
-            doc: Target JSON document.
+            doc: JSON document to resolve against.
 
         Returns:
-            Typed `JSONPointer` values for each matched location.
+            pointers: Typed `JSONPointer` values for each matched location.
 
         Raises:
             PatchConflictError: If selector resolution fails.
@@ -554,7 +529,7 @@ class JSONSelector(str, Generic[T_co, S_co]):
         Resolve this selector against `doc` and return all matched values.
 
         Arguments:
-            doc: Target JSON document.
+            doc: JSON document to resolve against.
 
         Returns:
             A list of matched values validated against `T`. If the selector
@@ -570,14 +545,13 @@ class JSONSelector(str, Generic[T_co, S_co]):
 
     def is_gettable(self, doc: JSONValue) -> bool:
         """
-        Return `True` if `getall(doc)` would succeed.
+        Check whether `getall(doc)` would succeed.
 
         Arguments:
-            doc: Target JSON document.
+            doc: JSON document to resolve against.
 
         Returns:
-            `True` if selector resolution and per-match reads succeed,
-            otherwise `False`.
+            `True` if selector resolution and per-match reads succeed, `False` otherwise.
         """
         try:
             self.getall(doc)
@@ -591,11 +565,11 @@ class JSONSelector(str, Generic[T_co, S_co]):
         Apply RFC 6902-style add semantics at every matched location.
 
         Arguments:
-            doc: Target JSON document.
-            value: Replacement value written to every matched location.
+            doc: JSON document to add to.
+            value: Value to write at every matched location. Must conform to `T` and to `JSONValue`.
 
         Returns:
-            The updated document.
+            The updated JSON document.
 
         Raises:
             PatchConflictError: If `value` is not valid for this selector, if
@@ -615,17 +589,17 @@ class JSONSelector(str, Generic[T_co, S_co]):
         value: object = _Nothing,
     ) -> bool:
         """
-        Return `True` if `addall()` would succeed.
+        Check whether `addall` would succeed for this document.
 
         Arguments:
-            doc: Target JSON document.
+            doc: JSON document to add to.
             value: Optional value that would be written to every matched
                 location. When omitted, only the current matched targets are
                 checked.
 
         Returns:
             `True` if the selector can be resolved and every matched pointer
-            accepts the requested add semantics, otherwise `False`.
+            accepts the requested add semantics, `False` otherwise.
         """
         if value is _Nothing:
             try:
@@ -648,10 +622,10 @@ class JSONSelector(str, Generic[T_co, S_co]):
         Apply RFC 6902-style remove semantics at every matched location.
 
         Arguments:
-            doc: Target JSON document.
+            doc: JSON document to remove from.
 
         Returns:
-            The updated document.
+            The updated JSON document.
 
         Raises:
             PatchConflictError: If selector resolution fails or any matched
@@ -665,14 +639,14 @@ class JSONSelector(str, Generic[T_co, S_co]):
 
     def is_removable(self, doc: JSONValue) -> bool:
         """
-        Return `True` if all matched targets are removable in principle.
+        Check whether `removeall` would succeed for this document.
 
         Arguments:
-            doc: Target JSON document.
+            doc: JSON document to remove from.
 
         Returns:
-            `True` if the selector resolves and the current matches are
-            gettable/removable targets, otherwise `False`.
+            `True` if the selector resolves and all matched targets are
+            removable, `False` otherwise.
 
         Notes:
             This is intentionally looser than `removeall()`. Selector
