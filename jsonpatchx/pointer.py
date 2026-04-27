@@ -162,7 +162,7 @@ class JSONPointer(str, Generic[T_co, P_co]):
         """The underlying pointer instance for this pointer's parent path. Exposed for advanced users along with `ptr`."""
         return _parent_ptr_of(self._ptr)
 
-    # doc is required because custom backends may not use "" as the root token —
+    # doc is required because custom backends may not use "" as the root token;
     # the backend itself determines what counts as root given the document.
     def is_root(self, doc: JSONValue) -> bool:
         """

@@ -1,13 +1,3 @@
-"""
-FastAPI integration helpers for jsonpatch.
-
-Default error mapping:
-- 415: Wrong Content-Type for JSON Patch (application/json-patch+json)
-- 422: Request validation errors (malformed JSON, invalid operationns or pointers, model revalidation failure)
-- 409: Patch is valid but cannot be applied to current resource state
-- 500: Server misconfiguration or unexpected failures (e.g., invalid registry/op classes)
-"""
-
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -49,6 +39,16 @@ def install_jsonpatch_error_handlers(app: FastAPI) -> None:
 
     Arguments:
         app: The FastAPI application to configure.
+
+    Notes:
+        Default error mapping:
+
+        | Status | Cause |
+        |--------|-------|
+        | 415 | Wrong Content-Type for JSON Patch (`application/json-patch+json`) |
+        | 422 | Request validation errors (malformed JSON, invalid operations or pointers, model revalidation failure) |
+        | 409 | Patch is valid but cannot be applied to current resource state |
+        | 500 | Server misconfiguration or unexpected failures (e.g., invalid registry/op classes) |
 
     Examples:
 

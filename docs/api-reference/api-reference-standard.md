@@ -1,7 +1,7 @@
 # JSON Patch
 
-This module contains `JsonPatch` and the `apply_patch` convenience function —
-the primary entry point for applying patches to documents.
+This module contains `JsonPatch` and the `apply_patch` convenience function, the
+primary entry point for applying patches to documents.
 
 <!-- prettier-ignore -->
 ::: jsonpatchx.standard
