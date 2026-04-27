@@ -8,6 +8,7 @@ contracts and operation models.
     options:
       show_root_heading: false
       show_root_toc_entry: false
+      group_by_category: false
       members:
         - JSONBoolean
         - JSONNumber

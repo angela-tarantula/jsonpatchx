@@ -103,7 +103,7 @@ if TYPE_CHECKING:
 else:
 
     class JSONBoolean:
-        """Strict JSON boolean helper used in Pydantic-backed patch contracts."""
+        """Strict JSON boolean. For type checkers: `bool`."""
 
         @classmethod
         def __get_pydantic_core_schema__(
@@ -120,7 +120,7 @@ else:
             return {"type": "boolean"}
 
     class JSONNumber:
-        """Strict JSON number helper accepting `int` or finite `float` values."""
+        """Strict JSON number. For type checkers: `int | float` (strict; finite floats only, no `NaN` or `Infinity`)."""
 
         @classmethod
         def __get_pydantic_core_schema__(
@@ -144,7 +144,7 @@ else:
             return {"type": "number"}
 
     class JSONString:
-        """Strict JSON string helper used in operation models and patch schemas."""
+        """Strict JSON string. For type checkers: `str`."""
 
         @classmethod
         def __get_pydantic_core_schema__(
@@ -161,7 +161,7 @@ else:
             return {"type": "string"}
 
     class JSONNull:
-        """Strict JSON null helper."""
+        """Strict JSON null. For type checkers: `None`."""
 
         @classmethod
         def __get_pydantic_core_schema__(
@@ -178,7 +178,7 @@ else:
             return {"type": "null"}
 
     class JSONArray[T]:
-        """Strict JSON array helper restricted to concrete `list` values."""
+        """Strict JSON array. For type checkers: `list[T]`."""
 
         @classmethod
         def __get_pydantic_core_schema__(
@@ -197,7 +197,7 @@ else:
             return handler(_core_schema)
 
     class JSONObject[T]:
-        """Strict JSON object helper restricted to `dict[str, ...]` values."""
+        """Strict JSON object. For type checkers: `dict[str, T]`."""
 
         @classmethod
         def __get_pydantic_core_schema__(
@@ -219,10 +219,10 @@ else:
 
 
 type JSONScalar = JSONBoolean | JSONNumber | JSONString | JSONNull
-"""Strict JSON scalar helper union."""
+"""Strict JSON scalar. For type checkers: `JSONBoolean | JSONNumber | JSONString | JSONNull`."""
 
 type JSONContainer[T] = JSONArray[T] | JSONObject[T]
-"""Strict JSON container helper union."""
+"""Strict JSON container. For type checkers: `JSONArray[T] | JSONObject[T]`."""
 
 # type-narrowing helpers
 # NOTE: consider making public type-narrowing helpers
@@ -243,29 +243,27 @@ def _is_array(value: JSONValue) -> TypeIs[JSONArray[JSONValue]]:
 
 if TYPE_CHECKING:
     # Static typing: keep JSONValue as a strict JSON union.
-    type JSONValue = Annotated[
+    type JSONValue = Annotated[  # NOTE: document somewhere that you can't do isinstance because these are type aliases
         JSONScalar | JSONContainer[JSONValue],
         Field(),
-    ]  # NOTE: document somewhere that you can't do isinstance because these are type aliases
-    """
-    Pydantic-friendly type representing a strict JSON value.
-
-    Notes:
-        - The standard JSON Patch operation schemas use it for `value` fields.
-        - `JSONPointer` uses it as the document type for `get`/`add`/`remove`.
-        - Patch application helpers can optionally validate that inputs are legitimate JSON.
-        - Containers are restricted to `list` and `dict[str, ...]`.
-        - Numeric values are restricted to `int` or finite `float` (no NaN/Infinity).
-        - Pydantic validation is strict (no implicit coercions).
-    """
+    ]
 else:
 
     class JSONValue:
         """
-        Runtime JSON value type with strict validation and minimal OpenAPI schema.
+        Strict, recursively validated JSON value; no implicit coercions.
 
-        Validation delegates to the strict JSON union, while
-        JSON schema is deliberately inlined as `{}` to avoid a named component.
+        For type checkers: `JSONBoolean | JSONNumber | JSONString | JSONNull | JSONArray[JSONValue] | JSONObject[JSONValue]`.
+
+        Notes:
+            - Containers are restricted to `list` and `dict[str, ...]`.
+            - Numbers are restricted to `int` or finite `float` (no `NaN` or `Infinity`).
+            - Use `JSONBound` as a TypeVar bound when you need a static type constraint without
+              Pydantic enforcement; use `JSONValue` when you need strict runtime validation.
+            - Due to `list` invariance, narrower types such as `JSONArray[JSONNumber]` are not
+              statically assignable to `JSONValue`. Use `cast(JSONValue, value)` at the return
+              site; `validate_return=True` on `OperationSchema` enforces correctness at runtime.
+              See [Limitations in Python's Type System](../developer-reference/limitations-in-python-type-system.md).
         """
 
         @classmethod
@@ -306,6 +304,19 @@ def _validate_typeform(unverified: object, exc_type: type[Exception]) -> TypeFor
 
 
 type JSONBound = JSONScalar | Sequence[JSONBound] | Mapping[str, JSONBound]
-"""Bound for recursively JSON-shaped values accepted by generic helpers such as
-`JSONPointer[T]`."""
-# Use it like `T = TypeVar("T", default=JSONValue, bound=JSONBound)`
+"""
+TypeVar bound for JSON-shaped values, used by `JSONPointer[T]` and `JSONSelector[T]`.
+
+For type checkers: `JSONScalar | Sequence[JSONBound] | Mapping[str, JSONBound]`.
+
+Notes:
+    This bound is intentionally permissive due to Python typing limitations. It accepts any
+    `Sequence` (including `tuple`) and any `Mapping` (including custom mappings), rather than
+    just `list` and `dict[str, ...]` as strict JSON requires. There is no way to express the
+    exact recursive JSON container constraint in a TypeVar bound; see
+    [Limitations in Python's Type System](../developer-reference/limitations-in-python-type-system.md).
+
+    `JSONBound` is a static-only constraint with no runtime validation; it exists to let type
+    checkers verify that a type parameter is plausibly JSON-shaped. Use `JSONValue` when you
+    need strict Pydantic enforcement at runtime.
+"""

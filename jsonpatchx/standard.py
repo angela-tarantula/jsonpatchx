@@ -126,6 +126,7 @@ class JsonPatch(Sequence[OperationSchema]):
 
     @override
     def __len__(self) -> int:
+        """Return the number of operations in this patch."""
         return len(self._ops)
 
     @overload
@@ -140,6 +141,7 @@ class JsonPatch(Sequence[OperationSchema]):
     def __getitem__(
         self, index: int | slice
     ) -> OperationSchema | Sequence[OperationSchema]:
+        """Return the operation at `index`, or a subsequence for a slice."""
         return self._ops[index]
 
     @override
@@ -149,12 +151,14 @@ class JsonPatch(Sequence[OperationSchema]):
 
     @override
     def __eq__(self, other: object) -> bool:
+        """Return `True` if both patches have the same operations and registry, `False` otherwise."""
         if not isinstance(other, self.__class__):
             return NotImplemented
         return tuple(self) == tuple(other) and self._registry == other._registry
 
     @override
     def __str__(self) -> str:
+        """Serialize this patch to a JSON string."""
         return self.to_string()
 
     @override
@@ -162,6 +166,7 @@ class JsonPatch(Sequence[OperationSchema]):
         return f"{self.__class__.__name__}({self})"
 
     def __add__(self, other: object) -> Self:
+        """Return a new patch concatenating this and `other`."""
         if not isinstance(other, self.__class__):
             return NotImplemented
         if self._registry != other._registry:

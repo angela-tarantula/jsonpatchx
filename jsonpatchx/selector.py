@@ -668,6 +668,7 @@ class JSONSelector(str, Generic[T_co, S_co]):
 
     @override
     def __repr__(self) -> str:
+        """Return `ClassName[T]('selector_string')` representation."""
         type_repr = (
             self._type.__name__ if isinstance(self._type, type) else repr(self._type)
         )

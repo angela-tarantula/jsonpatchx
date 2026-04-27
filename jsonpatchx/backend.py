@@ -89,6 +89,11 @@ class PointerBackend(Protocol):
             pointer: A string in the backend's syntax.
         """
 
+    @property
+    @abstractmethod
+    def parts(self) -> Sequence[str]:
+        """The pointer's unescaped parts in traversal order."""
+
     @classmethod
     @abstractmethod
     def from_parts(cls, parts: Iterable[str]) -> Self:
@@ -116,11 +121,6 @@ class PointerBackend(Protocol):
     @abstractmethod
     def __str__(self) -> str:
         """The canonical string representation of this pointer."""
-
-    @property
-    @abstractmethod
-    def parts(self) -> Sequence[str]:
-        """The pointer's unescaped parts in traversal order."""
 
 
 class DEFAULT_POINTER_CLS:

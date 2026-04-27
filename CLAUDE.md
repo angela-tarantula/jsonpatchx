@@ -114,3 +114,13 @@ in `__all__` as private.
   internal refactors there.
 - Prefer editing existing modules over adding new ones; the layering above is
   intentional.
+- Before assuming a docstring is visible on an API reference page, check that
+  page's `docs/api-reference/*.md` file for its `filters:` option.
+  Module-specific pages use `filters: ["!^_"]`, which drops every
+  underscore-prefixed name, including dunders (`__init_subclass__`, `__init__`,
+  `__str__`, etc.). The Exports page (`api-reference-public.md`) has no filter,
+  so documented dunders do appear there. If key information lives only in a
+  filtered method's docstring, it must be duplicated in the class docstring. To
+  re-include specific dunders while keeping the general exclusion, put `"!^_"`
+  first and the dunder include patterns after it — mkdocstrings uses
+  last-match-wins semantics.

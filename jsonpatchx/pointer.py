@@ -827,6 +827,7 @@ class JSONPointer(str, Generic[T_co, P_co]):
 
     @override
     def __repr__(self) -> str:
+        """Return `ClassName[T]('pointer_string')` representation."""
         type_repr = (
             self._type.__name__ if isinstance(self._type, type) else repr(self._type)
         )

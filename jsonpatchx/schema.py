@@ -65,18 +65,30 @@ class OperationSchema(BaseModel, ABC):
         operations. When used, the default value should be the preferred identifier; the
         others act as backwards-compatible aliases.
 
+    Configuration:
+        Subclasses inherit all settings below. Override individual keys by declaring
+        `model_config = ConfigDict(...)` on the subclass; only the keys you set are
+        overridden and the rest are inherited from `OperationSchema`.
+
+        - `frozen=True`: Instances are immutable after construction.
+        - `strict=True`: Field values are not coerced. Opt out per field with
+          `Field(strict=False)` if a specific field should accept looser input.
+        - `extra="allow"`: Extra fields from JSON are preserved. RFC 6902 permits
+          extension members; overriding this to `"forbid"` would reject them.
+        - `validate_by_alias`, `serialize_by_alias`, `loc_by_alias` are all `True`:
+          alias-named fields (such as `from`, aliased to `from_`) are used
+          consistently in validation, serialization, and error messages.
+        - `validate_return=True`: Extra assurance that `apply` always returns a
+          valid JSON document.
+
     Notes:
-        - Subclasses are eagerly validated at class-definition time; if `op` is not declared
-          correctly, `InvalidOperationDefinition` is raised during import.
-        - `op` must be a normal annotated attribute, not a `ClassVar`. `ClassVar` values are not
-          Pydantic fields and cannot participate in discriminated-union dispatch.
         - Use `model_validator(mode="after")` with `PydanticCustomError` to enforce cross-field
           constraints (for example, rejecting pointer pairs where one is an ancestor of the other).
     """
 
     model_config = ConfigDict(
         frozen=True,  # Patch operations are not stateful
-        strict=True,  # Flexible validation can still be provided per field as desired
+        strict=True,  # Can be opted out of on a per-field basis if needed, but strict by default for better error quality
         extra="allow",  # Standard JSON Patch allows extras
         validate_by_alias=True,  # Some JSON Patch keys are protected keywords in Python, such as 'from', and require aliases to bypass.
         serialize_by_alias=True,  # Consistent with validation
@@ -102,8 +114,10 @@ class OperationSchema(BaseModel, ABC):
         Validate the subclass `op` field and cache its identifiers at class-definition time.
 
         Raises:
-            InvalidOperationDefinition: If the subclass does not declare a valid
-                `Literal[str, ...]` annotation for `op`.
+            InvalidOperationDefinition: If `op` is missing, not annotated as
+                `Literal[str, ...]`, or declared as a `ClassVar` (which Pydantic
+                excludes from fields and cannot participate in discriminated-union
+                dispatch).
         """
         super().__init_subclass__(**kwargs)
         cls._op_literals = cls._get_op_literals()
