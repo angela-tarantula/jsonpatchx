@@ -58,7 +58,8 @@ directly to a layered design; read modules in this order:
 5. **`registry.py`**: `StandardRegistry` + `_RegistrySpec`. Builds a
    discriminated `Annotated[Union[...], Field(discriminator="op")]` keyed on
    `op` from a set of `OperationSchema` subclasses, so incoming patch JSON
-   parses to the correct concrete op. `STANDARD_OPS` is the built-in set.
+   parses to the correct concrete op. `StandardRegistry` is the built-in
+   typeform.
 6. **`standard.py`**: `JsonPatch` (the public sequence type) and `apply_patch`.
    The "behavioral center": defines copy/mutation semantics (`inplace=False`
    deep-copies; `inplace=True` is non-transactional and may leave partial
@@ -77,7 +78,8 @@ in `__all__` as private.
 ### Adding or changing operations
 
 - New built-in: subclass `OperationSchema`, add `Literal["..."]` for `op`,
-  implement `apply`, then add it to `STANDARD_OPS` / `_STANDARD_REGISTRY_SPEC`.
+  implement `apply`, then add it to `StandardRegistry` /
+  `_STANDARD_REGISTRY_SPEC`.
 - Custom op authoring (downstream user-facing): the canonical guidance lives in
   `examples/AGENTS.md`; keep that file and any changes consistent with the
   actual `OperationSchema` API.
@@ -111,7 +113,8 @@ in `__all__` as private.
 - Em dashes are strictly forbidden in docs and docstrings. Use a colon,
   semicolon, or comma instead.
 - `CHANGELOG.md` is public-API focused; see [AGENTS.md](AGENTS.md). Don't log
-  internal refactors there.
+  internal refactors there. Any addition, removal, or breaking change to the
+  public API (`__all__`) requires a changelog entry.
 - Prefer editing existing modules over adding new ones; the layering above is
   intentional.
 - Before assuming a docstring is visible on an API reference page, check that

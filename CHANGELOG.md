@@ -25,6 +25,10 @@ and this project adheres to
   which gives structured error codes and message templates and integrates
   cleanly with Pydantic's validation error surface. `MoveOp` has been updated
   accordingly.
+- `STANDARD_OPS` has been removed from the public API. It was a redundant tuple
+  of the six built-in operation classes with no behavior of its own. The
+  individual op classes (`AddOp`, `RemoveOp`, etc.) and `StandardRegistry`
+  remain fully supported.
 
 ### Changed
 

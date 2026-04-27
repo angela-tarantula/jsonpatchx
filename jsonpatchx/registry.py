@@ -267,6 +267,3 @@ type StandardRegistry = AddOp | CopyOp | MoveOp | RemoveOp | ReplaceOp | TestOp
 
 _STANDARD_REGISTRY_SPEC = _RegistrySpec.from_typeform(StandardRegistry)
 """Resolved RFC 6902 registry spec."""
-
-STANDARD_OPS = _STANDARD_REGISTRY_SPEC.ordered_ops
-"""Standard RFC 6902 patch operations."""
