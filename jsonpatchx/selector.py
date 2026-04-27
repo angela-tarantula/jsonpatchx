@@ -577,6 +577,10 @@ class JSONSelector(str, Generic[T_co, S_co]):
                 updated.
             InvalidJSONSelector: If the backend yields invalid matches or
                 invalid pointer data.
+
+        Notes:
+            May modify `doc` in place; always use the return value. Root-targeting
+            matches replace the document and return the new root rather than mutating it.
         """
         target = self._validate_replacement(value)
         for pointer in self.get_pointers(doc):
@@ -632,6 +636,9 @@ class JSONSelector(str, Generic[T_co, S_co]):
                 pointer cannot be removed.
             InvalidJSONSelector: If the backend yields invalid matches or
                 invalid pointer data.
+
+        Notes:
+            Modifies `doc` in place; always use the return value.
         """
         for pointer in self.get_pointers(doc):
             doc = pointer.remove(doc)

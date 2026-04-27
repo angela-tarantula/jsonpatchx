@@ -29,38 +29,49 @@ class OperationSchema(BaseModel, ABC):
     """
     Base class for typed JSON Patch operations.
 
-    An `OperationSchema` is a Pydantic model representing one JSON Patch operation:
-    standard RFC 6902 operations (`add`/`remove`/`replace`/...) and custom domain operations.
+    Subclass `OperationSchema`, declare `op: Literal["..."]`, and implement `apply` to define a
+    typed operation. Instances are Pydantic models: frozen, strict, and validated on parse.
 
-    The library's workflow is:
+    Example:
+        Declare a `replace` operation with a typed path and value:
 
-    - Define operations as Pydantic models.
-    - Register them in an `OperationRegistry`.
-    - Parse incoming patch documents into concrete operation instances via a discriminated union
-      keyed by `op`.
-    - Apply operations sequentially by calling `apply`.
-
-    Examples:
-        Required `op` field:
-
+        ```python
         class ReplaceOp(OperationSchema):
             op: Literal["replace"] = "replace"
             path: JSONPointer[JSONValue]
             value: JSONValue
+        ```
 
-        Multiple identifiers (aliases):
+        The default value for `op` is optional but recommended. JsonPatchX always
+        marks `op` as required in the OpenAPI schema regardless, but a default lets
+        Python callers omit it when constructing instances directly.
 
-        class CreateOp(OperationSchema):
-            op: Literal["create", "add"] = "create"
+    Example:
+        Support multiple identifiers with `Literal` for schema evolution:
+
+        ```python
+        class IncrementOp(OperationSchema):
+            op: Literal["increment", "incr"] = "increment"
+        ```
+        <!-- NOTE: Future: support per-alias deprecation, e.g. mark "incr" deprecated while "increment" stays current.
+             Pydantic's Field(deprecated=...) is field-level only — it marks the whole `op` property deprecated in OpenAPI
+             and fires at class-definition time, not validation time. What's needed is value-level deprecation:
+             emit a DeprecationWarning at validation time when a deprecated alias is used, and surface it in OpenAPI
+             via an x-* extension (no standard per-enum-value deprecated key exists in OpenAPI 3.x).
+             Note: Field() as a default already works with _get_op_literals — get_type_hints sees the Literal annotation
+             cleanly, so the plumbing for op: Literal[...] = Field(...) is already sound. -->
+
+        Multiple identifiers are useful for schema evolution but not recommended for new
+        operations. When used, the default value should be the preferred identifier; the
+        others act as backwards-compatible aliases.
 
     Notes:
+        - Subclasses are eagerly validated at class-definition time; if `op` is not declared
+          correctly, `InvalidOperationDefinition` is raised during import.
         - `op` must be a normal annotated attribute, not a `ClassVar`. `ClassVar` values are not
           Pydantic fields and cannot participate in discriminated-union dispatch.
-        - Instances are frozen and strict by default.
-        - Instances are revalidated when parsed, which matters for fields that depend on validation
-          context (for example, registry-scoped pointer backends).
-        - Subclasses are validated at class-definition time. If `op` is not declared correctly, the
-          class raises `InvalidOperationDefinition` during import.
+        - Use `model_validator(mode="after")` with `PydanticCustomError` to enforce cross-field
+          constraints (for example, rejecting pointer pairs where one is an ancestor of the other).
     """
 
     model_config = ConfigDict(
@@ -88,11 +99,11 @@ class OperationSchema(BaseModel, ABC):
     @override
     def __init_subclass__(cls, **kwargs: Unpack[ConfigDict]) -> None:
         """
-        Hook that validates subclasses at definition time.
+        Validate the subclass `op` field and cache its identifiers at class-definition time.
 
-        Public subclasses normally do not need to call this directly. The base class ensures that
-        every OperationSchema has a properly declared `op` field, and caches the allowed op
-        identifiers for registry dispatch.
+        Raises:
+            InvalidOperationDefinition: If the subclass does not declare a valid
+                `Literal[str, ...]` annotation for `op`.
         """
         super().__init_subclass__(**kwargs)
         cls._op_literals = cls._get_op_literals()
@@ -100,15 +111,13 @@ class OperationSchema(BaseModel, ABC):
     @classmethod
     def _get_op_literals(cls) -> tuple[str, ...]:
         """
-        Internal: extract the string literal values from the subclass' `op` annotation.
+        Extract string literal values from the subclass's `op` annotation.
 
-        Supported forms:
+        Supports `op: Literal["add"]` and `op: Literal["add", "create"]`.
 
-        - `op: Literal["add"]`
-        - `op: Literal["add", "create"]`
-
-        Raises `InvalidOperationDefinition` if the subclass does not declare a valid `Literal[str, ...]`
-        annotation for `op`.
+        Raises:
+            InvalidOperationDefinition: If the subclass does not declare a valid
+                `Literal[str, ...]` annotation for `op`.
         """
         if (
             (annotations := get_type_hints(cls, include_extras=True))
@@ -133,15 +142,15 @@ class OperationSchema(BaseModel, ABC):
             doc: Target JSON document.
 
         Returns:
-            The updated document.
+            The updated JSON document.
 
         Notes:
-            - Implementations may mutate the provided `doc` object in-place and should return the
-              updated document (often the same object).
-            - Raise `PatchError` subclasses for expected patch failures. Unexpected exceptions will
-              be wrapped by the patch engine.
-            - Whether the caller-owned document is mutated is controlled by the patch engine
-              (see `_apply_ops(..., inplace=...)`), not by this method.
+            - Implementations may mutate `doc` in place; always return the resulting document.
+            - Raise `PatchConflictError` (or a subclass) for expected apply-time failures.
+              Input validation errors belong in model validators, not `apply`; unexpected
+              exceptions are caught by the patch engine and wrapped as `PatchInternalError`.
+            - Whether the caller's original document is mutated depends on the patch engine's
+              `inplace` policy, not on this method.
         """
 
     @classmethod
@@ -169,34 +178,25 @@ def _apply_ops(
     ops: Sequence[OperationSchema], doc: JSONValue, *, inplace: bool = False
 ) -> JSONValue:
     """
-    Apply a sequence of operations to a JSON document (core patch engine).
-
-    This function is the single source of truth for the library's copy and mutation semantics.
+    Apply a sequence of operations to a JSON document.
 
     Arguments:
         ops: Operations to apply, in order.
-        doc: Target JSON document.
-        inplace: Copy policy. `False` deep-copies `doc` before applying operations.
-            `True` applies operations against `doc` without that initial copy.
+        doc: JSON document to apply operations to.
+        inplace: If `False` (default), `doc` is deep-copied first; the original is not modified.
+            If `True`, operations are applied to `doc` directly without that initial copy.
 
     Returns:
-        The patched document value produced by applying all operations.
+        The patched JSON document.
 
     Raises:
         PatchError: Expected patch failures raised by operation implementations.
         PatchInternalError: Unexpected exceptions wrapped with structured context.
 
     Notes:
-        - `inplace=False` (default): the engine deep-copies `doc` first, then applies operations
-          to that copy. Operation implementations may mutate the document object they receive. The
-          original input object is not modified.
-        - `inplace=True`: operations are applied directly to the provided `doc` object. This is faster
-          and avoids a deep copy, but it is **not transactional**. If an operation fails mid-patch, earlier
-          operations will already have mutated the document (no rollback).
-          This is a **copy policy**, not an object-identity guarantee for the returned root value
-          (root-targeting operations may rebind the root).
-        -  In other words: operations are allowed to be “mutative”, and the engine decides whether those
-           mutations hit the original input or a deep-copied working document.
+        `inplace=True` is not transactional: if an operation fails mid-patch, earlier
+        operations will already have mutated the document with no rollback. Root-targeting
+        operations may also return a new object rather than `doc`.
     """
     if not inplace:
         doc = copy.deepcopy(

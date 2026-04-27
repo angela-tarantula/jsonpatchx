@@ -21,13 +21,11 @@ class JsonPatch(Sequence[OperationSchema]):
     - applies them to JSON documents via the shared patch engine.
 
     Notes:
-        - `apply` delegates to the core engine `_apply_ops` and follows the same copy and mutation
-          semantics.
-        - `inplace=False` (default): the engine deep-copies `doc` first; operations may mutate the copy.
-        - `inplace=True`: operations run against the provided `doc` object (no rollback on failure).
-          This is a copy policy, not an object-identity guarantee for the returned value.
-        - `JsonPatch` is immutable with respect to its operation list after construction, but the
-          documents you apply it to may be mutated depending on `inplace`.
+        - `inplace=False` (default): deep-copies `doc` first; the original is not modified.
+        - `inplace=True`: applies operations to `doc` directly; faster, but not transactional
+          (no rollback on partial failure), and root-targeting operations may return a new
+          object rather than `doc`.
+        - `JsonPatch` is immutable with respect to its operation list after construction.
     """
 
     __slots__ = ("_ops", "_registry")
@@ -108,9 +106,9 @@ class JsonPatch(Sequence[OperationSchema]):
 
         Arguments:
             doc: The target JSON document.
-            inplace: Copy policy. `False` deep-copies `doc` before applying operations.
-                `True` skips that copy and applies operations against `doc`, but does not
-                guarantee returned object identity for root-targeting operations.
+            inplace: If `False` (default), `doc` is deep-copied first; the original is not modified.
+                If `True`, operations are applied to `doc` directly; root-targeting operations
+                may return a new object rather than `doc`.
 
         Returns:
             patched: The patched JSON document.
@@ -190,9 +188,10 @@ def apply_patch(
         registry: A union of concrete OperationSchemas used for parsing and
             validation (`OpA | OpB | ...`). If omitted, the standard RFC
             6902 operations are used.
-        inplace: Copy policy. `False` deep-copies `doc` first; `True` skips that copy.
-            This is not a guarantee that the returned object is the exact same root object.
-            See `_apply_ops(..., inplace=...)` for full semantics.
+        inplace: If `False` (default), `doc` is deep-copied first; the original is not modified.
+            If `True`, operations are applied to `doc` directly; faster, but not transactional
+            (no rollback on partial failure), and root-targeting operations may return a new
+            object rather than `doc`.
 
     Returns:
         The patched document.

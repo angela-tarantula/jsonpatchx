@@ -664,6 +664,10 @@ class JSONPointer(str, Generic[T_co, P_co]):
         Raises:
             PatchConflictError: If the target does not exist, if the target is not type `T`,
                 or if the value being added is not type `T`.
+
+        Notes:
+            May modify `doc` in place; always use the return value. Root-targeting
+            operations replace the document and return the new root rather than mutating it.
         """
         target = self._validate_replacement(value)
 
@@ -764,6 +768,9 @@ class JSONPointer(str, Generic[T_co, P_co]):
 
         Raises:
             PatchConflictError: If the target does not exist, or it is not type `T`.
+
+        Notes:
+            Modifies `doc` in place; always use the return value.
         """
         match classify_state(self._ptr, doc):
             case TargetState.ROOT:
