@@ -12,13 +12,14 @@
             "type": "string"
           },
           "path": {
-            "description": "JSON Pointer (RFC 6901) string",
+            "description": "Location to add the value. Use `\"-\"` as the final token to append to an array.",
             "format": "json-pointer",
             "title": "Path",
             "type": "string",
             "x-pointer-type-schema": {}
           },
           "value": {
+            "description": "Value to add.",
             "title": "Value"
           }
         },
@@ -130,7 +131,7 @@
         "description": "RFC 6902 copy operation.",
         "properties": {
           "from": {
-            "description": "JSON Pointer (RFC 6901) string",
+            "description": "Location of the value to copy.",
             "format": "json-pointer",
             "title": "From",
             "type": "string",
@@ -143,7 +144,7 @@
             "type": "string"
           },
           "path": {
-            "description": "JSON Pointer (RFC 6901) string",
+            "description": "Destination for the copied value.",
             "format": "json-pointer",
             "title": "Path",
             "type": "string",
@@ -240,7 +241,7 @@
         "description": "RFC 6902 move operation.",
         "properties": {
           "from": {
-            "description": "JSON Pointer (RFC 6901) string",
+            "description": "Location of the value to move.",
             "format": "json-pointer",
             "title": "From",
             "type": "string",
@@ -253,7 +254,7 @@
             "type": "string"
           },
           "path": {
-            "description": "JSON Pointer (RFC 6901) string",
+            "description": "Destination for the moved value. Must not be a descendant of `from`.",
             "format": "json-pointer",
             "title": "Path",
             "type": "string",
@@ -279,7 +280,7 @@
             "type": "string"
           },
           "path": {
-            "description": "JSON Pointer (RFC 6901) string",
+            "description": "Location of the value to remove.",
             "format": "json-pointer",
             "title": "Path",
             "type": "string",
@@ -304,13 +305,14 @@
             "type": "string"
           },
           "path": {
-            "description": "JSON Pointer (RFC 6901) string",
+            "description": "Location of the value to replace.",
             "format": "json-pointer",
             "title": "Path",
             "type": "string",
             "x-pointer-type-schema": {}
           },
           "value": {
+            "description": "Replacement value.",
             "title": "Value"
           }
         },
@@ -333,13 +335,14 @@
             "type": "string"
           },
           "path": {
-            "description": "JSON Pointer (RFC 6901) string",
+            "description": "Location of the value to test.",
             "format": "json-pointer",
             "title": "Path",
             "type": "string",
             "x-pointer-type-schema": {}
           },
           "value": {
+            "description": "Expected value.",
             "title": "Value"
           }
         },
