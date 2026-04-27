@@ -7,5 +7,6 @@ a target schema and an operation registry.
 ::: jsonpatchx.pydantic
     options:
       show_root_heading: false
+      show_root_toc_entry: false
       filters:
         - "!^_"

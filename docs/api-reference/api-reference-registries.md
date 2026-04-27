@@ -7,5 +7,6 @@ which operations a patch model will accept.
 ::: jsonpatchx.registry
     options:
       show_root_heading: false
+      show_root_toc_entry: false
       filters:
         - "!^_"

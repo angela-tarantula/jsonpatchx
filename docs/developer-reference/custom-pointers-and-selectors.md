@@ -68,7 +68,10 @@ The backend should be immutable or safe to reuse. JsonPatchX may cache backend
 instances.
 
 The backend defines its own syntax. There is no universal root string across
-every possible backend.
+every possible backend. This is why `JSONPointer.is_root(doc)` takes a document
+argument rather than simply checking for `""`: the backend itself determines
+what counts as root given the document, so the check must go through the
+backend.
 
 If you want to study an intentionally extended pointer implementation, see
 [`python-jsonpath`'s `JSONPointer`](https://jg-rp.github.io/python-jsonpath/pointers/),
