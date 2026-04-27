@@ -92,7 +92,7 @@ repos:
         entry: uv run ruff format --exit-non-zero-on-format
         language: system
         types: [python]
-        priority: 40
+        priority: 50
 
       - id: mypy
         name: mypy
@@ -111,7 +111,7 @@ repos:
         language: system
         files: (^.*\.py$|^.*\.json$|^pyproject\.toml$|^uv\.lock$)
         pass_filenames: false
-        priority: 50
+        priority: 60
 
       - id: checkov
         name:
@@ -168,7 +168,7 @@ repos:
         language: system
         files: \.json$
         exclude: *json_nonfinite_exclude
-        priority: 60
+        priority: 70
 
       - id: markdown-prettier
         name: markdown prettier
@@ -177,7 +177,7 @@ repos:
           .github/linters/.prettierrc.json
         language: system
         files: \.(md|markdown)$
-        priority: 70
+        priority: 80
 
       - id: yaml-prettier
         name: yaml prettier
@@ -186,7 +186,7 @@ repos:
           .github/linters/.prettierrc.json
         language: system
         files: \.ya?ml$
-        priority: 80
+        priority: 90
 
       - id: natural-language
         name: natural language (textlint terminology)
@@ -196,6 +196,15 @@ repos:
         language: system
         files: \.(md|markdown)$
         priority: 0
+
+      - id: natural-language
+        name: natural language (textlint terminology) --fix
+        entry:
+          npx --yes --package textlint --package textlint-rule-terminology
+          textlint --rule terminology --fix
+        language: system
+        files: \.(md|markdown)$
+        priority: 40
 
       - id: openapi
         name: openapi (spectral)
