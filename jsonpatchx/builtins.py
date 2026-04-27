@@ -2,9 +2,9 @@ import copy
 from typing import Literal, Self, override
 
 from pydantic import ConfigDict, Field, model_validator
+from pydantic_core import PydanticCustomError
 
 from jsonpatchx.exceptions import (
-    OperationValidationError,
     PatchConflictError,
     TestOpFailed,
 )
@@ -83,8 +83,9 @@ class MoveOp(OperationSchema):
     @model_validator(mode="after")
     def _reject_proper_prefixes(self) -> Self:
         if self.from_.is_parent_of(self.path):
-            raise OperationValidationError(
-                "pointer 'path' cannot be a child of pointer 'from'"
+            raise PydanticCustomError(
+                "move_path_conflict",
+                "pointer 'path' cannot be a child of pointer 'from'",
             )
         return self
 

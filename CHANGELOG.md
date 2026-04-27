@@ -16,13 +16,24 @@ and this project adheres to
   public API and can be imported directly when you want to bind JsonPatchX's
   built-in pointer and selector backends.
 
+### Removed
+
+- `OperationValidationError` has been removed from the public API. It was raised
+  inside Pydantic model validators, where Pydantic always wraps it in its own
+  `ValidationError` before callers can observe it, making it uncatchable as a
+  standalone exception. Use `PydanticCustomError` from `pydantic_core` instead,
+  which gives structured error codes and message templates and integrates
+  cleanly with Pydantic's validation error surface. `MoveOp` has been updated
+  accordingly.
+
 ### Changed
 
 - Simplified `SelectorBackend` so custom selector backends yield
   `PointerBackend` instances directly through `pointers(doc)`, removing the
   separate `SelectorMatch` wrapper protocol.
 - Operations no longer delete documents. For example, `RemoveOp` now rejects the
-  root pointer with `PatchConflictError`.
+  root pointer with `PatchConflictError`. Fundamentally, PATCH should represent
+  document transformation, not creation/deletion.
 - Tightened `JSONPointer.parse()` and `JSONSelector.parse()` type hints with
   overloads so omitted `type_param` defaults no longer require ignore comments
   and default/custom backend return types are preserved more accurately.

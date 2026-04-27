@@ -40,19 +40,6 @@ class InvalidOperationDefinition(PatchError):
     """
 
 
-class OperationValidationError(PatchInputError):
-    """
-    An OperationSchema instance failed validation (client error).
-
-    Examples:
-        - Swap operation rejects parent/child pointers via a model validator.
-        - Operation fields violate custom constraints in validators.
-
-    Typical HTTP mapping:
-        422 Unprocessable Entity.
-    """
-
-
 class InvalidJSONPointer(PatchInputError):
     """
     A JSON Pointer definition or instance is invalid.
