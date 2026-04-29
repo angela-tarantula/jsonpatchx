@@ -34,7 +34,7 @@ from jsonpatchx.builtins import (
     ReplaceOp,
     TestOp,
 )
-from jsonpatchx.exceptions import InvalidOperationRegistry, OperationNotRecognized
+from jsonpatchx.exceptions import InvalidOperationRegistry
 from jsonpatchx.schema import OperationSchema
 from jsonpatchx.types import JSONValue
 
@@ -219,11 +219,11 @@ class _RegistrySpec(BaseModel):
             The registered `OperationSchema` subclass for `instruction`.
 
         Raises:
-            OperationNotRecognized: If `instruction` is not registered.
+            KeyError: If `instruction` is not registered.
         """
         model = self.model_map.get(instruction)
         if model is None:
-            raise OperationNotRecognized(
+            raise KeyError(
                 f"Patch operation '{instruction}' is not allowed in this registry"
             )
         return model
@@ -241,16 +241,8 @@ class _RegistrySpec(BaseModel):
             A validated `OperationSchema` instance.
 
         Raises:
-            OperationNotRecognized: If `obj` is an `OperationSchema` instance
-                whose type is not registered.
             ValidationError: If `obj` fails Pydantic validation.
         """
-        if isinstance(obj, OperationSchema):
-            if type(obj) not in self.ops:
-                raise OperationNotRecognized(
-                    f"Operation {type(obj).__name__} is not allowed in this registry"
-                )
-            return obj
         return self.op_adapter.validate_python(
             obj,
             strict=True,
@@ -271,28 +263,14 @@ class _RegistrySpec(BaseModel):
             A list of validated `OperationSchema` instances.
 
         Raises:
-            OperationNotRecognized: If any item is an `OperationSchema`
-                instance whose type is not registered.
             ValidationError: If any item fails Pydantic validation.
         """
-        ops: list[OperationSchema] = []
-        for item in python:
-            if isinstance(item, OperationSchema):
-                if type(item) not in self.ops:
-                    raise OperationNotRecognized(
-                        f"Operation {type(item).__name__} is not allowed in this registry"
-                    )
-                ops.append(item)
-            else:
-                ops.append(
-                    self.op_adapter.validate_python(
-                        item,
-                        strict=True,
-                        by_alias=True,
-                        by_name=False,
-                    )
-                )
-        return ops
+        return self.patch_adapter.validate_python(
+            list(python),
+            strict=True,
+            by_alias=True,
+            by_name=False,
+        )
 
     def parse_json_op(self, text: str | bytes | bytearray) -> OperationSchema:
         """Validate one JSON-encoded operation against this registry.

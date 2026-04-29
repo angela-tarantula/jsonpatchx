@@ -11,7 +11,6 @@ if TYPE_CHECKING:
 # PatchError
 # ├── InvalidOperationDefinition     no HTTP — startup/config error
 # ├── InvalidOperationRegistry       no HTTP — startup/config error
-# ├── OperationNotRecognized         no HTTP — programmer error
 # ├── InvalidPatchTarget             500 — non-JSON doc passed to patch engine,
 # │                                        or wrong model instance
 # ├── InvalidJSONPointer(ValueError) 422 — bad pointer syntax; subclasses ValueError
@@ -92,15 +91,6 @@ class InvalidOperationRegistry(PatchError):
     Examples:
         - Duplicate `op` identifiers across schemas.
         - Non-OperationSchema classes provided to the registry.
-    """
-
-
-class OperationNotRecognized(PatchError):
-    """
-    An OperationSchema instance does not belong to the active registry.
-
-    Examples:
-        - Passing a StandardRegistry op instance into a custom registry.
     """
 
 

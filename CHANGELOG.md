@@ -37,6 +37,9 @@ and this project adheres to
   subclasses and remain available. `PatchValidationError` is also now a direct
   `PatchError` subclass with a corrected HTTP mapping (409 Conflict, not 422).
   Replace any `except PatchInputError` with the specific types you need.
+- `OperationNotRecognized` has been removed. Passing an op instance that is not
+  registered now raises `ValidationError` from Pydantic, consistent with all
+  other invalid inputs to the parse methods.
 
 ### Changed
 
