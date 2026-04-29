@@ -42,12 +42,23 @@ from jsonpatchx.types import JSONValue
 def _iter_union_members[T](value: TypeForm[T]) -> Generator[type[T]]:
     """Yield leaf members from an operation type expression.
 
-    This performs structural unpacking only:
-    - unwraps type aliases
-    - flattens unions
+    Performs structural unpacking only: unwraps type aliases, flattens
+    unions, and strips `Annotated` wrappers.
 
-    It intentionally does not validate member types or forward references.
-    Pydantic enforces that in `_RegistrySpec.ops`.
+    Arguments:
+        value: A type expression to unpack, such as a union of operation
+            models or a type alias of those forms.
+
+    Yields:
+        Leaf member types from the expression, without validation.
+
+    Raises:
+        InvalidOperationRegistry: If the expression contains an
+            unsupported generic origin.
+
+    Notes:
+        Does not validate member types or resolve forward references.
+        Pydantic enforces those constraints in `_RegistrySpec.ops`.
     """
     if isinstance(value, TypeAliasType):
         yield from _iter_union_members(value.__value__)
@@ -73,7 +84,7 @@ class _RegistrySpec(BaseModel):
     construction.
     """
 
-    model_config = ConfigDict(frozen=True)
+    model_config = ConfigDict(frozen=True, validate_return=True)
 
     ops: frozenset[type[OperationSchema]] = Field(min_length=1)
 
@@ -84,6 +95,9 @@ class _RegistrySpec(BaseModel):
         Arguments:
             typeform: A single operation model or union of models, including
                 nested type aliases of those forms.
+
+        Returns:
+            A validated `_RegistrySpec` for the operation declaration.
 
         Raises:
             InvalidOperationRegistry: If the declaration cannot define a valid
@@ -101,14 +115,20 @@ class _RegistrySpec(BaseModel):
     def _validate_ops(self) -> _RegistrySpec:
         """Validate registry invariants for `ops`.
 
-        Ensures the registry contains only concrete operation models and that
-        both model names and `op` discriminator literals are unique.
+        Ensures the registry contains only concrete operation models with
+        unique class names and `op` discriminator literals.
 
-        This is a model validator rather than a field validator because that
-        makes it future-proof if additional fields start mattering.
+        Returns:
+            This registry spec, unchanged, if all invariants hold.
 
         Raises:
-            InvalidOperationRegistry: If the registry definition is unusable.
+            InvalidOperationRegistry: If the registry contains abstract models,
+                duplicate class names, or duplicate `op` literals.
+
+        Notes:
+            Implemented as a model validator rather than a field validator so
+            that it remains correct if additional fields are added to the spec
+            in the future.
         """
 
         non_concrete_models = sorted(
@@ -190,7 +210,17 @@ class _RegistrySpec(BaseModel):
         return TypeAdapter(list[self.union_type])  # type: ignore[name-defined]
 
     def model_for(self, instruction: str) -> type[OperationSchema]:
-        """Resolve an `op` literal to its registered operation model."""
+        """Resolve an `op` literal to its registered operation model.
+
+        Arguments:
+            instruction: The `op` literal string to look up.
+
+        Returns:
+            The registered `OperationSchema` subclass for `instruction`.
+
+        Raises:
+            OperationNotRecognized: If `instruction` is not registered.
+        """
         model = self.model_map.get(instruction)
         if model is None:
             raise OperationNotRecognized(
@@ -201,7 +231,20 @@ class _RegistrySpec(BaseModel):
     def parse_python_op(
         self, obj: Mapping[str, JSONValue] | OperationSchema
     ) -> OperationSchema:
-        """Validate one Python operation payload against this registry."""
+        """Validate one Python operation payload against this registry.
+
+        Arguments:
+            obj: A mapping of operation fields, or an already-validated
+                `OperationSchema` instance.
+
+        Returns:
+            A validated `OperationSchema` instance.
+
+        Raises:
+            OperationNotRecognized: If `obj` is an `OperationSchema` instance
+                whose type is not registered.
+            ValidationError: If `obj` fails Pydantic validation.
+        """
         if isinstance(obj, OperationSchema):
             if type(obj) not in self.ops:
                 raise OperationNotRecognized(
@@ -218,7 +261,20 @@ class _RegistrySpec(BaseModel):
     def parse_python_patch(
         self, python: Sequence[OperationSchema | Mapping[str, JSONValue]]
     ) -> list[OperationSchema]:
-        """Validate a Python patch document against this registry."""
+        """Validate a Python patch document against this registry.
+
+        Arguments:
+            python: A sequence of operation mappings or `OperationSchema`
+                instances.
+
+        Returns:
+            A list of validated `OperationSchema` instances.
+
+        Raises:
+            OperationNotRecognized: If any item is an `OperationSchema`
+                instance whose type is not registered.
+            ValidationError: If any item fails Pydantic validation.
+        """
         ops: list[OperationSchema] = []
         for item in python:
             if isinstance(item, OperationSchema):
@@ -239,7 +295,18 @@ class _RegistrySpec(BaseModel):
         return ops
 
     def parse_json_op(self, text: str | bytes | bytearray) -> OperationSchema:
-        """Validate one JSON-encoded operation against this registry."""
+        """Validate one JSON-encoded operation against this registry.
+
+        Arguments:
+            text: A JSON string, bytes, or bytearray encoding a single
+                operation object.
+
+        Returns:
+            A validated `OperationSchema` instance.
+
+        Raises:
+            ValidationError: If `text` fails Pydantic validation.
+        """
         return self.op_adapter.validate_json(
             text,
             strict=True,
@@ -248,7 +315,17 @@ class _RegistrySpec(BaseModel):
         )
 
     def parse_json_patch(self, text: str | bytes | bytearray) -> list[OperationSchema]:
-        """Validate a JSON-encoded patch document against this registry."""
+        """Validate a JSON-encoded patch document against this registry.
+
+        Arguments:
+            text: A JSON string, bytes, or bytearray encoding a patch array.
+
+        Returns:
+            A list of validated `OperationSchema` instances.
+
+        Raises:
+            ValidationError: If `text` fails Pydantic validation.
+        """
         return self.patch_adapter.validate_json(
             text,
             strict=True,
