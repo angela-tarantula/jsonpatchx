@@ -297,7 +297,8 @@ else:
               Pydantic enforcement; use `JSONValue` when you need strict runtime validation.
             - Due to `list` invariance, narrower types such as `JSONArray[JSONNumber]` are not
               statically assignable to `JSONValue`. Use `cast(JSONValue, value)` at the return
-              site; `validate_return=True` on `OperationSchema` enforces correctness at runtime.
+              site; the patch engine validates each `apply()` return value against `JSONValue`
+              at runtime.
               See [Limitations in Python's Type System](../developer-reference/limitations-in-python-type-system.md).
         """
 

@@ -79,8 +79,7 @@ class OperationSchema(BaseModel, ABC):
           alias-named fields (such as `from`, aliased to `from_`) are used
           consistently in validation, serialization, and error messages.
         - `validate_return=True`: Validates return values of Pydantic validator
-          methods (`@field_validator`, `@model_validator`). Does not validate
-          `apply()` return values; those are plain Python method calls.
+          methods (`@field_validator`, `@model_validator`).
 
     Notes:
         - Use `model_validator(mode="after")` with `PydanticCustomError` to enforce cross-field
@@ -158,6 +157,18 @@ class OperationSchema(BaseModel, ABC):
 
         Returns:
             The updated JSON document.
+
+        Example:
+            ```python
+            class IncrementOp(OperationSchema):
+                op: Literal["increment"]
+                path: JSONPointer[JSONNumber]
+                amount: JSONNumber = Field(gt=0)
+
+                def apply(self, doc: JSONValue) -> JSONValue:
+                    current = self.path.get(doc)
+                    return ReplaceOp(path=self.path, value=current + self.amount).apply(doc)
+            ```
 
         Notes:
             - Implementations may mutate `doc` in place; always return the resulting document.
