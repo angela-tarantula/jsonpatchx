@@ -197,6 +197,8 @@ class JSONPointer(str, Generic[T_co, P_co]):
             A `JSONPointer` bound to the resolved backend and type parameter.
 
         Raises:
+            TypeError: If the backend TypeVar cannot be resolved to a concrete
+                backend.
             InvalidJSONPointer: If an existing pointer/backend instance cannot
                 be rebound to the required backend.
         """
@@ -247,6 +249,21 @@ class JSONPointer(str, Generic[T_co, P_co]):
     def __get_pydantic_core_schema__(
         cls, source_type: type[Self], handler: GetCoreSchemaHandler
     ) -> cs.CoreSchema:
+        """Build the Pydantic core schema for `JSONPointer` validation.
+
+        Arguments:
+            source_type: The specialized `JSONPointer[T, Backend]` type being built.
+            handler: Pydantic's schema generation handler.
+
+        Returns:
+            A Pydantic core schema that validates strings, `JSONPointer` instances, and
+            `PointerBackend` instances into a `JSONPointer` bound to `T` and the backend.
+
+        Raises:
+            TypeError: If no type parameters are supplied, if the backend
+                parameter is not a class or `TypeVar`, or if the type parameter
+                is not a valid TypeForm.
+        """
         type_param, concrete_backend = cls._parse_pointer_type_args(
             *get_args(source_type)
         )
@@ -274,7 +291,20 @@ class JSONPointer(str, Generic[T_co, P_co]):
     def __get_pydantic_json_schema__(
         cls, schema: cs.CoreSchema, handler: GetJsonSchemaHandler
     ) -> JsonSchemaValue:
+        """Build the JSON Schema representation for `JSONPointer`.
 
+        Arguments:
+            schema: The Pydantic core schema produced by `__get_pydantic_core_schema__`.
+            handler: Pydantic's JSON schema generation handler.
+
+        Returns:
+            A JSON Schema dict describing a JSON Pointer string, enriched with
+            `x-pointer-type-schema` for the declared type parameter.
+
+        Raises:
+            TypeError: If the backend TypeVar cannot be resolved, or if the
+                type parameter cannot be adapted.
+        """
         pointer_backend: type[PointerBackend]
         pointer_backend_param = schema.get("metadata", {}).get("pointer_backend_param")
         if isinstance(pointer_backend_param, TypeVar):
@@ -307,14 +337,28 @@ class JSONPointer(str, Generic[T_co, P_co]):
     def _parse_pointer_type_args(
         cls, *args: TypeForm[Any]
     ) -> tuple[TypeForm[Any], type[PointerBackend] | TypeVar]:
-        """Validate the JSONPointer's parameter tuple, e.g. `(JSONValue, DotPointer)` for `JSONPointer[JSONValue, DotPointer]`."""
+        """Validate and unpack the `JSONPointer[T, Backend]` parameter tuple.
+
+        Arguments:
+            *args: Generic type arguments from `get_args(source_type)`, e.g.
+                `(JSONValue, DotPointer)` for `JSONPointer[JSONValue, DotPointer]`.
+
+        Returns:
+            A tuple of (type_param, backend_param): type_param is a validated TypeForm
+            and backend_param is a concrete backend class or TypeVar.
+
+        Raises:
+            TypeError: If no type parameters are supplied, if the backend
+                parameter is not a class or `TypeVar`, or if the type parameter
+                is not a valid TypeForm.
+        """
         if not args:
             raise TypeError(f"{cls} requires at least one type parameter")
         unverified_typeform = args[0]
         unverified_bound_backend = args[1] if len(args) > 1 else DEFAULT_POINTER_CLS
 
         backend_param = cls._resolve_backend_type_param(unverified_bound_backend)
-        type_param = _validate_typeform(unverified_typeform, InvalidJSONPointer)
+        type_param = _validate_typeform(unverified_typeform)
 
         return type_param, backend_param
 
@@ -333,14 +377,18 @@ class JSONPointer(str, Generic[T_co, P_co]):
             A backend class or unresolved `TypeVar`.
 
         Raises:
-            InvalidJSONPointer: If the backend argument is neither a class nor
-                a `TypeVar`.
+            TypeError: If the backend argument is neither a class nor a
+                `TypeVar`, or if the backend class is abstract.
         """
         if isinstance(backend_param, TypeVar):
             return backend_param
         if not isinstance(backend_param, type):
-            raise InvalidJSONPointer(
+            raise TypeError(
                 f"JSONPointer backend parameter {backend_param!r} must be a class or TypeVar"
+            )
+        if isabstract(backend_param):
+            raise TypeError(
+                f"JSONPointer backend parameter {backend_param!r} is abstract and cannot be used as a backend"
             )
         return cast(type[PointerBackend], backend_param)
 
@@ -359,8 +407,8 @@ class JSONPointer(str, Generic[T_co, P_co]):
             A concrete `PointerBackend` class.
 
         Raises:
-            InvalidJSONPointer: If an unspecialized backend `TypeVar` cannot be
-                resolved to a concrete default backend.
+            TypeError: If an unspecialized backend `TypeVar` cannot be resolved
+                to a concrete default backend.
         """
         if not isinstance(backend_param, TypeVar):
             return backend_param
@@ -381,7 +429,7 @@ class JSONPointer(str, Generic[T_co, P_co]):
             A concrete `PointerBackend` class.
 
         Raises:
-            InvalidJSONPointer: If the `TypeVar` has no usable default backend.
+            TypeError: If the `TypeVar` has no usable default backend.
         """
         # Only TypeVar defaults are used for unspecialized backend TypeVars.
         try:
@@ -394,7 +442,7 @@ class JSONPointer(str, Generic[T_co, P_co]):
             if default_backend is not None:
                 return default_backend
 
-        raise InvalidJSONPointer(
+        raise TypeError(
             "JSONPointer backend TypeVar must define a default backend "
             "or be specialized with a concrete backend type"
         )
@@ -413,6 +461,9 @@ class JSONPointer(str, Generic[T_co, P_co]):
         Returns:
             A concrete `PointerBackend` class, or `None` if the candidate is
             not usable as a runtime backend.
+
+        Raises:
+            TypeError: If `candidate` is a `TypeVar` with no usable default.
         """
         if isinstance(candidate, TypeVar):
             return cls._resolve_runtime_backend_typevar(candidate)
@@ -503,8 +554,11 @@ class JSONPointer(str, Generic[T_co, P_co]):
             pointer: A validated `JSONPointer` instance.
 
         Raises:
-            InvalidJSONPointer: If the pointer string, backend, or generic
-                parameters are invalid.
+            TypeError: If the `backend` argument is not a class or `TypeVar`,
+                if a backend `TypeVar` cannot be resolved to a concrete backend,
+                if the type parameter is not a valid TypeForm, or if `path` is
+                not a `str`, `JSONPointer`, or `PointerBackend` instance.
+            InvalidJSONPointer: If `path` is not a valid pointer string.
 
         ??? Acknowledment
             The `type_param` argument places the covariant type parameter `T` in an input position,
@@ -512,6 +566,11 @@ class JSONPointer(str, Generic[T_co, P_co]):
             and ad-hoc pointer construction, where the ergonomics of direct construction outweigh
             the theoretical unsoundness.
         """
+        if not isinstance(path, (str, PointerBackend)):
+            raise TypeError(
+                f"path must be a str or a PointerBackend instance; got {type(path).__name__!r}"
+            )
+
         resolved_type_param = (
             JSONValue if type_param is _Nothing else cast(TypeForm[Any], type_param)
         )
@@ -531,7 +590,10 @@ class JSONPointer(str, Generic[T_co, P_co]):
             adapter = _cached_adapter(
                 JSONPointer[validated_type, validated_backend]  # type: ignore[valid-type]
             )
-        return adapter.validate_python(path)
+        try:
+            return adapter.validate_python(path)
+        except ValidationError as e:
+            raise InvalidJSONPointer(f"Invalid pointer: {e}") from e
 
     # Parse-time helpers
 
@@ -548,15 +610,23 @@ class JSONPointer(str, Generic[T_co, P_co]):
             Root is a parent of all paths except itself.
 
         Raises:
-            InvalidJSONPointer: If `other` is a `JSONPointer` with an incompatible backend.
+            TypeError: If `other` is a `JSONPointer` with an incompatible backend,
+                or a string that cannot be parsed with this pointer's backend.
         """
         if isinstance(other, JSONPointer) and not isinstance(
             other._ptr, type(self._ptr)
         ):
-            raise InvalidJSONPointer(
-                f"Other pointer {other._ptr!r} has incompatible syntax with {self!r}"
+            raise TypeError(
+                f"Other pointer {other._ptr!r} has incompatible backend with {self!r}"
             )
-        other_ptr = _pointer_backend_instance(other, pointer_cls=self._ptr.__class__)
+        try:
+            other_ptr = _pointer_backend_instance(
+                other, pointer_cls=self._ptr.__class__
+            )
+        except InvalidJSONPointer as e:
+            raise TypeError(
+                f"Invalid pointer string for {self._ptr.__class__.__name__}: {e}"
+            ) from e
 
         # Strict parentage only
         if self == str(other_ptr):
@@ -577,15 +647,23 @@ class JSONPointer(str, Generic[T_co, P_co]):
             Root is a parent of all paths except itself.
 
         Raises:
-            InvalidJSONPointer: If `other` is a `JSONPointer` with an incompatible backend.
+            TypeError: If `other` is a `JSONPointer` with an incompatible backend,
+                or a string that cannot be parsed with this pointer's backend.
         """
         if isinstance(other, JSONPointer) and not isinstance(
             other._ptr, type(self._ptr)
         ):
-            raise InvalidJSONPointer(
-                f"Other pointer {other._ptr!r} has incompatible syntax with {self!r}"
+            raise TypeError(
+                f"Other pointer {other._ptr!r} has incompatible backend with {self!r}"
             )
-        other_ptr = _pointer_backend_instance(other, pointer_cls=self._ptr.__class__)
+        try:
+            other_ptr = _pointer_backend_instance(
+                other, pointer_cls=self._ptr.__class__
+            )
+        except InvalidJSONPointer as e:
+            raise TypeError(
+                f"Invalid pointer string for {self._ptr.__class__.__name__}: {e}"
+            ) from e
 
         # Strict parentage only
         if self == str(other_ptr):

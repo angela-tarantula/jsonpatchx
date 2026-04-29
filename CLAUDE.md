@@ -117,6 +117,13 @@ in `__all__` as private.
   public API (`__all__`) requires a changelog entry.
 - Prefer editing existing modules over adding new ones; the layering above is
   intentional.
+- When changing what exception a method raises, update the `Raises` section of
+  every caller, then every caller of those callers, and so on until the call
+  tree is exhausted. Use grep to find callers across the whole codebase; do not
+  rely on memory. Boolean helpers with no `Raises` section still need one added
+  if an exception now propagates through them instead of being swallowed. After
+  completing the update, report the full caller hierarchy back to the user so
+  they can verify each level was handled correctly.
 - Before assuming a docstring is visible on an API reference page, check that
   page's `docs/api-reference/*.md` file for its `filters:` option.
   Module-specific pages use `filters: ["!^_"]`, which drops every

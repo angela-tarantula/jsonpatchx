@@ -22,7 +22,7 @@ from jsonpatchx.exceptions import (
     PatchFailureDetail,
     PatchInternalError,
 )
-from jsonpatchx.types import JSONValue
+from jsonpatchx.types import JSONValue, _validate_JSONValue
 
 
 class OperationSchema(BaseModel, ABC):
@@ -78,8 +78,9 @@ class OperationSchema(BaseModel, ABC):
         - `validate_by_alias`, `serialize_by_alias`, `loc_by_alias` are all `True`:
           alias-named fields (such as `from`, aliased to `from_`) are used
           consistently in validation, serialization, and error messages.
-        - `validate_return=True`: Extra assurance that `apply` always returns a
-          valid JSON document.
+        - `validate_return=True`: Validates return values of Pydantic validator
+          methods (`@field_validator`, `@model_validator`). Does not validate
+          `apply()` return values; those are plain Python method calls.
 
     Notes:
         - Use `model_validator(mode="after")` with `PydanticCustomError` to enforce cross-field
@@ -94,7 +95,7 @@ class OperationSchema(BaseModel, ABC):
         serialize_by_alias=True,  # Consistent with validation
         loc_by_alias=True,  #  So error messages also use alias. For example, when 'from' is an alias of 'from_', errors should say, "error at: from".
         validate_default=True,  # Validate default values against their intended type annotations
-        validate_return=True,  # For extra correctness. Also ensures that 'apply()' always results in valid JSON.
+        validate_return=True,  # Validates @field_validator/@model_validator return values; does not affect apply().
         use_enum_values=True,  # For consistent serialization when values are Enums
         allow_inf_nan=False,  # infinite values are not valid JSON
         validation_error_cause=False,  # Consider enabling when Pydantic guarantees a stable error structure. Useful to flip when debugging locally.
@@ -220,6 +221,7 @@ def _apply_ops(
     for index, op in enumerate(ops):
         try:
             doc = op.apply(doc)
+            _validate_JSONValue(doc)
         except PatchError:
             # Domain-specific patch errors (e.g. TestOpFailed) should propagate unchanged.
             raise

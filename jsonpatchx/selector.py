@@ -116,6 +116,8 @@ class JSONSelector(str, Generic[T_co, S_co]):
             A `JSONSelector` bound to the resolved backend and type parameter.
 
         Raises:
+            TypeError: If the backend TypeVar cannot be resolved to a concrete
+                backend.
             InvalidJSONSelector: If an existing selector/backend instance
                 cannot be rebound to the required backend.
         """
@@ -160,6 +162,21 @@ class JSONSelector(str, Generic[T_co, S_co]):
     def __get_pydantic_core_schema__(
         cls, source_type: type[Self], handler: GetCoreSchemaHandler
     ) -> cs.CoreSchema:
+        """Build the Pydantic core schema for `JSONSelector` validation.
+
+        Arguments:
+            source_type: The specialized `JSONSelector[T, Backend]` type being built.
+            handler: Pydantic's schema generation handler.
+
+        Returns:
+            A Pydantic core schema that validates strings, `JSONSelector` instances, and
+            `SelectorBackend` instances into a `JSONSelector` bound to `T` and the backend.
+
+        Raises:
+            TypeError: If no type parameters are supplied, if the backend
+                parameter is not a class or `TypeVar`, or if the type parameter
+                is not a valid TypeForm.
+        """
         type_param, concrete_backend = cls._parse_selector_type_args(
             *get_args(source_type)
         )
@@ -187,7 +204,20 @@ class JSONSelector(str, Generic[T_co, S_co]):
     def __get_pydantic_json_schema__(
         cls, schema: cs.CoreSchema, handler: GetJsonSchemaHandler
     ) -> JsonSchemaValue:
+        """Build the JSON Schema representation for `JSONSelector`.
 
+        Arguments:
+            schema: The Pydantic core schema produced by `__get_pydantic_core_schema__`.
+            handler: Pydantic's JSON schema generation handler.
+
+        Returns:
+            A JSON Schema dict describing a JSON selector string, enriched with
+            `x-selector-type-schema` for the declared type parameter.
+
+        Raises:
+            TypeError: If the backend TypeVar cannot be resolved, or if the
+                type parameter cannot be adapted.
+        """
         selector_backend: type[SelectorBackend]
         selector_backend_param = schema.get("metadata", {}).get(
             "selector_backend_param"
@@ -226,14 +256,28 @@ class JSONSelector(str, Generic[T_co, S_co]):
     def _parse_selector_type_args(
         cls, *args: TypeForm[Any]
     ) -> tuple[TypeForm[Any], type[SelectorBackend] | TypeVar]:
-        """Validate the JSONSelector's parameter tuple, e.g. `(JSONValue, MyBackend)` for `JSONSelector[JSONValue, MyBackend]`."""
+        """Validate and unpack the `JSONSelector[T, Backend]` parameter tuple.
+
+        Arguments:
+            *args: Generic type arguments from `get_args(source_type)`, e.g.
+                `(JSONValue, MyBackend)` for `JSONSelector[JSONValue, MyBackend]`.
+
+        Returns:
+            A tuple of (type_param, backend_param): type_param is a validated TypeForm
+            and backend_param is a concrete backend class or TypeVar.
+
+        Raises:
+            TypeError: If no type parameters are supplied, if the backend
+                parameter is not a class or `TypeVar`, or if the type parameter
+                is not a valid TypeForm.
+        """
         if not args:
             raise TypeError(f"{cls} requires at least one type parameter")
         unverified_typeform = args[0]
         unverified_backend = args[1] if len(args) > 1 else DEFAULT_SELECTOR_CLS
 
         backend_param = cls._resolve_backend_type_param(unverified_backend)
-        type_param = _validate_typeform(unverified_typeform, InvalidJSONSelector)
+        type_param = _validate_typeform(unverified_typeform)
 
         return type_param, backend_param
 
@@ -252,14 +296,18 @@ class JSONSelector(str, Generic[T_co, S_co]):
             A backend class or unresolved `TypeVar`.
 
         Raises:
-            InvalidJSONSelector: If the backend argument is neither a class nor
-                a `TypeVar`.
+            TypeError: If the backend argument is neither a class nor a
+                `TypeVar`, or if the backend class is abstract.
         """
         if isinstance(backend_param, TypeVar):
             return backend_param
         if not isinstance(backend_param, type):
-            raise InvalidJSONSelector(
+            raise TypeError(
                 f"JSONSelector backend parameter {backend_param!r} must be a class or TypeVar"
+            )
+        if isabstract(backend_param):
+            raise TypeError(
+                f"JSONSelector backend parameter {backend_param!r} is abstract and cannot be used as a backend"
             )
         return cast(type[SelectorBackend], backend_param)
 
@@ -278,8 +326,8 @@ class JSONSelector(str, Generic[T_co, S_co]):
             A concrete `SelectorBackend` class.
 
         Raises:
-            InvalidJSONSelector: If an unspecialized backend `TypeVar` cannot
-                be resolved to a concrete default backend.
+            TypeError: If an unspecialized backend `TypeVar` cannot be resolved
+                to a concrete default backend.
         """
         if not isinstance(backend_param, TypeVar):
             return backend_param
@@ -300,8 +348,7 @@ class JSONSelector(str, Generic[T_co, S_co]):
             A concrete `SelectorBackend` class.
 
         Raises:
-            InvalidJSONSelector: If the `TypeVar` has no usable default
-                backend.
+            TypeError: If the `TypeVar` has no usable default backend.
         """
         try:
             has_default = backend_typevar.has_default()
@@ -313,7 +360,7 @@ class JSONSelector(str, Generic[T_co, S_co]):
             if default_backend is not None:
                 return default_backend
 
-        raise InvalidJSONSelector(
+        raise TypeError(
             "JSONSelector backend TypeVar must define a default backend "
             "or be specialized with a concrete backend type"
         )
@@ -332,6 +379,10 @@ class JSONSelector(str, Generic[T_co, S_co]):
         Returns:
             A concrete `SelectorBackend` class, or `None` if the candidate is
             not usable as a runtime backend.
+
+        Raises:
+            TypeError: If `candidate` is a `TypeVar` with no usable default,
+                propagated from `_resolve_runtime_backend_typevar`.
         """
         if isinstance(candidate, TypeVar):
             return cls._resolve_runtime_backend_typevar(candidate)
@@ -421,8 +472,11 @@ class JSONSelector(str, Generic[T_co, S_co]):
             A validated `JSONSelector` instance.
 
         Raises:
-            InvalidJSONSelector: If the selector string, backend, or generic
-                parameters are invalid.
+            TypeError: If the `backend` argument is not a class or `TypeVar`,
+                if a backend `TypeVar` cannot be resolved to a concrete backend,
+                if the type parameter is not a valid TypeForm, or if `selector`
+                is not a `str`, `JSONSelector`, or `SelectorBackend` instance.
+            InvalidJSONSelector: If `selector` is not a valid selector string.
 
         ??? Acknowledment
             The `type_param` argument places the covariant type parameter `T` in an input position,
@@ -430,6 +484,11 @@ class JSONSelector(str, Generic[T_co, S_co]):
             and ad-hoc selector construction, where the ergonomics of direct construction outweigh
             the theoretical unsoundness.
         """
+        if not isinstance(selector, (str, SelectorBackend)):
+            raise TypeError(
+                f"selector must be a str or a SelectorBackend instance; got {type(selector).__name__!r}"
+            )
+
         resolved_type_param = (
             JSONValue if type_param is _Nothing else cast(TypeForm[Any], type_param)
         )
@@ -451,7 +510,10 @@ class JSONSelector(str, Generic[T_co, S_co]):
             adapter = _cached_adapter(
                 JSONSelector[validated_type, validated_backend]  # type: ignore[valid-type]
             )
-        return adapter.validate_python(selector)
+        try:
+            return adapter.validate_python(selector)
+        except ValidationError as e:
+            raise InvalidJSONSelector(f"Invalid selector: {e}") from e
 
     def is_valid_type(self, target: object) -> bool:
         """
@@ -482,7 +544,7 @@ class JSONSelector(str, Generic[T_co, S_co]):
         Raises:
             PatchConflictError: If the selector backend cannot resolve the
                 selector against `doc`.
-            InvalidJSONSelector: If the backend yields invalid pointer objects.
+            TypeError: If the backend yields objects that do not implement `PointerBackend`.
         """
         try:
             raw_pointers = list(self._selector.pointers(doc))
@@ -494,8 +556,9 @@ class JSONSelector(str, Generic[T_co, S_co]):
         pointers: list[PointerBackend] = []
         for pointer in raw_pointers:
             if not isinstance(pointer, PointerBackend):
-                raise InvalidJSONSelector(
-                    f"selector backend returned invalid pointer {pointer!r}"
+                raise TypeError(
+                    f"selector backend returned invalid pointer {pointer!r}: "
+                    f"expected PointerBackend, got {type(pointer).__name__}"
                 )
             pointers.append(pointer)
         return pointers
@@ -512,8 +575,9 @@ class JSONSelector(str, Generic[T_co, S_co]):
 
         Raises:
             PatchConflictError: If selector resolution fails.
-            InvalidJSONSelector: If the backend yields invalid matches or
-                invalid pointer objects.
+            TypeError: If the backend yields objects that do not implement `PointerBackend`.
+            InvalidJSONPointer: If a resolved backend pointer cannot be parsed into a
+                `JSONPointer` (propagated from `JSONPointer.parse`).
         """
         return [
             JSONPointer.parse(
@@ -538,8 +602,9 @@ class JSONSelector(str, Generic[T_co, S_co]):
         Raises:
             PatchConflictError: If selector resolution fails or a matched
                 pointer cannot be read as type `T`.
-            InvalidJSONSelector: If the backend yields invalid matches or
-                invalid pointer data.
+            TypeError: If the backend yields objects that do not implement `PointerBackend`.
+            InvalidJSONPointer: If a resolved backend pointer cannot be parsed into a
+                `JSONPointer`, propagated from `get_pointers`.
         """
         return [pointer.get(doc) for pointer in self.get_pointers(doc)]
 
@@ -552,10 +617,15 @@ class JSONSelector(str, Generic[T_co, S_co]):
 
         Returns:
             `True` if selector resolution and per-match reads succeed, `False` otherwise.
+
+        Raises:
+            TypeError: If the backend yields objects that do not implement `PointerBackend`.
+            InvalidJSONPointer: If a resolved backend pointer cannot be parsed into a
+                `JSONPointer`, propagated from `get_pointers`.
         """
         try:
             self.getall(doc)
-        except (InvalidJSONSelector, PatchConflictError):
+        except PatchConflictError:
             return False
         else:
             return True
@@ -575,8 +645,9 @@ class JSONSelector(str, Generic[T_co, S_co]):
             PatchConflictError: If `value` is not valid for this selector, if
                 selector resolution fails, or if any matched pointer cannot be
                 updated.
-            InvalidJSONSelector: If the backend yields invalid matches or
-                invalid pointer data.
+            TypeError: If the backend yields objects that do not implement `PointerBackend`.
+            InvalidJSONPointer: If a resolved backend pointer cannot be parsed into a
+                `JSONPointer`, propagated from `get_pointers`.
 
         Notes:
             May modify `doc` in place; always use the return value. Root-targeting
@@ -604,13 +675,18 @@ class JSONSelector(str, Generic[T_co, S_co]):
         Returns:
             `True` if the selector can be resolved and every matched pointer
             accepts the requested add semantics, `False` otherwise.
+
+        Raises:
+            TypeError: If the backend yields objects that do not implement `PointerBackend`.
+            InvalidJSONPointer: If a resolved backend pointer cannot be parsed into a
+                `JSONPointer`, propagated from `get_pointers`.
         """
         if value is _Nothing:
             try:
                 return all(
                     pointer.is_addable(doc) for pointer in self.get_pointers(doc)
                 )
-            except (InvalidJSONSelector, PatchConflictError):
+            except PatchConflictError:
                 return False
 
         try:
@@ -618,7 +694,7 @@ class JSONSelector(str, Generic[T_co, S_co]):
             return all(
                 pointer.is_addable(doc, target) for pointer in self.get_pointers(doc)
             )
-        except (InvalidJSONSelector, PatchConflictError):
+        except PatchConflictError:
             return False
 
     def removeall(self, doc: JSONValue) -> JSONValue:
@@ -634,8 +710,9 @@ class JSONSelector(str, Generic[T_co, S_co]):
         Raises:
             PatchConflictError: If selector resolution fails or any matched
                 pointer cannot be removed.
-            InvalidJSONSelector: If the backend yields invalid matches or
-                invalid pointer data.
+            TypeError: If the backend yields objects that do not implement `PointerBackend`.
+            InvalidJSONPointer: If a resolved backend pointer cannot be parsed into a
+                `JSONPointer`, propagated from `get_pointers`.
 
         Notes:
             Modifies `doc` in place; always use the return value.
@@ -655,6 +732,11 @@ class JSONSelector(str, Generic[T_co, S_co]):
             `True` if the selector resolves and all matched targets are
             removable, `False` otherwise.
 
+        Raises:
+            TypeError: If the backend yields objects that do not implement `PointerBackend`.
+            InvalidJSONPointer: If a resolved backend pointer cannot be parsed into a
+                `JSONPointer`, propagated from `get_pointers`.
+
         Notes:
             This is intentionally looser than `removeall()`. Selector
             removal does not promise a stable or safety-maximizing order, so
@@ -663,7 +745,7 @@ class JSONSelector(str, Generic[T_co, S_co]):
         """
         try:
             return all(pointer.is_removable(doc) for pointer in self.get_pointers(doc))
-        except (InvalidJSONSelector, PatchConflictError):
+        except PatchConflictError:
             return False
 
     @override

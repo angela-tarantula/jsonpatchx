@@ -15,6 +15,9 @@ and this project adheres to
 - `DEFAULT_POINTER_CLS` and `DEFAULT_SELECTOR_CLS` are now explicitly supported
   public API and can be imported directly when you want to bind JsonPatchX's
   built-in pointer and selector backends.
+- `InvalidPatchTarget` is a new `PatchError` subclass raised when the document
+  passed to the patch engine is not a valid JSON value. This is a server-side
+  configuration error and maps to 500 Internal Server Error.
 
 ### Removed
 
@@ -29,9 +32,32 @@ and this project adheres to
   of the six built-in operation classes with no behavior of its own. The
   individual op classes (`AddOp`, `RemoveOp`, etc.) and `StandardRegistry`
   remain fully supported.
+- `PatchInputError` has been removed from the public API. Its subclasses
+  (`InvalidJSONPointer`, `InvalidJSONSelector`) are now direct `PatchError`
+  subclasses and remain available. `PatchValidationError` is also now a direct
+  `PatchError` subclass with a corrected HTTP mapping (409 Conflict, not 422).
+  Replace any `except PatchInputError` with the specific types you need.
 
 ### Changed
 
+- `JSONPointer.is_parent_of` and `is_child_of` now raise `TypeError` instead of
+  `InvalidJSONPointer` when called with a pointer that uses an incompatible
+  backend. This is a programmer error, not a patch input error.
+- `JSONSelector` methods (`get_pointers`, `getall`, `addall`, `removeall`,
+  `is_gettable`, `is_addable`, `is_removable`) now raise `TypeError` instead of
+  `InvalidJSONSelector` when the selector backend yields objects that do not
+  implement `PointerBackend`. Same rationale: corrupted backend state is a
+  programmer error, not a patch input error.
+- Inputs that represent programmer misconfiguration (passing a wrong-type
+  argument to `parse()`, or using an abstract class as a backend type parameter)
+  now raise `TypeError` directly rather than surfacing as
+  `InvalidJSONPointer`/`InvalidJSONSelector` or `ValidationError`. Both map to
+  500, not 422.
+- The patch engine now validates each operation's return value against
+  `JSONValue` after every `apply()` call. If a custom op returns a non-JSON
+  value (for example, a `datetime`), a `PatchInternalError` is raised with the
+  op index and payload as context rather than the invalid value silently
+  propagating.
 - Simplified `SelectorBackend` so custom selector backends yield
   `PointerBackend` instances directly through `pointers(doc)`, removing the
   separate `SelectorMatch` wrapper protocol.

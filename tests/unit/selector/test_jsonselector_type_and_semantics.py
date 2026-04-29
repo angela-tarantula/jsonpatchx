@@ -5,7 +5,7 @@ from functools import partial
 from typing import TYPE_CHECKING, Any, Generic
 
 import pytest
-from pydantic import BaseModel, TypeAdapter
+from pydantic import BaseModel, TypeAdapter, ValidationError
 from pytest import Subtests
 from typing_extensions import TypeVar
 
@@ -161,9 +161,7 @@ def test_default_jsonselector_backend_corruption_paths(
         assert selector.is_addable({"a": 1}, 1) is False
         assert selector.is_removable({"a": 1}) is False
 
-    with subtests.test(
-        "invalid backend pointer raises in accessors and returns False in boolean helpers"
-    ):
+    with subtests.test("invalid backend pointer raises TypeError in all helpers"):
 
         class InvalidPointerBackend:
             def pointers(self, _doc: JSONValue) -> list[object]:
@@ -171,18 +169,22 @@ def test_default_jsonselector_backend_corruption_paths(
 
         selector: JSONSelector[JSONValue] = JSONSelector.parse("$.a")
         monkeypatch.setattr(selector, "_selector", InvalidPointerBackend())
-        with pytest.raises(InvalidJSONSelector):
+        with pytest.raises(TypeError):
             selector.get_pointers({"a": 1})
-        with pytest.raises(InvalidJSONSelector):
+        with pytest.raises(TypeError):
             selector.getall({"a": 1})
-        with pytest.raises(InvalidJSONSelector):
+        with pytest.raises(TypeError):
             selector.addall({"a": 1}, 1)
-        with pytest.raises(InvalidJSONSelector):
+        with pytest.raises(TypeError):
             selector.removeall({"a": 1})
-        assert selector.is_gettable({"a": 1}) is False
-        assert selector.is_addable({"a": 1}) is False
-        assert selector.is_addable({"a": 1}, 1) is False
-        assert selector.is_removable({"a": 1}) is False
+        with pytest.raises(TypeError):
+            selector.is_gettable({"a": 1})
+        with pytest.raises(TypeError):
+            selector.is_addable({"a": 1})
+        with pytest.raises(TypeError):
+            selector.is_addable({"a": 1}, 1)
+        with pytest.raises(TypeError):
+            selector.is_removable({"a": 1})
 
 
 @pytest.mark.parametrize(
@@ -325,7 +327,7 @@ def test_selector_backend_binding(subtests: Subtests) -> None:
         assert isinstance(selector.ptr, DEFAULT_SELECTOR_CLS)
 
     with subtests.test("bound SelectorBackend is invalid"):
-        with pytest.raises(InvalidJSONSelector):
+        with pytest.raises(TypeError):
             JSONSelector.parse("$.a", backend=SelectorBackend)
 
 
@@ -373,7 +375,7 @@ def test_jsonselector_backend_reuse(subtests: Subtests) -> None:
 
 def test_jsonselector_type_args_validation(subtests: Subtests) -> None:
     with subtests.test("invalid type param"):
-        with pytest.raises(InvalidJSONSelector):
+        with pytest.raises(TypeError):
             TypeAdapter(JSONSelector[int()])
 
     with subtests.test("not enough args"):
@@ -385,21 +387,27 @@ def test_jsonselector_type_args_validation(subtests: Subtests) -> None:
             TypeAdapter(JSONSelector[JSONValue, SimpleSelector, int])
 
     with subtests.test("invalid backend"):
+        # Non-type values or abstract classes: TypeError at schema-build time.
         for invalid_backend in [
-            object,
             object(),
-            JSONValue,
-            str,
-            IncompleteSelectorBackend,
+            SimpleSelector("a"),
+            "SimpleSelector",
             AnotherIncompleteSelectorBackend,
             SelectorMissingPointers,
             SelectorBackend,
-            BadSimpleSelector,
-            SimpleSelector("a"),
-            "SimpleSelector",
         ]:
-            with pytest.raises(InvalidJSONSelector):
-                adapter = TypeAdapter(JSONSelector[JSONValue, invalid_backend])
+            with pytest.raises(TypeError):
+                TypeAdapter(JSONSelector[JSONValue, invalid_backend])
+        # Concrete classes with unusable constructors or wrong return type: TypeError at validation time.
+        for invalid_backend in [
+            object,
+            JSONValue,
+            str,
+            IncompleteSelectorBackend,
+            BadSimpleSelector,
+        ]:
+            adapter = TypeAdapter(JSONSelector[JSONValue, invalid_backend])
+            with pytest.raises(TypeError):
                 adapter.validate_python("a")
 
     with subtests.test("valid backend"):
@@ -414,25 +422,25 @@ def test_jsonselector_type_args_validation(subtests: Subtests) -> None:
     ):
         S_backend = TypeVar("S_backend", bound=SelectorBackend)
         adapter = TypeAdapter(JSONSelector[JSONValue, S_backend])
-        with pytest.raises(InvalidJSONSelector):
+        with pytest.raises(TypeError):
             adapter.validate_python("$.a")
 
     with subtests.test("backend typevar constraints require specialization or default"):
         S_constrained = TypeVar("S_constrained", SimpleSelector, DEFAULT_SELECTOR_CLS)
         adapter = TypeAdapter(JSONSelector[JSONValue, S_constrained])
-        with pytest.raises(InvalidJSONSelector):
+        with pytest.raises(TypeError):
             adapter.validate_python("$.a")
 
     with subtests.test("backend typevar non-backend bound fails at runtime"):
         S_invalid_bound = TypeVar("S_invalid_bound", bound=str)
         adapter = TypeAdapter(JSONSelector[JSONValue, S_invalid_bound])
-        with pytest.raises(InvalidJSONSelector):
+        with pytest.raises(TypeError):
             adapter.validate_python("$.a")
 
     with subtests.test("backend typevar without constraints or bound is rejected"):
         S_unbound = TypeVar("S_unbound")
         adapter = TypeAdapter(JSONSelector[JSONValue, S_unbound])
-        with pytest.raises(InvalidJSONSelector):
+        with pytest.raises(TypeError):
             adapter.validate_python("$.a")
 
     with subtests.test("backend typevar default is honored at runtime"):
@@ -459,7 +467,7 @@ def test_jsonselector_type_args_validation(subtests: Subtests) -> None:
             "S_non_type_default", bound=SelectorBackend, default=123
         )
         adapter = TypeAdapter(JSONSelector[JSONValue, S_non_type_default])
-        with pytest.raises(InvalidJSONSelector):
+        with pytest.raises(TypeError):
             adapter.validate_python("$.a")
 
     with subtests.test("backend typevar SelectorBackend default is rejected"):
@@ -467,7 +475,7 @@ def test_jsonselector_type_args_validation(subtests: Subtests) -> None:
             "S_protocol_default", bound=SelectorBackend, default=SelectorBackend
         )
         adapter = TypeAdapter(JSONSelector[JSONValue, S_protocol_default])
-        with pytest.raises(InvalidJSONSelector):
+        with pytest.raises(TypeError):
             adapter.validate_python("$.a")
 
     with subtests.test("TypeVar without default works in Python 3.12 and below"):
@@ -475,25 +483,26 @@ def test_jsonselector_type_args_validation(subtests: Subtests) -> None:
 
         S_backend = typing.TypeVar("S_backend", bound=SelectorBackend)
         adapter = TypeAdapter(JSONSelector[JSONValue, S_backend])
-        with pytest.raises(InvalidJSONSelector):
+        with pytest.raises(TypeError):
             adapter.validate_python("$.a")
 
     with subtests.test("reject invalid default backend string syntax"):
         adapter = TypeAdapter(JSONSelector[JSONValue])
-        with pytest.raises(InvalidJSONSelector):
+        with pytest.raises(ValidationError):
             adapter.validate_python("a")
 
     with subtests.test("reject invalid custom backend string syntax"):
         adapter = TypeAdapter(JSONSelector[JSONValue, SimpleSelector])
-        with pytest.raises(InvalidJSONSelector):
+        with pytest.raises(ValidationError):
             adapter.validate_python("$.a")
 
 
 def test_selector_backend_typevar_explicit_policy_cases(subtests: Subtests) -> None:
-    with subtests.test("explicit SelectorBackend parameter is rejected at runtime"):
-        adapter = TypeAdapter(JSONSelector[JSONValue, SelectorBackend])
-        with pytest.raises(InvalidJSONSelector):
-            adapter.validate_python("$.a")
+    with subtests.test(
+        "explicit SelectorBackend parameter is rejected at schema-build time"
+    ):
+        with pytest.raises(TypeError):
+            TypeAdapter(JSONSelector[JSONValue, SelectorBackend])
 
     with subtests.test("direct specialization uses explicit backend"):
 
@@ -524,7 +533,7 @@ def test_jsonselector_json_schema_backend_resolution(subtests: Subtests) -> None
 
     with subtests.test("backend TypeVar without default cannot produce JSON schema"):
         S_backend = TypeVar("S_backend", bound=SelectorBackend)
-        with pytest.raises(InvalidJSONSelector):
+        with pytest.raises(TypeError):
             TypeAdapter(JSONSelector[JSONValue, S_backend]).json_schema()
 
     with subtests.test(
@@ -576,6 +585,13 @@ def test_jsonselector_path_validation(subtests: Subtests) -> None:
 
     with subtests.test("accepts narrower SelectorBackends"):
         JSONSelector.parse(SimpleSelectorSubclass("a"), backend=SimpleSelector)
+    with subtests.test(
+        "reject wrong-type selector (not str/JSONSelector/SelectorBackend)"
+    ):
+        with pytest.raises(TypeError):
+            JSONSelector.parse(123)  # type: ignore[arg-type]
+        with pytest.raises(TypeError):
+            JSONSelector.parse(["$.a"])  # type: ignore[arg-type]
 
 
 def test_jsonselector_covariance_narrow_to_wide(subtests: Subtests) -> None:

@@ -10,10 +10,12 @@ from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 
 from jsonpatchx.exceptions import (
+    InvalidJSONPointer,
+    InvalidJSONSelector,
     PatchConflictError,
     PatchError,
-    PatchInputError,
     PatchInternalError,
+    PatchValidationError,
 )
 from jsonpatchx.pydantic import JsonPatchFor
 
@@ -294,7 +296,25 @@ class JsonPatchRoute:
 
 
 def _patch_error_response_map(exc: PatchError) -> JSONResponse:
-    """Map a PatchError to a JSONResponse for FastAPI exception handlers."""
+    """Map a PatchError to a JSONResponse for FastAPI exception handlers.
+
+    Expected mappings:
+        - InvalidJSONPointer, InvalidJSONSelector -> 422. In practice these
+          rarely reach this handler: they are usually raised inside Pydantic
+          field validation, get wrapped in ValidationError, and are caught by
+          FastAPI's own handler first. They surface here only when raised
+          outside validation (e.g. a custom op's apply() calling
+          JSONPointer.parse() on user-supplied data), where 422 is still
+          correct since bad pointer syntax is always a caller error.
+        - PatchConflictError, TestOpFailed, PatchValidationError -> 409
+        - InvalidPatchTarget, PatchInternalError, unrecognized PatchError -> 500
+
+    TODO: Integration tests in tests/integration/fastapi/runtime/ should cover
+          each failure path and assert both the HTTP status code and the
+          exception that triggered it, ideally with match="..." on the error
+          message. Once user-facing error messages are stabilized, assert their
+          content too.
+    """
     if isinstance(exc, PatchInternalError):
         detail = exc.detail
         payload = PatchFailureDetailResponse(
@@ -307,12 +327,12 @@ def _patch_error_response_map(exc: PatchError) -> JSONResponse:
             status_code=500, content=PatchErrorResponse(detail=payload).model_dump()
         )
 
-    if isinstance(exc, PatchInputError):
+    if isinstance(exc, (InvalidJSONPointer, InvalidJSONSelector)):
         return JSONResponse(
             status_code=422, content=PatchErrorResponse(detail=str(exc)).model_dump()
         )
 
-    if isinstance(exc, PatchConflictError):
+    if isinstance(exc, (PatchConflictError, PatchValidationError)):
         return JSONResponse(
             status_code=409, content=PatchErrorResponse(detail=str(exc)).model_dump()
         )

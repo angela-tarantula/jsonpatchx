@@ -2,6 +2,7 @@ import re
 from abc import abstractmethod
 from collections.abc import Iterable, Sequence
 from enum import Enum, auto
+from inspect import isabstract
 from typing import (
     Protocol,
     Self,
@@ -272,10 +273,22 @@ def _pointer_backend_instance[PB: PointerBackend](
         A backend instance for `path`.
 
     Raises:
-        InvalidJSONPointer: If construction fails.
+        TypeError: If `pointer_cls` is abstract, its constructor raises
+            `TypeError`, or the constructor returns an object that does not
+            implement `PointerBackend`.
+        InvalidJSONPointer: If the backend constructor raises a non-`TypeError`
+            exception (path string is invalid for the given backend).
     """
+    if isabstract(pointer_cls):
+        raise TypeError(
+            f"pointer_cls {pointer_cls!r} is abstract and cannot be used as a backend"
+        )
     try:
         ptr = pointer_cls(path)
+    except TypeError as e:
+        raise TypeError(
+            f"pointer_cls {pointer_cls!r} is not a usable PointerBackend: {e}"
+        ) from e
     except Exception as e:
         if (
             pointer_cls is DEFAULT_POINTER_CLS
@@ -287,7 +300,7 @@ def _pointer_backend_instance[PB: PointerBackend](
             ) from e
 
     if not isinstance(ptr, PointerBackend):
-        raise InvalidJSONPointer(
+        raise TypeError(
             f"pointer_cls {pointer_cls!r} instances must implement the PointerBackend Protocol"
         )
     return ptr
@@ -511,10 +524,22 @@ def _selector_backend_instance[SB: SelectorBackend](
         A backend instance for `selector`.
 
     Raises:
-        InvalidJSONSelector: If construction fails.
+        TypeError: If `selector_cls` is abstract, its constructor raises
+            `TypeError`, or the constructor returns an object that does not
+            implement `SelectorBackend`.
+        InvalidJSONSelector: If the backend constructor raises a non-`TypeError`
+            exception (selector string is invalid for the given backend).
     """
+    if isabstract(selector_cls):
+        raise TypeError(
+            f"selector_cls {selector_cls!r} is abstract and cannot be used as a backend"
+        )
     try:
         compiled = selector_cls(selector)
+    except TypeError as e:
+        raise TypeError(
+            f"selector_cls {selector_cls!r} is not a usable SelectorBackend: {e}"
+        ) from e
     except Exception as e:
         if selector_cls is DEFAULT_SELECTOR_CLS:
             raise InvalidJSONSelector(
@@ -525,7 +550,7 @@ def _selector_backend_instance[SB: SelectorBackend](
         ) from e
 
     if not isinstance(compiled, SelectorBackend):
-        raise InvalidJSONSelector(
+        raise TypeError(
             f"selector_cls {selector_cls!r} instances must implement the SelectorBackend protocol"
         )
 

@@ -2,9 +2,10 @@ import json
 from collections.abc import Mapping, Sequence
 from typing import Self, overload, override
 
+from pydantic import ValidationError
 from typing_extensions import TypeForm
 
-from jsonpatchx.exceptions import PatchValidationError
+from jsonpatchx.exceptions import InvalidPatchTarget
 from jsonpatchx.registry import _STANDARD_REGISTRY_SPEC, _RegistrySpec
 from jsonpatchx.schema import OperationSchema, _apply_ops
 from jsonpatchx.types import JSONValue, _validate_JSONValue
@@ -12,7 +13,7 @@ from jsonpatchx.types import JSONValue, _validate_JSONValue
 
 class JsonPatch(Sequence[OperationSchema]):
     """
-    A parsed JSON Patch document (RFC 6902-style) bound to a registry declaration.
+    A parsed JSON Patch document bound to a registry declaration.
 
     `JsonPatch` is a convenience wrapper that:
 
@@ -114,14 +115,14 @@ class JsonPatch(Sequence[OperationSchema]):
             patched: The patched JSON document.
 
         Raises:
-            PatchValidationError: If `doc` is not a valid JSON document.
+            InvalidPatchTarget: If `doc` is not a valid JSON document.
             PatchError: Any patch-domain error raised by operations, including conflicts.
                 `PatchInternalError` is a `PatchError` raised for unexpected failures.
         """
         try:
             _validate_JSONValue(doc)
-        except Exception as e:
-            raise PatchValidationError(f"Invalid JSON document: {e}") from e
+        except ValidationError as e:
+            raise InvalidPatchTarget(f"Invalid JSON document: {e}") from e
         return _apply_ops(self._ops, doc, inplace=inplace)
 
     @override
@@ -185,7 +186,7 @@ def apply_patch(
     inplace: bool = False,
 ) -> JSONValue:
     """
-    Apply a standard RFC 6902 JSON Patch document to `doc`.
+    Apply a JSON Patch document to `doc`.
 
     Arguments:
         doc: Target JSON document.
@@ -202,7 +203,7 @@ def apply_patch(
         The patched document.
 
     Raises:
-        PatchValidationError: If `doc` is not a valid JSON document.
+        InvalidPatchTarget: If `doc` is not a valid JSON document.
         PatchError: Any patch-domain error raised by patch parsing or
             application.
 

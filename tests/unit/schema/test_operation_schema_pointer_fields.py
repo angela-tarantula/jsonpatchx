@@ -3,10 +3,11 @@ from __future__ import annotations
 from typing import Generic, Literal, override
 
 import pytest
+from pydantic import ValidationError
 from typing_extensions import TypeVar
 
 from jsonpatchx.builtins import AddOp, RemoveOp, ReplaceOp
-from jsonpatchx.exceptions import InvalidJSONPointer, PatchConflictError
+from jsonpatchx.exceptions import PatchConflictError
 from jsonpatchx.pointer import JSONPointer
 from jsonpatchx.schema import OperationSchema
 from jsonpatchx.types import JSONBoolean, JSONBound, JSONValue
@@ -24,7 +25,7 @@ def test_jsonpointer_invalid_syntax() -> None:
         def apply(self, doc: JSONValue) -> JSONValue:
             return doc  # pragma: no cover
 
-    with pytest.raises(InvalidJSONPointer):
+    with pytest.raises(ValidationError):
         ReadOp.model_validate({"path": "/a~2"})
 
 
@@ -64,7 +65,7 @@ def test_jsonpointer_backend_mismatch_parent_check() -> None:
     dot = DotOp.model_validate({"path": "a.b"})
     slash = SlashOp.model_validate({"path": "/a/b"})
 
-    with pytest.raises(InvalidJSONPointer):
+    with pytest.raises(TypeError):
         dot.path.is_parent_of(slash.path)
 
 

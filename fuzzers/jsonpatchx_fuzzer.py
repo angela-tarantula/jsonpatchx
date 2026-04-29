@@ -21,8 +21,9 @@ with atheris.instrument_imports():
 
     from jsonpatchx import JsonPatch, JSONPointer, JSONValue, apply_patch
     from jsonpatchx.exceptions import (
+        InvalidJSONPointer,
         PatchConflictError,
-        PatchInputError,
+        PatchError,
         PatchInternalError,
     )
 
@@ -31,16 +32,10 @@ _UNKNOWN_OPS: tuple[str, ...] = ("", "noop", "increment", "ADD", "remove_all")
 _ALL_OPS = _KNOWN_OPS + _UNKNOWN_OPS
 
 _EXPECTED_PATCH_EXCEPTIONS = (
-    PatchInputError,
-    PatchConflictError,
+    PatchError,
     ValidationError,
     json.JSONDecodeError,
     UnicodeError,
-)
-_EXPECTED_POINTER_EXCEPTIONS = (
-    PatchInputError,
-    PatchConflictError,
-    ValidationError,
 )
 
 
@@ -57,7 +52,7 @@ class _Outcome:
 def _error_bucket(error_type: type[BaseException]) -> str:
     if issubclass(error_type, PatchConflictError):
         return "conflict"
-    if issubclass(error_type, (PatchInputError, ValidationError)):
+    if issubclass(error_type, (PatchError, ValidationError)):
         return "input"
     if issubclass(error_type, (json.JSONDecodeError, UnicodeError)):
         return "decode"
@@ -159,14 +154,14 @@ def _run_pointer_call(fn: Callable[[], object]) -> _Outcome:
         return _Outcome(value=fn())
     except PatchInternalError:
         raise
-    except _EXPECTED_POINTER_EXCEPTIONS as exc:
+    except PatchError as exc:
         return _Outcome(error_type=type(exc))
 
 
 def _exercise_pointer(pointer_text: str, *, source: bytes) -> None:
     try:
         ptr: JSONPointer[JSONValue] = JSONPointer.parse(pointer_text)
-    except _EXPECTED_POINTER_EXCEPTIONS:
+    except InvalidJSONPointer:
         return
 
     # Parsing should be stable under canonical stringification.

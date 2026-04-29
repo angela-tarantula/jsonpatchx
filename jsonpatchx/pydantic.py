@@ -27,7 +27,7 @@ from pydantic import (
 from pydantic_core import PydanticUndefined, PydanticUndefinedType
 from typing_extensions import TypeVar
 
-from jsonpatchx.exceptions import PatchValidationError
+from jsonpatchx.exceptions import InvalidPatchTarget, PatchValidationError
 from jsonpatchx.registry import StandardRegistry, _RegistrySpec
 from jsonpatchx.schema import OperationSchema, _apply_ops
 from jsonpatchx.types import JSONValue, _validate_JSONValue
@@ -88,20 +88,20 @@ class _BasePatchModel(_RegistryBoundPatchRoot, Generic[ModelT]):
             The patched model instance after re-validation.
 
         Raises:
-            TypeError: If `target` is not an instance of the bound model type.
-            PatchValidationError: If the model dump is not valid JSON or the
-                patched output fails validation against the model schema.
+            InvalidPatchTarget: If `target` is not an instance of the bound model type,
+                or if the model dump is not a valid JSON document.
+            PatchValidationError: If the patched output fails validation against the model schema.
             PatchError: Any patch-domain error raised during application.
         """
         if not isinstance(target, self.__target_model__):
-            raise TypeError(
+            raise InvalidPatchTarget(
                 f"{self.__class__.__name__}.apply() expects a {self.__target_model__.__name__} instance, "
                 f"got {type(target).__name__}"
             )
         try:
             data = _validate_JSONValue(target.model_dump())
-        except Exception as e:
-            raise PatchValidationError(
+        except ValidationError as e:
+            raise InvalidPatchTarget(
                 f"Target model produced non-JSON data for patching: {e}"
             ) from e
         patched = _apply_ops(self.ops, data, inplace=True)
@@ -138,13 +138,13 @@ class _BasePatchBody(_RegistryBoundPatchRoot):
             The patched JSON document.
 
         Raises:
-            PatchValidationError: If `doc` is not valid JSON.
+            InvalidPatchTarget: If `doc` is not a valid JSON document.
             PatchError: Any patch-domain error raised during application.
         """
         try:
             _validate_JSONValue(doc)
-        except Exception as e:
-            raise PatchValidationError(f"Invalid JSON document: {e}") from e
+        except ValidationError as e:
+            raise InvalidPatchTarget(f"Invalid JSON document: {e}") from e
         return _apply_ops(self.ops, doc, inplace=inplace)
 
 
@@ -225,7 +225,7 @@ class JsonPatchFor(_RegistryBoundPatchRoot, Generic[TargetT, RegistryT]):
                 The patched JSON document.
 
             Raises:
-                PatchValidationError: If the input is not a valid `JSONValue`.
+                InvalidPatchTarget: If the input is not a valid `JSONValue`.
                 PatchError: Any patch-domain error raised by operations, including conflicts.
                     `PatchInternalError` is a `PatchError` raised for unexpected failures.
             """
@@ -239,8 +239,7 @@ class JsonPatchFor(_RegistryBoundPatchRoot, Generic[TargetT, RegistryT]):
                 The patched model or JSON document, depending on specialization.
 
             Raises:
-                TypeError: Model variant expects a Pydantic BaseModel instance.
-                PatchValidationError: If the input is not a valid `JSONValue`.
+                InvalidPatchTarget: If the target is not a valid instance or the input is not a valid `JSONValue`.
                 PatchValidationError: Patched data fails validation for the target model.
                 PatchError: Any patch-domain error raised by operations, including conflicts.
                     `PatchInternalError` is a `PatchError` raised for unexpected failures.

@@ -57,6 +57,12 @@ If your backend can satisfy that contract, JsonPatchX can use it.
 
 A good pointer backend should satisfy a few operational rules.
 
+**Do not raise `TypeError` for invalid pointer strings.** `TypeError` from a
+constructor is treated as a backend misconfiguration error, not as an invalid
+pointer string, so it propagates raw rather than being wrapped in
+`InvalidJSONPointer`. Any other exception is wrapped. In a FastAPI route, an
+unhandled `TypeError` maps to a 500 rather than a 422.
+
 Its string form should round-trip cleanly. Constructing a backend from a string,
 converting it back to a string, and constructing it again should produce an
 equivalent pointer.
@@ -108,6 +114,12 @@ class MySelectorBackend:
 ```
 
 ## Selector Rules That Matter In Practice
+
+**Do not raise `TypeError` for invalid selector strings.** The same rule applies
+as for pointer backends: `TypeError` from a constructor is treated as a backend
+misconfiguration error and propagates raw, while any other exception is wrapped
+in `InvalidJSONSelector` and surfaces as a Pydantic `ValidationError`. In a
+FastAPI route, an unhandled `TypeError` maps to a 500 rather than a 422.
 
 `pointers(doc)` should yield zero or more concrete pointer objects, not abstract
 query nodes or backend-specific match wrappers.

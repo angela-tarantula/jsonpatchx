@@ -6,7 +6,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from jsonpatchx import apply_patch
-from jsonpatchx.exceptions import PatchValidationError
+from jsonpatchx.exceptions import InvalidPatchTarget
 
 
 def test_apply_patch_is_thin_wrapper_over_jsonpatch_apply() -> None:
@@ -34,5 +34,5 @@ def test_apply_patch_is_thin_wrapper_over_jsonpatch_apply() -> None:
 
 
 def test_apply_patch_rejects_non_jsonvalue_doc() -> None:
-    with pytest.raises(PatchValidationError, match="Invalid JSON document"):
+    with pytest.raises(InvalidPatchTarget, match="Invalid JSON document"):
         apply_patch(object(), [])

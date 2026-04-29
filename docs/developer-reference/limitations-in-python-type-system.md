@@ -92,9 +92,14 @@ def apply(self, doc: JSONValue) -> JSONValue:
     return cast(JSONValue, result)
 ```
 
-This is safe: `validate_return=True` on `OperationSchema` validates every
-`apply` return value at runtime, so an invalid return raises an error even if
-you cast.
+The `cast` is safe: it tells the type checker the value is `JSONValue` without
+changing the runtime object. The patch engine validates the result of each
+`apply()` call against `JSONValue` automatically. If your op returns something
+that is not valid JSON (for example, a `datetime` or a plain Python object), a
+`PatchInternalError` is raised with the op index and payload as context, and the
+original `ValidationError` as `__cause__`. For `JsonPatchFor[Model]`, the
+patched document is additionally validated against the target model schema after
+all ops have run.
 
 ---
 

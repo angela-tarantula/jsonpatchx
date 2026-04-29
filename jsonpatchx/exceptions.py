@@ -6,6 +6,31 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from jsonpatchx.schema import OperationSchema
 
+# Exception hierarchy and HTTP error mapping:
+#
+# PatchError
+# ├── InvalidOperationDefinition     no HTTP — startup/config error
+# ├── InvalidOperationRegistry       no HTTP — startup/config error
+# ├── OperationNotRecognized         no HTTP — programmer error
+# ├── InvalidPatchTarget             500 — non-JSON doc passed to patch engine,
+# │                                        or wrong model instance
+# ├── InvalidJSONPointer(ValueError) 422 — bad pointer syntax; subclasses ValueError
+# │                                        so pydantic wraps it as ValidationError
+# │                                        automatically when used in field validators
+# ├── InvalidJSONSelector(ValueError) 422 — bad selector syntax (same note as above)
+# ├── PatchConflictError             409 — patch valid, document state rejects it
+# │   └── TestOpFailed               409 — RFC 6902 test op value mismatch
+# ├── PatchValidationError           409 — patch applied, result fails model schema
+# └── PatchInternalError             500 — unexpected exception during apply
+#
+# Non-PatchError exceptions that may surface:
+#   ValidationError (Pydantic)       422 — FastAPI's own handler catches this;
+#                                         InvalidJSONPointer/Selector are ValueError
+#                                         subclasses so pydantic wraps them natively
+#   TypeError                        500 — backend implementation bug (wrong type
+#                                         returned or incompatible backends mixed);
+#                                         _apply_ops wraps it as PatchInternalError
+
 
 class PatchError(Exception):
     """
@@ -13,20 +38,6 @@ class PatchError(Exception):
 
     This type is not raised directly; it anchors the error hierarchy for tooling
     and API error mapping.
-    """
-
-
-class PatchInputError(PatchError):
-    """
-    Patch input is invalid or fails validation.
-
-    Examples:
-        - Invalid JSON Pointer syntax in an incoming operation.
-        - Operation-specific validation failure (e.g., swap parent/child paths).
-        - Model revalidation fails after applying a patch.
-
-    Typical HTTP mapping:
-        422 Unprocessable Entity.
     """
 
 
@@ -40,9 +51,13 @@ class InvalidOperationDefinition(PatchError):
     """
 
 
-class InvalidJSONPointer(PatchInputError):
+class InvalidJSONPointer(PatchError, ValueError):
     """
     A JSON Pointer definition or instance is invalid.
+
+    Subclasses both `PatchError` and `ValueError` so that pydantic wraps it
+    as `ValidationError` automatically when raised inside a field validator,
+    giving callers structured 422 responses without a custom exception handler.
 
     Examples:
         - Pointer string is malformed or uses an incompatible backend.
@@ -53,9 +68,13 @@ class InvalidJSONPointer(PatchInputError):
     """
 
 
-class InvalidJSONSelector(PatchInputError):
+class InvalidJSONSelector(PatchError, ValueError):
     """
     A JSON selector definition or instance is invalid.
+
+    Subclasses both `PatchError` and `ValueError` so that pydantic wraps it
+    as `ValidationError` automatically when raised inside a field validator,
+    giving callers structured 422 responses without a custom exception handler.
 
     Examples:
         - Selector string is malformed or uses an incompatible backend.
@@ -98,15 +117,27 @@ class PatchConflictError(PatchError):
     """
 
 
-class PatchValidationError(PatchInputError):
+class PatchValidationError(PatchError):
     """
-    Patched data failed validation against a target schema.
+    Patched data failed validation against the target model schema.
 
     Examples:
         - Model-aware patching produces a document that violates the target model.
 
     Typical HTTP mapping:
-        422 Unprocessable Entity.
+        409 Conflict.
+    """
+
+
+class InvalidPatchTarget(PatchError):
+    """
+    The document passed to the patch engine is not a valid JSON value (server error).
+
+    This is a programmer or configuration error: the caller supplied a value that
+    cannot be a JSON document (for example, a `datetime` or a custom object).
+
+    Typical HTTP mapping:
+        500 Internal Server Error.
     """
 
 

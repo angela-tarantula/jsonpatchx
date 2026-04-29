@@ -29,7 +29,7 @@ with atheris.instrument_imports():
     )
     from jsonpatchx.exceptions import (
         PatchConflictError,
-        PatchInputError,
+        PatchError,
         PatchInternalError,
     )
     from jsonpatchx.schema import OperationSchema
@@ -122,8 +122,7 @@ _UNKNOWN_OPS: tuple[str, ...] = ("", "noop", "dot-noop")
 _ALL_OPS = _KNOWN_OPS + _UNKNOWN_OPS
 
 _EXPECTED_PATCH_EXCEPTIONS = (
-    PatchInputError,
-    PatchConflictError,
+    PatchError,
     ValidationError,
     json.JSONDecodeError,
     UnicodeError,
@@ -143,7 +142,7 @@ class _Outcome:
 def _error_bucket(error_type: type[BaseException]) -> str:
     if issubclass(error_type, PatchConflictError):
         return "conflict"
-    if issubclass(error_type, (PatchInputError, ValidationError)):
+    if issubclass(error_type, (PatchError, ValidationError)):
         return "input"
     if issubclass(error_type, (json.JSONDecodeError, UnicodeError)):
         return "decode"
@@ -253,7 +252,7 @@ def _exercise_dot_pointer(path: str, *, source: bytes) -> None:
         ptr: JSONPointer[JSONValue, DotPointer] = JSONPointer.parse(
             path, backend=DotPointer
         )
-    except (PatchInputError, PatchConflictError, ValidationError):
+    except PatchError:
         return
 
     round_trip: JSONPointer[JSONValue, DotPointer] = JSONPointer.parse(
@@ -272,7 +271,7 @@ def _exercise_dot_pointer(path: str, *, source: bytes) -> None:
     try:
         ptr.get(copy.deepcopy(doc))
         get_ok = True
-    except (PatchInputError, PatchConflictError, ValidationError):
+    except PatchError:
         get_ok = False
     if gettable != get_ok:
         raise AssertionError("Dot pointer is_gettable disagrees with get")
@@ -281,7 +280,7 @@ def _exercise_dot_pointer(path: str, *, source: bytes) -> None:
     try:
         ptr.add(copy.deepcopy(doc), value)
         add_ok = True
-    except (PatchInputError, PatchConflictError, ValidationError):
+    except PatchError:
         add_ok = False
     if addable != add_ok:
         raise AssertionError("Dot pointer is_addable disagrees with add")
