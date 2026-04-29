@@ -132,7 +132,9 @@ class _BasePatchBody(_RegistryBoundPatchRoot):
 
         Arguments:
             doc: Target JSON document.
-            inplace: Copy policy passed through to the patch engine.
+            inplace: If `False` (default), `doc` is deep-copied first; the original is not
+                modified. If `True`, operations are applied to `doc` directly; root-targeting
+                operations may return a new object rather than `doc`.
 
         Returns:
             The patched JSON document.
@@ -179,6 +181,42 @@ class JsonPatchFor(_RegistryBoundPatchRoot, Generic[TargetT, RegistryT]):
     registry. `Target` is either a Pydantic model or `Literal["SchemaName"]`
     for JSON documents. `Registry` is a union of concrete OperationSchemas
     (`OpA | OpB | ...`).
+
+    Example:
+        Use as a FastAPI route body type for a Pydantic model target. FastAPI
+        parses and validates the request body against the generated schema, and
+        `apply` re-validates the patched result against the model:
+
+        ```python
+        class User(BaseModel):
+            name: str
+            age: int
+
+        UserPatch = JsonPatchFor[User]
+
+        @app.patch("/users/{user_id}", response_model=User)
+        async def patch_user(user_id: int, patch: UserPatch) -> User:
+            user = db.get_user(user_id)
+            updated = patch.apply(user)
+            db.save_user(user_id, updated)
+            return updated
+        ```
+
+    Example:
+        Restrict the allowed operations with a custom registry:
+
+        ```python
+        type UserEditRegistry = ReplaceOp | TestOp
+
+        UserPatch = JsonPatchFor[User, UserEditRegistry]
+
+        @app.patch("/users/{user_id}", response_model=User)
+        async def patch_user(user_id: int, patch: UserPatch) -> User:
+            user = db.get_user(user_id)
+            updated = patch.apply(user)
+            db.save_user(user_id, updated)
+            return updated
+        ```
     """
 
     if TYPE_CHECKING:

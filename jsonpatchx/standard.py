@@ -20,13 +20,6 @@ class JsonPatch(Sequence[OperationSchema]):
     - parses and validates an input patch document using a registry of `OperationSchema` models,
     - stores the resulting typed `OperationSchema` instances,
     - applies them to JSON documents via the shared patch engine.
-
-    Notes:
-        - `inplace=False` (default): deep-copies `doc` first; the original is not modified.
-        - `inplace=True`: applies operations to `doc` directly; faster, but not transactional
-          (no rollback on partial failure), and root-targeting operations may return a new
-          object rather than `doc`.
-        - `JsonPatch` is immutable with respect to its operation list after construction.
     """
 
     __slots__ = ("_ops", "_registry")
@@ -147,12 +140,13 @@ class JsonPatch(Sequence[OperationSchema]):
 
     @override
     def __hash__(self) -> int:
+        # Not formally documented in the developer API.
         # Hashing is best-effort, user-defined ops may be unhashable.
         return hash((self.__class__, self._registry, tuple(self)))
 
     @override
     def __eq__(self, other: object) -> bool:
-        """Return `True` if both patches have the same operations and registry, `False` otherwise."""
+        """Return `True` if `other` is a `JsonPatch` with the same sequence of operations. `False` otherwise."""
         if not isinstance(other, self.__class__):
             return NotImplemented
         return tuple(self) == tuple(other) and self._registry == other._registry
