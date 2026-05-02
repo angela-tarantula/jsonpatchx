@@ -21,7 +21,7 @@ repos:
         files: ^\.github/(workflows|actions)/.*\.ya?ml$
 
   - repo: https://github.com/zizmorcore/zizmor-pre-commit
-    rev: v1.23.1
+    rev: v1.24.1
     hooks:
       - id: zizmor
         files: ^\.github/(workflows|actions)/.*\.ya?ml$
