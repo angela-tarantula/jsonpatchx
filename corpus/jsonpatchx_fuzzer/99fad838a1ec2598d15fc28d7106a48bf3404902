@@ -1,0 +1,6 @@
+{
+  "doc": { "led": true },
+  "patch": [
+    { "op": "replace", "path": "/rom-", "value": 6 }
+  ]
+}
