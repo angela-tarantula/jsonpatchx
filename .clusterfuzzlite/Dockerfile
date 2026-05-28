@@ -1,4 +1,4 @@
-FROM gcr.io/oss-fuzz-base/base-builder-python@sha256:c5fd81433b8ceec0335387187152e856e401fa09e859ba778008e63be14d0701
+FROM gcr.io/oss-fuzz-base/base-builder-python@sha256:83f71ce9be06c344b56676e092c2447404fdad18a1453d18be28ce93ba3ef018
 
 # Pin dependencies
 COPY .clusterfuzzlite/requirements-bootstrap.txt /tmp/requirements-bootstrap.txt
