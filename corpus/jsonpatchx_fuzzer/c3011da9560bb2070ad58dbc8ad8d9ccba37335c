@@ -1,0 +1,5 @@
+{
+  "do": { "a": ["x", "y"] },
+  "patch": [
+    { "op": "copy", "from": "/ma~bis/+" }]
+}
