@@ -115,7 +115,12 @@ repos:
         priority: 0
 
       - id: checkov
-        # no way to respect gitignore
+        # No way to respect gitignore.
+        # Intentionally kept out of pyproject.toml's dependency groups: checkov's
+        # transitive deps (orjson) have no free-threaded (cp314t) wheels yet, so
+        # resolving it against this project's default .python-version would force
+        # a source build requiring a newer rustc than most machines have. Its own
+        # isolated environment here avoids that entirely.
         name: checkov
         entry: checkov --config-file .github/linters/.checkov.yaml
         language: python

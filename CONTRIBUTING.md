@@ -73,11 +73,10 @@ For local FastAPI extra work:
 pip install -e .[fastapi]
 ```
 
-Install [prek](https://github.com/j178/prek):
+Install the Git hook for [prek](https://github.com/j178/prek):
 
 ```sh
-uv tool install prek
-prek install
+uv run prek install
 ```
 
 > See the [Prek quick reference](#prek-quick-reference) below for common local
@@ -122,7 +121,7 @@ uv run ruff format
 To run the full local hook set, use:
 
 ```sh
-prek run --all-files
+uv run prek run --all-files
 ```
 
 ## Documenting
@@ -156,19 +155,19 @@ the same PR.
 - Run all configured hooks manually:
 
   ```sh
-  prek run --all-files
+  uv run prek run --all-files
   ```
 
 - List available hook IDs:
 
   ```sh
-  prek list
+  uv run prek list
   ```
 
 - Run one specific hook:
 
   ```sh
-  prek run checkov --all-files
+  uv run prek run checkov --all-files
   ```
 
 - Skip one hook for one commit:

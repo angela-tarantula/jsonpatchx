@@ -75,17 +75,22 @@ dev = [
     { include-group = "tests" },
     { include-group = "lint" },
     { include-group = "typing" },
+    { include-group = "hooks" },
 ]
 ci = [
   { include-group = "tests" },
   { include-group = "lint" },
   { include-group = "typing" },
+  { include-group = "hooks" },
 ]
 snapshots = [
   { include-group = "tests" },
 ]
 lint = [
     "ruff>=0.15.7",
+]
+hooks = [
+    "prek==0.4.8",
 ]
 tests = [
     "fastapi>=0.135.1",

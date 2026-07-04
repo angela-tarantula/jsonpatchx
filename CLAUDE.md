@@ -27,8 +27,8 @@ uv run pytest tests/unit/standard/test_apply.py::test_name   # one test
 uv run pytest -m integration                     # marker: integration | contract
 uv run mypy . --no-incremental  # strict type-check (config in pyproject.toml)
 uv run ruff format              # format
-prek run --all-files            # full local hook set (lint, markdown, yaml, codespell, ...)
-prek run <hook-id> --all-files
+uv run prek run --all-files      # full local hook set (lint, markdown, yaml, codespell, ...)
+uv run prek run <hook-id> --all-files
 uv run zensical serve           # docs preview
 uv run zensical build --clean   # build docs
 uv run python scripts/update_openapi_snapshots.py   # regenerate OpenAPI contract snapshots
