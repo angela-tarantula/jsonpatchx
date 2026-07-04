@@ -306,7 +306,9 @@ def _patch_error_response_map(exc: PatchError) -> JSONResponse:
           outside validation (e.g. a custom op's apply() calling
           JSONPointer.parse() on user-supplied data), where 422 is still
           correct since bad pointer syntax is always a caller error.
-        - PatchConflictError, TestOpFailed, PatchValidationError -> 409
+        - PatchValidationError -> 422 (patched result fails the target model
+          schema; a content/schema problem, not a resource-state conflict)
+        - PatchConflictError, TestOpFailed -> 409
         - InvalidPatchTarget, PatchInternalError, unrecognized PatchError -> 500
 
     TODO: Integration tests in tests/integration/fastapi/runtime/ should cover
@@ -327,12 +329,12 @@ def _patch_error_response_map(exc: PatchError) -> JSONResponse:
             status_code=500, content=PatchErrorResponse(detail=payload).model_dump()
         )
 
-    if isinstance(exc, (InvalidJSONPointer, InvalidJSONSelector)):
+    if isinstance(exc, (InvalidJSONPointer, InvalidJSONSelector, PatchValidationError)):
         return JSONResponse(
             status_code=422, content=PatchErrorResponse(detail=str(exc)).model_dump()
         )
 
-    if isinstance(exc, (PatchConflictError, PatchValidationError)):
+    if isinstance(exc, PatchConflictError):
         return JSONResponse(
             status_code=409, content=PatchErrorResponse(detail=str(exc)).model_dump()
         )

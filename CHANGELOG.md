@@ -33,10 +33,9 @@ and this project adheres to
   individual op classes (`AddOp`, `RemoveOp`, etc.) and `StandardRegistry`
   remain fully supported.
 - `PatchInputError` has been removed from the public API. Its subclasses
-  (`InvalidJSONPointer`, `InvalidJSONSelector`) are now direct `PatchError`
-  subclasses and remain available. `PatchValidationError` is also now a direct
-  `PatchError` subclass with a corrected HTTP mapping (409 Conflict, not 422).
-  Replace any `except PatchInputError` with the specific types you need.
+  (`InvalidJSONPointer`, `InvalidJSONSelector`, `PatchValidationError`) are now
+  direct `PatchError` subclasses with unchanged HTTP mappings (422). Replace any
+  `except PatchInputError` with the specific types you need.
 - `OperationNotRecognized` has been removed. Passing an op instance that is not
   registered now raises `ValidationError` from Pydantic, consistent with all
   other invalid inputs to the parse methods.

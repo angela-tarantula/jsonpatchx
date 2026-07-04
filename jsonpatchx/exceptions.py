@@ -19,7 +19,7 @@ if TYPE_CHECKING:
 # ├── InvalidJSONSelector(ValueError) 422 — bad selector syntax (same note as above)
 # ├── PatchConflictError             409 — patch valid, document state rejects it
 # │   └── TestOpFailed               409 — RFC 6902 test op value mismatch
-# ├── PatchValidationError           409 — patch applied, result fails model schema
+# ├── PatchValidationError           422 — patch applied, result fails model schema
 # └── PatchInternalError             500 — unexpected exception during apply
 #
 # Non-PatchError exceptions that may surface:
@@ -115,7 +115,7 @@ class PatchValidationError(PatchError):
         - Model-aware patching produces a document that violates the target model.
 
     Typical HTTP mapping:
-        409 Conflict.
+        422 Unprocessable Entity.
     """
 
 

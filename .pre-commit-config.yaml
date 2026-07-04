@@ -6,54 +6,35 @@ repos:
     rev: v6.0.0
     hooks:
       - id: end-of-file-fixer
-        priority: 10
       - id: trailing-whitespace
-        priority: 20
       - id: check-merge-conflict
-        priority: 0
       - id: check-json
         # This fixture intentionally includes non-standard JSON numeric literals (NaN/Infinity).
         # In super-linter, this is FILTER_REGEX_EXCLUDE.
         exclude: &json_nonfinite_exclude ^tests/compliance/rfc6902/jsonpatchx_nonfinite_tests\.json$
-        priority: 0
       - id: check-yaml
-        priority: 0
 
   - repo: https://github.com/rhysd/actionlint
     rev: v1.7.12
     hooks:
       - id: actionlint
         files: ^\.github/(workflows|actions)/.*\.ya?ml$
-        priority: 0
 
   - repo: https://github.com/zizmorcore/zizmor-pre-commit
     rev: v1.23.1
     hooks:
       - id: zizmor
         files: ^\.github/(workflows|actions)/.*\.ya?ml$
-        priority: 0
 
   - repo: https://github.com/gitleaks/gitleaks
     rev: v8.30.1
     hooks:
       - id: gitleaks
-        priority: 0
 
   - repo: https://github.com/igorshubovych/markdownlint-cli
     rev: v0.48.0
     hooks:
       - id: markdownlint
-        name: markdownlint
-        args:
-          [
-            --config,
-            .github/linters/.markdownlint.yml,
-            --ignore-path,
-            .gitignore,
-          ]
-        priority: 0
-      - id: markdownlint
-        name: markdownlint --fix
         args:
           [
             --config,
@@ -62,7 +43,6 @@ repos:
             .gitignore,
             --fix,
           ]
-        priority: 30
 
   - repo: https://github.com/adrienverge/yamllint.git
     rev: v1.38.0
@@ -70,13 +50,11 @@ repos:
       # no way to respect gitignore
       - id: yamllint
         args: [-c, .github/linters/.yamllint.yml]
-        priority: 0
 
   - repo: https://github.com/codespell-project/codespell
     rev: v2.4.2
     hooks:
       - id: codespell
-        priority: 0
 
   - repo: local
     hooks:
@@ -85,21 +63,18 @@ repos:
         entry: uv run ruff check
         language: system
         types: [python]
-        priority: 0
 
       - id: ruff-format
         name: ruff format
         entry: uv run ruff format --exit-non-zero-on-format
         language: system
         types: [python]
-        priority: 50
 
       - id: mypy
         name: mypy
         entry: uv run mypy --no-incremental .
         language: system
         pass_filenames: false
-        priority: 0
 
       - id: update-openapi-snapshots
         name: update openapi snapshots
@@ -111,7 +86,6 @@ repos:
         language: system
         files: (^.*\.py$|^.*\.json$|^pyproject\.toml$|^uv\.lock$)
         pass_filenames: false
-        priority: 60
 
       - id: checkov
         name:
@@ -122,43 +96,13 @@ repos:
           .github/linters/.checkov.yaml --directory .
         language: system
         pass_filenames: false
-        priority: 0
 
       - id: jscpd
         name: jscpd
-        entry: npx --yes jscpd --gitignore --config .github/linters/.jscpd.json
+        entry: npx --yes jscpd --config .github/linters/.jscpd.json
         language: system
         types: [python]
         pass_filenames: false
-        priority: 0
-
-      - id: json-prettier
-        name: json prettier --check
-        entry:
-          npx --yes prettier --check --ignore-path .gitignore --config
-          .github/linters/.prettierrc.json
-        language: system
-        files: \.json$
-        exclude: *json_nonfinite_exclude
-        priority: 0
-
-      - id: markdown-prettier
-        name: markdown prettier --check
-        entry:
-          npx --yes prettier --check --ignore-path .gitignore --config
-          .github/linters/.prettierrc.json
-        language: system
-        files: \.(md|markdown)$
-        priority: 0
-
-      - id: yaml-prettier
-        name: yaml prettier --check
-        entry:
-          npx --yes prettier --check --ignore-path .gitignore --config
-          .github/linters/.prettierrc.json
-        language: system
-        files: \.ya?ml$
-        priority: 0
 
       - id: json-prettier
         name: json prettier
@@ -168,7 +112,6 @@ repos:
         language: system
         files: \.json$
         exclude: *json_nonfinite_exclude
-        priority: 70
 
       - id: markdown-prettier
         name: markdown prettier
@@ -177,7 +120,6 @@ repos:
           .github/linters/.prettierrc.json
         language: system
         files: \.(md|markdown)$
-        priority: 80
 
       - id: yaml-prettier
         name: yaml prettier
@@ -186,25 +128,14 @@ repos:
           .github/linters/.prettierrc.json
         language: system
         files: \.ya?ml$
-        priority: 90
 
       - id: natural-language
         name: natural language (textlint terminology)
         entry:
           npx --yes --package textlint --package textlint-rule-terminology
-          textlint --rule terminology
-        language: system
-        files: \.(md|markdown)$
-        priority: 0
-
-      - id: natural-language
-        name: natural language (textlint terminology) --fix
-        entry:
-          npx --yes --package textlint --package textlint-rule-terminology
           textlint --rule terminology --fix
         language: system
         files: \.(md|markdown)$
-        priority: 40
 
       - id: openapi
         name: openapi (spectral)
@@ -214,12 +145,10 @@ repos:
         language: system
         files: \.json$
         exclude: *json_nonfinite_exclude
-        priority: 0
   - repo: https://github.com/jumanjihouse/pre-commit-hooks
     rev: 3.0.0
     hooks:
       - id: shellcheck
-        priority: 0
   # - repo: https://github.com/pylint-dev/pylint
   #   rev: v4.0.5
   #   hooks:
