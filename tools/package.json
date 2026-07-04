@@ -1,0 +1,11 @@
+{
+  "name": "jsonpatchx-lint-tools",
+  "private": true,
+  "devDependencies": {
+    "@stoplight/spectral-cli": "6.16.1",
+    "jscpd": "5.0.11",
+    "prettier": "3.9.4",
+    "textlint": "15.7.1",
+    "textlint-rule-terminology": "5.2.16"
+  }
+}

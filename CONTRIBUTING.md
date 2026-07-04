@@ -60,17 +60,10 @@ git submodule update --init
 uv sync
 ```
 
-If you want the package import to resolve from your checkout instead of the
-managed environment, install it in editable mode:
+Install the Node-based lint tools:
 
 ```sh
-pip install -e .
-```
-
-For local FastAPI extra work:
-
-```sh
-pip install -e .[fastapi]
+npm --prefix tools ci
 ```
 
 Install the Git hook for [prek](https://github.com/j178/prek):

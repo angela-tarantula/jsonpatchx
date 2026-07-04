@@ -41,6 +41,18 @@ updates:
     schedule:
       interval: "monthly"
 
+  # Node-based lint tools (jscpd, prettier, spectral, textlint) used by prek hooks.
+  - package-ecosystem: "npm"
+    directory: "/tools"
+    cooldown:
+      default-days: 7
+    groups:
+      lint-tools:
+        patterns:
+          - "*"
+    schedule:
+      interval: "monthly"
+
   # .clusterfuzzlite/requirements-bootstrap.txt.
   - package-ecosystem: "pip"
     directory: "/.clusterfuzzlite"
