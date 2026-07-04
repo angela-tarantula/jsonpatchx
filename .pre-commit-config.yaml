@@ -117,7 +117,8 @@ repos:
         name: checkov
         entry:
           checkov --config-file .github/linters/.checkov.yaml --framework
-          github_actions,openapi --directory .
+          github_actions,openapi --directory .github --directory
+          examples/openapi
         language: python
         additional_dependencies:
           - checkov==3.3.6
