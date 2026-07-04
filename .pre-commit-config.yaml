@@ -4,6 +4,8 @@ minimum_prek_version: "0.4.8"
 default_env:
   UV_PYTHON: ""
   VIRTUAL_ENV: ""
+default_language_version:
+  node: lts
 repos:
   - repo: builtin
     hooks:
@@ -85,33 +87,35 @@ repos:
         priority: 0
 
       - id: checkov
-        name:
-          checkov
-          # no way to respect gitignore
+        # no way to respect gitignore
+        name: checkov
         entry:
-          uv tool run --python 3.13 checkov --config-file
-          .github/linters/.checkov.yaml --framework github_actions,openapi
-          --directory .
-        language: system
+          checkov --config-file .github/linters/.checkov.yaml --framework
+          github_actions,openapi --directory .
+        language: python
+        additional_dependencies:
+          - checkov==3.3.6
         pass_filenames: false
         groups: [readonly]
         priority: 0
 
       - id: jscpd
         name: jscpd
-        entry: npx --yes jscpd --config .github/linters/.jscpd.json
-        language: system
+        entry: jscpd --config .github/linters/.jscpd.json
+        language: node
+        additional_dependencies:
+          - jscpd@5.0.11
         types: [python]
         pass_filenames: false
         groups: [readonly]
         priority: 0
 
       - id: openapi
-        name: openapi (spectral)
-        entry:
-          npx --yes @stoplight/spectral-cli lint --ruleset
-          .github/linters/.openapirc.yml
-        language: system
+        name: OpenAPI (spectral)
+        entry: spectral lint --ruleset .github/linters/.openapirc.yml
+        language: node
+        additional_dependencies:
+          - "@stoplight/spectral-cli@6.16.1"
         files: \.json$
         exclude: *json_nonfinite_exclude
         groups: [readonly]
@@ -162,9 +166,11 @@ repos:
       - id: json-prettier
         name: json prettier
         entry:
-          npx --yes prettier --write --ignore-path .gitignore --config
+          prettier --write --ignore-path .gitignore --config
           .github/linters/.prettierrc.json
-        language: system
+        language: node
+        additional_dependencies:
+          - prettier@3.9.4
         files: \.json$
         exclude: *json_nonfinite_exclude
         groups: [readwrite]
@@ -172,27 +178,32 @@ repos:
       - id: markdown-prettier
         name: markdown prettier
         entry:
-          npx --yes prettier --write --ignore-path .gitignore --config
+          prettier --write --ignore-path .gitignore --config
           .github/linters/.prettierrc.json
-        language: system
+        language: node
+        additional_dependencies:
+          - prettier@3.9.4
         files: \.(md|markdown)$
         groups: [readwrite]
 
       - id: yaml-prettier
         name: yaml prettier
         entry:
-          npx --yes prettier --write --ignore-path .gitignore --config
+          prettier --write --ignore-path .gitignore --config
           .github/linters/.prettierrc.json
-        language: system
+        language: node
+        additional_dependencies:
+          - prettier@3.9.4
         files: \.ya?ml$
         groups: [readwrite]
 
       - id: natural-language
         name: natural language (textlint terminology)
-        entry:
-          npx --yes --package textlint --package textlint-rule-terminology
-          textlint --rule terminology --fix
-        language: system
+        entry: textlint --rule terminology --fix
+        language: node
+        additional_dependencies:
+          - textlint@15.7.1
+          - textlint-rule-terminology@5.2.16
         files: \.(md|markdown)$
         groups: [readwrite]
   # - repo: https://github.com/pylint-dev/pylint
