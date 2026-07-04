@@ -1,3 +1,5 @@
+#checkov:skip=CKV_DOCKER_2: OSS-Fuzz build image; one-shot `compile` step, not a long-running service
+#checkov:skip=CKV_DOCKER_3: matches upstream oss-fuzz-base/base-builder, which also runs as root for `compile`
 FROM gcr.io/oss-fuzz-base/base-builder-python@sha256:c5fd81433b8ceec0335387187152e856e401fa09e859ba778008e63be14d0701
 
 # Pin dependencies

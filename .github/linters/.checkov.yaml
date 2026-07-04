@@ -1,4 +1,12 @@
 ---
+directory:
+  - .github
+  - examples/openapi
+  - .clusterfuzzlite
+framework:
+  - github_actions
+  - openapi
+  - dockerfile
 skip-check:
   # Demo and snapshot OpenAPI specs intentionally omit global auth requirements.
   - CKV_OPENAPI_4

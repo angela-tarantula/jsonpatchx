@@ -85,6 +85,7 @@ repos:
         language: system
         env:
           UV_PROJECT_ENVIRONMENT: .venv-py312
+        files: (\.py$|^pyproject\.toml$|^uv\.lock$)
         pass_filenames: false
         groups: [readonly]
         priority: 0
@@ -96,6 +97,7 @@ repos:
         language: system
         env:
           UV_PROJECT_ENVIRONMENT: .venv-py313
+        files: (\.py$|^pyproject\.toml$|^uv\.lock$)
         pass_filenames: false
         groups: [readonly]
         priority: 0
@@ -107,6 +109,7 @@ repos:
         language: system
         env:
           UV_PROJECT_ENVIRONMENT: .venv-py314
+        files: (\.py$|^pyproject\.toml$|^uv\.lock$)
         pass_filenames: false
         groups: [readonly]
         priority: 0
@@ -114,13 +117,11 @@ repos:
       - id: checkov
         # no way to respect gitignore
         name: checkov
-        entry:
-          checkov --config-file .github/linters/.checkov.yaml --framework
-          github_actions,openapi --directory .github --directory
-          examples/openapi
+        entry: checkov --config-file .github/linters/.checkov.yaml
         language: python
         additional_dependencies:
           - checkov==3.3.6
+        files: ^(\.github/|examples/openapi/|\.clusterfuzzlite/)
         pass_filenames: false
         groups: [readonly]
         priority: 0
@@ -142,8 +143,7 @@ repos:
         language: node
         additional_dependencies:
           - "@stoplight/spectral-cli@6.16.1"
-        files: \.json$
-        exclude: *json_nonfinite_exclude
+        files: ^examples/openapi/.*\.json$
         groups: [readonly]
         priority: 0
 
