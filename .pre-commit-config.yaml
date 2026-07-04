@@ -4,6 +4,7 @@ minimum_prek_version: "0.4.8"
 default_env:
   UV_PYTHON: ""
   VIRTUAL_ENV: ""
+  UV_PROJECT_ENVIRONMENT: ""
 default_language_version:
   node: lts
 repos:
@@ -78,10 +79,35 @@ repos:
         groups: [readonly]
         priority: 0
 
-      - id: mypy
-        name: mypy
-        entry: uv run mypy --no-incremental .
+      - id: mypy-py312
+        name: mypy (Py3.12)
+        entry:
+          uv run --python 3.12 mypy --no-incremental --python-version 3.12 .
         language: system
+        env:
+          UV_PROJECT_ENVIRONMENT: .venv-py312
+        pass_filenames: false
+        groups: [readonly]
+        priority: 0
+
+      - id: mypy-py313
+        name: mypy (Py3.13)
+        entry:
+          uv run --python 3.13 mypy --no-incremental --python-version 3.13 .
+        language: system
+        env:
+          UV_PROJECT_ENVIRONMENT: .venv-py313
+        pass_filenames: false
+        groups: [readonly]
+        priority: 0
+
+      - id: mypy-py314
+        name: mypy (Py3.14)
+        entry:
+          uv run --python 3.14 mypy --no-incremental --python-version 3.14 .
+        language: system
+        env:
+          UV_PROJECT_ENVIRONMENT: .venv-py314
         pass_filenames: false
         groups: [readonly]
         priority: 0

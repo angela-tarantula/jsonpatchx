@@ -21,6 +21,7 @@ fuzzers/corpus/**/[0-9a-f][0-9a-f][0-9a-f][0-9a-f]*
 
 # Virtual environments
 .venv
+.venv-py*
 
 # draft files
 *temp_*
