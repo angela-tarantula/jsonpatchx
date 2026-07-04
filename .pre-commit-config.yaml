@@ -1,35 +1,128 @@
 ---
 # Runs CI locally to save time on failures
-minimum_pre_commit_version: "3.7.0"
+minimum_prek_version: "0.4.8"
+default_env:
+  UV_PYTHON: ""
+  VIRTUAL_ENV: ""
 repos:
-  - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v6.0.0
+  - repo: builtin
     hooks:
-      - id: end-of-file-fixer
-      - id: trailing-whitespace
       - id: check-merge-conflict
+        groups: [readonly]
+        priority: 0
       - id: check-json
         # This fixture intentionally includes non-standard JSON numeric literals (NaN/Infinity).
         # In super-linter, this is FILTER_REGEX_EXCLUDE.
         exclude: &json_nonfinite_exclude ^tests/compliance/rfc6902/jsonpatchx_nonfinite_tests\.json$
+        groups: [readonly]
+        priority: 0
       - id: check-yaml
+        groups: [readonly]
+        priority: 0
 
   - repo: https://github.com/rhysd/actionlint
     rev: v1.7.12
     hooks:
       - id: actionlint
         files: ^\.github/(workflows|actions)/.*\.ya?ml$
+        groups: [readonly]
+        priority: 0
 
   - repo: https://github.com/zizmorcore/zizmor-pre-commit
     rev: v1.23.1
     hooks:
       - id: zizmor
         files: ^\.github/(workflows|actions)/.*\.ya?ml$
+        groups: [readonly]
+        priority: 0
 
   - repo: https://github.com/gitleaks/gitleaks
     rev: v8.30.1
     hooks:
       - id: gitleaks
+        groups: [readonly]
+        priority: 0
+
+  - repo: https://github.com/adrienverge/yamllint.git
+    rev: v1.38.0
+    hooks:
+      # no way to respect gitignore
+      - id: yamllint
+        args: [-c, .github/linters/.yamllint.yml]
+        groups: [readonly]
+        priority: 0
+
+  - repo: https://github.com/codespell-project/codespell
+    rev: v2.4.2
+    hooks:
+      - id: codespell
+        groups: [readonly]
+        priority: 0
+
+  - repo: https://github.com/jumanjihouse/pre-commit-hooks
+    rev: 3.0.0
+    hooks:
+      - id: shellcheck
+        groups: [readonly]
+        priority: 0
+
+  - repo: local
+    hooks:
+      - id: ruff
+        name: ruff
+        entry: uv run ruff check
+        language: system
+        types: [python]
+        groups: [readonly]
+        priority: 0
+
+      - id: mypy
+        name: mypy
+        entry: uv run mypy --no-incremental .
+        language: system
+        pass_filenames: false
+        groups: [readonly]
+        priority: 0
+
+      - id: checkov
+        name:
+          checkov
+          # no way to respect gitignore
+        entry:
+          uv tool run --python 3.13 checkov --config-file
+          .github/linters/.checkov.yaml --framework github_actions,openapi
+          --directory .
+        language: system
+        pass_filenames: false
+        groups: [readonly]
+        priority: 0
+
+      - id: jscpd
+        name: jscpd
+        entry: npx --yes jscpd --config .github/linters/.jscpd.json
+        language: system
+        types: [python]
+        pass_filenames: false
+        groups: [readonly]
+        priority: 0
+
+      - id: openapi
+        name: openapi (spectral)
+        entry:
+          npx --yes @stoplight/spectral-cli lint --ruleset
+          .github/linters/.openapirc.yml
+        language: system
+        files: \.json$
+        exclude: *json_nonfinite_exclude
+        groups: [readonly]
+        priority: 0
+
+  - repo: builtin
+    hooks:
+      - id: end-of-file-fixer
+        groups: [readwrite]
+      - id: trailing-whitespace
+        groups: [readwrite]
 
   - repo: https://github.com/igorshubovych/markdownlint-cli
     rev: v0.48.0
@@ -43,38 +136,16 @@ repos:
             .gitignore,
             --fix,
           ]
-
-  - repo: https://github.com/adrienverge/yamllint.git
-    rev: v1.38.0
-    hooks:
-      # no way to respect gitignore
-      - id: yamllint
-        args: [-c, .github/linters/.yamllint.yml]
-
-  - repo: https://github.com/codespell-project/codespell
-    rev: v2.4.2
-    hooks:
-      - id: codespell
+        groups: [readwrite]
 
   - repo: local
     hooks:
-      - id: ruff
-        name: ruff
-        entry: uv run ruff check
-        language: system
-        types: [python]
-
       - id: ruff-format
         name: ruff format
         entry: uv run ruff format --exit-non-zero-on-format
         language: system
         types: [python]
-
-      - id: mypy
-        name: mypy
-        entry: uv run mypy --no-incremental .
-        language: system
-        pass_filenames: false
+        groups: [readwrite]
 
       - id: update-openapi-snapshots
         name: update openapi snapshots
@@ -86,23 +157,7 @@ repos:
         language: system
         files: (^.*\.py$|^.*\.json$|^pyproject\.toml$|^uv\.lock$)
         pass_filenames: false
-
-      - id: checkov
-        name:
-          checkov
-          # no way to respect gitignore
-        entry:
-          uv tool run --python 3.13 checkov --config-file
-          .github/linters/.checkov.yaml --directory .
-        language: system
-        pass_filenames: false
-
-      - id: jscpd
-        name: jscpd
-        entry: npx --yes jscpd --config .github/linters/.jscpd.json
-        language: system
-        types: [python]
-        pass_filenames: false
+        groups: [readwrite]
 
       - id: json-prettier
         name: json prettier
@@ -112,6 +167,7 @@ repos:
         language: system
         files: \.json$
         exclude: *json_nonfinite_exclude
+        groups: [readwrite]
 
       - id: markdown-prettier
         name: markdown prettier
@@ -120,6 +176,7 @@ repos:
           .github/linters/.prettierrc.json
         language: system
         files: \.(md|markdown)$
+        groups: [readwrite]
 
       - id: yaml-prettier
         name: yaml prettier
@@ -128,6 +185,7 @@ repos:
           .github/linters/.prettierrc.json
         language: system
         files: \.ya?ml$
+        groups: [readwrite]
 
       - id: natural-language
         name: natural language (textlint terminology)
@@ -136,19 +194,7 @@ repos:
           textlint --rule terminology --fix
         language: system
         files: \.(md|markdown)$
-
-      - id: openapi
-        name: openapi (spectral)
-        entry:
-          npx --yes @stoplight/spectral-cli lint --ruleset
-          .github/linters/.openapirc.yml
-        language: system
-        files: \.json$
-        exclude: *json_nonfinite_exclude
-  - repo: https://github.com/jumanjihouse/pre-commit-hooks
-    rev: 3.0.0
-    hooks:
-      - id: shellcheck
+        groups: [readwrite]
   # - repo: https://github.com/pylint-dev/pylint
   #   rev: v4.0.5
   #   hooks:
