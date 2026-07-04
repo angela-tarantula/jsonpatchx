@@ -41,7 +41,7 @@ updates:
     schedule:
       interval: "monthly"
 
-  # Node-based lint tools (jscpd, prettier, spectral, textlint) used by prek hooks.
+  # Node-based lint tools
   - package-ecosystem: "npm"
     directory: "/tools"
     cooldown:

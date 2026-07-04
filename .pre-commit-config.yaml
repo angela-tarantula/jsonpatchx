@@ -188,8 +188,7 @@ repos:
         entry:
           # In commit hooks, snapshot rewrites should fail so the next commit
           # attempt sees the regenerated files.
-          uv run python scripts/update_openapi_snapshots.py
-          --exit-non-zero-on-format
+          uv run python scripts/update_openapi_snapshots.py --fail-on-change
         language: system
         files: ^(jsonpatchx/.*\.py$|examples/.*\.py$|scripts/update_openapi_snapshots\.py$|pyproject\.toml$|uv\.lock$)
         pass_filenames: false

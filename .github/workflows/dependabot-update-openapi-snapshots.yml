@@ -45,8 +45,8 @@ jobs:
         run: uv sync --frozen --no-default-groups --group snapshots
 
       - name: Regenerate OpenAPI snapshots
-        # Omit --exit-non-zero-on-format here: this workflow wants rewritten
-        # snapshot files so it can commit and push them back to the PR branch.
+        # Omit --fail-on-change here: this workflow wants rewritten snapshot
+        # files so it can commit and push them back to the PR branch.
         run: uv run python scripts/update_openapi_snapshots.py
 
       - name: Create GitHub App token

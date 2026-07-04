@@ -55,14 +55,14 @@ def main() -> int:
     """
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        "--exit-non-zero-on-format",
+        "--fail-on-change",
         action="store_true",
         help="Return exit code 1 when snapshot files were rewritten.",
     )
     args = parser.parse_args()
 
     changed = write_snapshots()
-    if changed and args.exit_non_zero_on_format:
+    if changed and args.fail_on_change:
         return 1
     return 0
 
