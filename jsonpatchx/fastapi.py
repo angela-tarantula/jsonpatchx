@@ -10,10 +10,11 @@ from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 
 from jsonpatchx.exceptions import (
+    InvalidPatchResult,
+    InvalidPatchTarget,
     PatchConflictError,
     PatchError,
     PatchInternalError,
-    InvalidPatchResult,
 )
 from jsonpatchx.pydantic import JsonPatchFor
 
@@ -35,7 +36,7 @@ class PatchErrorResponse(BaseModel):
 
 
 def install_jsonpatch_error_handlers(app: FastAPI) -> None:
-    """Register a FastAPI exception handler for `PatchError`.
+    """Register FastAPI exception handlers for `PatchError` and `InvalidPatchTarget`.
 
     Arguments:
         app: The FastAPI application to configure.
@@ -59,6 +60,14 @@ def install_jsonpatch_error_handlers(app: FastAPI) -> None:
     @app.exception_handler(PatchError)
     def _patch_error_handler(request: Request, exc: PatchError) -> JSONResponse:
         return _patch_error_response_map(exc)
+
+    @app.exception_handler(InvalidPatchTarget)
+    def _invalid_patch_target_handler(
+        request: Request, exc: InvalidPatchTarget
+    ) -> JSONResponse:
+        return JSONResponse(
+            status_code=500, content=PatchErrorResponse(detail=str(exc)).model_dump()
+        )
 
 
 def patch_error_openapi_responses() -> dict[int | str, dict[str, Any]]:
@@ -300,7 +309,7 @@ def _patch_error_response_map(exc: PatchError) -> JSONResponse:
         - InvalidPatchResult -> 422 (patched result fails the target model
           schema; a content/schema problem, not a resource-state conflict)
         - PatchConflictError, TestOpFailed -> 409
-        - InvalidPatchTarget, PatchInternalError, unrecognized PatchError -> 500
+        - PatchInternalError, unrecognized PatchError -> 500
 
     TODO: Integration tests in tests/integration/fastapi/runtime/ should cover
           each failure path and assert both the HTTP status code and the

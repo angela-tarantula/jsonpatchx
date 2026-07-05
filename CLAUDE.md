@@ -124,6 +124,15 @@ in `__all__` as private.
   if an exception now propagates through them instead of being swallowed. After
   completing the update, report the full caller hierarchy back to the user so
   they can verify each level was handled correctly.
+- When asked a _should_/_ought_ design question (e.g. "should X inherit from
+  Y?", "should this be its own exception?"), answer from what the design ought
+  to be on its own semantic merits, not from what current code, tests, or
+  plumbing already depends on. "Removing this would break behavior Z" is a fact
+  about migration cost, not an argument about correctness, and citing it as the
+  reason for an answer conflates the two. If the ought-answer implies follow-up
+  work (e.g. a compensating mechanism to preserve some behavior), say so as a
+  separate, explicit consequence after giving the ought-answer, not as the
+  justification for it.
 - Before assuming a docstring is visible on an API reference page, check that
   page's `docs/api-reference/*.md` file for its `filters:` option.
   Module-specific pages use `filters: ["!^_"]`, which drops every

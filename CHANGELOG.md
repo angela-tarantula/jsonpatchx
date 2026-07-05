@@ -53,6 +53,17 @@ and this project adheres to
 
 ### Changed
 
+- `InvalidPatchTarget` now subclasses `TypeError` only; it is no longer a
+  `PatchError` subclass. Its three raise sites (wrong model instance passed to
+  `.apply()`, a target model's `model_dump()` producing non-JSON data, or a
+  plain document that isn't valid JSON) are all argument validation on the
+  `.apply()` call itself, not a patch document interacting badly with real
+  document state, so it does not belong with `PatchConflictError`/
+  `InvalidPatchResult`. `install_jsonpatch_error_handlers` now registers a
+  dedicated handler for `InvalidPatchTarget` alongside the `PatchError` handler,
+  so the 500 mapping and response body are unchanged. If you were catching it
+  via `PatchError`, catch `InvalidPatchTarget` (or `TypeError`) directly
+  instead.
 - `PatchValidationError` has been renamed to `InvalidPatchResult` for clarity.
   The old name was easy to misread as "the patch document itself failed
   validation," which is a distinct, unrelated concept already covered by

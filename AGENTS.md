@@ -13,6 +13,19 @@ labels and the way Zensical renders them.
   add placeholder examples just to fill the section.
 - Keep the opening sentence concrete and descriptive, then use sections for the
   rest.
+- Before writing a docstring, check whether the function/class is public (no
+  leading underscore, reachable from `jsonpatchx/__init__.py` or otherwise part
+  of the documented surface) or private. Public docstrings are read by callers
+  who never see the implementation; private docstrings are read by maintainers
+  who already have it open. Write for that actual reader: a public docstring
+  states the contract (inputs, outputs, guarantees, what to catch); it does not
+  explain why the implementation isn't shaped some other way, why a related type
+  isn't used instead, or other design-decision rationale aimed at a future
+  maintainer. That belongs in a code comment, the PR description, or
+  `CHANGELOG.md`, not in text a caller has to read past to learn how to use the
+  thing. Private docstrings have more room for implementation reasoning, but
+  should still not sit as design manifestos if the actual contract is not the
+  code's own point.
 
 ## Changelog Writing
 

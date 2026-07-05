@@ -9,8 +9,6 @@ if TYPE_CHECKING:
 # Exception hierarchy and HTTP error mapping:
 #
 # PatchError
-# ├── InvalidPatchTarget             500 — non-JSON doc passed to patch engine,
-# │                                        or wrong model instance (input invalid)
 # ├── InvalidPatchResult             422 — patch applied, result fails validation
 # │                                        (output invalid)
 # ├── PatchConflictError             409 — patch valid, document state rejects it
@@ -23,6 +21,16 @@ if TYPE_CHECKING:
 #                                          construction time (developer/config
 #                                          errors), never during op.apply(), so
 #                                          they never reach a running request.
+#   InvalidPatchTarget(TypeError)   A supplied patch target/document is not
+#                                    valid: wrong model instance, or a
+#                                    document/model that isn't representable
+#                                    as JSON. Argument validation on the call
+#                                    that applies the patch, not a
+#                                    patch-domain failure, so it is not a
+#                                    PatchError. install_jsonpatch_error_
+#                                    handlers registers a dedicated handler
+#                                    for it (500) alongside the PatchError
+#                                    handler.
 #   InvalidJSONPointer(ValueError)   Raised inside Pydantic field validation
 #   InvalidJSONSelector(ValueError)  (parsing a real patch document), pydantic
 #                                    wraps it in ValidationError (422) automatically
@@ -55,6 +63,28 @@ class InvalidOperationRegistry(TypeError):
     Examples:
         - Duplicate `op` identifiers across schemas.
         - Non-OperationSchema classes provided to the registry.
+    """
+
+
+class InvalidPatchTarget(TypeError):
+    """
+    The value supplied as a patch target or document is not valid.
+
+    This is argument validation on the call that applies the patch, not
+    something a patch document's content can trigger: the caller supplied a
+    value that cannot serve as a patch target or document.
+
+    Examples:
+        - The document is not a valid JSON value (for example, a `datetime` or
+          a custom object).
+        - For model-aware patching, the target is not an instance of the
+          model the patch was bound to, even if it is otherwise a valid,
+          well-formed object.
+        - For model-aware patching, the target model's own `model_dump()`
+          produces non-JSON data.
+
+    Typical HTTP mapping:
+        500 Internal Server Error.
     """
 
 
@@ -102,27 +132,6 @@ class PatchError(Exception):
 
     This type is not raised directly; it anchors the error hierarchy for tooling
     and API error mapping.
-    """
-
-
-class InvalidPatchTarget(PatchError):
-    """
-    The value passed to the patch engine is not a valid target (server error).
-
-    This is a programmer or configuration error, not something a patch
-    document's content can trigger.
-
-    Examples:
-        - The document is not a valid JSON value (for example, a `datetime` or
-          a custom object).
-        - For model-aware patching, the target is not an instance of the
-          model the patch was bound to, even if it is otherwise a valid,
-          well-formed object.
-        - For model-aware patching, the target model's own `model_dump()`
-          produces non-JSON data.
-
-    Typical HTTP mapping:
-        500 Internal Server Error.
     """
 
 
