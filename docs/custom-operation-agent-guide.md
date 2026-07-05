@@ -112,6 +112,12 @@ class LowercaseOp(OperationSchema):
   no meaningful JSON `null` value; a very short comment may explain that `null`
   is not meaningful input for that field. A narrow typed field commonly reads
   `Field(default=cast(TheType, MISSING))`.
+- Prefer `MISSING` over a concrete default when a field being omitted truly has
+  no influence on behavior, such as a field mid-deprecation in favor of a
+  mutually exclusive replacement. A schema that shows `default: false` on a
+  field also marked `deprecated: true` invites the question of what that default
+  value is even for. Unless of course the deprecated field used to have a
+  default value already, don't give it a default on deprecation.
 - When alternate wire names matter, use `validation_alias` and
   `serialization_alias` explicitly.
 
@@ -153,6 +159,64 @@ class LowercaseOp(OperationSchema):
 - Do not invent alternative operation hooks such as `patch()`, `expand()`, or
   `to_builtin_ops()` for ordinary examples. The contract is the `apply()`
   method.
+
+## Evolving an Operation's Contract
+
+An operation's fields are its wire contract. When a prompt asks you to change an
+existing operation rather than write a new one, changing that contract can break
+callers who already send patches against the old shape. Diagnose which kind of
+change you are making before writing code:
+
+- **Additive change**: add a new field with a concrete default that preserves
+  the old behavior when the field is omitted. Keep the same `op`.
+- **Field deprecation**: before removing a field, mark it `deprecated=True` and
+  keep honoring it exactly as before. Use `model_fields_set` to tell "the caller
+  never mentioned this field" apart from "the caller explicitly sent it," so
+  behavior for a caller who has never heard of the field cannot regress even as
+  the field's own default value stops mattering. On rare occasions a prompt may
+  ask you to change the field's default as part of deprecating it, for example
+  fixing a latent correctness gap in the old default; treat that as a
+  deliberate, called-out breaking change bundled with the deprecation, not a
+  routine one, and say so plainly rather than presenting it as compatible.
+- **Contract tightening**: narrowing what a field accepts, such as a stricter
+  pattern, a new `min_length`, or dropping a previously accepted shape, is a
+  breaking change even though the field's name and type look unchanged.
+- **Breaking semantic change**: if the operation's meaning would change, not
+  just its inputs, do not mutate the existing `op` in place. Introduce a new
+  `op`, and mark the old one deprecated with
+  `model_config = ConfigDict(json_schema_extra={"deprecated": True})`, so a
+  registry can carry both during the transition.
+
+For example, evolving a `replace_substring` operation that always errors when
+the target substring is missing:
+
+```python
+# Additive: strict defaults to the old (always-raise) behavior, so a caller
+# that never sends it is unaffected.
+strict: JSONBoolean = Field(default=True)
+
+def apply(self, doc: JSONValue) -> JSONValue:
+    current = self.path.get(doc)
+    if self.strict and self.old not in current:
+        raise PatchConflictError(f"{self.old!r} is not in {current!r}")
+    ...
+
+# Field deprecation: still honored, but model_fields_set distinguishes an
+# omitted field ("strict" not in self.model_fields_set) from an explicit
+# True, so a caller who never sent it keeps the exact old behavior.
+strict: JSONBoolean = Field(default=True, deprecated=True)
+
+def apply(self, doc: JSONValue) -> JSONValue:
+    current = self.path.get(doc)
+    if self.old not in current:
+        if "strict" not in self.model_fields_set or self.strict:
+            raise PatchConflictError(f"{self.old!r} is not in {current!r}")
+    ...
+```
+
+If a later request turns out to change what the operation means rather than
+merely how it is configured, for example turning "increase by 5" into "multiply
+by 5%", that is a new operation, not a new interpretation of an existing field.
 
 ## Validate the Result
 
