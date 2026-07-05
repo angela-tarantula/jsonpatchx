@@ -81,19 +81,19 @@ Run the test suite with:
 
 ```sh
 uv run pytest -v
-uv run --managed-python -p 3.12 pytest
+uv run --managed-python -p 3.12 pytest # for a specific version
 ```
 
-To manually regression-test
-[`examples/AGENTS.md`](/Users/angelaliss/code/Python/json-patch-x/examples/AGENTS.md)
-with a coding agent, use the harness in
-[`tests/agents/README.md`](/Users/angelaliss/code/Python/json-patch-x/tests/agents/README.md).
-For a quick check, you can give the agent this prompt:
+To manually regression-test the
+[custom-operation agent guide](/docs/custom-operation-agent-guide.md) with a
+coding agent, use the harness in
+[`tests/agents/README.md`](/tests/agents/README.md). For a quick check, you can
+give the agent this prompt:
 
 ```text
 Read tests/agents/README.md and run the standard prompt-only check for
-tests/agents/lowercase-op.md against examples/AGENTS.md. Return the generated
-Python and a short rubric-based evaluation.
+tests/agents/bound-number-op.md against docs/custom-operation-agent-guide.md.
+Return the generated Python and a short rubric-based evaluation.
 ```
 
 Those agent-guide fixtures are manual regression checks, not part of the

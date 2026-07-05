@@ -18,6 +18,9 @@ and this project adheres to
 - `InvalidPatchTarget` is a new `PatchError` subclass raised when the document
   passed to the patch engine is not a valid JSON value. This is a server-side
   configuration error and maps to 500 Internal Server Error.
+- The custom-operation agent guide is now a published docs page at
+  `docs/custom-operation-agent-guide.md`, including instructions for pinning it
+  downstream at your installed `jsonpatchx` version.
 
 ### Removed
 

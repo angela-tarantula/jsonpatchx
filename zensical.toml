@@ -16,6 +16,7 @@ nav = [
     { "Getting Started" = "user-guide/getting-started.md" },
     { "Registries and Routes" = "user-guide/registries-and-routes.md" },
     { "Custom Operations" = "user-guide/custom-operations.md" },
+    { "Custom-Operation Agent Guide" = "custom-operation-agent-guide.md" },
     { "Patch Clients" = "user-guide/patch-clients.md" },
     { "Patch Targeting" = "user-guide/patch-targeting.md" },
     { "Evolving PATCH Contracts" = "user-guide/evolving-patch-contracts.md" },

@@ -1,29 +1,32 @@
 # Agent Guide Tests
 
 These fixtures are manual regression checks for
-[`examples/AGENTS.md`](../../examples/AGENTS.md).
+[`docs/custom-operation-agent-guide.md`](../../docs/custom-operation-agent-guide.md).
+They are manual fixtures, not automated tests, and are not part of the pytest
+suite.
 
 They are meant to answer a narrow question: if a child agent is given only the
-inline text of [`examples/AGENTS.md`](../../examples/AGENTS.md) plus one prompt
-fixture, does it generate a good custom operation?
+inline text of the guide plus one prompt fixture, does it generate a good custom
+operation?
 
 They are not a CI harness and they are not proof of workspace isolation.
 
 ## Run a Prompt-Only Check
 
-Use this procedure in Codex when you want a reproducible evaluation:
+Use this procedure when you want a reproducible evaluation:
 
 1. Pick one fixture from [`tests/agents/`](./).
-2. Read [`examples/AGENTS.md`](../../examples/AGENTS.md).
-3. Spawn a child agent with `fork_context:false`.
-4. Paste the full contents of [`examples/AGENTS.md`](../../examples/AGENTS.md)
-   into the child prompt.
+2. Read
+   [`docs/custom-operation-agent-guide.md`](../../docs/custom-operation-agent-guide.md).
+3. Spawn a child agent that does not inherit this conversation. In Codex, that
+   is `fork_context:false`.
+4. Paste the full contents of the guide into the child prompt.
 5. Paste exactly one fixture into the same child prompt.
 6. Add this instruction:
 
    ```text
-   Treat the AGENTS text below as the repository instruction source for this
-   task. Do not inspect workspace files. Use only the AGENTS text and the
+   Treat the guide text below as the repository instruction source for this
+   task. Do not inspect workspace files. Use only the guide text and the
    prompt. Return only Python code.
    ```
 
@@ -35,17 +38,16 @@ Use one fixture per child agent. Do not bundle multiple fixtures into one run.
 ## Use the Standard Prompt Shape
 
 Keep the harness wording stable so changes in output are more likely to reflect
-changes in [`examples/AGENTS.md`](../../examples/AGENTS.md) rather than
-evaluator drift.
+changes in the guide rather than evaluator drift.
 
 ```text
-Treat the AGENTS text below as the repository instruction source for this task.
-Do not inspect workspace files. Use only the AGENTS text and the prompt.
+Treat the guide text below as the repository instruction source for this task.
+Do not inspect workspace files. Use only the guide text and the prompt.
 Return only Python code.
 
-=== AGENTS TEXT BEGIN ===
-<paste examples/AGENTS.md here>
-=== AGENTS TEXT END ===
+=== GUIDE TEXT BEGIN ===
+<paste docs/custom-operation-agent-guide.md here>
+=== GUIDE TEXT END ===
 
 === PROMPT BEGIN ===
 <paste one tests/agents/*.md fixture here>
@@ -55,7 +57,7 @@ Return only Python code.
 ## Judge the Result
 
 Check the output against the prompt and against the local authoring patterns in
-[`examples/AGENTS.md`](../../examples/AGENTS.md).
+the guide.
 
 - The code should be complete Python, not pseudocode.
 - It should subclass `OperationSchema` and implement `apply()`.
@@ -87,8 +89,8 @@ This harness is intentionally modest.
 - It does show whether the child agent can work from the pasted instruction text
   plus the fixture.
 - It does not prove that the child agent never inspected the workspace.
-- `fork_context:false` prevents thread-history leakage, but it does not itself
-  remove file access.
+- A non-inheriting child agent (`fork_context:false` in Codex) prevents
+  thread-history leakage, but it does not itself remove file access.
 
 If you need the stronger claim that the child agent only used the pasted text,
 you need more than this harness:
