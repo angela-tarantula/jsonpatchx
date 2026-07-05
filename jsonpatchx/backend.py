@@ -2,7 +2,6 @@ import re
 from abc import abstractmethod
 from collections.abc import Iterable, Sequence
 from enum import Enum, auto
-from inspect import isabstract
 from typing import (
     Protocol,
     Self,
@@ -267,22 +266,22 @@ def _pointer_backend_instance[PB: PointerBackend](
 
     Arguments:
         path: Pointer string to parse.
-        pointer_cls: Backend class used to parse the pointer.
+        pointer_cls: Backend class used to parse the pointer. Callers are
+            responsible for ensuring this is a concrete, non-abstract class;
+            `JSONPointer._resolve_backend_type_param` is the single canonical
+            place that enforces this, for every path that reaches a backend
+            class (a direct argument, a schema-build-time argument, or a
+            `TypeVar` default), before one ever reaches this function.
 
     Returns:
         A backend instance for `path`.
 
     Raises:
-        TypeError: If `pointer_cls` is abstract, its constructor raises
-            `TypeError`, or the constructor returns an object that does not
-            implement `PointerBackend`.
+        TypeError: If the constructor raises `TypeError`, or the constructor
+            returns an object that does not implement `PointerBackend`.
         InvalidJSONPointer: If the backend constructor raises a non-`TypeError`
             exception (path string is invalid for the given backend).
     """
-    if isabstract(pointer_cls):
-        raise TypeError(
-            f"pointer_cls {pointer_cls!r} is abstract and cannot be used as a backend"
-        )
     try:
         ptr = pointer_cls(path)
     except TypeError as e:
@@ -518,22 +517,23 @@ def _selector_backend_instance[SB: SelectorBackend](
 
     Arguments:
         selector: Selector string to parse.
-        selector_cls: Backend class used to parse the selector.
+        selector_cls: Backend class used to parse the selector. Callers are
+            responsible for ensuring this is a concrete, non-abstract class;
+            `JSONSelector._resolve_backend_type_param` is the single
+            canonical place that enforces this, for every path that reaches
+            a backend class (a direct argument, a schema-build-time
+            argument, or a `TypeVar` default), before one ever reaches this
+            function.
 
     Returns:
         A backend instance for `selector`.
 
     Raises:
-        TypeError: If `selector_cls` is abstract, its constructor raises
-            `TypeError`, or the constructor returns an object that does not
-            implement `SelectorBackend`.
+        TypeError: If the constructor raises `TypeError`, or the constructor
+            returns an object that does not implement `SelectorBackend`.
         InvalidJSONSelector: If the backend constructor raises a non-`TypeError`
             exception (selector string is invalid for the given backend).
     """
-    if isabstract(selector_cls):
-        raise TypeError(
-            f"selector_cls {selector_cls!r} is abstract and cannot be used as a backend"
-        )
     try:
         compiled = selector_cls(selector)
     except TypeError as e:

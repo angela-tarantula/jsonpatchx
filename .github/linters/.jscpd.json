@@ -3,5 +3,9 @@
   "minLines": 20,
   "minTokens": 120,
   "format": ["python"],
-  "ignore": ["tests/agents/official_recipes.py"]
+  "ignore": [
+    "tests/agents/official_recipes.py",
+    "examples/recipes.py",
+    "examples/recipes2.py"
+  ]
 }

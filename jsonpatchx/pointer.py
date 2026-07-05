@@ -369,9 +369,18 @@ class JSONPointer(str, Generic[T_co, P_co]):
         """
         Validate the backend generic argument before runtime resolution.
 
+        This is the single canonical place that decides whether a backend
+        argument is admissible. Every path that produces a concrete backend
+        class routes through here: the raw `JSONPointer[T, Backend]`
+        argument at schema-build time, the same argument passed directly to
+        `.parse()`, and a `TypeVar`'s resolved default at validation time
+        (via `_coerce_runtime_backend_candidate`). Whichever path supplied
+        it, an invalid backend class raises the same specific error.
+
         Arguments:
             backend_param: Raw second generic argument from
-                `JSONPointer[T, Backend]`.
+                `JSONPointer[T, Backend]`, or a backend class reached via
+                `TypeVar` default resolution.
 
         Returns:
             A backend class or unresolved `TypeVar`.
@@ -429,49 +438,50 @@ class JSONPointer(str, Generic[T_co, P_co]):
             A concrete `PointerBackend` class.
 
         Raises:
-            TypeError: If the `TypeVar` has no usable default backend.
+            TypeError: If the `TypeVar` has no default at all, or if its
+                default fails `_resolve_backend_type_param`'s validation
+                (not a class, or abstract).
         """
         # Only TypeVar defaults are used for unspecialized backend TypeVars.
         try:
             has_default = backend_typevar.has_default()
         except AttributeError:  # Py3.12
             has_default = False
-        if has_default:
-            default_candidate = getattr(backend_typevar, "__default__")
-            default_backend = cls._coerce_runtime_backend_candidate(default_candidate)
-            if default_backend is not None:
-                return default_backend
-
-        raise TypeError(
-            "JSONPointer backend TypeVar must define a default backend "
-            "or be specialized with a concrete backend type"
-        )
+        if not has_default:
+            raise TypeError(
+                "JSONPointer backend TypeVar must define a default backend "
+                "or be specialized with a concrete backend type"
+            )
+        default_candidate = getattr(backend_typevar, "__default__")
+        return cls._coerce_runtime_backend_candidate(default_candidate)
 
     @classmethod
     def _coerce_runtime_backend_candidate(
         cls,
         candidate: object,
-    ) -> type[PointerBackend] | None:
+    ) -> type[PointerBackend]:
         """
-        Coerce a potential default backend candidate into a usable class.
+        Resolve a potential default backend candidate into a usable class.
+
+        Delegates admissibility checks (concrete class, non-abstract) to
+        `_resolve_backend_type_param`, so a bad `TypeVar` default raises the
+        same specific error as a bad direct or schema-build-time argument,
+        rather than a separate, less specific one.
 
         Arguments:
             candidate: Runtime object drawn from a backend `TypeVar` default.
 
         Returns:
-            A concrete `PointerBackend` class, or `None` if the candidate is
-            not usable as a runtime backend.
+            A concrete `PointerBackend` class.
 
         Raises:
-            TypeError: If `candidate` is a `TypeVar` with no usable default.
+            TypeError: If `candidate` is a `TypeVar` with no usable default,
+                or if it fails `_resolve_backend_type_param`'s validation
+                (not a class, or abstract).
         """
         if isinstance(candidate, TypeVar):
             return cls._resolve_runtime_backend_typevar(candidate)
-        if not isinstance(candidate, type):
-            return None
-        if candidate is PointerBackend or isabstract(candidate):
-            return None
-        return candidate
+        return cast(type[PointerBackend], cls._resolve_backend_type_param(candidate))
 
     def _validate_target(self, target: object) -> T_co:
         """
