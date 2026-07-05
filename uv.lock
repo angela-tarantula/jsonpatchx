@@ -325,6 +325,7 @@ source = { editable = "." }
 dependencies = [
     { name = "jsonpointer" },
     { name = "pydantic" },
+    { name = "pydantic-core" },
     { name = "python-jsonpath" },
     { name = "python-jsonpath", extra = ["strict"], marker = "python_full_version < '3.14'" },
     { name = "typing-extensions" },
@@ -397,6 +398,7 @@ requires-dist = [
     { name = "fastapi", marker = "extra == 'fastapi'", specifier = ">=0.128.0" },
     { name = "jsonpointer", specifier = ">=3.0.0" },
     { name = "pydantic", specifier = ">=2.12.5" },
+    { name = "pydantic-core", specifier = ">=2.29.0" },
     { name = "python-jsonpath", marker = "python_full_version >= '3.14'", specifier = ">=2.0.2" },
     { name = "python-jsonpath", extras = ["strict"], marker = "python_full_version < '3.14'", specifier = ">=2.0.2" },
     { name = "typing-extensions", specifier = ">=4.15.0" },

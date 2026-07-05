@@ -54,6 +54,7 @@ dependencies = [
     "python-jsonpath[strict]>=2.0.2; python_version <= '3.13'",
     "python-jsonpath>=2.0.2; python_version >= '3.14'",
     "typing-extensions>=4.15.0",
+    "pydantic-core>=2.29.0",
 ]
 
 [project.urls]

@@ -32,7 +32,7 @@ repos:
         priority: 0
 
   - repo: https://github.com/zizmorcore/zizmor-pre-commit
-    rev: v1.23.1
+    rev: v1.26.1
     hooks:
       - id: zizmor
         files: ^\.github/((workflows|actions)/.*\.ya?ml$|dependabot\.yml$)
