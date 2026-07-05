@@ -39,7 +39,7 @@ and this project adheres to
   individual op classes (`AddOp`, `RemoveOp`, etc.) and `StandardRegistry`
   remain fully supported.
 - `PatchInputError` has been removed from the public API. Its subclasses
-  (`InvalidJSONPointer`, `InvalidJSONSelector`, `PatchValidationError`) are now
+  (`InvalidJSONPointer`, `InvalidJSONSelector`, `InvalidPatchResult`) are now
   direct `PatchError` subclasses with unchanged HTTP mappings (422). Replace any
   `except PatchInputError` with the specific types you need.
 - `OperationNotRecognized` has been removed. Passing an op instance that is not
@@ -53,6 +53,14 @@ and this project adheres to
 
 ### Changed
 
+- `PatchValidationError` has been renamed to `InvalidPatchResult` for clarity.
+  The old name was easy to misread as "the patch document itself failed
+  validation," which is a distinct, unrelated concept already covered by
+  `pydantic.ValidationError` during parsing. The new name pairs it with
+  `InvalidPatchTarget`: a bad input document raises `InvalidPatchTarget`, and a
+  bad outcome after an otherwise-successful apply raises `InvalidPatchResult`.
+  Behavior and the 422 HTTP mapping are unchanged; update any
+  `except PatchValidationError` to `except InvalidPatchResult`.
 - `InvalidOperationDefinition` and `InvalidOperationRegistry` now subclass
   `TypeError` only; they are no longer `PatchError` subclasses. Both are raised
   at class-definition time (`__init_subclass__`) or registry-construction time,

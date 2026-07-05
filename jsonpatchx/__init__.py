@@ -17,12 +17,12 @@ from jsonpatchx.exceptions import (
     InvalidJSONSelector,
     InvalidOperationDefinition,
     InvalidOperationRegistry,
+    InvalidPatchResult,
     InvalidPatchTarget,
     PatchConflictError,
     PatchError,
     PatchFailureDetail,
     PatchInternalError,
-    PatchValidationError,
     TestOpFailed,
 )
 from jsonpatchx.pointer import JSONPointer
@@ -41,12 +41,12 @@ __all__ = [
     "InvalidJSONSelector",
     "InvalidOperationDefinition",
     "InvalidOperationRegistry",
+    "InvalidPatchResult",
     "InvalidPatchTarget",
     "PatchConflictError",
     "PatchError",
     "PatchInternalError",
     "PatchFailureDetail",
-    "PatchValidationError",
     "TestOpFailed",
     # types
     "JSONPointer",

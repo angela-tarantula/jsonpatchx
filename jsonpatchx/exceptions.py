@@ -10,10 +10,11 @@ if TYPE_CHECKING:
 #
 # PatchError
 # ├── InvalidPatchTarget             500 — non-JSON doc passed to patch engine,
-# │                                        or wrong model instance
+# │                                        or wrong model instance (input invalid)
+# ├── InvalidPatchResult             422 — patch applied, result fails validation
+# │                                        (output invalid)
 # ├── PatchConflictError             409 — patch valid, document state rejects it
 # │   └── TestOpFailed               409 — RFC 6902 test op value mismatch
-# ├── PatchValidationError           422 — patch applied, result fails model schema
 # └── PatchInternalError             500 — unexpected exception during apply
 #
 # Non-PatchError exceptions that may surface:
@@ -61,6 +62,10 @@ class InvalidJSONPointer(ValueError):
     """
     A JSON Pointer definition or instance is invalid.
 
+    A custom pointer backend's own exception for an unparsable string is
+    normalized into this exception automatically; the original exception is
+    available as `__cause__`.
+
     Examples:
         - Pointer string is malformed or uses an incompatible backend.
         - Pointer backend class fails protocol checks.
@@ -75,6 +80,10 @@ class InvalidJSONPointer(ValueError):
 class InvalidJSONSelector(ValueError):
     """
     A JSON selector definition or instance is invalid.
+
+    A custom selector backend's own exception for an unparsable string is
+    normalized into this exception automatically; the original exception is
+    available as `__cause__`.
 
     Examples:
         - Selector string is malformed or uses an incompatible backend.
@@ -96,9 +105,51 @@ class PatchError(Exception):
     """
 
 
+class InvalidPatchTarget(PatchError):
+    """
+    The value passed to the patch engine is not a valid target (server error).
+
+    This is a programmer or configuration error, not something a patch
+    document's content can trigger.
+
+    Examples:
+        - The document is not a valid JSON value (for example, a `datetime` or
+          a custom object).
+        - For model-aware patching, the target is not an instance of the
+          model the patch was bound to, even if it is otherwise a valid,
+          well-formed object.
+        - For model-aware patching, the target model's own `model_dump()`
+          produces non-JSON data.
+
+    Typical HTTP mapping:
+        500 Internal Server Error.
+    """
+
+
+class InvalidPatchResult(PatchError):
+    """
+    Applying a patch produced a result that fails validation.
+
+    Every operation applied without conflict, but the resulting document is
+    unacceptable (for example, it violates the target model's schema). Custom
+    operations may also raise this directly to signal that an
+    otherwise-successful application produced an invalid result.
+
+    Examples:
+        - Model-aware patching produces a document that violates the target model.
+
+    Typical HTTP mapping:
+        422 Unprocessable Entity.
+    """
+
+
 class PatchConflictError(PatchError):
     """
     A JSON Patch failed due to a conflict with the current document state.
+
+    Custom operations may also raise this directly to signal that the
+    current document state does not satisfy a precondition the operation
+    depends on.
 
     Examples:
         - Path does not exist or array index is out of range.
@@ -109,33 +160,12 @@ class PatchConflictError(PatchError):
     """
 
 
-class PatchValidationError(PatchError):
-    """
-    Patched data failed validation against the target model schema.
-
-    Examples:
-        - Model-aware patching produces a document that violates the target model.
-
-    Typical HTTP mapping:
-        422 Unprocessable Entity.
-    """
-
-
-class InvalidPatchTarget(PatchError):
-    """
-    The document passed to the patch engine is not a valid JSON value (server error).
-
-    This is a programmer or configuration error: the caller supplied a value that
-    cannot be a JSON document (for example, a `datetime` or a custom object).
-
-    Typical HTTP mapping:
-        500 Internal Server Error.
-    """
-
-
 class TestOpFailed(PatchConflictError):
     """
     A test operation failed (RFC 6902).
+
+    Custom operations that implement test-like, assert-a-value-then-continue
+    semantics may also raise this directly.
 
     Typical HTTP mapping:
         409 Conflict (state mismatch).

@@ -26,12 +26,12 @@ The goal is to keep three failure modes separate:
 
 If you use the optional FastAPI helpers, the default mapping is:
 
-| Status | Default meaning                                                                                                                                                              |
-| ------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `415`  | `JsonPatchRoute` rejects the wrong media type when the route requires JSON Patch content, and includes an `Accept-Patch` header naming the expected media. type.             |
-| `422`  | FastAPI request validation and `PatchValidationError` cover invalid patch documents, invalid pointer/selector syntax, and patched results that fail the target model schema. |
-| `409`  | `PatchConflictError` means the patch cannot be applied to the current resource state.                                                                                        |
-| `500`  | `PatchInternalError` is the fallback for unexpected execution failures. `InvalidPatchTarget` signals a server configuration error (the input is not a JSON document).        |
+| Status | Default meaning                                                                                                                                                                                                                                         |
+| ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `415`  | `JsonPatchRoute` rejects the wrong media type when the route requires JSON Patch content, and includes an `Accept-Patch` header naming the expected media type.                                                                                         |
+| `422`  | FastAPI request validation and `InvalidPatchResult` cover invalid patch documents, invalid pointer/selector syntax, and patched results that fail the target model schema.                                                                              |
+| `409`  | `PatchConflictError` means the patch cannot be applied to the current resource state.                                                                                                                                                                   |
+| `500`  | `PatchInternalError` is the fallback for unexpected execution failures. `InvalidPatchTarget` signals a server configuration error (a non-JSON document, or, for model-aware patching, the wrong model instance or a model that produces non-JSON data). |
 
 If you do not use the helper layer, choose an equivalent mapping and keep it
 stable.

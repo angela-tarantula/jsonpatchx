@@ -4,7 +4,7 @@ from typing import Literal
 import pytest
 from pydantic import BaseModel, ConfigDict
 
-from jsonpatchx.exceptions import InvalidPatchTarget, PatchValidationError
+from jsonpatchx.exceptions import InvalidPatchResult, InvalidPatchTarget
 from jsonpatchx.pydantic import JsonPatchFor
 from jsonpatchx.registry import StandardRegistry
 
@@ -32,7 +32,7 @@ class Event(BaseModel):
 def test_model_validation_failure() -> None:
     UserPatch = JsonPatchFor[User]
     patch = UserPatch.model_validate([{"op": "replace", "path": "/name", "value": 123}])
-    with pytest.raises(PatchValidationError):
+    with pytest.raises(InvalidPatchResult):
         patch.apply(User(id=1, name="Ada"))
 
 

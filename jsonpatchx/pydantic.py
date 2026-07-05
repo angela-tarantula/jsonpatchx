@@ -27,7 +27,7 @@ from pydantic import (
 from pydantic_core import PydanticUndefined, PydanticUndefinedType
 from typing_extensions import TypeVar
 
-from jsonpatchx.exceptions import InvalidPatchTarget, PatchValidationError
+from jsonpatchx.exceptions import InvalidPatchResult, InvalidPatchTarget
 from jsonpatchx.registry import StandardRegistry, _RegistrySpec
 from jsonpatchx.schema import OperationSchema, _apply_ops
 from jsonpatchx.types import JSONValue, _validate_JSONValue
@@ -90,7 +90,7 @@ class _BasePatchModel(_RegistryBoundPatchRoot, Generic[ModelT]):
         Raises:
             InvalidPatchTarget: If `target` is not an instance of the bound model type,
                 or if the model dump is not a valid JSON document.
-            PatchValidationError: If the patched output fails validation against the model schema.
+            InvalidPatchResult: If the patched output fails validation against the model schema.
             PatchError: Any patch-domain error raised during application.
         """
         if not isinstance(target, self.__target_model__):
@@ -108,8 +108,8 @@ class _BasePatchModel(_RegistryBoundPatchRoot, Generic[ModelT]):
         try:
             return self.__target_model__.model_validate(patched)
         except ValidationError as e:
-            raise PatchValidationError(
-                f"Patched data failed validation for {self.__target_model__.__name__}: {e}"
+            raise InvalidPatchResult(
+                f"Patched document failed validation for {self.__target_model__.__name__}: {e}"
             ) from e
 
 
@@ -237,7 +237,7 @@ class JsonPatchFor(_RegistryBoundPatchRoot, Generic[TargetT, RegistryT]):
                 The patched BaseModel instance.
 
             Raises:
-                PatchValidationError: Patched data fails validation for the target model.
+                InvalidPatchResult: Patched document fails validation for the target model.
                 PatchError: Any patch-domain error raised by operations, including conflicts.
                     `PatchInternalError` is a `PatchError` raised for unexpected failures.
             """
@@ -278,7 +278,7 @@ class JsonPatchFor(_RegistryBoundPatchRoot, Generic[TargetT, RegistryT]):
 
             Raises:
                 InvalidPatchTarget: If the target is not a valid instance or the input is not a valid `JSONValue`.
-                PatchValidationError: Patched data fails validation for the target model.
+                InvalidPatchResult: Patched document fails validation for the target model.
                 PatchError: Any patch-domain error raised by operations, including conflicts.
                     `PatchInternalError` is a `PatchError` raised for unexpected failures.
             """
