@@ -46,86 +46,6 @@ if TYPE_CHECKING:
 #                                         _apply_ops wraps it as PatchInternalError
 
 
-class InvalidOperationDefinition(TypeError):
-    """
-    An OperationSchema definition is invalid (developer error).
-
-    Examples:
-        - `op` is missing or not declared as `Literal[...]`.
-        - `op` is declared as a ClassVar, so it is not a model field.
-    """
-
-
-class InvalidOperationRegistry(TypeError):
-    """
-    An OperationRegistry has incompatible OperationSchemas (developer error).
-
-    Examples:
-        - Duplicate `op` identifiers across schemas.
-        - Non-OperationSchema classes provided to the registry.
-    """
-
-
-class InvalidPatchTarget(TypeError):
-    """
-    The value supplied as a patch target or document is not valid.
-
-    This is argument validation on the call that applies the patch, not
-    something a patch document's content can trigger: the caller supplied a
-    value that cannot serve as a patch target or document.
-
-    Examples:
-        - The document is not a valid JSON value (for example, a `datetime` or
-          a custom object).
-        - For model-aware patching, the target is not an instance of the
-          model the patch was bound to, even if it is otherwise a valid,
-          well-formed object.
-        - For model-aware patching, the target model's own `model_dump()`
-          produces non-JSON data.
-
-    Typical HTTP mapping:
-        500 Internal Server Error.
-    """
-
-
-class InvalidJSONPointer(ValueError):
-    """
-    A JSON Pointer definition or instance is invalid.
-
-    A custom pointer backend's own exception for an unparsable string is
-    normalized into this exception automatically; the original exception is
-    available as `__cause__`.
-
-    Examples:
-        - Pointer string is malformed or uses an incompatible backend.
-        - Pointer backend class fails protocol checks.
-
-    Typical HTTP mapping:
-        422 Unprocessable Entity when raised during Pydantic field
-        validation of a patch document; a plain unhandled `ValueError`
-        (500 by default) anywhere else.
-    """
-
-
-class InvalidJSONSelector(ValueError):
-    """
-    A JSON selector definition or instance is invalid.
-
-    A custom selector backend's own exception for an unparsable string is
-    normalized into this exception automatically; the original exception is
-    available as `__cause__`.
-
-    Examples:
-        - Selector string is malformed or uses an incompatible backend.
-        - Selector backend class fails protocol checks.
-
-    Typical HTTP mapping:
-        422 Unprocessable Entity when raised during Pydantic field
-        validation of a patch document; a plain unhandled `ValueError`
-        (500 by default) anywhere else.
-    """
-
-
 class PatchError(Exception):
     """
     Base class for application-time JSON Patch errors.
@@ -232,3 +152,83 @@ class PatchInternalError(PatchError):
     def _format(d: PatchFailureDetail) -> str:
         op_name = getattr(d.op, "op")
         return f"Error applying op[{d.index}] ({op_name}): {d.message}"
+
+
+class InvalidOperationDefinition(TypeError):
+    """
+    An OperationSchema definition is invalid (developer error).
+
+    Examples:
+        - `op` is missing or not declared as `Literal[...]`.
+        - `op` is declared as a ClassVar, so it is not a model field.
+    """
+
+
+class InvalidOperationRegistry(TypeError):
+    """
+    An OperationRegistry has incompatible OperationSchemas (developer error).
+
+    Examples:
+        - Duplicate `op` identifiers across schemas.
+        - Non-OperationSchema classes provided to the registry.
+    """
+
+
+class InvalidPatchTarget(TypeError):
+    """
+    The value supplied as a patch target or document is not valid.
+
+    This is argument validation on the call that applies the patch, not
+    something a patch document's content can trigger: the caller supplied a
+    value that cannot serve as a patch target or document.
+
+    Examples:
+        - The document is not a valid JSON value (for example, a `datetime` or
+          a custom object).
+        - For model-aware patching, the target is not an instance of the
+          model the patch was bound to, even if it is otherwise a valid,
+          well-formed object.
+        - For model-aware patching, the target model's own `model_dump()`
+          produces non-JSON data.
+
+    Typical HTTP mapping:
+        500 Internal Server Error.
+    """
+
+
+class InvalidJSONPointer(ValueError):
+    """
+    A JSON Pointer definition or instance is invalid.
+
+    A custom pointer backend's own exception for an unparsable string is
+    normalized into this exception automatically; the original exception is
+    available as `__cause__`.
+
+    Examples:
+        - Pointer string is malformed or uses an incompatible backend.
+        - Pointer backend class fails protocol checks.
+
+    Typical HTTP mapping:
+        422 Unprocessable Entity when raised during Pydantic field
+        validation of a patch document; a plain unhandled `ValueError`
+        (500 by default) anywhere else.
+    """
+
+
+class InvalidJSONSelector(ValueError):
+    """
+    A JSON selector definition or instance is invalid.
+
+    A custom selector backend's own exception for an unparsable string is
+    normalized into this exception automatically; the original exception is
+    available as `__cause__`.
+
+    Examples:
+        - Selector string is malformed or uses an incompatible backend.
+        - Selector backend class fails protocol checks.
+
+    Typical HTTP mapping:
+        422 Unprocessable Entity when raised during Pydantic field
+        validation of a patch document; a plain unhandled `ValueError`
+        (500 by default) anywhere else.
+    """
