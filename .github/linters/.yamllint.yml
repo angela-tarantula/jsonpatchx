@@ -8,6 +8,7 @@ rules:
     max: 120
     level: warning
   comments: disable
+  comments-indentation: disable
   indentation: disable
   truthy:
     check-keys: false

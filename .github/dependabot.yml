@@ -67,5 +67,7 @@ updates:
 
   - package-ecosystem: docker
     directory: /.clusterfuzzlite
+    cooldown:
+      default-days: 7
     schedule:
       interval: daily
