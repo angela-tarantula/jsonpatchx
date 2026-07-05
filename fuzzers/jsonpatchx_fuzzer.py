@@ -4,15 +4,17 @@ import copy
 import json
 import sys
 from collections.abc import Callable, Mapping, Sequence
-from dataclasses import dataclass
 from typing import cast
 
 import atheris  # type: ignore[import-untyped]
 
 from fuzzers._fuzz_shared import (
     ByteCursor,
+    Outcome,
+    assert_equivalent,
     coerce_patch,
     random_json_value,
+    random_patch,
     random_rfc6901_path,
 )
 
@@ -39,16 +41,6 @@ _EXPECTED_PATCH_EXCEPTIONS = (
 )
 
 
-@dataclass(frozen=True, slots=True)
-class _Outcome:
-    value: object | None = None
-    error_type: type[BaseException] | None = None
-
-    @property
-    def ok(self) -> bool:
-        return self.error_type is None
-
-
 def _error_bucket(error_type: type[BaseException]) -> str:
     if issubclass(error_type, PatchConflictError):
         return "conflict"
@@ -59,103 +51,76 @@ def _error_bucket(error_type: type[BaseException]) -> str:
     return error_type.__name__
 
 
-def _assert_equivalent(left: _Outcome, right: _Outcome, *, context: str) -> None:
-    if left.ok != right.ok:
-        raise AssertionError(
-            f"Outcome mismatch in {context}: left={left.error_type}, right={right.error_type}"
-        )
+def _build_op(cursor: ByteCursor, op_name: str) -> dict[str, object]:
+    op: dict[str, object] = {
+        "op": op_name,
+        "path": random_rfc6901_path(cursor),
+    }
 
-    if left.ok:
-        if left.value != right.value:
-            raise AssertionError(f"Value mismatch in {context}")
-        return
+    if op_name in {"add", "replace", "test"}:
+        op["value"] = random_json_value(cursor)
 
-    assert left.error_type is not None
-    assert right.error_type is not None
-    if _error_bucket(left.error_type) != _error_bucket(right.error_type):
-        raise AssertionError(
-            f"Error bucket mismatch in {context}: "
-            f"{left.error_type.__name__} vs {right.error_type.__name__}"
-        )
+    if op_name in {"copy", "move"}:
+        op["from"] = random_rfc6901_path(cursor)
 
+    # Exercise extra fields and alias ambiguity paths.
+    if cursor.int_range(0, 5) == 0:
+        op["x-fuzz"] = random_json_value(cursor, max_depth=2)
+    if cursor.int_range(0, 9) == 0:
+        op["from_"] = random_rfc6901_path(cursor)
 
-def _random_patch(cursor: ByteCursor) -> list[dict[str, object]]:
-    op_count = cursor.int_range(1, 10)
-    patch: list[dict[str, object]] = []
+    # Sometimes drop required fields to hit validators.
+    if cursor.int_range(0, 11) == 0:
+        op.pop("path", None)
 
-    for _ in range(op_count):
-        op_name = cursor.choose(_ALL_OPS)
-        op: dict[str, object] = {
-            "op": op_name,
-            "path": random_rfc6901_path(cursor),
-        }
-
-        if op_name in {"add", "replace", "test"}:
-            op["value"] = random_json_value(cursor)
-
-        if op_name in {"copy", "move"}:
-            op["from"] = random_rfc6901_path(cursor)
-
-        # Exercise extra fields and alias ambiguity paths.
-        if cursor.int_range(0, 5) == 0:
-            op["x-fuzz"] = random_json_value(cursor, max_depth=2)
-        if cursor.int_range(0, 9) == 0:
-            op["from_"] = random_rfc6901_path(cursor)
-
-        # Sometimes drop required fields to hit validators.
-        if cursor.int_range(0, 11) == 0:
-            op.pop("path", None)
-
-        patch.append(op)
-
-    return patch
+    return op
 
 
 def _run_patch_class_api(
     doc: object, patch: list[dict[str, object]], *, inplace: bool
-) -> _Outcome:
+) -> Outcome:
     try:
         patch_for_api = cast(Sequence[Mapping[str, JSONValue]], patch)
         doc_for_api = cast(JSONValue, copy.deepcopy(doc))
         result = JsonPatch(patch_for_api).apply(doc_for_api, inplace=inplace)
-        return _Outcome(value=result)
+        return Outcome(value=result)
     except PatchInternalError:
         raise
     except _EXPECTED_PATCH_EXCEPTIONS as exc:
-        return _Outcome(error_type=type(exc))
+        return Outcome(error_type=type(exc))
 
 
-def _run_patch_function_api(doc: object, patch: list[dict[str, object]]) -> _Outcome:
+def _run_patch_function_api(doc: object, patch: list[dict[str, object]]) -> Outcome:
     try:
         patch_for_api = cast(Sequence[Mapping[str, JSONValue]], patch)
         doc_for_api = cast(JSONValue, copy.deepcopy(doc))
         result = apply_patch(doc_for_api, patch_for_api, inplace=False)
-        return _Outcome(value=result)
+        return Outcome(value=result)
     except PatchInternalError:
         raise
     except _EXPECTED_PATCH_EXCEPTIONS as exc:
-        return _Outcome(error_type=type(exc))
+        return Outcome(error_type=type(exc))
 
 
-def _run_patch_string_api(doc: object, patch: list[dict[str, object]]) -> _Outcome:
+def _run_patch_string_api(doc: object, patch: list[dict[str, object]]) -> Outcome:
     try:
         encoded_patch = json.dumps(patch, separators=(",", ":"), ensure_ascii=False)
         doc_for_api = cast(JSONValue, copy.deepcopy(doc))
         result = JsonPatch.from_string(encoded_patch).apply(doc_for_api, inplace=False)
-        return _Outcome(value=result)
+        return Outcome(value=result)
     except PatchInternalError:
         raise
     except _EXPECTED_PATCH_EXCEPTIONS as exc:
-        return _Outcome(error_type=type(exc))
+        return Outcome(error_type=type(exc))
 
 
-def _run_pointer_call(fn: Callable[[], object]) -> _Outcome:
+def _run_pointer_call(fn: Callable[[], object]) -> Outcome:
     try:
-        return _Outcome(value=fn())
+        return Outcome(value=fn())
     except PatchInternalError:
         raise
     except PatchError as exc:
-        return _Outcome(error_type=type(exc))
+        return Outcome(error_type=type(exc))
 
 
 def _exercise_pointer(pointer_text: str, *, source: bytes) -> None:
@@ -199,14 +164,23 @@ def _exercise_patch(doc: object, patch: list[dict[str, object]]) -> None:
     string_copy = _run_patch_string_api(doc, patch)
     class_inplace = _run_patch_class_api(doc, patch, inplace=True)
 
-    _assert_equivalent(
-        class_copy, function_copy, context="JsonPatch.apply vs apply_patch"
+    assert_equivalent(
+        class_copy,
+        function_copy,
+        context="JsonPatch.apply vs apply_patch",
+        error_bucket=_error_bucket,
     )
-    _assert_equivalent(
-        class_copy, string_copy, context="JsonPatch() vs JsonPatch.from_string"
+    assert_equivalent(
+        class_copy,
+        string_copy,
+        context="JsonPatch() vs JsonPatch.from_string",
+        error_bucket=_error_bucket,
     )
-    _assert_equivalent(
-        class_copy, class_inplace, context="inplace=False vs inplace=True"
+    assert_equivalent(
+        class_copy,
+        class_inplace,
+        context="inplace=False vs inplace=True",
+        error_bucket=_error_bucket,
     )
 
 
@@ -216,7 +190,7 @@ def TestOneInput(data: bytes) -> None:
 
     cursor = ByteCursor(data)
     generated_doc = random_json_value(cursor)
-    generated_patch = _random_patch(cursor)
+    generated_patch = random_patch(cursor, _ALL_OPS, _build_op)
 
     # Directly consume raw bytes as pointer text to preserve entropy.
     pointer_text = data[:96].decode("latin-1")
