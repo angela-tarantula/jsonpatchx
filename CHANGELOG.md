@@ -41,7 +41,12 @@ and this project adheres to
   `except PatchInputError` with the specific types you need.
 - `OperationNotRecognized` has been removed. Passing an op instance that is not
   registered now raises `ValidationError` from Pydantic, consistent with all
-  other invalid inputs to the parse methods.
+  other invalid inputs to the parse methods, including for a registered `op`
+  literal produced by the wrong exact class (a subclass, or a different generic
+  specialization of a registered model) that the discriminator alone would
+  otherwise miss. Each such error carries `type="operation_not_recognized"` in
+  `.errors()`, so it can still be identified programmatically without a
+  dedicated exception class to catch.
 
 ### Changed
 

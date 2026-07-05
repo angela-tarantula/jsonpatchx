@@ -18,12 +18,14 @@ from typing import (
 
 from pydantic import (
     BaseModel,
+    BeforeValidator,
     ConfigDict,
     Field,
     TypeAdapter,
     ValidationError,
     model_validator,
 )
+from pydantic_core import PydanticCustomError
 from typing_extensions import TypeForm
 
 from jsonpatchx.builtins import (
@@ -186,6 +188,52 @@ class _RegistrySpec(BaseModel):
             for op_literal in model._op_literals
         }
 
+    def _reject_unregistered_op_instance(self, obj: object) -> object:
+        """Reject an already-constructed operation whose exact class isn't registered.
+
+        Runs before Pydantic's own union/discriminator handling touches
+        `obj`, so it sees the original object identity. This matters because
+        Pydantic's discriminated-union validation routes purely on the `op`
+        literal's value: if `obj` is an `OperationSchema` instance whose
+        exact class differs from, but is structurally compatible with, the
+        discriminator-selected member (a subclass, or a different generic
+        specialization of the same model), Pydantic can silently
+        reconstruct a brand-new, correctly-typed instance from `obj`'s field
+        data rather than rejecting it. A validator that ran after that
+        reconstruction would only ever see the new, already-correct object.
+
+        Arguments:
+            obj: The raw value passed to the registry's `TypeAdapter`, before
+                any Pydantic validation.
+
+        Returns:
+            `obj`, unchanged, if it is not an `OperationSchema` instance (for
+            example a mapping or JSON-decoded value, which proceeds to normal
+            discriminator-based validation) or if its exact class is a
+            registered member.
+
+        Raises:
+            PydanticCustomError: If `obj` is an `OperationSchema` instance
+                whose exact class is not one of `self.ops`. This runs as part
+                of Pydantic's own validation, so it is wrapped into
+                `ValidationError` automatically.
+        """
+        if isinstance(obj, OperationSchema) and type(obj) not in self.ops:
+            expected_ops = ", ".join(
+                f"'{op.__name__}'"
+                for op in sorted(self.ops, key=lambda op: op.__name__)
+            )
+            raise PydanticCustomError(
+                "operation_not_recognized",
+                "Operation {op_name} is not registered in this registry; "
+                "expected one of: {expected_ops}",
+                {
+                    "op_name": type(obj).__name__,
+                    "expected_ops": expected_ops,
+                },
+            )
+        return obj
+
     @cached_property
     def union_type(self) -> TypeForm[OperationSchema]:
         """Discriminated union alias for this registry's operation models.
@@ -196,6 +244,7 @@ class _RegistrySpec(BaseModel):
         RegistryPatchOperation = Annotated[
             Union[self.ordered_ops],  # type: ignore[name-defined]
             Field(discriminator="op"),
+            BeforeValidator(self._reject_unregistered_op_instance),
         ]
         return RegistryPatchOperation
 
