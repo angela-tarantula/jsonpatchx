@@ -143,7 +143,7 @@ else:
             return {"type": "boolean"}
 
     class JSONNumber:
-        """Strict JSON number. For type checkers: `int | float` (strict; finite floats only, no `NaN` or `Infinity`)."""
+        """Strict JSON number. For type checkers: `int | float`."""
 
         @classmethod
         def __get_pydantic_core_schema__(
@@ -299,7 +299,7 @@ else:
               statically assignable to `JSONValue`. Use `cast(JSONValue, value)` at the return
               site; the patch engine validates each `apply()` return value against `JSONValue`
               at runtime.
-              See [Limitations in Python's Type System](../developer-reference/limitations-in-python-type-system.md).
+              See [Limitations in Python's Type System](https://angela-tarantula.github.io/jsonpatchx/developer-reference/limitations-in-python-type-system/).
         """
 
         @classmethod

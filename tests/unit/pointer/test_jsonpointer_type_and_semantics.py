@@ -244,6 +244,17 @@ def test_jsonpointer_parent_child_edge_cases(subtests: Subtests) -> None:
         with pytest.raises(TypeError):
             parent.is_child_of(dot_ptr)
 
+    with subtests.test("malformed pointer string errors"):
+        # A plain str `other` that fails to parse under this pointer's own
+        # backend syntax is a caller-usage error (TypeError), not patch input
+        # (InvalidJSONPointer), even though InvalidJSONPointer is the cause.
+        with pytest.raises(TypeError) as exc_info:
+            parent.is_parent_of("not~2valid")
+        assert isinstance(exc_info.value.__cause__, InvalidJSONPointer)
+        with pytest.raises(TypeError) as exc_info:
+            parent.is_child_of("not~2valid")
+        assert isinstance(exc_info.value.__cause__, InvalidJSONPointer)
+
 
 @pytest.mark.parametrize(
     (
@@ -533,13 +544,17 @@ def test_jsonpointer_type_args_validation(subtests: Subtests) -> None:
 
     with subtests.test("reject invalid default backend string syntax"):
         adapter = TypeAdapter(JSONPointer[JSONValue])
-        with pytest.raises(ValidationError):
+        with pytest.raises(ValidationError) as exc_info:
             adapter.validate_python("a.b")
+        ctx = exc_info.value.errors()[0].get("ctx") or {}
+        assert isinstance(ctx.get("error"), InvalidJSONPointer)
 
     with subtests.test("reject invalid custom backend string syntax"):
         adapter = TypeAdapter(JSONPointer[JSONValue, DotPointer])
-        with pytest.raises(ValidationError):
+        with pytest.raises(ValidationError) as exc_info:
             adapter.validate_python("a..b")
+        ctx = exc_info.value.errors()[0].get("ctx") or {}
+        assert isinstance(ctx.get("error"), InvalidJSONPointer)
 
 
 def test_backend_typevar_explicit_policy_cases(subtests: Subtests) -> None:

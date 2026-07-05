@@ -7,7 +7,7 @@ from pydantic import ValidationError
 from typing_extensions import TypeVar
 
 from jsonpatchx.builtins import AddOp, RemoveOp, ReplaceOp
-from jsonpatchx.exceptions import PatchConflictError
+from jsonpatchx.exceptions import InvalidJSONPointer, PatchConflictError
 from jsonpatchx.pointer import JSONPointer
 from jsonpatchx.schema import OperationSchema
 from jsonpatchx.types import JSONBoolean, JSONBound, JSONValue
@@ -25,8 +25,10 @@ def test_jsonpointer_invalid_syntax() -> None:
         def apply(self, doc: JSONValue) -> JSONValue:
             return doc  # pragma: no cover
 
-    with pytest.raises(ValidationError):
+    with pytest.raises(ValidationError) as exc_info:
         ReadOp.model_validate({"path": "/a~2"})
+    ctx = exc_info.value.errors()[0].get("ctx") or {}
+    assert isinstance(ctx.get("error"), InvalidJSONPointer)
 
 
 def test_jsonpointer_type_gating() -> None:

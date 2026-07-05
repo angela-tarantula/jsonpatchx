@@ -45,9 +45,20 @@ and this project adheres to
 
 ### Changed
 
+- `InvalidJSONPointer` and `InvalidJSONSelector` now also subclass `ValueError`.
+  When either is raised inside Pydantic field validation (constructing an
+  `OperationSchema`, parsing a `JsonPatch`, or a FastAPI route body), it is now
+  automatically wrapped in Pydantic's own `ValidationError`, matching normal
+  Pydantic idioms and FastAPI's default 422 handling. If you were catching
+  `InvalidJSONPointer`/`InvalidJSONSelector` directly around a
+  `model_validate()`/`JsonPatch(...)` call, catch `ValidationError` instead;
+  both still map to 422. They are still raised directly (unwrapped) when parsed
+  outside of field validation, for example inside a custom op's `apply()`.
 - `JSONPointer.is_parent_of` and `is_child_of` now raise `TypeError` instead of
   `InvalidJSONPointer` when called with a pointer that uses an incompatible
-  backend. This is a programmer error, not a patch input error.
+  backend, or a plain string `other` that fails to parse under the pointer's own
+  backend syntax (the original `InvalidJSONPointer` is available as `__cause__`
+  in that case). Both are programmer errors, not patch input errors.
 - `JSONSelector` methods (`get_pointers`, `getall`, `addall`, `removeall`,
   `is_gettable`, `is_addable`, `is_removable`) now raise `TypeError` instead of
   `InvalidJSONSelector` when the selector backend yields objects that do not

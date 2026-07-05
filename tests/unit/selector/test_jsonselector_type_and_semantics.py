@@ -488,13 +488,17 @@ def test_jsonselector_type_args_validation(subtests: Subtests) -> None:
 
     with subtests.test("reject invalid default backend string syntax"):
         adapter = TypeAdapter(JSONSelector[JSONValue])
-        with pytest.raises(ValidationError):
+        with pytest.raises(ValidationError) as exc_info:
             adapter.validate_python("a")
+        ctx = exc_info.value.errors()[0].get("ctx") or {}
+        assert isinstance(ctx.get("error"), InvalidJSONSelector)
 
     with subtests.test("reject invalid custom backend string syntax"):
         adapter = TypeAdapter(JSONSelector[JSONValue, SimpleSelector])
-        with pytest.raises(ValidationError):
+        with pytest.raises(ValidationError) as exc_info:
             adapter.validate_python("$.a")
+        ctx = exc_info.value.errors()[0].get("ctx") or {}
+        assert isinstance(ctx.get("error"), InvalidJSONSelector)
 
 
 def test_selector_backend_typevar_explicit_policy_cases(subtests: Subtests) -> None:
