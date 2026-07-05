@@ -37,15 +37,6 @@ if TYPE_CHECKING:
 #                                         _apply_ops wraps it as PatchInternalError
 
 
-class PatchError(Exception):
-    """
-    Base class for JSON Patch errors.
-
-    This type is not raised directly; it anchors the error hierarchy for tooling
-    and API error mapping.
-    """
-
-
 class InvalidOperationDefinition(TypeError):
     """
     An OperationSchema definition is invalid (developer error).
@@ -53,6 +44,16 @@ class InvalidOperationDefinition(TypeError):
     Examples:
         - `op` is missing or not declared as `Literal[...]`.
         - `op` is declared as a ClassVar, so it is not a model field.
+    """
+
+
+class InvalidOperationRegistry(TypeError):
+    """
+    An OperationRegistry has incompatible OperationSchemas (developer error).
+
+    Examples:
+        - Duplicate `op` identifiers across schemas.
+        - Non-OperationSchema classes provided to the registry.
     """
 
 
@@ -86,13 +87,12 @@ class InvalidJSONSelector(ValueError):
     """
 
 
-class InvalidOperationRegistry(TypeError):
+class PatchError(Exception):
     """
-    An OperationRegistry has incompatible OperationSchemas (developer error).
+    Base class for application-time JSON Patch errors.
 
-    Examples:
-        - Duplicate `op` identifiers across schemas.
-        - Non-OperationSchema classes provided to the registry.
+    This type is not raised directly; it anchors the error hierarchy for tooling
+    and API error mapping.
     """
 
 

@@ -21,6 +21,9 @@ and this project adheres to
 - The custom-operation agent guide is now a published docs page at
   `docs/custom-operation-agent-guide.md`, including instructions for pinning it
   downstream at your installed `jsonpatchx` version.
+- `JsonPatchRoute`'s content-type enforcement now sends an `Accept-Patch` header
+  naming the expected media type on its 415 responses, so clients that send the
+  wrong `Content-Type` can self-correct without guessing.
 
 ### Removed
 

@@ -45,7 +45,7 @@ def install_jsonpatch_error_handlers(app: FastAPI) -> None:
 
         | Status | Cause |
         |--------|-------|
-        | 415 | Wrong Content-Type for JSON Patch (`application/json-patch+json`) |
+        | 415 | Wrong Content-Type for JSON Patch (`application/json-patch+json`); response includes an `Accept-Patch` header naming the expected media type |
         | 422 | Request validation errors (malformed JSON, invalid operations or pointers, model revalidation failure) |
         | 409 | Patch is valid but cannot be applied to current resource state |
         | 500 | Unexpected execution failures (`PatchInternalError`) or a bad patch target (`InvalidPatchTarget`) |
@@ -345,4 +345,5 @@ def _enforce_json_patch_content_type(
             detail=(
                 f"Unsupported Media Type. Use {media_type} for JSON Patch requests."
             ),
+            headers={"Accept-Patch": media_type},
         )
