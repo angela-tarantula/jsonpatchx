@@ -202,7 +202,7 @@ class JSONPointer(str, Generic[T_co, P_co]):
             InvalidJSONPointer: If an existing pointer/backend instance cannot
                 be rebound to the required backend.
         """
-        resolved_backend = cls._resolve_runtime_backend_param(concrete_backend)
+        resolved_backend = cls._finalize_backend(concrete_backend)
         ptr: PointerBackend
         if isinstance(path, JSONPointer):
             path_str = str(path)
@@ -308,7 +308,7 @@ class JSONPointer(str, Generic[T_co, P_co]):
         pointer_backend: type[PointerBackend]
         pointer_backend_param = schema.get("metadata", {}).get("pointer_backend_param")
         if isinstance(pointer_backend_param, TypeVar):
-            pointer_backend = cls._resolve_runtime_backend_param(pointer_backend_param)
+            pointer_backend = cls._finalize_backend(pointer_backend_param)
         else:
             pointer_backend = pointer_backend_param
 
@@ -357,30 +357,64 @@ class JSONPointer(str, Generic[T_co, P_co]):
         unverified_typeform = args[0]
         unverified_bound_backend = args[1] if len(args) > 1 else DEFAULT_POINTER_CLS
 
-        backend_param = cls._resolve_backend_type_param(unverified_bound_backend)
+        backend_param = cls._validate_backend_arg(unverified_bound_backend)
         type_param = _validate_typeform(unverified_typeform)
 
         return type_param, backend_param
 
-    @staticmethod
-    def _resolve_backend_type_param(
+    @classmethod
+    def _validate_concrete_backend_class(
+        cls,
+        candidate: object,
+    ) -> type[PointerBackend]:
+        """
+        Validate that `candidate` is usable as a concrete backend class.
+
+        This is the single canonical place that decides whether a class is
+        admissible as a `PointerBackend`, independent of whether the caller
+        received it as a direct generic argument or as an already-resolved
+        `TypeVar` default. It cannot verify actual protocol conformance
+        (`@runtime_checkable` can only check that on an instance, not a
+        class); `_pointer_backend_instance` checks that once a concrete
+        instance exists.
+
+        Arguments:
+            candidate: A value expected to be a non-abstract class.
+
+        Returns:
+            The validated backend class.
+
+        Raises:
+            TypeError: If `candidate` is not a class, or is an abstract class.
+        """
+        if not isinstance(candidate, type):
+            raise TypeError(
+                f"JSONPointer backend parameter {candidate!r} must be a class or TypeVar"
+            )
+        if isabstract(candidate):
+            raise TypeError(
+                f"JSONPointer backend parameter {candidate!r} is abstract and cannot be used as a backend"
+            )
+        return cast(type[PointerBackend], candidate)
+
+    @classmethod
+    def _validate_backend_arg(
+        cls,
         backend_param: object,
     ) -> type[PointerBackend] | TypeVar:
         """
-        Validate the backend generic argument before runtime resolution.
+        Schema-declaration-time: validate the raw backend generic argument.
 
-        This is the single canonical place that decides whether a backend
-        argument is admissible. Every path that produces a concrete backend
-        class routes through here: the raw `JSONPointer[T, Backend]`
-        argument at schema-build time, the same argument passed directly to
-        `.parse()`, and a `TypeVar`'s resolved default at validation time
-        (via `_coerce_runtime_backend_candidate`). Whichever path supplied
-        it, an invalid backend class raises the same specific error.
+        Runs once, when `JSONPointer[T, Backend]` is built, or when
+        `.parse()` is called directly with a `backend=` argument, before any
+        value has been validated. A `TypeVar` passes through unresolved
+        here: `TypeVar` defaults are only resolved later, per validation
+        call, by `_finalize_backend`. A concrete class is validated via
+        `_validate_concrete_backend_class`.
 
         Arguments:
             backend_param: Raw second generic argument from
-                `JSONPointer[T, Backend]`, or a backend class reached via
-                `TypeVar` default resolution.
+                `JSONPointer[T, Backend]`.
 
         Returns:
             A backend class or unresolved `TypeVar`.
@@ -391,26 +425,26 @@ class JSONPointer(str, Generic[T_co, P_co]):
         """
         if isinstance(backend_param, TypeVar):
             return backend_param
-        if not isinstance(backend_param, type):
-            raise TypeError(
-                f"JSONPointer backend parameter {backend_param!r} must be a class or TypeVar"
-            )
-        if isabstract(backend_param):
-            raise TypeError(
-                f"JSONPointer backend parameter {backend_param!r} is abstract and cannot be used as a backend"
-            )
-        return cast(type[PointerBackend], backend_param)
+        return cls._validate_concrete_backend_class(backend_param)
 
     @classmethod
-    def _resolve_runtime_backend_param(
+    def _finalize_backend(
         cls,
         backend_param: type[PointerBackend] | TypeVar,
     ) -> type[PointerBackend]:
         """
-        Resolve a backend parameter to a concrete runtime backend class.
+        Validation-time: turn a schema-time backend parameter into a
+        concrete class.
+
+        Called every time a value is validated (from `_validator`) or the
+        schema is introspected (from `__get_pydantic_json_schema__`), using
+        whatever `_validate_backend_arg` produced at schema-declaration
+        time. A concrete class is returned unchanged; an unresolved
+        `TypeVar` is resolved now via `_finalize_backend_typevar`.
 
         Arguments:
-            backend_param: Backend class or backend `TypeVar`.
+            backend_param: Backend class or backend `TypeVar`, as returned
+                by `_validate_backend_arg`.
 
         Returns:
             A concrete `PointerBackend` class.
@@ -421,15 +455,19 @@ class JSONPointer(str, Generic[T_co, P_co]):
         """
         if not isinstance(backend_param, TypeVar):
             return backend_param
-        return cls._resolve_runtime_backend_typevar(backend_param)
+        return cls._finalize_backend_typevar(backend_param)
 
     @classmethod
-    def _resolve_runtime_backend_typevar(
+    def _finalize_backend_typevar(
         cls,
         backend_typevar: TypeVar,
     ) -> type[PointerBackend]:
         """
-        Resolve an unspecialized backend `TypeVar` using its default.
+        Validation-time: resolve an unspecialized backend `TypeVar` via its
+        default.
+
+        Called by `_finalize_backend` when the backend generic argument was
+        left as an unresolved `TypeVar` by `_validate_backend_arg`.
 
         Arguments:
             backend_typevar: Backend `TypeVar` from the generic parameter list.
@@ -439,8 +477,8 @@ class JSONPointer(str, Generic[T_co, P_co]):
 
         Raises:
             TypeError: If the `TypeVar` has no default at all, or if its
-                default fails `_resolve_backend_type_param`'s validation
-                (not a class, or abstract).
+                default fails `_validate_concrete_backend_class`'s
+                validation (not a class, or abstract).
         """
         # Only TypeVar defaults are used for unspecialized backend TypeVars.
         try:
@@ -453,20 +491,24 @@ class JSONPointer(str, Generic[T_co, P_co]):
                 "or be specialized with a concrete backend type"
             )
         default_candidate = getattr(backend_typevar, "__default__")
-        return cls._coerce_runtime_backend_candidate(default_candidate)
+        return cls._finalize_backend_default(default_candidate)
 
     @classmethod
-    def _coerce_runtime_backend_candidate(
+    def _finalize_backend_default(
         cls,
         candidate: object,
     ) -> type[PointerBackend]:
         """
-        Resolve a potential default backend candidate into a usable class.
+        Validation-time: resolve a `TypeVar`'s raw default value into a
+        usable class.
 
-        Delegates admissibility checks (concrete class, non-abstract) to
-        `_resolve_backend_type_param`, so a bad `TypeVar` default raises the
-        same specific error as a bad direct or schema-build-time argument,
-        rather than a separate, less specific one.
+        Called by `_finalize_backend_typevar` once it has confirmed a
+        default exists. The default itself may be a nested `TypeVar`
+        (recurse into `_finalize_backend_typevar`) or a concrete class
+        (validated via `_validate_concrete_backend_class`, so a bad default
+        raises the same specific error as a bad direct or
+        schema-declaration-time argument, rather than a separate, less
+        specific one).
 
         Arguments:
             candidate: Runtime object drawn from a backend `TypeVar` default.
@@ -476,12 +518,12 @@ class JSONPointer(str, Generic[T_co, P_co]):
 
         Raises:
             TypeError: If `candidate` is a `TypeVar` with no usable default,
-                or if it fails `_resolve_backend_type_param`'s validation
-                (not a class, or abstract).
+                or if it fails `_validate_concrete_backend_class`'s
+                validation (not a class, or abstract).
         """
         if isinstance(candidate, TypeVar):
-            return cls._resolve_runtime_backend_typevar(candidate)
-        return cast(type[PointerBackend], cls._resolve_backend_type_param(candidate))
+            return cls._finalize_backend_typevar(candidate)
+        return cls._validate_concrete_backend_class(candidate)
 
     def _validate_target(self, target: object) -> T_co:
         """

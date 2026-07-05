@@ -268,7 +268,7 @@ def _pointer_backend_instance[PB: PointerBackend](
         path: Pointer string to parse.
         pointer_cls: Backend class used to parse the pointer. Callers are
             responsible for ensuring this is a concrete, non-abstract class;
-            `JSONPointer._resolve_backend_type_param` is the single canonical
+            `JSONPointer._validate_backend_arg` is the single canonical
             place that enforces this, for every path that reaches a backend
             class (a direct argument, a schema-build-time argument, or a
             `TypeVar` default), before one ever reaches this function.
@@ -519,8 +519,8 @@ def _selector_backend_instance[SB: SelectorBackend](
         selector: Selector string to parse.
         selector_cls: Backend class used to parse the selector. Callers are
             responsible for ensuring this is a concrete, non-abstract class;
-            `JSONSelector._resolve_backend_type_param` is the single
-            canonical place that enforces this, for every path that reaches
+            `JSONSelector._validate_backend_arg` is the single canonical
+            place that enforces this, for every path that reaches
             a backend class (a direct argument, a schema-build-time
             argument, or a `TypeVar` default), before one ever reaches this
             function.
