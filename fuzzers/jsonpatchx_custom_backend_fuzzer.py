@@ -28,6 +28,7 @@ with atheris.instrument_imports():
         apply_patch,
     )
     from jsonpatchx.exceptions import (
+        InvalidJSONPointer,
         PatchConflictError,
         PatchError,
         PatchInternalError,
@@ -252,7 +253,7 @@ def _exercise_dot_pointer(path: str, *, source: bytes) -> None:
         ptr: JSONPointer[JSONValue, DotPointer] = JSONPointer.parse(
             path, backend=DotPointer
         )
-    except PatchError:
+    except InvalidJSONPointer:
         return
 
     round_trip: JSONPointer[JSONValue, DotPointer] = JSONPointer.parse(
