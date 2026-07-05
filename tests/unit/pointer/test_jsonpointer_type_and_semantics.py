@@ -255,6 +255,18 @@ def test_jsonpointer_parent_child_edge_cases(subtests: Subtests) -> None:
             parent.is_child_of("not~2valid")
         assert isinstance(exc_info.value.__cause__, InvalidJSONPointer)
 
+    with subtests.test("malformed pointer string errors (custom backend)"):
+        # Same wrapping behavior for a non-default backend, exercising
+        # _pointer_backend_instance's other message branch (pointer_cls is
+        # not DEFAULT_POINTER_CLS).
+        dot_ptr = JSONPointer.parse("a.b", backend=DotPointer)
+        with pytest.raises(TypeError) as exc_info:
+            dot_ptr.is_parent_of("bad..string")
+        assert isinstance(exc_info.value.__cause__, InvalidJSONPointer)
+        with pytest.raises(TypeError) as exc_info:
+            dot_ptr.is_child_of("bad..string")
+        assert isinstance(exc_info.value.__cause__, InvalidJSONPointer)
+
 
 @pytest.mark.parametrize(
     (
