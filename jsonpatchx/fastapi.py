@@ -10,8 +10,6 @@ from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 
 from jsonpatchx.exceptions import (
-    InvalidJSONPointer,
-    InvalidJSONSelector,
     PatchConflictError,
     PatchError,
     PatchInternalError,
@@ -50,7 +48,7 @@ def install_jsonpatch_error_handlers(app: FastAPI) -> None:
         | 415 | Wrong Content-Type for JSON Patch (`application/json-patch+json`) |
         | 422 | Request validation errors (malformed JSON, invalid operations or pointers, model revalidation failure) |
         | 409 | Patch is valid but cannot be applied to current resource state |
-        | 500 | Server misconfiguration or unexpected failures (e.g., invalid registry/op classes) |
+        | 500 | Unexpected execution failures (`PatchInternalError`) or a bad patch target (`InvalidPatchTarget`) |
 
     Examples:
 
@@ -299,13 +297,6 @@ def _patch_error_response_map(exc: PatchError) -> JSONResponse:
     """Map a PatchError to a JSONResponse for FastAPI exception handlers.
 
     Expected mappings:
-        - InvalidJSONPointer, InvalidJSONSelector -> 422. In practice these
-          rarely reach this handler: they are usually raised inside Pydantic
-          field validation, get wrapped in ValidationError, and are caught by
-          FastAPI's own handler first. They surface here only when raised
-          outside validation (e.g. a custom op's apply() calling
-          JSONPointer.parse() on user-supplied data), where 422 is still
-          correct since bad pointer syntax is always a caller error.
         - PatchValidationError -> 422 (patched result fails the target model
           schema; a content/schema problem, not a resource-state conflict)
         - PatchConflictError, TestOpFailed -> 409
@@ -329,7 +320,7 @@ def _patch_error_response_map(exc: PatchError) -> JSONResponse:
             status_code=500, content=PatchErrorResponse(detail=payload).model_dump()
         )
 
-    if isinstance(exc, (InvalidJSONPointer, InvalidJSONSelector, PatchValidationError)):
+    if isinstance(exc, PatchValidationError):
         return JSONResponse(
             status_code=422, content=PatchErrorResponse(detail=str(exc)).model_dump()
         )

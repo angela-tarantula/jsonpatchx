@@ -133,8 +133,18 @@ class OperationSchema(BaseModel, ABC):
             InvalidOperationDefinition: If the subclass does not declare a valid
                 `Literal[str, ...]` annotation for `op`.
         """
+        try:
+            annotations = get_type_hints(cls, include_extras=True)
+        except TypeError as e:
+            # Py3.12-Py3.13: a bare `Literal` (no args) annotation makes get_type_hints
+            # raise TypeError directly instead of returning it as a hint to reject below.
+            raise InvalidOperationDefinition(
+                f"OperationSchema '{cls.__name__}' is missing valid type hints for required 'op' field. "
+                "'op' must be an instance field annotated as a Literal[...] of strings."
+            ) from e
+
         if (
-            (annotations := get_type_hints(cls, include_extras=True))
+            annotations
             and (op_annotation := annotations.get("op"))
             and (get_origin(op_annotation) is Literal)
             and (op_literals := get_args(op_annotation))

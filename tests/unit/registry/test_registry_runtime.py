@@ -2,12 +2,11 @@ import json
 from typing import Generic, Literal, cast, override
 
 import pytest
+from pydantic import ValidationError
 from pytest import Subtests
 from typing_extensions import TypeVar
 
 from jsonpatchx.builtins import MoveOp, RemoveOp
-from pydantic import ValidationError
-
 from jsonpatchx.pointer import JSONPointer
 from jsonpatchx.registry import StandardRegistry, _RegistrySpec
 from jsonpatchx.schema import OperationSchema

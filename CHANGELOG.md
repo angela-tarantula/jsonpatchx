@@ -50,15 +50,35 @@ and this project adheres to
 
 ### Changed
 
-- `InvalidJSONPointer` and `InvalidJSONSelector` now also subclass `ValueError`.
-  When either is raised inside Pydantic field validation (constructing an
-  `OperationSchema`, parsing a `JsonPatch`, or a FastAPI route body), it is now
-  automatically wrapped in Pydantic's own `ValidationError`, matching normal
-  Pydantic idioms and FastAPI's default 422 handling. If you were catching
+- `InvalidOperationDefinition` and `InvalidOperationRegistry` now subclass
+  `TypeError` only; they are no longer `PatchError` subclasses. Both are raised
+  at class-definition time (`__init_subclass__`) or registry-construction time,
+  never during `op.apply()`, so they are startup/configuration errors, not
+  runtime patch failures, and were never reachable through
+  `install_jsonpatch_error_handlers`'s `PatchError` handler or `_apply_ops`'s
+  `except PatchError` branch. If you were catching either via `PatchError`,
+  catch the specific type (or `TypeError`) instead. A malformed `op: Literal`
+  annotation with no arguments (for example `op: Literal` with nothing in the
+  brackets) now consistently raises `InvalidOperationDefinition` instead of
+  sometimes leaking a bare `TypeError` from `get_type_hints` on Python 3.13 and
+  earlier.
+- `InvalidJSONPointer` and `InvalidJSONSelector` now subclass `ValueError` only;
+  they are no longer `PatchError` subclasses, since bad pointer/selector syntax
+  is a plain Python input error, not a patch-domain failure. When either is
+  raised inside Pydantic field validation (constructing an `OperationSchema`,
+  parsing a `JsonPatch`, or a FastAPI route body), Pydantic still wraps it in
+  `ValidationError` automatically, matching normal Pydantic idioms and FastAPI's
+  default 422 handling; this part is unaffected by the `PatchError` change,
+  since it was already driven by `ValueError`. If you were catching
   `InvalidJSONPointer`/`InvalidJSONSelector` directly around a
-  `model_validate()`/`JsonPatch(...)` call, catch `ValidationError` instead;
-  both still map to 422. They are still raised directly (unwrapped) when parsed
-  outside of field validation, for example inside a custom op's `apply()`.
+  `model_validate()`/`JsonPatch(...)` call, catch `ValidationError` instead; it
+  still maps to 422. Two things do change now that they are not `PatchError`: if
+  either is raised inside a custom op's `apply()`, the patch engine wraps it as
+  `PatchInternalError` (500) like any other unexpected exception, instead of
+  propagating it unwrapped; and if either is raised anywhere else uncaught (for
+  example calling `JSONPointer.parse()`/`JSONSelector.parse()` directly), it is
+  now a plain unhandled `ValueError` (500 by default) instead of being caught by
+  `install_jsonpatch_error_handlers`'s `PatchError` handler as a 422.
 - `JSONPointer.is_parent_of` and `is_child_of` now raise `TypeError` instead of
   `InvalidJSONPointer` when called with a pointer that uses an incompatible
   backend, or a plain string `other` that fails to parse under the pointer's own

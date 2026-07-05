@@ -9,23 +9,29 @@ if TYPE_CHECKING:
 # Exception hierarchy and HTTP error mapping:
 #
 # PatchError
-# ├── InvalidOperationDefinition     no HTTP — startup/config error
-# ├── InvalidOperationRegistry       no HTTP — startup/config error
 # ├── InvalidPatchTarget             500 — non-JSON doc passed to patch engine,
 # │                                        or wrong model instance
-# ├── InvalidJSONPointer(ValueError) 422 — bad pointer syntax; subclasses ValueError
-# │                                        so pydantic wraps it as ValidationError
-# │                                        automatically when used in field validators
-# ├── InvalidJSONSelector(ValueError) 422 — bad selector syntax (same note as above)
 # ├── PatchConflictError             409 — patch valid, document state rejects it
 # │   └── TestOpFailed               409 — RFC 6902 test op value mismatch
 # ├── PatchValidationError           422 — patch applied, result fails model schema
 # └── PatchInternalError             500 — unexpected exception during apply
 #
 # Non-PatchError exceptions that may surface:
-#   ValidationError (Pydantic)       422 — FastAPI's own handler catches this;
-#                                         InvalidJSONPointer/Selector are ValueError
-#                                         subclasses so pydantic wraps them natively
+#   InvalidOperationDefinition(TypeError)  Raised from __init_subclass__ at
+#   InvalidOperationRegistry(TypeError)    class-definition time or registry-
+#                                          construction time (developer/config
+#                                          errors), never during op.apply(), so
+#                                          they never reach a running request.
+#   InvalidJSONPointer(ValueError)   Raised inside Pydantic field validation
+#   InvalidJSONSelector(ValueError)  (parsing a real patch document), pydantic
+#                                    wraps it in ValidationError (422) automatically
+#                                    because it is a ValueError. Raised during
+#                                    op.apply(), _apply_ops wraps it as
+#                                    PatchInternalError (500), same as any other
+#                                    unexpected exception. Raised anywhere else
+#                                    uncaught (e.g. calling .parse() directly), it
+#                                    is an ordinary unhandled ValueError (500).
+#   ValidationError (Pydantic)       422 — FastAPI's own handler catches this
 #   TypeError                        500 — backend implementation bug (wrong type
 #                                         returned or incompatible backends mixed);
 #                                         _apply_ops wraps it as PatchInternalError
@@ -40,7 +46,7 @@ class PatchError(Exception):
     """
 
 
-class InvalidOperationDefinition(PatchError):
+class InvalidOperationDefinition(TypeError):
     """
     An OperationSchema definition is invalid (developer error).
 
@@ -50,41 +56,37 @@ class InvalidOperationDefinition(PatchError):
     """
 
 
-class InvalidJSONPointer(PatchError, ValueError):
+class InvalidJSONPointer(ValueError):
     """
     A JSON Pointer definition or instance is invalid.
-
-    Subclasses both `PatchError` and `ValueError` so that pydantic wraps it
-    as `ValidationError` automatically when raised inside a field validator,
-    giving callers structured 422 responses without a custom exception handler.
 
     Examples:
         - Pointer string is malformed or uses an incompatible backend.
         - Pointer backend class fails protocol checks.
 
     Typical HTTP mapping:
-        422 Unprocessable Entity for request input.
+        422 Unprocessable Entity when raised during Pydantic field
+        validation of a patch document; a plain unhandled `ValueError`
+        (500 by default) anywhere else.
     """
 
 
-class InvalidJSONSelector(PatchError, ValueError):
+class InvalidJSONSelector(ValueError):
     """
     A JSON selector definition or instance is invalid.
-
-    Subclasses both `PatchError` and `ValueError` so that pydantic wraps it
-    as `ValidationError` automatically when raised inside a field validator,
-    giving callers structured 422 responses without a custom exception handler.
 
     Examples:
         - Selector string is malformed or uses an incompatible backend.
         - Selector backend class fails protocol checks.
 
     Typical HTTP mapping:
-        422 Unprocessable Entity for request input.
+        422 Unprocessable Entity when raised during Pydantic field
+        validation of a patch document; a plain unhandled `ValueError`
+        (500 by default) anywhere else.
     """
 
 
-class InvalidOperationRegistry(PatchError):
+class InvalidOperationRegistry(TypeError):
     """
     An OperationRegistry has incompatible OperationSchemas (developer error).
 
