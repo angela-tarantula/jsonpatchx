@@ -1,38 +1,167 @@
 ---
 # Runs CI locally to save time on failures
-minimum_pre_commit_version: "3.7.0"
+minimum_prek_version: "0.4.8"
+default_env:
+  UV_PYTHON: ""
+  VIRTUAL_ENV: ""
+  UV_PROJECT_ENVIRONMENT: ""
+default_language_version:
+  node: lts
 repos:
-  - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v6.0.0
+  - repo: builtin
     hooks:
-      - id: end-of-file-fixer
-      - id: trailing-whitespace
       - id: check-merge-conflict
+        groups: [readonly]
+        priority: 0
       - id: check-json
         # This fixture intentionally includes non-standard JSON numeric literals (NaN/Infinity).
         # In super-linter, this is FILTER_REGEX_EXCLUDE.
         exclude: &json_nonfinite_exclude ^tests/compliance/rfc6902/jsonpatchx_nonfinite_tests\.json$
+        groups: [readonly]
+        priority: 0
       - id: check-yaml
+        groups: [readonly]
+        priority: 0
 
   - repo: https://github.com/rhysd/actionlint
     rev: v1.7.12
     hooks:
       - id: actionlint
         files: ^\.github/(workflows|actions)/.*\.ya?ml$
+        groups: [readonly]
+        priority: 0
 
   - repo: https://github.com/zizmorcore/zizmor-pre-commit
-    rev: v1.23.1
+    rev: v1.26.1
     hooks:
       - id: zizmor
-        files: ^\.github/(workflows|actions)/.*\.ya?ml$
+        files: ^\.github/((workflows|actions)/.*\.ya?ml$|dependabot\.yml$)
+        groups: [readonly]
+        priority: 0
 
   - repo: https://github.com/gitleaks/gitleaks
     rev: v8.30.1
     hooks:
       - id: gitleaks
+        groups: [readonly]
+        priority: 0
+
+  - repo: https://github.com/adrienverge/yamllint.git
+    rev: v1.38.0
+    hooks:
+      - id: yamllint
+        args: [-c, .github/linters/.yamllint.yml]
+        groups: [readonly]
+        priority: 0
+
+  - repo: https://github.com/codespell-project/codespell
+    rev: v2.4.2
+    hooks:
+      - id: codespell
+        # Machine-generated; third-party package metadata trips false positives.
+        exclude: ^tools/package-lock\.json$
+        groups: [readonly]
+        priority: 0
+
+  - repo: https://github.com/jumanjihouse/pre-commit-hooks
+    rev: 3.0.0
+    hooks:
+      - id: shellcheck
+        groups: [readonly]
+        priority: 0
+
+  - repo: local
+    hooks:
+      - id: ruff
+        name: ruff
+        entry: uv run ruff check
+        language: system
+        types: [python]
+        groups: [readonly]
+        priority: 0
+
+      - id: mypy-py312
+        name: mypy (Py3.12)
+        entry:
+          uv run --python 3.12 mypy --no-incremental --python-version 3.12 .
+        language: system
+        env:
+          UV_PROJECT_ENVIRONMENT: .venv-py312
+        files: (\.py$|^pyproject\.toml$|^uv\.lock$)
+        pass_filenames: false
+        groups: [readonly]
+        priority: 0
+
+      - id: mypy-py313
+        name: mypy (Py3.13)
+        entry:
+          uv run --python 3.13 mypy --no-incremental --python-version 3.13 .
+        language: system
+        env:
+          UV_PROJECT_ENVIRONMENT: .venv-py313
+        files: (\.py$|^pyproject\.toml$|^uv\.lock$)
+        pass_filenames: false
+        groups: [readonly]
+        priority: 0
+
+      - id: mypy-py314
+        name: mypy (Py3.14)
+        entry:
+          uv run --python 3.14 mypy --no-incremental --python-version 3.14 .
+        language: system
+        env:
+          UV_PROJECT_ENVIRONMENT: .venv-py314
+        files: (\.py$|^pyproject\.toml$|^uv\.lock$)
+        pass_filenames: false
+        groups: [readonly]
+        priority: 0
+
+      - id: checkov
+        # No way to respect gitignore.
+        # Intentionally kept out of pyproject.toml's dependency groups: checkov's
+        # transitive deps (orjson) have no free-threaded (cp314t) wheels yet, so
+        # resolving it against this project's default .python-version would force
+        # a source build requiring a newer rustc than most machines have. Its own
+        # isolated environment here avoids that entirely.
+        name: checkov
+        entry: checkov --config-file .github/linters/.checkov.yaml
+        language: python
+        additional_dependencies:
+          - checkov==3.3.6
+        files: ^(\.github/|examples/openapi/|\.clusterfuzzlite/)
+        pass_filenames: false
+        groups: [readonly]
+        priority: 0
+
+      - id: jscpd
+        name: jscpd
+        entry:
+          tools/node_modules/.bin/jscpd --config .github/linters/.jscpd.json
+        language: system
+        types: [python]
+        pass_filenames: false
+        groups: [readonly]
+        priority: 0
+
+      - id: openapi
+        name: OpenAPI (spectral)
+        entry:
+          tools/node_modules/.bin/spectral lint --ruleset
+          .github/linters/.openapirc.yml
+        language: system
+        files: ^examples/openapi/.*\.json$
+        groups: [readonly]
+        priority: 0
+
+  - repo: builtin
+    hooks:
+      - id: end-of-file-fixer
+        groups: [readwrite]
+      - id: trailing-whitespace
+        groups: [readwrite]
 
   - repo: https://github.com/igorshubovych/markdownlint-cli
-    rev: v0.48.0
+    rev: v0.49.0
     hooks:
       - id: markdownlint
         args:
@@ -43,108 +172,62 @@ repos:
             .gitignore,
             --fix,
           ]
-
-  - repo: https://github.com/adrienverge/yamllint.git
-    rev: v1.38.0
-    hooks:
-      # no way to respect gitignore
-      - id: yamllint
-        args: [-c, .github/linters/.yamllint.yml]
-
-  - repo: https://github.com/codespell-project/codespell
-    rev: v2.4.2
-    hooks:
-      - id: codespell
+        groups: [readwrite]
 
   - repo: local
     hooks:
-      - id: ruff
-        name: ruff
-        entry: uv run ruff check
-        language: system
-        types: [python]
-
       - id: ruff-format
         name: ruff format
-        entry: uv run ruff format
+        entry: uv run ruff format --exit-non-zero-on-format
         language: system
         types: [python]
-
-      - id: mypy
-        name: mypy
-        entry: uv run mypy --no-incremental .
-        language: system
-        pass_filenames: false
+        groups: [readwrite]
 
       - id: update-openapi-snapshots
         name: update openapi snapshots
-        entry: uv run python scripts/update_openapi_snapshots.py
-        language: system
-        files: (^.*\.py$|^.*\.json$|^pyproject\.toml$|^uv\.lock$)
-        pass_filenames: false
-
-      - id: checkov
-        name:
-          checkov
-          # no way to respect gitignore
         entry:
-          uv tool run --python 3.13 checkov --config-file
-          .github/linters/.checkov.yaml --directory .
+          # In commit hooks, snapshot rewrites should fail so the next commit
+          # attempt sees the regenerated files.
+          uv run python scripts/update_openapi_snapshots.py --fail-on-change
         language: system
+        files: ^(jsonpatchx/.*\.py$|examples/.*\.py$|scripts/update_openapi_snapshots\.py$|pyproject\.toml$|uv\.lock$)
         pass_filenames: false
-
-      - id: jscpd
-        name: jscpd
-        entry: npx --yes jscpd --gitignore --config .github/linters/.jscpd.json
-        language: system
-        types: [python]
-        pass_filenames: false
+        groups: [readwrite]
 
       - id: json-prettier
         name: json prettier
         entry:
-          npx --yes prettier --write --ignore-path .gitignore --config
-          .github/linters/.prettierrc.json
+          tools/node_modules/.bin/prettier --write --ignore-path .gitignore
+          --config .github/linters/.prettierrc.json
         language: system
         files: \.json$
         exclude: *json_nonfinite_exclude
+        groups: [readwrite]
 
       - id: markdown-prettier
         name: markdown prettier
         entry:
-          npx --yes prettier --write --ignore-path .gitignore --config
-          .github/linters/.prettierrc.json
+          tools/node_modules/.bin/prettier --write --ignore-path .gitignore
+          --config .github/linters/.prettierrc.json
         language: system
         files: \.(md|markdown)$
+        groups: [readwrite]
 
       - id: yaml-prettier
         name: yaml prettier
         entry:
-          npx --yes prettier --write --ignore-path .gitignore --config
-          .github/linters/.prettierrc.json
+          tools/node_modules/.bin/prettier --write --ignore-path .gitignore
+          --config .github/linters/.prettierrc.json
         language: system
         files: \.ya?ml$
+        groups: [readwrite]
 
       - id: natural-language
         name: natural language (textlint terminology)
-        entry:
-          npx --yes --package textlint --package textlint-rule-terminology
-          textlint --rule terminology
+        entry: tools/node_modules/.bin/textlint --rule terminology --fix
         language: system
         files: \.(md|markdown)$
-
-      - id: openapi
-        name: openapi (spectral)
-        entry:
-          npx --yes @stoplight/spectral-cli lint --ruleset
-          .github/linters/.openapirc.yml
-        language: system
-        files: \.json$
-        exclude: *json_nonfinite_exclude
-  - repo: https://github.com/jumanjihouse/pre-commit-hooks
-    rev: 3.0.0
-    hooks:
-      - id: shellcheck
+        groups: [readwrite]
   # - repo: https://github.com/pylint-dev/pylint
   #   rev: v4.0.5
   #   hooks:

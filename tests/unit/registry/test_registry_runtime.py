@@ -2,11 +2,11 @@ import json
 from typing import Generic, Literal, cast, override
 
 import pytest
+from pydantic import ValidationError
 from pytest import Subtests
 from typing_extensions import TypeVar
 
 from jsonpatchx.builtins import MoveOp, RemoveOp
-from jsonpatchx.exceptions import OperationNotRecognized
 from jsonpatchx.pointer import JSONPointer
 from jsonpatchx.registry import StandardRegistry, _RegistrySpec
 from jsonpatchx.schema import OperationSchema
@@ -99,10 +99,12 @@ def test_parse_rejects_other_registry_models() -> None:
 
     registry = _RegistrySpec.from_typeform(NoOp)
 
-    with pytest.raises(OperationNotRecognized):
+    with pytest.raises(ValidationError) as exc_info:
         registry.parse_python_op(op_instance)
-    with pytest.raises(OperationNotRecognized):
+    assert exc_info.value.errors()[0]["type"] == "operation_not_recognized"
+    with pytest.raises(ValidationError) as exc_info:
         registry.parse_python_patch([op_instance])
+    assert exc_info.value.errors()[0]["type"] == "operation_not_recognized"
 
 
 def test_parse_json_op_validates_single_json_operation() -> None:
@@ -160,10 +162,12 @@ def test_registry_model_input_requires_exact_class_identity(subtests: Subtests) 
         wrong_backend_specialization = GenericOp[Backend2].model_validate(
             {"path": "a.b"}
         )
-        with pytest.raises(OperationNotRecognized):
+        with pytest.raises(ValidationError) as exc_info:
             registry.parse_python_op(wrong_backend_specialization)
+        assert exc_info.value.errors()[0]["type"] == "operation_not_recognized"
 
     with subtests.test("subclass instance mismatch is rejected"):
         subclass_instance = SubGenericOp.model_validate({"path": "a.b"})
-        with pytest.raises(OperationNotRecognized):
+        with pytest.raises(ValidationError) as exc_info:
             registry.parse_python_op(subclass_instance)
+        assert exc_info.value.errors()[0]["type"] == "operation_not_recognized"

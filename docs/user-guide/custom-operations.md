@@ -380,8 +380,8 @@ documentation. The operation is not just something your server can run. It is
 also something your API can describe clearly.
 
 > I must admit, I didn't write that operation myself. I used JsonPatchX's
-> [`examples/AGENTS.md`](https://github.com/angela-tarantula/jsonpatchx/blob/main/examples/AGENTS.md)
-> context to give my coding agent everything it needed to produce it.
+> [custom-operation agent guide](/custom-operation-agent-guide.md) to give my
+> coding agent everything it needed to produce it.
 
 ## Use Operation Instances Directly
 

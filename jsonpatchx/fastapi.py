@@ -1,13 +1,3 @@
-"""
-FastAPI integration helpers for jsonpatch.
-
-Default error mapping:
-- 415: Wrong Content-Type for JSON Patch (application/json-patch+json)
-- 422: Request validation errors (malformed JSON, invalid operationns or pointers, model revalidation failure)
-- 409: Patch is valid but cannot be applied to current resource state
-- 500: Server misconfiguration or unexpected failures (e.g., invalid registry/op classes)
-"""
-
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -20,9 +10,10 @@ from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 
 from jsonpatchx.exceptions import (
+    InvalidPatchResult,
+    InvalidPatchTarget,
     PatchConflictError,
     PatchError,
-    PatchInputError,
     PatchInternalError,
 )
 from jsonpatchx.pydantic import JsonPatchFor
@@ -30,25 +21,32 @@ from jsonpatchx.pydantic import JsonPatchFor
 JSON_PATCH_MEDIA_TYPE = "application/json-patch+json"
 
 
-class PatchFailureDetailResponse(BaseModel):
-    index: int
-    op: dict[str, Any]
-    message: str
-    cause_type: str | None = None
-
-
 class PatchErrorResponse(BaseModel):
-    detail: str | PatchFailureDetailResponse
+    type: str
+    detail: str
+    index: int | None = None
+    operation: dict[str, Any] | None = None
+    errors: list[dict[str, Any]] | None = None
 
 
 # Public helpers
 
 
 def install_jsonpatch_error_handlers(app: FastAPI) -> None:
-    """Register a FastAPI exception handler for `PatchError`.
+    """Register FastAPI exception handlers for `PatchError` and `InvalidPatchTarget`.
 
     Arguments:
         app: The FastAPI application to configure.
+
+    Notes:
+        Default error mapping:
+
+        | Status | Cause |
+        |--------|-------|
+        | 415 | Wrong Content-Type for JSON Patch (`application/json-patch+json`); response includes an `Accept-Patch` header naming the expected media type |
+        | 422 | Request validation errors (malformed JSON, invalid operations or pointers, model revalidation failure) |
+        | 409 | Patch is valid but cannot be applied to current resource state |
+        | 500 | Unexpected execution failures (`PatchInternalError`) or a bad patch target (`InvalidPatchTarget`) |
 
     Examples:
 
@@ -59,6 +57,17 @@ def install_jsonpatch_error_handlers(app: FastAPI) -> None:
     @app.exception_handler(PatchError)
     def _patch_error_handler(request: Request, exc: PatchError) -> JSONResponse:
         return _patch_error_response_map(exc)
+
+    @app.exception_handler(InvalidPatchTarget)
+    def _invalid_patch_target_handler(
+        request: Request, exc: InvalidPatchTarget
+    ) -> JSONResponse:
+        return JSONResponse(
+            status_code=500,
+            content=PatchErrorResponse(
+                type=InvalidPatchTarget.error_type, detail=str(exc)
+            ).model_dump(),
+        )
 
 
 def patch_error_openapi_responses() -> dict[int | str, dict[str, Any]]:
@@ -74,27 +83,7 @@ def patch_error_openapi_responses() -> dict[int | str, dict[str, Any]]:
         def patch_item(...):
             ...
     """
-    patch_error_schema = {
-        "type": "object",
-        "properties": {
-            "detail": {
-                "oneOf": [
-                    {"type": "string"},
-                    {
-                        "type": "object",
-                        "properties": {
-                            "index": {"type": "integer"},
-                            "op": {"type": "object"},
-                            "message": {"type": "string"},
-                            "cause_type": {"type": ["string", "null"]},
-                        },
-                        "required": ["index", "op", "message"],
-                    },
-                ]
-            }
-        },
-        "required": ["detail"],
-    }
+    patch_error_schema = PatchErrorResponse.model_json_schema()
     validation_schema = {"$ref": "#/components/schemas/HTTPValidationError"}
     validation_or_patch_schema = {
         "oneOf": [
@@ -294,31 +283,68 @@ class JsonPatchRoute:
 
 
 def _patch_error_response_map(exc: PatchError) -> JSONResponse:
-    """Map a PatchError to a JSONResponse for FastAPI exception handlers."""
+    """Map a PatchError to a JSONResponse for FastAPI exception handlers.
+
+    Expected mappings:
+        - InvalidPatchResult -> 422 (patched result fails the target model
+          schema; a content/schema problem, not a resource-state conflict)
+        - PatchConflictError, TestOpFailed -> 409
+        - PatchInternalError, unrecognized PatchError -> 500
+
+    TODO: Integration tests in tests/integration/fastapi/runtime/ should cover
+          each failure path and assert both the HTTP status code and the
+          exception that triggered it, ideally with match="..." on the error
+          message. Once user-facing error messages are stabilized, assert their
+          content too.
+    """
+    operation_payload = (
+        exc.operation.model_dump(mode="json", by_alias=True)
+        if exc.operation is not None
+        else None
+    )
+
     if isinstance(exc, PatchInternalError):
-        detail = exc.detail
-        payload = PatchFailureDetailResponse(
-            index=detail.index,
-            op=detail.op.model_dump(mode="json", by_alias=True),
-            message=detail.message,
-            cause_type=detail.cause_type,
-        )
         return JSONResponse(
-            status_code=500, content=PatchErrorResponse(detail=payload).model_dump()
+            status_code=500,
+            content=PatchErrorResponse(
+                type=exc.error_type,
+                detail=str(exc),
+                index=exc.index,
+                operation=operation_payload,
+            ).model_dump(),
         )
 
-    if isinstance(exc, PatchInputError):
+    if isinstance(exc, InvalidPatchResult):
         return JSONResponse(
-            status_code=422, content=PatchErrorResponse(detail=str(exc)).model_dump()
+            status_code=422,
+            content=PatchErrorResponse(
+                type=exc.error_type,
+                detail=str(exc),
+                index=exc.index,
+                operation=operation_payload,
+                errors=exc.errors,
+            ).model_dump(),
         )
 
     if isinstance(exc, PatchConflictError):
         return JSONResponse(
-            status_code=409, content=PatchErrorResponse(detail=str(exc)).model_dump()
+            status_code=409,
+            content=PatchErrorResponse(
+                type=exc.error_type,
+                detail=str(exc),
+                index=exc.index,
+                operation=operation_payload,
+            ).model_dump(),
         )
 
     return JSONResponse(
-        status_code=500, content=PatchErrorResponse(detail=str(exc)).model_dump()
+        status_code=500,
+        content=PatchErrorResponse(
+            type=exc.error_type,
+            detail=str(exc),
+            index=exc.index,
+            operation=operation_payload,
+        ).model_dump(),
     )
 
 
@@ -332,4 +358,5 @@ def _enforce_json_patch_content_type(
             detail=(
                 f"Unsupported Media Type. Use {media_type} for JSON Patch requests."
             ),
+            headers={"Accept-Patch": media_type},
         )

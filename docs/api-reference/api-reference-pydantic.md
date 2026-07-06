@@ -1,4 +1,4 @@
-# Pydantic Contracts
+# Pydantic Integration
 
 This module contains `JsonPatchFor`, the factory used to bind patch documents to
 a target schema and an operation registry.
@@ -7,5 +7,7 @@ a target schema and an operation registry.
 ::: jsonpatchx.pydantic
     options:
       show_root_heading: false
+      show_root_toc_entry: false
+      group_by_category: false
       filters:
         - "!^_"

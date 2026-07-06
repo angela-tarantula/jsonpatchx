@@ -12,26 +12,171 @@ and this project adheres to
 
 ### Added
 
+- Every `PatchError` now carries `index`/`operation`, identifying which
+  operation in the patch document is implicated, when there is one. Named
+  `operation` rather than `op` to avoid colliding with `OperationSchema.op`, the
+  RFC 6902 discriminator string field every operation already has (an
+  `exc.op.op` or `{"op": {"op": ...}}` shape would have been confusing).
+  `_apply_ops` attaches both to any `PatchError` raised from inside an
+  operation's `apply()`, including custom operations, not just the built-ins.
+  Neither is settable at construction; only `_apply_ops` sets them, after the
+  fact, since any caller-supplied value would just be overwritten. They are
+  `None` when a failure isn't attributable to a single operation, for example
+  `InvalidPatchResult` raised from the final whole-document re-validation after
+  every operation already applied without conflict.
+- `InvalidPatchResult` gained `errors`, carrying the structured
+  `pydantic.ValidationError.errors()` list when raised from a wrapped validation
+  failure, or `None` when a custom operation raises it directly with no
+  underlying validation error.
+- Every `PatchError` and `InvalidPatchTarget` now expose `error_type`, a stable,
+  machine-readable string identifier independent of the Python class name (for
+  example `"patch_conflict"`, `"invalid_patch_result"`).
 - `DEFAULT_POINTER_CLS` and `DEFAULT_SELECTOR_CLS` are now explicitly supported
   public API and can be imported directly when you want to bind JsonPatchX's
   built-in pointer and selector backends.
-- `TargetState.MISSING` now distinguishes the root-document `MISSING` sentinel
-  case from other pointer target states.
+- `InvalidPatchTarget` is a new `PatchError` subclass raised when the document
+  passed to the patch engine is not a valid JSON value. This is a server-side
+  configuration error and maps to 500 Internal Server Error.
+- The custom-operation agent guide is now a published docs page at
+  `docs/custom-operation-agent-guide.md`, including instructions for pinning it
+  downstream at your installed `jsonpatchx` version.
+- `JsonPatchRoute`'s content-type enforcement now sends an `Accept-Patch` header
+  naming the expected media type on its 415 responses, so clients that send the
+  wrong `Content-Type` can self-correct without guessing.
+
+### Removed
+
+- `PatchFailureDetail` has been removed from the public API. `index`/`operation`
+  are now plain attributes on every `PatchError` (see Added above), and
+  `PatchInternalError.cause_type` is now a property derived from `__cause__`, so
+  the separate detail object is no longer needed. `PatchInternalError`'s
+  constructor now takes `message`, `index`, `operation`, and `cause` directly
+  instead of a `PatchFailureDetail`.
+- `OperationValidationError` has been removed from the public API. It was raised
+  inside Pydantic model validators, where Pydantic always wraps it in its own
+  `ValidationError` before callers can observe it, making it uncatchable as a
+  standalone exception. Use `PydanticCustomError` from `pydantic_core` instead,
+  which gives structured error codes and message templates and integrates
+  cleanly with Pydantic's validation error surface. `MoveOp` has been updated
+  accordingly.
+- `STANDARD_OPS` has been removed from the public API. It was a redundant tuple
+  of the six built-in operation classes with no behavior of its own. The
+  individual op classes (`AddOp`, `RemoveOp`, etc.) and `StandardRegistry`
+  remain fully supported.
+- `PatchInputError` has been removed from the public API. Its subclasses
+  (`InvalidJSONPointer`, `InvalidJSONSelector`, `InvalidPatchResult`) are now
+  direct `PatchError` subclasses with unchanged HTTP mappings (422). Replace any
+  `except PatchInputError` with the specific types you need.
+- `OperationNotRecognized` has been removed. Passing an op instance that is not
+  registered now raises `ValidationError` from Pydantic, consistent with all
+  other invalid inputs to the parse methods, including for a registered `op`
+  literal produced by the wrong exact class (a subclass, or a different generic
+  specialization of a registered model) that the discriminator alone would
+  otherwise miss. Each such error carries `type="operation_not_recognized"` in
+  `.errors()`, so it can still be identified programmatically without a
+  dedicated exception class to catch.
 
 ### Changed
 
+- The FastAPI error response body is now one consistent shape for every
+  `PatchError` and `InvalidPatchTarget`:
+  `{"type", "detail", "index", "operation", "errors"}`, replacing the previous
+  `detail: str | PatchFailureDetailResponse` union. `PatchFailureDetailResponse`
+  has been removed; `patch_error_openapi_responses()` now derives its schema
+  directly from `PatchErrorResponse` instead of a hand-maintained inline dict.
+- `InvalidPatchTarget` now subclasses `TypeError` only; it is no longer a
+  `PatchError` subclass. Its three raise sites (wrong model instance passed to
+  `.apply()`, a target model's `model_dump()` producing non-JSON data, or a
+  plain document that isn't valid JSON) are all argument validation on the
+  `.apply()` call itself, not a patch document interacting badly with real
+  document state, so it does not belong with `PatchConflictError`/
+  `InvalidPatchResult`. `install_jsonpatch_error_handlers` now registers a
+  dedicated handler for `InvalidPatchTarget` alongside the `PatchError` handler,
+  so the 500 mapping and response body are unchanged. If you were catching it
+  via `PatchError`, catch `InvalidPatchTarget` (or `TypeError`) directly
+  instead.
+- `PatchValidationError` has been renamed to `InvalidPatchResult` for clarity.
+  The old name was easy to misread as "the patch document itself failed
+  validation," which is a distinct, unrelated concept already covered by
+  `pydantic.ValidationError` during parsing. The new name pairs it with
+  `InvalidPatchTarget`: a bad input document raises `InvalidPatchTarget`, and a
+  bad outcome after an otherwise-successful apply raises `InvalidPatchResult`.
+  Behavior and the 422 HTTP mapping are unchanged; update any
+  `except PatchValidationError` to `except InvalidPatchResult`.
+- `InvalidOperationDefinition` and `InvalidOperationRegistry` now subclass
+  `TypeError` only; they are no longer `PatchError` subclasses. Both are raised
+  at class-definition time (`__init_subclass__`) or registry-construction time,
+  never during `op.apply()`, so they are startup/configuration errors, not
+  runtime patch failures, and were never reachable through
+  `install_jsonpatch_error_handlers`'s `PatchError` handler or `_apply_ops`'s
+  `except PatchError` branch. If you were catching either via `PatchError`,
+  catch the specific type (or `TypeError`) instead. A malformed `op: Literal`
+  annotation with no arguments (for example `op: Literal` with nothing in the
+  brackets) now consistently raises `InvalidOperationDefinition` instead of
+  sometimes leaking a bare `TypeError` from `get_type_hints` on Python 3.13 and
+  earlier.
+- `InvalidJSONPointer` and `InvalidJSONSelector` now subclass `ValueError` only;
+  they are no longer `PatchError` subclasses, since bad pointer/selector syntax
+  is a plain Python input error, not a patch-domain failure. When either is
+  raised inside Pydantic field validation (constructing an `OperationSchema`,
+  parsing a `JsonPatch`, or a FastAPI route body), Pydantic still wraps it in
+  `ValidationError` automatically, matching normal Pydantic idioms and FastAPI's
+  default 422 handling; this part is unaffected by the `PatchError` change,
+  since it was already driven by `ValueError`. If you were catching
+  `InvalidJSONPointer`/`InvalidJSONSelector` directly around a
+  `model_validate()`/`JsonPatch(...)` call, catch `ValidationError` instead; it
+  still maps to 422. Two things do change now that they are not `PatchError`: if
+  either is raised inside a custom op's `apply()`, the patch engine wraps it as
+  `PatchInternalError` (500) like any other unexpected exception, instead of
+  propagating it unwrapped; and if either is raised anywhere else uncaught (for
+  example calling `JSONPointer.parse()`/`JSONSelector.parse()` directly), it is
+  now a plain unhandled `ValueError` (500 by default) instead of being caught by
+  `install_jsonpatch_error_handlers`'s `PatchError` handler as a 422.
+- `JSONPointer.is_parent_of` and `is_child_of` now raise `TypeError` instead of
+  `InvalidJSONPointer` when called with a pointer that uses an incompatible
+  backend, or a plain string `other` that fails to parse under the pointer's own
+  backend syntax (the original `InvalidJSONPointer` is available as `__cause__`
+  in that case). Both are programmer errors, not patch input errors.
+- `JSONSelector` methods (`get_pointers`, `getall`, `addall`, `removeall`,
+  `is_gettable`, `is_addable`, `is_removable`) now raise `TypeError` instead of
+  `InvalidJSONSelector` when the selector backend yields objects that do not
+  implement `PointerBackend`. Same rationale: corrupted backend state is a
+  programmer error, not a patch input error.
+- Inputs that represent programmer misconfiguration (passing a wrong-type
+  argument to `parse()`, or using an abstract class as a backend type parameter)
+  now raise `TypeError` directly rather than surfacing as
+  `InvalidJSONPointer`/`InvalidJSONSelector` or `ValidationError`. Both map to
+  500, not 422.
+- The patch engine now validates each operation's return value against
+  `JSONValue` after every `apply()` call. If a custom op returns a non-JSON
+  value (for example, a `datetime`), a `PatchInternalError` is raised with the
+  op index and payload as context rather than the invalid value silently
+  propagating.
 - Simplified `SelectorBackend` so custom selector backends yield
   `PointerBackend` instances directly through `pointers(doc)`, removing the
   separate `SelectorMatch` wrapper protocol.
-- Root `JSONPointer` and root `JSONSelector` operations now treat a missing
-  document as a distinct runtime state: root reads and removals fail when no
-  document exists, while root adds recreate the document.
-- The JSON helper family (`JSONBoolean`, `JSONNumber`, `JSONString`, `JSONNull`,
-  `JSONArray[T]`, `JSONObject[T]`, and `JSONValue`) now rejects `MISSING` during
-  runtime validation again instead of treating it as a type-compatible value.
+- Operations no longer delete documents. For example, `RemoveOp` now rejects the
+  root pointer with `PatchConflictError`. Fundamentally, PATCH should represent
+  document transformation, not creation/deletion.
 - Tightened `JSONPointer.parse()` and `JSONSelector.parse()` type hints with
   overloads so omitted `type_param` defaults no longer require ignore comments
   and default/custom backend return types are preserved more accurately.
+- `python-jsonpath[strict]` is no longer a default dependency on any Python
+  version. It is now installed only via the new `jsonpatchx[strict-jsonpath]`
+  extra. Its upstream `iregexp-check` dependency segfaults on import under
+  free-threaded Python, and PEP 508 dependency markers cannot select a standard
+  build over a free-threaded build of the same Python version, so JsonPatchX
+  cannot install it automatically only on safe interpreters; install
+  `jsonpatchx[strict-jsonpath]` yourself, and only on a standard (GIL)
+  interpreter, never on a free-threaded one (3.13t, 3.14t, ...). Without it, the
+  built-in `JSONSelector` backend falls back to Python's built-in `re` for
+  `match()`/`search()` and does not validate regular expression patterns against
+  RFC 9485 I-Regexp; see
+  [Targeting Documents with JSON Pointer and JSONPath](docs/user-guide/patch-targeting.md)
+  for the affected behavior and install command.
+- Added an explicit `pydantic-core>=2.29.0` floor. This is the first
+  `pydantic-core` release with a free-threaded-Python wheel; it does not change
+  the resolved version for standard installs.
 
 ## [0.1.0] - 2026-04-24
 

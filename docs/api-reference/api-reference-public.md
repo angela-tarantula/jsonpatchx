@@ -1,11 +1,10 @@
-# Public API
+# Exports
 
-This is the top-level import surface used throughout the User Guide.
-
-Use this page when you want the shortest path from an example import to the
-actual exported symbols.
+The complete `jsonpatchx` public surface. Everything listed here is importable
+directly from `jsonpatchx`.
 
 <!-- prettier-ignore -->
 ::: jsonpatchx
     options:
       show_root_heading: false
+      show_root_toc_entry: false

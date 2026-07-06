@@ -101,3 +101,16 @@ async def test_demo1_accepts_patch_model_dump_json_payload(
     assert payload["id"] == 2
     assert payload["tags"][-1] == "loyal"
     assert payload["status"] == "champion"
+
+
+async def test_demo1_rejects_wrong_content_type(demo1_client: AsyncClient) -> None:
+    patch = [{"op": "replace", "path": "/email", "value": "morgan@example.com"}]
+
+    response = await demo1_client.patch(
+        "/customers/2",
+        json=patch,
+        headers={"Content-Type": "application/json"},
+    )
+
+    assert response.status_code == 415
+    assert response.headers["accept-patch"] == "application/json-patch+json"

@@ -8,26 +8,36 @@ from pydantic import Field, TypeAdapter
 from pydantic_core import core_schema
 from typing_extensions import TypeForm, TypeIs
 
-from jsonpatchx.exceptions import InvalidJSONPointer
-
 # TypeAdapter helpers
 
 
 @lru_cache(maxsize=512)
 def _cached_type_adapter[T](expected: TypeForm[T]) -> TypeAdapter[T]:
+    """Build and cache a `TypeAdapter` for `expected`; see `_cached_adapter` for unhashable TypeForms."""
     # https://docs.pydantic.dev/latest/concepts/performance/#typeadapter-instantiated-once
     return TypeAdapter(expected)
 
 
 def _cached_adapter[T](expected: TypeForm[T]) -> TypeAdapter[T]:
     """
-    Internal: return a (usually cached) Pydantic TypeAdapter for a TypeForm.
+    Return a (usually cached) Pydantic `TypeAdapter` for a TypeForm.
 
     JSONPointer uses adapters at apply-time to validate that the resolved target
     conforms to the pointer's type parameter.
 
-    Adapters are cached for performance when possible. Unhashable TypeForms are supported
-    but cannot be cached.
+    Arguments:
+        expected: A TypeForm to adapt.
+
+    Returns:
+        A `TypeAdapter` for `expected`.
+
+    Raises:
+        TypeError: If `expected` is not a valid TypeForm (for example, a type missing
+            `__get_pydantic_core_schema__`).
+
+    Notes:
+        Adapters are cached for performance when possible. Unhashable TypeForms are
+        supported but cannot be cached.
     """
     try:
         try:
@@ -38,8 +48,8 @@ def _cached_adapter[T](expected: TypeForm[T]) -> TypeAdapter[T]:
             #      It's really just cases like Annotated[int, {"dict":"unhashable"}] that are too rare to support for now.
             return TypeAdapter(expected)
     except Exception as e:
-        raise InvalidJSONPointer(
-            f"Invalid type parameter for JSON Pointer: {expected!r}. Cannot create TypeAdapter. Did you implement __get_pydantic_core_schema__?"
+        raise TypeError(
+            f"Invalid type parameter: {expected!r}. Cannot create TypeAdapter. Did you implement __get_pydantic_core_schema__?"
         ) from e
 
 
@@ -82,8 +92,19 @@ def _strict_validator(typeform: TypeForm[Any]) -> core_schema.CoreSchema:
     """
     Build a strict validator for a TypeForm using a cached TypeAdapter.
 
-    This keeps validation strict without exposing the internal helper type's full
-    generated JSON Schema.
+    Arguments:
+        typeform: A TypeForm to validate against.
+
+    Returns:
+        A `CoreSchema` that validates values strictly against `typeform`.
+
+    Raises:
+        TypeError: If `typeform` is not a valid TypeForm, propagated from
+            `_cached_adapter`.
+
+    Notes:
+        This keeps validation strict without exposing the internal helper type's full
+        generated JSON Schema.
     """
     adapter = _cached_adapter(typeform)
 
@@ -103,12 +124,13 @@ if TYPE_CHECKING:
 else:
 
     class JSONBoolean:
-        """Strict JSON boolean helper used in Pydantic-backed patch contracts."""
+        """Strict JSON boolean. For type checkers: `bool`."""
 
         @classmethod
         def __get_pydantic_core_schema__(
             cls, _source_type: object, _handler: core_schema.GetCoreSchemaHandler
         ) -> core_schema.CoreSchema:
+            """Build the Pydantic core schema for strict boolean validation."""
             return _strict_validator(Annotated[bool, Field(strict=True)])
 
         @classmethod
@@ -117,15 +139,17 @@ else:
             _core_schema: core_schema.CoreSchema,
             _handler: core_schema.GetJsonSchemaHandler,
         ) -> dict[str, object]:
+            """Return the JSON Schema representation for JSON boolean."""
             return {"type": "boolean"}
 
     class JSONNumber:
-        """Strict JSON number helper accepting `int` or finite `float` values."""
+        """Strict JSON number. For type checkers: `int | float`."""
 
         @classmethod
         def __get_pydantic_core_schema__(
             cls, _source_type: object, _handler: core_schema.GetCoreSchemaHandler
         ) -> core_schema.CoreSchema:
+            """Build the Pydantic core schema for strict number validation (int or finite float)."""
             type _JSONNumberInternal = Annotated[  # NOTE: document the necessity of field strictness. adapters strict too for preventing "2" -> 2 for JSONBoolean and int/float
                 Annotated[int, Field(strict=True)]
                 | Annotated[float, Field(strict=True, allow_inf_nan=False)],
@@ -141,15 +165,17 @@ else:
             _core_schema: core_schema.CoreSchema,
             _handler: core_schema.GetJsonSchemaHandler,
         ) -> dict[str, object]:
+            """Return the JSON Schema representation for JSON number."""
             return {"type": "number"}
 
     class JSONString:
-        """Strict JSON string helper used in operation models and patch schemas."""
+        """Strict JSON string. For type checkers: `str`."""
 
         @classmethod
         def __get_pydantic_core_schema__(
             cls, _source_type: object, _handler: core_schema.GetCoreSchemaHandler
         ) -> core_schema.CoreSchema:
+            """Build the Pydantic core schema for strict string validation."""
             return _strict_validator(Annotated[str, Field(strict=True)])
 
         @classmethod
@@ -158,15 +184,17 @@ else:
             _core_schema: core_schema.CoreSchema,
             _handler: core_schema.GetJsonSchemaHandler,
         ) -> dict[str, object]:
+            """Return the JSON Schema representation for JSON string."""
             return {"type": "string"}
 
     class JSONNull:
-        """Strict JSON null helper."""
+        """Strict JSON null. For type checkers: `None`."""
 
         @classmethod
         def __get_pydantic_core_schema__(
             cls, _source_type: object, _handler: core_schema.GetCoreSchemaHandler
         ) -> core_schema.CoreSchema:
+            """Build the Pydantic core schema for strict null validation."""
             return _strict_validator(Annotated[None, Field()])
 
         @classmethod
@@ -175,15 +203,17 @@ else:
             _core_schema: core_schema.CoreSchema,
             _handler: core_schema.GetJsonSchemaHandler,
         ) -> dict[str, object]:
+            """Return the JSON Schema representation for JSON null."""
             return {"type": "null"}
 
     class JSONArray[T]:
-        """Strict JSON array helper restricted to concrete `list` values."""
+        """Strict JSON array. For type checkers: `list[T]`."""
 
         @classmethod
         def __get_pydantic_core_schema__(
             cls, source_type: object, handler: core_schema.GetCoreSchemaHandler
         ) -> core_schema.CoreSchema:
+            """Build the Pydantic core schema for strict list validation, parameterized by item type."""
             (item_type,) = get_args(source_type) or (Any,)
             item_schema = handler.generate_schema(item_type)
             return core_schema.list_schema(item_schema, strict=True)
@@ -194,15 +224,17 @@ else:
             _core_schema: core_schema.CoreSchema,
             handler: core_schema.GetJsonSchemaHandler,
         ) -> dict[str, object]:
+            """Return the JSON Schema representation for JSON array, delegating to the handler."""
             return handler(_core_schema)
 
     class JSONObject[T]:
-        """Strict JSON object helper restricted to `dict[str, ...]` values."""
+        """Strict JSON object. For type checkers: `dict[str, T]`."""
 
         @classmethod
         def __get_pydantic_core_schema__(
             cls, source_type: object, handler: core_schema.GetCoreSchemaHandler
         ) -> core_schema.CoreSchema:
+            """Build the Pydantic core schema for strict dict validation, parameterized by value type."""
             (value_type,) = get_args(source_type) or (Any,)
             value_schema = handler.generate_schema(value_type)
             return core_schema.dict_schema(
@@ -215,14 +247,15 @@ else:
             _core_schema: core_schema.CoreSchema,
             handler: core_schema.GetJsonSchemaHandler,
         ) -> dict[str, object]:
+            """Return the JSON Schema representation for JSON object, delegating to the handler."""
             return handler(_core_schema)
 
 
 type JSONScalar = JSONBoolean | JSONNumber | JSONString | JSONNull
-"""Strict JSON scalar helper union."""
+"""Strict JSON scalar. For type checkers: `JSONBoolean | JSONNumber | JSONString | JSONNull`."""
 
 type JSONContainer[T] = JSONArray[T] | JSONObject[T]
-"""Strict JSON container helper union."""
+"""Strict JSON container. For type checkers: `JSONArray[T] | JSONObject[T]`."""
 
 # type-narrowing helpers
 # NOTE: consider making public type-narrowing helpers
@@ -234,44 +267,46 @@ def _is_container(value: JSONValue) -> TypeIs[JSONContainer[JSONValue]]:
 
 
 def _is_object(value: JSONValue) -> TypeIs[JSONObject[JSONValue]]:
+    """Check whether `value` is a JSON object (dict)."""
     return isinstance(value, dict)
 
 
 def _is_array(value: JSONValue) -> TypeIs[JSONArray[JSONValue]]:
+    """Check whether `value` is a JSON array (list)."""
     return isinstance(value, list)
 
 
 if TYPE_CHECKING:
     # Static typing: keep JSONValue as a strict JSON union.
-    type JSONValue = Annotated[
+    type JSONValue = Annotated[  # NOTE: document somewhere that you can't do isinstance because these are type aliases
         JSONScalar | JSONContainer[JSONValue],
         Field(),
-    ]  # NOTE: document somewhere that you can't do isinstance because these are type aliases
-    """
-    Pydantic-friendly type representing a strict JSON value.
-
-    Notes:
-        - The standard JSON Patch operation schemas use it for `value` fields.
-        - `JSONPointer` uses it as the document type for `get`/`add`/`remove`.
-        - Patch application helpers can optionally validate that inputs are legitimate JSON.
-        - Containers are restricted to `list` and `dict[str, ...]`.
-        - Numeric values are restricted to `int` or finite `float` (no NaN/Infinity).
-        - Pydantic validation is strict (no implicit coercions).
-    """
+    ]
 else:
 
     class JSONValue:
         """
-        Runtime JSON value type with strict validation and minimal OpenAPI schema.
+        Strict, recursively validated JSON value; no implicit coercions.
 
-        Validation delegates to the strict JSON union, while
-        JSON schema is deliberately inlined as `{}` to avoid a named component.
+        For type checkers: `JSONBoolean | JSONNumber | JSONString | JSONNull | JSONArray[JSONValue] | JSONObject[JSONValue]`.
+
+        Notes:
+            - Containers are restricted to `list` and `dict[str, ...]`.
+            - Numbers are restricted to `int` or finite `float` (no `NaN` or `Infinity`).
+            - Use `JSONBound` as a TypeVar bound when you need a static type constraint without
+              Pydantic enforcement; use `JSONValue` when you need strict runtime validation.
+            - Due to `list` invariance, narrower types such as `JSONArray[JSONNumber]` are not
+              statically assignable to `JSONValue`. Use `cast(JSONValue, value)` at the return
+              site; the patch engine validates each `apply()` return value against `JSONValue`
+              at runtime.
+              See [Limitations in Python's Type System](https://angela-tarantula.github.io/jsonpatchx/developer-reference/limitations-in-python-type-system/).
         """
 
         @classmethod
         def __get_pydantic_core_schema__(
             cls, _source_type: object, _handler: core_schema.GetCoreSchemaHandler
         ) -> core_schema.CoreSchema:
+            """Build the Pydantic core schema for recursive strict JSON value validation."""
             type _JSONValueInternal = Annotated[
                 JSONBoolean
                 | JSONNumber
@@ -289,23 +324,55 @@ else:
             _core_schema: core_schema.CoreSchema,
             _handler: core_schema.GetJsonSchemaHandler,
         ) -> dict[str, object]:
+            """Return an empty JSON Schema for `JSONValue` to avoid polluting generated OpenAPI output."""
             return {}
 
 
 def _validate_JSONValue(obj: object) -> JSONValue:
+    """Validate `obj` as a strict JSON value.
+
+    Arguments:
+        obj: Candidate value to validate.
+
+    Returns:
+        obj_copy: a copy of `obj` as a `JSONValue`. NOTE: propagate this copy notice
+
+    Raises:
+        ValidationError: If `obj` is not a valid JSON value.
+    """
     return _cached_adapter(JSONValue).validate_python(obj, strict=True)
 
 
-def _validate_typeform(unverified: object, exc_type: type[Exception]) -> TypeForm[Any]:
-    """Validate a TypeForm parameter."""  # NOTE: move to JSONPointer if it's gonna raise InvalidJSONPointer
-    try:
-        _cached_adapter(unverified)  # type: ignore[arg-type]
-    except Exception as e:
-        raise exc_type(f"type parameter {unverified!r} must be a valid TypeForm") from e
+def _validate_typeform(unverified: object) -> TypeForm[Any]:
+    """Validate that `unverified` is a usable Pydantic TypeForm.
+
+    Arguments:
+        unverified: Candidate type parameter to validate.
+
+    Returns:
+        `unverified` cast to `TypeForm[Any]`.
+
+    Raises:
+        TypeError: If `unverified` cannot be adapted by Pydantic.
+    """
+    _cached_adapter(unverified)  # type: ignore[arg-type]
     return cast(TypeForm[Any], unverified)
 
 
 type JSONBound = JSONScalar | Sequence[JSONBound] | Mapping[str, JSONBound]
-"""Bound for recursively JSON-shaped values accepted by generic helpers such as
-`JSONPointer[T]`."""
-# Use it like `T = TypeVar("T", default=JSONValue, bound=JSONBound)`
+"""
+TypeVar bound for JSON-shaped values, used by `JSONPointer[T]` and `JSONSelector[T]`.
+
+For type checkers: `JSONScalar | Sequence[JSONBound] | Mapping[str, JSONBound]`.
+
+Notes:
+    This bound is intentionally permissive due to Python typing limitations. It accepts any
+    `Sequence` (including `tuple`) and any `Mapping` (including custom mappings), rather than
+    just `list` and `dict[str, ...]` as strict JSON requires. There is no way to express the
+    exact recursive JSON container constraint in a TypeVar bound; see
+    [Limitations in Python's Type System](../developer-reference/limitations-in-python-type-system.md).
+
+    `JSONBound` is a static-only constraint with no runtime validation; it exists to let type
+    checkers verify that a type parameter is plausibly JSON-shaped. Use `JSONValue` when you
+    need strict Pydantic enforcement at runtime.
+"""

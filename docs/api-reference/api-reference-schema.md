@@ -7,5 +7,7 @@ patch operations.
 ::: jsonpatchx.schema
     options:
       show_root_heading: false
+      show_root_toc_entry: false
       filters:
         - "!^_"
+        - "^__init_subclass__$"

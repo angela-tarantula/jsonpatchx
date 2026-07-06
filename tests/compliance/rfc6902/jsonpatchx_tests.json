@@ -47,73 +47,8 @@
       { "op": "remove", "path": "" },
       { "op": "add", "path": "", "value": [1, 2, 3] }
     ],
-    "expected": [1, 2, 3],
-    "comment": "remove then add at root should work"
-  },
-  {
-    "doc": [1, 2, 3],
-    "patch": [
-      { "op": "remove", "path": "" },
-      { "op": "remove", "path": "" }
-    ],
-    "error": "remove target must exist beforehand",
-    "comment": "removal of missing document"
-  },
-  {
-    "doc": [1, 2, 3],
-    "patch": [
-      { "op": "remove", "path": "" },
-      { "op": "replace", "path": "", "value": [1, 2, 3] }
-    ],
-    "error": "replace target must exist beforehand",
-    "comment": "replacement of missing document"
-  },
-  {
-    "doc": [1, 2, 3],
-    "patch": [
-      { "op": "remove", "path": "" },
-      { "op": "move", "from": "", "path": "/a/b" }
-    ],
-    "error": "move source must exist beforehand",
-    "comment": "move from missing document"
-  },
-  {
-    "doc": [1, 2, 3],
-    "patch": [
-      { "op": "remove", "path": "" },
-      { "op": "copy", "from": "", "path": "" },
-      { "op": "add", "path": "/a/b", "value": 1 }
-    ],
-    "error": "copy source must exist beforehand",
-    "comment": "copy from missing document"
-  },
-  {
-    "doc": [1, 2, 3],
-    "patch": [
-      { "op": "remove", "path": "" },
-      { "op": "copy", "from": "", "path": "/a/b" },
-      { "op": "add", "path": "/a/b", "value": 1 }
-    ],
-    "error": "copy source must exist beforehand (2)",
-    "comment": "copy from missing document"
-  },
-  {
-    "doc": [1, 2, 3],
-    "patch": [
-      { "op": "remove", "path": "" },
-      { "op": "test", "path": "", "value": null }
-    ],
-    "error": "root removal is does not produce null",
-    "comment": "test on missing document (1)"
-  },
-  {
-    "doc": [1, 2, 3],
-    "patch": [
-      { "op": "remove", "path": "" },
-      { "op": "test", "path": "", "value": "" }
-    ],
-    "error": "root removal is does not produce empty string",
-    "comment": "test on missing document (2)"
+    "error": "cannot delete the document",
+    "comment": "remove then add at root is rejected"
   },
   {
     "doc": { "foo": "should-not-be-indexable" },

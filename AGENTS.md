@@ -1,29 +1,5 @@
 # AGENTS.md
 
-## Documentation Structure
-
-Before rewriting or compacting docs, inspect the heading outline as both a human
-and a Model Context Protocol (MCP) client would.
-
-- Dignify the reader's intelligence. Do not explain reasonably self-obvious
-  behavior or benefits at unnecessary length.
-- Do not create umbrella headings unless they group at least two real peer
-  subsections and have a short intro paragraph.
-- If a heading names `X` and `Y`, then `X` and `Y` must both appear as peer
-  topics in the outline.
-- Every heading must describe the content directly under it.
-- Do not begin a heading with inline code. If a symbol or type name appears in
-  the heading, phrase it so the heading still reads naturally in prose.
-- Use noun-phrase headings for conceptual sections.
-- Use action/task headings for procedural sections.
-- Introduce concepts from their actual guarantees and boundaries: say what is
-  parsed up front, what is enforced later, what is validated where, and what a
-  type or abstraction does and does not promise.
-- Take extra care when adding, removing, or moving sections so that concepts are
-  introduced before later sections rely on them.
-- Avoid lookahead prose such as "later on this page..."
-- Optimize for semantic hierarchy, scanability, and machine-readable structure.
-
 ## Docstring Style
 
 When editing public Python docstrings, match the repo's Google-style section
@@ -37,6 +13,19 @@ labels and the way Zensical renders them.
   add placeholder examples just to fill the section.
 - Keep the opening sentence concrete and descriptive, then use sections for the
   rest.
+- Before writing a docstring, check whether the function/class is public (no
+  leading underscore, reachable from `jsonpatchx/__init__.py` or otherwise part
+  of the documented surface) or private. Public docstrings are read by callers
+  who never see the implementation; private docstrings are read by maintainers
+  who already have it open. Write for that actual reader: a public docstring
+  states the contract (inputs, outputs, guarantees, what to catch); it does not
+  explain why the implementation isn't shaped some other way, why a related type
+  isn't used instead, or other design-decision rationale aimed at a future
+  maintainer. That belongs in a code comment, the PR description, or
+  `CHANGELOG.md`, not in text a caller has to read past to learn how to use the
+  thing. Private docstrings have more room for implementation reasoning, but
+  should still not sit as design manifestos if the actual contract is not the
+  code's own point.
 
 ## Changelog Writing
 

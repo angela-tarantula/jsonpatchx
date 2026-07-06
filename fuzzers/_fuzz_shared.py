@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import math
 import struct
+from collections.abc import Callable
 from dataclasses import dataclass
 from typing import TypeVar
 
@@ -241,6 +242,67 @@ def random_dot_path(cursor: ByteCursor, *, max_tokens: int = 5) -> str:
         return ".".join(tokens[:1] + [""] + tokens[1:])
 
     return ".".join(tokens)
+
+
+@dataclass(frozen=True, slots=True)
+class Outcome:
+    """Result of running one fuzz-target API call, for cross-API comparison."""
+
+    value: object | None = None
+    error_type: type[BaseException] | None = None
+
+    @property
+    def ok(self) -> bool:
+        return self.error_type is None
+
+
+def assert_equivalent(
+    left: Outcome,
+    right: Outcome,
+    *,
+    context: str,
+    error_bucket: Callable[[type[BaseException]], str],
+) -> None:
+    """Assert two outcomes agree on success/failure and value/error bucket.
+
+    ``error_bucket`` is supplied by the caller (rather than imported here) so
+    this module never imports jsonpatchx/pydantic; those must only be
+    imported inside each harness's own ``atheris.instrument_imports()``
+    block, or coverage instrumentation for the library under test is lost.
+    """
+    if left.ok != right.ok:
+        raise AssertionError(
+            f"Outcome mismatch in {context}: left={left.error_type}, right={right.error_type}"
+        )
+
+    if left.ok:
+        if left.value != right.value:
+            raise AssertionError(f"Value mismatch in {context}")
+        return
+
+    assert left.error_type is not None
+    assert right.error_type is not None
+    if error_bucket(left.error_type) != error_bucket(right.error_type):
+        raise AssertionError(
+            f"Error bucket mismatch in {context}: "
+            f"{left.error_type.__name__} vs {right.error_type.__name__}"
+        )
+
+
+def random_patch(
+    cursor: ByteCursor,
+    all_ops: tuple[str, ...],
+    build_op: Callable[[ByteCursor, str], dict[str, object]],
+) -> list[dict[str, object]]:
+    """Generate a random patch by sampling an op name and delegating to ``build_op``."""
+    op_count = cursor.int_range(1, 10)
+    patch: list[dict[str, object]] = []
+
+    for _ in range(op_count):
+        op_name = cursor.choose(all_ops)
+        patch.append(build_op(cursor, op_name))
+
+    return patch
 
 
 def coerce_patch(value: object, *, max_ops: int = 10) -> list[dict[str, object]] | None:

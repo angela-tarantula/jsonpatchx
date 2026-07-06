@@ -89,8 +89,7 @@ def _assert_fail_case_with_builder(
 ) -> None:
     try:
         patch = build_patch(case)
-    except Exception as exc:
-        assert isinstance(exc, (PatchError, ValidationError))
+    except (PatchError, ValidationError) as exc:
         assert not isinstance(exc, PatchInternalError), f"Internal error: {exc!r}"
         return
 

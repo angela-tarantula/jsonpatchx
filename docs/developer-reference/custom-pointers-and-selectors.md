@@ -57,6 +57,12 @@ If your backend can satisfy that contract, JsonPatchX can use it.
 
 A good pointer backend should satisfy a few operational rules.
 
+**Do not raise `TypeError` for invalid pointer strings.** `TypeError` from a
+constructor is treated as a backend misconfiguration error, not as an invalid
+pointer string, so it propagates raw rather than being wrapped in
+`InvalidJSONPointer`. Any other exception is wrapped. In a FastAPI route, an
+unhandled `TypeError` maps to a 500 rather than a 422.
+
 Its string form should round-trip cleanly. Constructing a backend from a string,
 converting it back to a string, and constructing it again should produce an
 equivalent pointer.
@@ -68,7 +74,10 @@ The backend should be immutable or safe to reuse. JsonPatchX may cache backend
 instances.
 
 The backend defines its own syntax. There is no universal root string across
-every possible backend.
+every possible backend. This is why `JSONPointer.is_root(doc)` takes a document
+argument rather than simply checking for `""`: the backend itself determines
+what counts as root given the document, so the check must go through the
+backend.
 
 If you want to study an intentionally extended pointer implementation, see
 [`python-jsonpath`'s `JSONPointer`](https://jg-rp.github.io/python-jsonpath/pointers/),
@@ -106,6 +115,12 @@ class MySelectorBackend:
 
 ## Selector Rules That Matter In Practice
 
+**Do not raise `TypeError` for invalid selector strings.** The same rule applies
+as for pointer backends: `TypeError` from a constructor is treated as a backend
+misconfiguration error and propagates raw, while any other exception is wrapped
+in `InvalidJSONSelector` and surfaces as a Pydantic `ValidationError`. In a
+FastAPI route, an unhandled `TypeError` maps to a 500 rather than a 422.
+
 `pointers(doc)` should yield zero or more concrete pointer objects, not abstract
 query nodes or backend-specific match wrappers.
 
@@ -129,14 +144,26 @@ instances. Matched values are still revalidated through `JSONSelector[T]` and
 
 The more important limitation is standards compliance, not upstream's `object`
 annotation. Out of the box, JsonPatchX's built-in JSONPath backend follows the
-RFC 9535 path. The exception is Python 3.14 and later, where the upstream
-[`iregexp-check`](https://github.com/jg-rp/rust-iregexp) dependency behind
-`python-jsonpath[strict]` is not yet compatible with free-threaded Python.
+RFC 9535 path only if the optional `jsonpatchx[strict-jsonpath]` extra is
+installed:
 
-JsonPatchX still uses `JSONPathEnvironment(strict=True)` there, so this only
-affects regular expression compliance: `match()` and `search()` fall back to
-Python's built-in `re`, and regular expression patterns are not validated
-against RFC 9485 I-Regexp.
+```sh
+pip install jsonpatchx[strict-jsonpath]
+```
+
+> **Warning:** Do not install `jsonpatchx[strict-jsonpath]` on a free-threaded
+> Python build (3.13t, 3.14t, and later free-threaded variants). Its upstream
+> [`iregexp-check`](https://github.com/jg-rp/rust-iregexp) dependency segfaults
+> on import there. There is no PEP 508 dependency marker that can select a
+> standard build over a free-threaded build of the same Python version, so
+> JsonPatchX cannot block this installation combination for you; only install
+> `strict-jsonpath` on a standard (GIL) interpreter.
+
+JsonPatchX still uses `JSONPathEnvironment(strict=True)` regardless of whether
+`strict-jsonpath` is installed, so the effect of omitting it is limited to
+regular expression compliance: `match()` and `search()` fall back to Python's
+built-in `re`, and regular expression patterns are not validated against RFC
+9485 I-Regexp.
 
 Like pointer backends, selector backends should be immutable or otherwise safe
 to reuse.

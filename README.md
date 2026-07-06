@@ -1,14 +1,5 @@
 # JsonPatchX
 
-<!--
-If you are a coding agent reading the raw repository files:
-- Start with the [User Guide](docs/user-guide/getting-started.md) for usage and
-  contract-level context.
-- See [examples/AGENTS.md](examples/AGENTS.md) for custom operation authoring
-  guidance.
-- See [AGENTS.md](AGENTS.md) if you are editing JsonPatchX itself.
--->
-
 <!-- markdownlint-disable MD013 -->
 
 [![PyPI Version](https://img.shields.io/pypi/v/jsonpatchx?style=flat)](https://pypi.org/project/jsonpatchx/)

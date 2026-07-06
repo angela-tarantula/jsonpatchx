@@ -11,6 +11,7 @@ import copy
 from typing import Any, Literal, Self, assert_never, override
 
 from pydantic import AliasChoices, ConfigDict, Field, model_validator
+from pydantic_core import PydanticCustomError
 
 from jsonpatchx import (
     AddOp,
@@ -24,7 +25,6 @@ from jsonpatchx import (
     TestOpFailed,
 )
 from jsonpatchx.backend import TargetState, classify_state
-from jsonpatchx.exceptions import OperationValidationError
 from jsonpatchx.types import JSONArray, JSONBoolean, JSONNumber, JSONObject, JSONString
 
 
@@ -422,7 +422,10 @@ class ReplaceTextSliceOp(OperationSchema):
     @model_validator(mode="after")
     def _validate_range(self) -> Self:
         if self.start > self.end:
-            raise OperationValidationError("replace_text_slice requires start <= end")
+            raise PydanticCustomError(
+                "replace_text_slice_range",
+                "replace_text_slice requires start <= end",
+            )
         return self
 
     @override
@@ -458,8 +461,9 @@ class AddByValueOp(OperationSchema):
     @model_validator(mode="after")
     def _validate_anchor(self) -> Self:
         if (self.before is None) == (self.after is None):
-            raise OperationValidationError(
-                "add_by_value requires exactly one of 'before' or 'after'"
+            raise PydanticCustomError(
+                "add_by_value_anchor",
+                "add_by_value requires exactly one of 'before' or 'after'",
             )
         return self
 

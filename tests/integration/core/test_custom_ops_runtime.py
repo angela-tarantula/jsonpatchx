@@ -3,6 +3,7 @@ from typing import Literal, override
 import pytest
 
 from jsonpatchx import ReplaceOp
+from jsonpatchx.builtins import RemoveOp
 from jsonpatchx.exceptions import PatchConflictError, PatchInternalError
 from jsonpatchx.pointer import JSONPointer
 from jsonpatchx.schema import OperationSchema
@@ -52,12 +53,20 @@ def test_custom_op_apply() -> None:
 
 
 def test_custom_op_internal_error_wrapped() -> None:
-    type Registry = ExplodeOp
-    patch = JsonPatch([{"op": "explode", "path": "/"}], registry=Registry)
+    type Registry = ExplodeOp | RemoveOp
+    patch = JsonPatch(
+        [
+            {"op": "remove", "path": "/a"},
+            {"op": "remove", "path": "/b"},
+            {"op": "explode", "path": "/"},
+        ],
+        registry=Registry,
+    )
     with pytest.raises(PatchInternalError) as exc:
-        patch.apply({"a": 1})
-    assert exc.value.detail.index == 0
-    assert exc.value.detail.cause_type == "ValueError"
+        patch.apply({"a": 1, "b": 2, "c": 3})
+    assert exc.value.index == 2
+    assert exc.value.operation == ExplodeOp(path="/")
+    assert exc.value.cause_type == "ValueError"
 
 
 def test_replace_number_op_runtime() -> None:

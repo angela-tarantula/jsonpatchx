@@ -22,7 +22,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python-version: ["3.12", "3.13", "3.14"]
+        python-version: ["3.12", "3.13", "3.13t", "3.14", "3.14t"]
 
     steps:
       - name: 🔒 harden runner
@@ -36,7 +36,7 @@ jobs:
           submodules: recursive
 
       - name: Setup uv
-        uses: astral-sh/setup-uv@cec208311dfd045dd5311c1add060b2062131d57 # v8.0.0
+        uses: astral-sh/setup-uv@fac544c07dec837d0ccb6301d7b5580bf5edae39 # v8.2.0
         with:
           python-version: ${{ matrix.python-version }}
           enable-cache: true
@@ -44,8 +44,34 @@ jobs:
             pyproject.toml
             uv.lock
 
+      # matrix.python-version carries a trailing "t" for free-threaded builds
+      # (e.g. "3.13t"), which mypy's --python-version does not accept and
+      # which must never get `jsonpatchx[strict-jsonpath]` installed (its
+      # iregexp-check dependency segfaults on import under free-threaded
+      # Python). Compute the base version and the strict extra here so later
+      # steps do not have to re-derive them.
+      - name: Compute base Python version and strict-jsonpath extra
+        id: pyver
+        shell: bash
+        run: |
+          PYVER="${{ matrix.python-version }}"
+          if [[ "$PYVER" == *t ]]; then
+            echo "base=${PYVER%t}" >> "$GITHUB_OUTPUT"
+            echo "extra_args=" >> "$GITHUB_OUTPUT"
+          else
+            echo "base=$PYVER" >> "$GITHUB_OUTPUT"
+            echo "extra_args=--extra strict-jsonpath" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Install Dependencies
-        run: uv sync --frozen --no-default-groups --group ci
+        env:
+          EXTRA_ARGS: ${{ steps.pyver.outputs.extra_args }}
+        run: |
+          # EXTRA_ARGS is intentionally unquoted: it must word-split into
+          # zero or two argv tokens (`--extra strict-jsonpath`), not pass as
+          # one quoted string.
+          # shellcheck disable=SC2086
+          uv sync --frozen --no-default-groups --group ci $EXTRA_ARGS
 
       - name: Ruff
         run: uv run ruff check
@@ -54,21 +80,32 @@ jobs:
         run: uv run ruff format --check .
 
       - name: Mypy
-        run: uv run mypy --python-version "${{ matrix.python-version }}" .
+        env:
+          BASE_PYTHON_VERSION: ${{ steps.pyver.outputs.base }}
+        run: uv run mypy --python-version "$BASE_PYTHON_VERSION" .
 
       - name: Test
+        id: test
         run: |
           uv run pytest \
             --cov=jsonpatchx \
             --cov-report=xml:coverage.xml
 
+      # Upload coverage to Codecov whenever tests run (pass or fail).
       # Dependabot PRs skip this upload. Supporting uploads there would require
       # an additional Dependabot-scoped CODECOV_TOKEN secret.
+      # Free-threaded legs (3.13t, 3.14t) skip this too: they never install
+      # jsonpatchx[strict-jsonpath], but jsonpatchx's own source has no code
+      # path gated on that extra, so their jsonpatchx coverage is identical to
+      # their non-t sibling's and would only add a duplicate flag.
       - name: Upload coverage to Codecov
-        if:
-          ${{ github.event_name != 'pull_request' ||
-          github.event.pull_request.user.login != 'dependabot[bot]' }}
-        uses: codecov/codecov-action@57e3a136b779b570ffcdbf80b3bdc90e7fab3de2 # v6.0.0
+        if: |
+          !cancelled() &&
+          (steps.test.outcome == 'success' || steps.test.outcome == 'failure') &&
+          !endsWith(matrix.python-version, 't') &&
+          (github.event_name != 'pull_request' ||
+          github.event.pull_request.user.login != 'dependabot[bot]')
+        uses: codecov/codecov-action@fb8b3582c8e4def4969c97caa2f19720cb33a72f # v7.0.0
         with:
           files: ./coverage.xml
           flags: py-${{ matrix.python-version }}

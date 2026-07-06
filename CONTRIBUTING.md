@@ -60,24 +60,16 @@ git submodule update --init
 uv sync
 ```
 
-If you want the package import to resolve from your checkout instead of the
-managed environment, install it in editable mode:
+Install the Node-based lint tools:
 
 ```sh
-pip install -e .
+npm --prefix tools ci
 ```
 
-For local FastAPI extra work:
+Install the Git hook for [prek](https://github.com/j178/prek):
 
 ```sh
-pip install -e .[fastapi]
-```
-
-Install [prek](https://github.com/j178/prek):
-
-```sh
-uv tool install prek
-prek install
+uv run prek install
 ```
 
 > See the [Prek quick reference](#prek-quick-reference) below for common local
@@ -89,19 +81,19 @@ Run the test suite with:
 
 ```sh
 uv run pytest -v
-uv run --managed-python -p 3.12 pytest
+uv run --managed-python -p 3.12 pytest # for a specific version
 ```
 
-To manually regression-test
-[`examples/AGENTS.md`](/Users/angelaliss/code/Python/json-patch-x/examples/AGENTS.md)
-with a coding agent, use the harness in
-[`tests/agents/README.md`](/Users/angelaliss/code/Python/json-patch-x/tests/agents/README.md).
-For a quick check, you can give the agent this prompt:
+To manually regression-test the
+[custom-operation agent guide](/docs/custom-operation-agent-guide.md) with a
+coding agent, use the harness in
+[`tests/agents/README.md`](/tests/agents/README.md). For a quick check, you can
+give the agent this prompt:
 
 ```text
 Read tests/agents/README.md and run the standard prompt-only check for
-tests/agents/lowercase-op.md against examples/AGENTS.md. Return the generated
-Python and a short rubric-based evaluation.
+tests/agents/bound-number-op.md against docs/custom-operation-agent-guide.md.
+Return the generated Python and a short rubric-based evaluation.
 ```
 
 Those agent-guide fixtures are manual regression checks, not part of the
@@ -122,7 +114,7 @@ uv run ruff format
 To run the full local hook set, use:
 
 ```sh
-prek run --all-files
+uv run prek run --all-files
 ```
 
 ## Documenting
@@ -156,19 +148,19 @@ the same PR.
 - Run all configured hooks manually:
 
   ```sh
-  prek run --all-files
+  uv run prek run --all-files
   ```
 
 - List available hook IDs:
 
   ```sh
-  prek list
+  uv run prek list
   ```
 
 - Run one specific hook:
 
   ```sh
-  prek run checkov --all-files
+  uv run prek run checkov --all-files
   ```
 
 - Skip one hook for one commit:

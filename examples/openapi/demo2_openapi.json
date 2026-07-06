@@ -12,13 +12,14 @@
             "type": "string"
           },
           "path": {
-            "description": "JSON Pointer (RFC 6901) string",
+            "description": "Location to add the value. Use `\"-\"` as the final token to append to an array.",
             "format": "json-pointer",
             "title": "Path",
             "type": "string",
             "x-pointer-type-schema": {}
           },
           "value": {
+            "description": "Value to add.",
             "title": "Value"
           }
         },
@@ -27,7 +28,7 @@
           "path",
           "value"
         ],
-        "title": "Add operation",
+        "title": "RFC 6902 Add Operation",
         "type": "object"
       },
       "AppendOp": {
@@ -99,7 +100,7 @@
         "description": "RFC 6902 copy operation.",
         "properties": {
           "from": {
-            "description": "JSON Pointer (RFC 6901) string",
+            "description": "Location of the value to copy.",
             "format": "json-pointer",
             "title": "From",
             "type": "string",
@@ -112,7 +113,7 @@
             "type": "string"
           },
           "path": {
-            "description": "JSON Pointer (RFC 6901) string",
+            "description": "Destination for the copied value.",
             "format": "json-pointer",
             "title": "Path",
             "type": "string",
@@ -124,7 +125,7 @@
           "op",
           "path"
         ],
-        "title": "Copy operation",
+        "title": "RFC 6902 Copy Operation",
         "type": "object"
       },
       "EnforceMaxLenOp": {
@@ -323,7 +324,7 @@
         "description": "RFC 6902 move operation.",
         "properties": {
           "from": {
-            "description": "JSON Pointer (RFC 6901) string",
+            "description": "Location of the value to move.",
             "format": "json-pointer",
             "title": "From",
             "type": "string",
@@ -336,7 +337,7 @@
             "type": "string"
           },
           "path": {
-            "description": "JSON Pointer (RFC 6901) string",
+            "description": "Destination for the moved value. Must not be a descendant of `from`.",
             "format": "json-pointer",
             "title": "Path",
             "type": "string",
@@ -348,7 +349,7 @@
           "op",
           "path"
         ],
-        "title": "Move operation",
+        "title": "RFC 6902 Move Operation",
         "type": "object"
       },
       "Player": {
@@ -472,7 +473,7 @@
       },
       "RemoveOp": {
         "additionalProperties": true,
-        "description": "RFC 6902 remove operation. Removal of the root returns MISSING.",
+        "description": "RFC 6902 remove operation.",
         "properties": {
           "op": {
             "const": "remove",
@@ -481,7 +482,7 @@
             "type": "string"
           },
           "path": {
-            "description": "JSON Pointer (RFC 6901) string",
+            "description": "Location of the value to remove.",
             "format": "json-pointer",
             "title": "Path",
             "type": "string",
@@ -492,7 +493,7 @@
           "op",
           "path"
         ],
-        "title": "Remove operation",
+        "title": "RFC 6902 Remove Operation",
         "type": "object"
       },
       "RemoveValueOp": {
@@ -538,13 +539,14 @@
             "type": "string"
           },
           "path": {
-            "description": "JSON Pointer (RFC 6901) string",
+            "description": "Location of the value to replace.",
             "format": "json-pointer",
             "title": "Path",
             "type": "string",
             "x-pointer-type-schema": {}
           },
           "value": {
+            "description": "Replacement value.",
             "title": "Value"
           }
         },
@@ -553,7 +555,7 @@
           "path",
           "value"
         ],
-        "title": "Replace operation",
+        "title": "RFC 6902 Replace Operation",
         "type": "object"
       },
       "RequireMinimumOp": {
@@ -600,13 +602,14 @@
             "type": "string"
           },
           "path": {
-            "description": "JSON Pointer (RFC 6901) string",
+            "description": "Location of the value to test.",
             "format": "json-pointer",
             "title": "Path",
             "type": "string",
             "x-pointer-type-schema": {}
           },
           "value": {
+            "description": "Expected value.",
             "title": "Value"
           }
         },
@@ -615,7 +618,7 @@
           "path",
           "value"
         ],
-        "title": "Test operation",
+        "title": "RFC 6902 Test Operation",
         "type": "object"
       },
       "ToggleBoolOp": {
@@ -822,41 +825,57 @@
                 "schema": {
                   "properties": {
                     "detail": {
-                      "oneOf": [
+                      "title": "Detail",
+                      "type": "string"
+                    },
+                    "errors": {
+                      "anyOf": [
                         {
-                          "type": "string"
+                          "items": {
+                            "additionalProperties": true,
+                            "type": "object"
+                          },
+                          "type": "array"
                         },
                         {
-                          "properties": {
-                            "cause_type": {
-                              "type": [
-                                "string",
-                                "null"
-                              ]
-                            },
-                            "index": {
-                              "type": "integer"
-                            },
-                            "message": {
-                              "type": "string"
-                            },
-                            "op": {
-                              "type": "object"
-                            }
-                          },
-                          "required": [
-                            "index",
-                            "op",
-                            "message"
-                          ],
-                          "type": "object"
+                          "type": "null"
                         }
-                      ]
+                      ],
+                      "title": "Errors"
+                    },
+                    "index": {
+                      "anyOf": [
+                        {
+                          "type": "integer"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "title": "Index"
+                    },
+                    "operation": {
+                      "anyOf": [
+                        {
+                          "additionalProperties": true,
+                          "type": "object"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "title": "Operation"
+                    },
+                    "type": {
+                      "title": "Type",
+                      "type": "string"
                     }
                   },
                   "required": [
+                    "type",
                     "detail"
                   ],
+                  "title": "PatchErrorResponse",
                   "type": "object"
                 }
               }
@@ -869,41 +888,57 @@
                 "schema": {
                   "properties": {
                     "detail": {
-                      "oneOf": [
+                      "title": "Detail",
+                      "type": "string"
+                    },
+                    "errors": {
+                      "anyOf": [
                         {
-                          "type": "string"
+                          "items": {
+                            "additionalProperties": true,
+                            "type": "object"
+                          },
+                          "type": "array"
                         },
                         {
-                          "properties": {
-                            "cause_type": {
-                              "type": [
-                                "string",
-                                "null"
-                              ]
-                            },
-                            "index": {
-                              "type": "integer"
-                            },
-                            "message": {
-                              "type": "string"
-                            },
-                            "op": {
-                              "type": "object"
-                            }
-                          },
-                          "required": [
-                            "index",
-                            "op",
-                            "message"
-                          ],
-                          "type": "object"
+                          "type": "null"
                         }
-                      ]
+                      ],
+                      "title": "Errors"
+                    },
+                    "index": {
+                      "anyOf": [
+                        {
+                          "type": "integer"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "title": "Index"
+                    },
+                    "operation": {
+                      "anyOf": [
+                        {
+                          "additionalProperties": true,
+                          "type": "object"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "title": "Operation"
+                    },
+                    "type": {
+                      "title": "Type",
+                      "type": "string"
                     }
                   },
                   "required": [
+                    "type",
                     "detail"
                   ],
+                  "title": "PatchErrorResponse",
                   "type": "object"
                 }
               }
@@ -918,41 +953,57 @@
                     {
                       "properties": {
                         "detail": {
-                          "oneOf": [
+                          "title": "Detail",
+                          "type": "string"
+                        },
+                        "errors": {
+                          "anyOf": [
                             {
-                              "type": "string"
+                              "items": {
+                                "additionalProperties": true,
+                                "type": "object"
+                              },
+                              "type": "array"
                             },
                             {
-                              "properties": {
-                                "cause_type": {
-                                  "type": [
-                                    "string",
-                                    "null"
-                                  ]
-                                },
-                                "index": {
-                                  "type": "integer"
-                                },
-                                "message": {
-                                  "type": "string"
-                                },
-                                "op": {
-                                  "type": "object"
-                                }
-                              },
-                              "required": [
-                                "index",
-                                "op",
-                                "message"
-                              ],
-                              "type": "object"
+                              "type": "null"
                             }
-                          ]
+                          ],
+                          "title": "Errors"
+                        },
+                        "index": {
+                          "anyOf": [
+                            {
+                              "type": "integer"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "title": "Index"
+                        },
+                        "operation": {
+                          "anyOf": [
+                            {
+                              "additionalProperties": true,
+                              "type": "object"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "title": "Operation"
+                        },
+                        "type": {
+                          "title": "Type",
+                          "type": "string"
                         }
                       },
                       "required": [
+                        "type",
                         "detail"
                       ],
+                      "title": "PatchErrorResponse",
                       "type": "object"
                     },
                     {
@@ -970,41 +1021,57 @@
                 "schema": {
                   "properties": {
                     "detail": {
-                      "oneOf": [
+                      "title": "Detail",
+                      "type": "string"
+                    },
+                    "errors": {
+                      "anyOf": [
                         {
-                          "type": "string"
+                          "items": {
+                            "additionalProperties": true,
+                            "type": "object"
+                          },
+                          "type": "array"
                         },
                         {
-                          "properties": {
-                            "cause_type": {
-                              "type": [
-                                "string",
-                                "null"
-                              ]
-                            },
-                            "index": {
-                              "type": "integer"
-                            },
-                            "message": {
-                              "type": "string"
-                            },
-                            "op": {
-                              "type": "object"
-                            }
-                          },
-                          "required": [
-                            "index",
-                            "op",
-                            "message"
-                          ],
-                          "type": "object"
+                          "type": "null"
                         }
-                      ]
+                      ],
+                      "title": "Errors"
+                    },
+                    "index": {
+                      "anyOf": [
+                        {
+                          "type": "integer"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "title": "Index"
+                    },
+                    "operation": {
+                      "anyOf": [
+                        {
+                          "additionalProperties": true,
+                          "type": "object"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "title": "Operation"
+                    },
+                    "type": {
+                      "title": "Type",
+                      "type": "string"
                     }
                   },
                   "required": [
+                    "type",
                     "detail"
                   ],
+                  "title": "PatchErrorResponse",
                   "type": "object"
                 }
               }
@@ -1145,41 +1212,57 @@
                 "schema": {
                   "properties": {
                     "detail": {
-                      "oneOf": [
+                      "title": "Detail",
+                      "type": "string"
+                    },
+                    "errors": {
+                      "anyOf": [
                         {
-                          "type": "string"
+                          "items": {
+                            "additionalProperties": true,
+                            "type": "object"
+                          },
+                          "type": "array"
                         },
                         {
-                          "properties": {
-                            "cause_type": {
-                              "type": [
-                                "string",
-                                "null"
-                              ]
-                            },
-                            "index": {
-                              "type": "integer"
-                            },
-                            "message": {
-                              "type": "string"
-                            },
-                            "op": {
-                              "type": "object"
-                            }
-                          },
-                          "required": [
-                            "index",
-                            "op",
-                            "message"
-                          ],
-                          "type": "object"
+                          "type": "null"
                         }
-                      ]
+                      ],
+                      "title": "Errors"
+                    },
+                    "index": {
+                      "anyOf": [
+                        {
+                          "type": "integer"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "title": "Index"
+                    },
+                    "operation": {
+                      "anyOf": [
+                        {
+                          "additionalProperties": true,
+                          "type": "object"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "title": "Operation"
+                    },
+                    "type": {
+                      "title": "Type",
+                      "type": "string"
                     }
                   },
                   "required": [
+                    "type",
                     "detail"
                   ],
+                  "title": "PatchErrorResponse",
                   "type": "object"
                 }
               }
@@ -1192,41 +1275,57 @@
                 "schema": {
                   "properties": {
                     "detail": {
-                      "oneOf": [
+                      "title": "Detail",
+                      "type": "string"
+                    },
+                    "errors": {
+                      "anyOf": [
                         {
-                          "type": "string"
+                          "items": {
+                            "additionalProperties": true,
+                            "type": "object"
+                          },
+                          "type": "array"
                         },
                         {
-                          "properties": {
-                            "cause_type": {
-                              "type": [
-                                "string",
-                                "null"
-                              ]
-                            },
-                            "index": {
-                              "type": "integer"
-                            },
-                            "message": {
-                              "type": "string"
-                            },
-                            "op": {
-                              "type": "object"
-                            }
-                          },
-                          "required": [
-                            "index",
-                            "op",
-                            "message"
-                          ],
-                          "type": "object"
+                          "type": "null"
                         }
-                      ]
+                      ],
+                      "title": "Errors"
+                    },
+                    "index": {
+                      "anyOf": [
+                        {
+                          "type": "integer"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "title": "Index"
+                    },
+                    "operation": {
+                      "anyOf": [
+                        {
+                          "additionalProperties": true,
+                          "type": "object"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "title": "Operation"
+                    },
+                    "type": {
+                      "title": "Type",
+                      "type": "string"
                     }
                   },
                   "required": [
+                    "type",
                     "detail"
                   ],
+                  "title": "PatchErrorResponse",
                   "type": "object"
                 }
               }
@@ -1241,41 +1340,57 @@
                     {
                       "properties": {
                         "detail": {
-                          "oneOf": [
+                          "title": "Detail",
+                          "type": "string"
+                        },
+                        "errors": {
+                          "anyOf": [
                             {
-                              "type": "string"
+                              "items": {
+                                "additionalProperties": true,
+                                "type": "object"
+                              },
+                              "type": "array"
                             },
                             {
-                              "properties": {
-                                "cause_type": {
-                                  "type": [
-                                    "string",
-                                    "null"
-                                  ]
-                                },
-                                "index": {
-                                  "type": "integer"
-                                },
-                                "message": {
-                                  "type": "string"
-                                },
-                                "op": {
-                                  "type": "object"
-                                }
-                              },
-                              "required": [
-                                "index",
-                                "op",
-                                "message"
-                              ],
-                              "type": "object"
+                              "type": "null"
                             }
-                          ]
+                          ],
+                          "title": "Errors"
+                        },
+                        "index": {
+                          "anyOf": [
+                            {
+                              "type": "integer"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "title": "Index"
+                        },
+                        "operation": {
+                          "anyOf": [
+                            {
+                              "additionalProperties": true,
+                              "type": "object"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "title": "Operation"
+                        },
+                        "type": {
+                          "title": "Type",
+                          "type": "string"
                         }
                       },
                       "required": [
+                        "type",
                         "detail"
                       ],
+                      "title": "PatchErrorResponse",
                       "type": "object"
                     },
                     {
@@ -1293,41 +1408,57 @@
                 "schema": {
                   "properties": {
                     "detail": {
-                      "oneOf": [
+                      "title": "Detail",
+                      "type": "string"
+                    },
+                    "errors": {
+                      "anyOf": [
                         {
-                          "type": "string"
+                          "items": {
+                            "additionalProperties": true,
+                            "type": "object"
+                          },
+                          "type": "array"
                         },
                         {
-                          "properties": {
-                            "cause_type": {
-                              "type": [
-                                "string",
-                                "null"
-                              ]
-                            },
-                            "index": {
-                              "type": "integer"
-                            },
-                            "message": {
-                              "type": "string"
-                            },
-                            "op": {
-                              "type": "object"
-                            }
-                          },
-                          "required": [
-                            "index",
-                            "op",
-                            "message"
-                          ],
-                          "type": "object"
+                          "type": "null"
                         }
-                      ]
+                      ],
+                      "title": "Errors"
+                    },
+                    "index": {
+                      "anyOf": [
+                        {
+                          "type": "integer"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "title": "Index"
+                    },
+                    "operation": {
+                      "anyOf": [
+                        {
+                          "additionalProperties": true,
+                          "type": "object"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "title": "Operation"
+                    },
+                    "type": {
+                      "title": "Type",
+                      "type": "string"
                     }
                   },
                   "required": [
+                    "type",
                     "detail"
                   ],
+                  "title": "PatchErrorResponse",
                   "type": "object"
                 }
               }

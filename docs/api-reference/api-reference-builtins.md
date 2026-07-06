@@ -1,4 +1,4 @@
-# Built-in Operations
+# Operations
 
 This module contains the built-in RFC 6902 operation models: `AddOp`,
 `RemoveOp`, `ReplaceOp`, `MoveOp`, `CopyOp`, and `TestOp`.
@@ -7,5 +7,7 @@ This module contains the built-in RFC 6902 operation models: `AddOp`,
 ::: jsonpatchx.builtins
     options:
       show_root_heading: false
+      show_root_toc_entry: false
       filters:
         - "!^_"
+        - "!^op$"

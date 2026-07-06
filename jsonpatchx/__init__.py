@@ -17,19 +17,16 @@ from jsonpatchx.exceptions import (
     InvalidJSONSelector,
     InvalidOperationDefinition,
     InvalidOperationRegistry,
-    OperationValidationError,
+    InvalidPatchResult,
+    InvalidPatchTarget,
     PatchConflictError,
     PatchError,
-    PatchFailureDetail,
-    PatchInputError,
     PatchInternalError,
-    PatchValidationError,
     TestOpFailed,
 )
 from jsonpatchx.pointer import JSONPointer
 from jsonpatchx.pydantic import JsonPatchFor
 from jsonpatchx.registry import (
-    STANDARD_OPS,
     StandardRegistry,
 )
 from jsonpatchx.schema import OperationSchema
@@ -43,13 +40,11 @@ __all__ = [
     "InvalidJSONSelector",
     "InvalidOperationDefinition",
     "InvalidOperationRegistry",
-    "OperationValidationError",
+    "InvalidPatchResult",
+    "InvalidPatchTarget",
     "PatchConflictError",
     "PatchError",
     "PatchInternalError",
-    "PatchFailureDetail",
-    "PatchInputError",
-    "PatchValidationError",
     "TestOpFailed",
     # types
     "JSONPointer",
@@ -60,7 +55,6 @@ __all__ = [
     # operation specs
     "OperationSchema",
     "StandardRegistry",
-    "STANDARD_OPS",
     # pydantic helpers
     "JsonPatchFor",
     # built-ins

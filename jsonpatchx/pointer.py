@@ -20,7 +20,6 @@ from pydantic import (
     ValidationError,
 )
 from pydantic.json_schema import JsonSchemaValue
-from pydantic_core import MISSING
 from pydantic_core import core_schema as cs
 from typing_extensions import TypeForm, TypeVar
 
@@ -51,7 +50,6 @@ from jsonpatchx.types import (
 )
 
 _Nothing = object()
-# NOTE: maybe add pydantic_core.MISSING to JSONPointer.get() on failure
 
 
 T_co = TypeVar("T_co", bound=JSONBound, covariant=True)
@@ -67,57 +65,52 @@ class JSONPointer(str, Generic[T_co, P_co]):
     """
     A typed RFC 6901 JSON Pointer with Pydantic integration.
 
-    `JSONPointer[T]` (or `JSONPointer[T, Backend]`) is a string-like value (subclasses `str`)
-    that additionally:
+    `JSONPointer[T]` (or `JSONPointer[T, Backend]`) is a `str` subclass that
+    parses a pointer string at validation time and enforces the type parameter `T`
+    when a value is read or written through it. The string value is the pointer
+    path itself, so `JSONPointer` is accepted wherever `str` is.
 
-    - stores a parsed pointer backend (see `PointerBackend`),
-    - tracks a covariant type parameter `T` used to validate resolved targets,
-    - provides convenience methods used by patch operations: `get`, `add`, `remove`.
+    Example:
+        Use it as a field type in `OperationSchema` subclasses:
 
-    ## Important design semantics (intentional)
+        ```python
+        from typing import Literal
+        from jsonpatchx import JSONPointer, OperationSchema, ReplaceOp, JsonPatch, JSONValue, JSONBoolean
 
-    **Typed pointers are enforced at runtime.**
-    The type parameter `T` is not “just typing”; it is enforced whenever a value is read
-    through the pointer.
+        class ToggleBoolOp(OperationSchema):
+            op: Literal[“toggle”] = “toggle”
+            path: JSONPointer[JSONBoolean]
 
-    - `get(doc)` always validates the resolved value against `T`.
-    - `add(doc, value)` optionally validates the written value against `T` (default: True).
-    - `remove(doc)` is intentionally *type-gated*: it first “reads” the target through the pointer,
-      so removal can fail if the current value is not of type `T`.
+            def apply(self, doc: JSONValue) -> JSONValue:
+                toggled = not self.path.get(doc)
+                return ReplaceOp(path=self.path, value=toggled).apply(doc)
 
-    This makes patch semantics explicit:
-    - `JSONPointer[JSONValue]` is permissive (“remove anything JSON”).
-    - `JSONPointer[JSONBoolean]` is restrictive (“remove only if it is currently a boolean”).
-    - If you want to remove regardless of the current type, use a wider pointer type (e.g. `JSONValue`)
-      or define a dedicated permissive remove operation.
+        ops = [ToggleBoolOp(path=”/flag”)]
+        patch = JsonPatch(ops)
+        doc = {“flag”: False}
+        patched_doc = patch.apply(doc)
+        assert patched_doc == {“flag”: True}
+        ```
 
-    **Pointer covariance is intentional.**
-    `JSONPointer` is covariant in `T`. In practice this means you can often reuse a pointer instance
-    (including across composed operations) and preserve stricter guarantees.
-    Examples: if a custom op carries a `JSONPointer[JSONBoolean]`, composing that op internally
-    using `AddOp` should keep the boolean-specific enforcement at runtime.
+    Example:
+        Plug in a custom pointer backend for non-RFC 6901 syntax:
 
-    ## Backend semantics (advanced)
+        ```python
+        from jsonpatchx import JSONPointer, JSONBoolean, PointerBackend
 
-    - Default backend: `jsonpointer.JsonPointer`.
-    - Custom backend: bound directly via `JSONPointer[T, Backend]`.
-    - Invalid pointer strings raise `InvalidJSONPointer`.
-    - Backend traversal failures in `get`/`add`/`remove` are normalized into
-      `PatchConflictError`.
+        class DotPointer(PointerBackend):
+            ...  # implement the PointerBackend protocol
 
-    Mutation semantics:
-    - `add` and `remove` may mutate the document object they are given (or containers reachable
-      from it). The root pointer `""` is the exception: setting the root returns a new document
-      value rather than mutating an existing container. Removing the root returns
-      `MISSING` to represent document deletion rather than a JSON `null` value.
-      A missing root document is handled as its own state: root `get` and root `remove`
-      fail, while root `add` recreates the document.
-      If you want to forbid root removal, it's easy to make a custom op!
-    - Whether these mutations affect the original caller-owned document is determined by the patch
-      engine (see `_apply_ops(..., inplace=...)`), which may deep-copy the input document.
+        class ToggleBoolOp(OperationSchema):
+            op: Literal[“toggle”] = “toggle”
+            path: JSONPointer[JSONBoolean, DotPointer]
 
-    `JSONPointer` values are intended to be created by Pydantic validation. Direct instantiation
-    is not permitted (except when running as `__main__` for debugging).
+        op = ToggleBoolOp(path=”player.isAlive”)
+        ```
+
+    Notes:
+        Instances are produced by Pydantic validation. If you need direct construction,
+        use `JSONPointer.parse()`.
     """
 
     # Choice: JSONPointer is str subclass, as opposed to Annotated[str, StringConstraints(...)].
@@ -141,8 +134,7 @@ class JSONPointer(str, Generic[T_co, P_co]):
         """
         The underlying pointer backend instance.
 
-        This is exposed for advanced users who provide a custom PointerBackend with additional APIs.
-        The patch engine relies only on the `PointerBackend` protocol.
+        This is exposed for advanced users who provide a custom PointerBackend implementation with additional APIs.
         """
         # TODO: Somehow 'Any' to the actual JSON Pointer class they pass in.
         # Choice: expose ptr as the user's custom PointerBackend for stronger type inferencing.
@@ -152,26 +144,36 @@ class JSONPointer(str, Generic[T_co, P_co]):
 
     @property
     def parts(self) -> Sequence[str]:
-        """A sequence of RFC6901-unescaped pointer components."""
+        """A sequence of unescaped pointer components."""
         return self._ptr.parts
 
     @property
     def type_param(self) -> TypeForm[T_co]:
-        """The expected type parameter `T` used to validate resolved targets."""
+        """The type parameter `T` used to validate reads and writes."""
         return self._type
 
     @property
     def _adapter(self) -> TypeAdapter[T_co]:
-        """Return the cached Pydantic adapter used for strict `T` validation."""
+        """The cached Pydantic adapter used for strict `T` validation."""
         return _cached_adapter(self._type)
 
     @property
     def parent_ptr(self) -> P_co:  # NOTE: add parent property for JSONPointer of parent
-        """Return the backend pointer for this pointer's parent path."""
+        """The underlying pointer instance for this pointer's parent path. Exposed for advanced users along with `ptr`."""
         return _parent_ptr_of(self._ptr)
 
+    # doc is required because custom backends may not use "" as the root token;
+    # the backend itself determines what counts as root given the document.
     def is_root(self, doc: JSONValue) -> bool:
-        """Check whether this JSONPointer's target is the root."""
+        """
+        Check whether this pointer resolves to the document root.
+
+        Arguments:
+            doc: JSON document to resolve against.
+
+        Returns:
+            `True` if this pointer resolves to the root of `doc`, `False` otherwise.
+        """
         return _is_root_ptr(self._ptr, doc)
 
     @classmethod
@@ -195,10 +197,12 @@ class JSONPointer(str, Generic[T_co, P_co]):
             A `JSONPointer` bound to the resolved backend and type parameter.
 
         Raises:
+            TypeError: If the backend TypeVar cannot be resolved to a concrete
+                backend.
             InvalidJSONPointer: If an existing pointer/backend instance cannot
                 be rebound to the required backend.
         """
-        resolved_backend = cls._resolve_runtime_backend_param(concrete_backend)
+        resolved_backend = cls._finalize_backend(concrete_backend)
         ptr: PointerBackend
         if isinstance(path, JSONPointer):
             path_str = str(path)
@@ -245,6 +249,21 @@ class JSONPointer(str, Generic[T_co, P_co]):
     def __get_pydantic_core_schema__(
         cls, source_type: type[Self], handler: GetCoreSchemaHandler
     ) -> cs.CoreSchema:
+        """Build the Pydantic core schema for `JSONPointer` validation.
+
+        Arguments:
+            source_type: The specialized `JSONPointer[T, Backend]` type being built.
+            handler: Pydantic's schema generation handler.
+
+        Returns:
+            A Pydantic core schema that validates strings, `JSONPointer` instances, and
+            `PointerBackend` instances into a `JSONPointer` bound to `T` and the backend.
+
+        Raises:
+            TypeError: If no type parameters are supplied, if the backend
+                parameter is not a class or `TypeVar`, or if the type parameter
+                is not a valid TypeForm.
+        """
         type_param, concrete_backend = cls._parse_pointer_type_args(
             *get_args(source_type)
         )
@@ -272,11 +291,24 @@ class JSONPointer(str, Generic[T_co, P_co]):
     def __get_pydantic_json_schema__(
         cls, schema: cs.CoreSchema, handler: GetJsonSchemaHandler
     ) -> JsonSchemaValue:
+        """Build the JSON Schema representation for `JSONPointer`.
 
+        Arguments:
+            schema: The Pydantic core schema produced by `__get_pydantic_core_schema__`.
+            handler: Pydantic's JSON schema generation handler.
+
+        Returns:
+            A JSON Schema dict describing a JSON Pointer string, enriched with
+            `x-pointer-type-schema` for the declared type parameter.
+
+        Raises:
+            TypeError: If the backend TypeVar cannot be resolved, or if the
+                type parameter cannot be adapted.
+        """
         pointer_backend: type[PointerBackend]
         pointer_backend_param = schema.get("metadata", {}).get("pointer_backend_param")
         if isinstance(pointer_backend_param, TypeVar):
-            pointer_backend = cls._resolve_runtime_backend_param(pointer_backend_param)
+            pointer_backend = cls._finalize_backend(pointer_backend_param)
         else:
             pointer_backend = pointer_backend_param
 
@@ -305,23 +337,80 @@ class JSONPointer(str, Generic[T_co, P_co]):
     def _parse_pointer_type_args(
         cls, *args: TypeForm[Any]
     ) -> tuple[TypeForm[Any], type[PointerBackend] | TypeVar]:
-        """Validate the JSONPointer's parameter tuple, e.g. `(JSONValue, DotPointer)` for `JSONPointer[JSONValue, DotPointer]`."""
+        """Validate and unpack the `JSONPointer[T, Backend]` parameter tuple.
+
+        Arguments:
+            *args: Generic type arguments from `get_args(source_type)`, e.g.
+                `(JSONValue, DotPointer)` for `JSONPointer[JSONValue, DotPointer]`.
+
+        Returns:
+            A tuple of (type_param, backend_param): type_param is a validated TypeForm
+            and backend_param is a concrete backend class or TypeVar.
+
+        Raises:
+            TypeError: If no type parameters are supplied, if the backend
+                parameter is not a class or `TypeVar`, or if the type parameter
+                is not a valid TypeForm.
+        """
         if not args:
             raise TypeError(f"{cls} requires at least one type parameter")
         unverified_typeform = args[0]
         unverified_bound_backend = args[1] if len(args) > 1 else DEFAULT_POINTER_CLS
 
-        backend_param = cls._resolve_backend_type_param(unverified_bound_backend)
-        type_param = _validate_typeform(unverified_typeform, InvalidJSONPointer)
+        backend_param = cls._validate_backend_arg(unverified_bound_backend)
+        type_param = _validate_typeform(unverified_typeform)
 
         return type_param, backend_param
 
-    @staticmethod
-    def _resolve_backend_type_param(
+    @classmethod
+    def _validate_concrete_backend_class(
+        cls,
+        candidate: object,
+    ) -> type[PointerBackend]:
+        """
+        Validate that `candidate` is usable as a concrete backend class.
+
+        This is the single canonical place that decides whether a class is
+        admissible as a `PointerBackend`, independent of whether the caller
+        received it as a direct generic argument or as an already-resolved
+        `TypeVar` default. It cannot verify actual protocol conformance
+        (`@runtime_checkable` can only check that on an instance, not a
+        class); `_pointer_backend_instance` checks that once a concrete
+        instance exists.
+
+        Arguments:
+            candidate: A value expected to be a non-abstract class.
+
+        Returns:
+            The validated backend class.
+
+        Raises:
+            TypeError: If `candidate` is not a class, or is an abstract class.
+        """
+        if not isinstance(candidate, type):
+            raise TypeError(
+                f"JSONPointer backend parameter {candidate!r} must be a class or TypeVar"
+            )
+        if isabstract(candidate):
+            raise TypeError(
+                f"JSONPointer backend parameter {candidate!r} is abstract and cannot be used as a backend"
+            )
+        return cast(type[PointerBackend], candidate)
+
+    @classmethod
+    def _validate_backend_arg(
+        cls,
         backend_param: object,
     ) -> type[PointerBackend] | TypeVar:
         """
-        Validate the backend generic argument before runtime resolution.
+        Schema-declaration-time: validate the raw backend generic argument.
+
+        Runs once, when `JSONPointer[T, Backend]` is built, or when
+        `.parse()` is called directly with a `backend=` argument, before any
+        value has been validated. A `TypeVar` passes through unresolved
+        here: `TypeVar` defaults are only resolved later, per validation
+        call, by `_finalize_backend`. A concrete class is validated via
+        `_validate_concrete_backend_class`.
 
         Arguments:
             backend_param: Raw second generic argument from
@@ -331,46 +420,54 @@ class JSONPointer(str, Generic[T_co, P_co]):
             A backend class or unresolved `TypeVar`.
 
         Raises:
-            InvalidJSONPointer: If the backend argument is neither a class nor
-                a `TypeVar`.
+            TypeError: If the backend argument is neither a class nor a
+                `TypeVar`, or if the backend class is abstract.
         """
         if isinstance(backend_param, TypeVar):
             return backend_param
-        if not isinstance(backend_param, type):
-            raise InvalidJSONPointer(
-                f"JSONPointer backend parameter {backend_param!r} must be a class or TypeVar"
-            )
-        return cast(type[PointerBackend], backend_param)
+        return cls._validate_concrete_backend_class(backend_param)
 
     @classmethod
-    def _resolve_runtime_backend_param(
+    def _finalize_backend(
         cls,
         backend_param: type[PointerBackend] | TypeVar,
     ) -> type[PointerBackend]:
         """
-        Resolve a backend parameter to a concrete runtime backend class.
+        Validation-time: turn a schema-time backend parameter into a
+        concrete class.
+
+        Called every time a value is validated (from `_validator`) or the
+        schema is introspected (from `__get_pydantic_json_schema__`), using
+        whatever `_validate_backend_arg` produced at schema-declaration
+        time. A concrete class is returned unchanged; an unresolved
+        `TypeVar` is resolved now via `_finalize_backend_typevar`.
 
         Arguments:
-            backend_param: Backend class or backend `TypeVar`.
+            backend_param: Backend class or backend `TypeVar`, as returned
+                by `_validate_backend_arg`.
 
         Returns:
             A concrete `PointerBackend` class.
 
         Raises:
-            InvalidJSONPointer: If an unspecialized backend `TypeVar` cannot be
-                resolved to a concrete default backend.
+            TypeError: If an unspecialized backend `TypeVar` cannot be resolved
+                to a concrete default backend.
         """
         if not isinstance(backend_param, TypeVar):
             return backend_param
-        return cls._resolve_runtime_backend_typevar(backend_param)
+        return cls._finalize_backend_typevar(backend_param)
 
     @classmethod
-    def _resolve_runtime_backend_typevar(
+    def _finalize_backend_typevar(
         cls,
         backend_typevar: TypeVar,
     ) -> type[PointerBackend]:
         """
-        Resolve an unspecialized backend `TypeVar` using its default.
+        Validation-time: resolve an unspecialized backend `TypeVar` via its
+        default.
+
+        Called by `_finalize_backend` when the backend generic argument was
+        left as an unresolved `TypeVar` by `_validate_backend_arg`.
 
         Arguments:
             backend_typevar: Backend `TypeVar` from the generic parameter list.
@@ -379,50 +476,58 @@ class JSONPointer(str, Generic[T_co, P_co]):
             A concrete `PointerBackend` class.
 
         Raises:
-            InvalidJSONPointer: If the `TypeVar` has no usable default backend.
+            TypeError: If the `TypeVar` has no default at all, or if its
+                default fails `_validate_concrete_backend_class`'s
+                validation (not a class, or abstract).
         """
         # Only TypeVar defaults are used for unspecialized backend TypeVars.
         try:
             has_default = backend_typevar.has_default()
         except AttributeError:  # Py3.12
             has_default = False
-        if has_default:
-            default_candidate = getattr(backend_typevar, "__default__")
-            default_backend = cls._coerce_runtime_backend_candidate(default_candidate)
-            if default_backend is not None:
-                return default_backend
-
-        raise InvalidJSONPointer(
-            "JSONPointer backend TypeVar must define a default backend "
-            "or be specialized with a concrete backend type"
-        )
+        if not has_default:
+            raise TypeError(
+                "JSONPointer backend TypeVar must define a default backend "
+                "or be specialized with a concrete backend type"
+            )
+        default_candidate = getattr(backend_typevar, "__default__")
+        return cls._finalize_backend_default(default_candidate)
 
     @classmethod
-    def _coerce_runtime_backend_candidate(
+    def _finalize_backend_default(
         cls,
         candidate: object,
-    ) -> type[PointerBackend] | None:
+    ) -> type[PointerBackend]:
         """
-        Coerce a potential default backend candidate into a usable class.
+        Validation-time: resolve a `TypeVar`'s raw default value into a
+        usable class.
+
+        Called by `_finalize_backend_typevar` once it has confirmed a
+        default exists. The default itself may be a nested `TypeVar`
+        (recurse into `_finalize_backend_typevar`) or a concrete class
+        (validated via `_validate_concrete_backend_class`, so a bad default
+        raises the same specific error as a bad direct or
+        schema-declaration-time argument, rather than a separate, less
+        specific one).
 
         Arguments:
             candidate: Runtime object drawn from a backend `TypeVar` default.
 
         Returns:
-            A concrete `PointerBackend` class, or `None` if the candidate is
-            not usable as a runtime backend.
+            A concrete `PointerBackend` class.
+
+        Raises:
+            TypeError: If `candidate` is a `TypeVar` with no usable default,
+                or if it fails `_validate_concrete_backend_class`'s
+                validation (not a class, or abstract).
         """
         if isinstance(candidate, TypeVar):
-            return cls._resolve_runtime_backend_typevar(candidate)
-        if not isinstance(candidate, type):
-            return None
-        if candidate is PointerBackend or isabstract(candidate):
-            return None
-        return candidate
+            return cls._finalize_backend_typevar(candidate)
+        return cls._validate_concrete_backend_class(candidate)
 
     def _validate_target(self, target: object) -> T_co:
         """
-        Validate a resolved or replacement value against this pointer's type.
+        Validate a resolved target value against this pointer's type.
 
         Arguments:
             target: Candidate value to validate strictly against `T`.
@@ -466,7 +571,7 @@ class JSONPointer(str, Generic[T_co, P_co]):
     @classmethod
     def parse(
         cls,
-        path: str | Self | PointerBackend,
+        path: str | PointerBackend,
         *,
         backend: type[P_parse] | None = None,
     ) -> "JSONPointer[JSONValue, P_parse]": ...
@@ -475,7 +580,7 @@ class JSONPointer(str, Generic[T_co, P_co]):
     @classmethod
     def parse(
         cls,
-        path: str | Self | PointerBackend,
+        path: str | PointerBackend,
         *,
         type_param: TypeForm[T_parse],
         backend: type[P_parse] | None = None,
@@ -484,36 +589,40 @@ class JSONPointer(str, Generic[T_co, P_co]):
     @classmethod
     def parse(
         cls,
-        path: str | Self | PointerBackend,
+        path: str | PointerBackend,
         *,
         type_param: TypeForm[Any] | object = _Nothing,
         backend: type[PointerBackend] | None = None,
     ) -> "JSONPointer[Any, PointerBackend]":
         """
-        Parse a pointer string or instance using Pydantic validation.
+        Construct a JSONPointer instance directly, outside of Pydantic models.
 
         Arguments:
-            path: Pointer string, parsed pointer, or pointer backend instance.
-            type_param: Type enforced when the pointer is exercised.
-            backend: Optional concrete backend class. When omitted, the built-in
-                RFC 6901 backend is used.
+            path: A pointer string, parsed pointer, or pointer backend instance.
+            type_param: The type that is enforced on reads and writes.
+            backend: The backend pointer implementation. If `None`, defaults to `DEFAULT_POINTER_CLS` (RFC 6901).
 
         Returns:
-            A validated `JSONPointer` instance.
+            pointer: A validated `JSONPointer` instance.
 
         Raises:
-            InvalidJSONPointer: If the pointer string, backend, or generic
-                parameters are invalid.
+            TypeError: If the `backend` argument is not a class or `TypeVar`,
+                if a backend `TypeVar` cannot be resolved to a concrete backend,
+                if the type parameter is not a valid TypeForm, or if `path` is
+                not a `str`, `JSONPointer`, or `PointerBackend` instance.
+            InvalidJSONPointer: If `path` is not a valid pointer string.
 
-        Notes:
-            `type_param` technically places the covariant `T` parameter in an
-            input position, which would normally be an unsound public API
-            shape. That tradeoff is intentional here because `parse()` is only
-            a convenience constructor around Pydantic validation. Normal
-            construction happens through Pydantic on an already-specialized
-            `JSONPointer[...]` type, so callers are not meant to treat
-            `parse()` as the primary semantic surface for consuming `T`.
+        ??? Acknowledment
+            The `type_param` argument places the covariant type parameter `T` in an input position,
+            which is technically unsound. But the intended use case of this classmethod is testing
+            and ad-hoc pointer construction, where the ergonomics of direct construction outweigh
+            the theoretical unsoundness.
         """
+        if not isinstance(path, (str, PointerBackend)):
+            raise TypeError(
+                f"path must be a str or a PointerBackend instance; got {type(path).__name__!r}"
+            )
+
         resolved_type_param = (
             JSONValue if type_param is _Nothing else cast(TypeForm[Any], type_param)
         )
@@ -533,7 +642,10 @@ class JSONPointer(str, Generic[T_co, P_co]):
             adapter = _cached_adapter(
                 JSONPointer[validated_type, validated_backend]  # type: ignore[valid-type]
             )
-        return adapter.validate_python(path)
+        try:
+            return adapter.validate_python(path)
+        except ValidationError as e:
+            raise InvalidJSONPointer(f"Invalid pointer: {e}") from e
 
     # Parse-time helpers
 
@@ -541,19 +653,32 @@ class JSONPointer(str, Generic[T_co, P_co]):
         """
         Check whether this pointer is a strict parent of `other`.
 
-        `other` may be a JSONPointer or a pointer string; strings are parsed using this pointer's syntax.
+        Arguments:
+            other: A `JSONPointer` or pointer string. Strings are parsed using
+                this pointer's backend syntax.
 
-        Root is treated as a parent of all paths except itself.
+        Returns:
+            `True` if this pointer is a strict prefix of `other`, `False` otherwise.
+            Root is a parent of all paths except itself.
 
-        Raises InvalidJSONPointer if comparison is called with an `other` pointer with different or invalid syntax.
+        Raises:
+            TypeError: If `other` is a `JSONPointer` with an incompatible backend,
+                or a string that cannot be parsed with this pointer's backend.
         """
         if isinstance(other, JSONPointer) and not isinstance(
             other._ptr, type(self._ptr)
         ):
-            raise InvalidJSONPointer(
-                f"Other pointer {other._ptr!r} has incompatible syntax with {self!r}"
+            raise TypeError(
+                f"Other pointer {other._ptr!r} has incompatible backend with {self!r}"
             )
-        other_ptr = _pointer_backend_instance(other, pointer_cls=self._ptr.__class__)
+        try:
+            other_ptr = _pointer_backend_instance(
+                other, pointer_cls=self._ptr.__class__
+            )
+        except InvalidJSONPointer as e:
+            raise TypeError(
+                f"Invalid pointer string for {self._ptr.__class__.__name__}: {e}"
+            ) from e
 
         # Strict parentage only
         if self == str(other_ptr):
@@ -565,20 +690,32 @@ class JSONPointer(str, Generic[T_co, P_co]):
         """
         Check whether this pointer is a strict child of `other`.
 
-        `other` may be a JSONPointer or a pointer string; strings are parsed using this pointer's syntax.
+        Arguments:
+            other: A `JSONPointer` or pointer string. Strings are parsed using
+                this pointer's backend syntax.
 
-        Root is treated as a parent of all paths except itself.
+        Returns:
+            `True` if `other` is a strict prefix of this pointer, `False` otherwise.
+            Root is a parent of all paths except itself.
 
-        Raises InvalidJSONPointer if comparison is called with an `other` pointer with different or invalid syntax.
+        Raises:
+            TypeError: If `other` is a `JSONPointer` with an incompatible backend,
+                or a string that cannot be parsed with this pointer's backend.
         """
-        # NOTE: Document which of these public helper methods work only with RFC6901
         if isinstance(other, JSONPointer) and not isinstance(
             other._ptr, type(self._ptr)
         ):
-            raise InvalidJSONPointer(
-                f"Other pointer {other._ptr!r} has incompatible syntax with {self!r}"
+            raise TypeError(
+                f"Other pointer {other._ptr!r} has incompatible backend with {self!r}"
             )
-        other_ptr = _pointer_backend_instance(other, pointer_cls=self._ptr.__class__)
+        try:
+            other_ptr = _pointer_backend_instance(
+                other, pointer_cls=self._ptr.__class__
+            )
+        except InvalidJSONPointer as e:
+            raise TypeError(
+                f"Invalid pointer string for {self._ptr.__class__.__name__}: {e}"
+            ) from e
 
         # Strict parentage only
         if self == str(other_ptr):
@@ -590,14 +727,13 @@ class JSONPointer(str, Generic[T_co, P_co]):
 
     def is_valid_type(self, target: object) -> bool:
         """
-        Return `True` if `target` conforms to this pointer's type.
+        Check whether `target` conforms to this pointer's type parameter `T`.
 
         Arguments:
             target: Candidate value to validate.
 
         Returns:
-            `True` when `target` validates strictly against `T`,
-            otherwise `False`.
+            `True` if `target` validates strictly against `T`, `False` otherwise.
         """
         try:
             self._adapter.validate_python(target, strict=True)
@@ -610,7 +746,7 @@ class JSONPointer(str, Generic[T_co, P_co]):
         Resolve this pointer against `doc` and return the target value (type-gated).
 
         Arguments:
-            doc: Target JSON document.
+            doc: JSON document to resolve against.
 
         Returns:
             The resolved value, validated against `T`.
@@ -618,9 +754,6 @@ class JSONPointer(str, Generic[T_co, P_co]):
         Raises:
             PatchConflictError: If the target does not exist, or it is not type `T`.
         """
-        if classify_state(self._ptr, doc) is TargetState.MISSING:
-            raise PatchConflictError(f"target {str(self)!r} does not exist")
-
         # Choice: always defer to the PointerBackend implementation for pointer resolution.
         # Why: Don't reinvent the wheel (and maintain it). Plus, give more power to custom PointerBackends.
         try:
@@ -632,14 +765,13 @@ class JSONPointer(str, Generic[T_co, P_co]):
 
     def is_gettable(self, doc: JSONValue) -> bool:
         """
-        Return `True` if `get(doc)` would succeed.
+        Check whether `get(doc)` would succeed.
 
         Arguments:
-            doc: Target JSON document.
+            doc: JSON document to resolve against.
 
         Returns:
-            `True` if the pointer resolves to an existing value of type
-            `T`, otherwise `False`.
+            `True` if the pointer resolves to an existing value of type `T`, `False` otherwise.
         """
         try:
             self.get(doc)
@@ -653,21 +785,23 @@ class JSONPointer(str, Generic[T_co, P_co]):
         RFC 6902 add (type-gated).
 
         Arguments:
-            doc: Target JSON document.
-            value: Value to add at this path, validated against `T`.
+            doc: JSON document to add to.
+            value: Value to add at this path. Must conform to `T` and to `JSONValue`.
 
         Returns:
-            The updated document.
+            The updated JSON document.
 
         Raises:
             PatchConflictError: If the target does not exist, if the target is not type `T`,
                 or if the value being added is not type `T`.
+
+        Notes:
+            May modify `doc` in place; always use the return value. Root-targeting
+            operations replace the document and return the new root rather than mutating it.
         """
         target = self._validate_replacement(value)
 
         match classify_state(self._ptr, doc):
-            case TargetState.MISSING:
-                return target
             case TargetState.ROOT:
                 self._validate_target(doc)
                 return target
@@ -718,15 +852,15 @@ class JSONPointer(str, Generic[T_co, P_co]):
         value: object = _Nothing,
     ) -> bool:
         """
-        Return `True` if RFC 6902 `add` would succeed for this document.
+        Check whether RFC 6902 `add` would succeed for this document.
 
         Arguments:
-            doc: Target JSON document.
+            doc: JSON document to add to.
             value: Optional value that would be written at this pointer. When
                 provided, it must conform to `T` and to `JSONValue`.
 
         Returns:
-            `True` if add semantics would succeed, otherwise `False`.
+            `True` if add semantics would succeed, `False` otherwise.
         """
         if value is not _Nothing:
             try:
@@ -735,8 +869,6 @@ class JSONPointer(str, Generic[T_co, P_co]):
                 return False
 
         match classify_state(self._ptr, doc):
-            case TargetState.MISSING:
-                return True
             case TargetState.ROOT:
                 return self.is_valid_type(doc)
             case TargetState.VALUE_PRESENT:
@@ -756,25 +888,24 @@ class JSONPointer(str, Generic[T_co, P_co]):
 
     def remove(self, doc: JSONValue) -> JSONValue:
         """
-        RFC 6902 remove (type-gated). Removal of the root returns `MISSING`.
+        RFC 6902 remove (type-gated).
 
         Arguments:
-            doc: Target JSON document.
+            doc: JSON document to remove from.
 
         Returns:
-            The updated document.
+            The updated JSON document.
 
         Raises:
             PatchConflictError: If the target does not exist, or it is not type `T`.
+
+        Notes:
+            Modifies `doc` in place; always use the return value.
         """
         match classify_state(self._ptr, doc):
-            case TargetState.MISSING:
-                raise PatchConflictError(f"target {str(self)!r} does not exist")
             case TargetState.ROOT:
-                # Choice: Removal of root returns MISSING.
-                # Why: Root removal is document deletion, not replacement with JSON null.
                 self._validate_target(doc)
-                return cast(JSONValue, MISSING)
+                raise PatchConflictError("cannot delete the document")
             case TargetState.PARENT_NOT_FOUND:
                 raise PatchConflictError(
                     f"cannot remove value at {str(self)!r} because parent does not exist"
@@ -814,18 +945,19 @@ class JSONPointer(str, Generic[T_co, P_co]):
 
     def is_removable(self, doc: JSONValue) -> bool:
         """
-        Return `True` if RFC 6902 `remove` would succeed for this document.
+        Check whether RFC 6902 `remove` would succeed for this document.
 
         Arguments:
-            doc: Target JSON document.
+            doc: JSON document to remove from.
 
         Returns:
-            `True` if remove semantics would succeed, otherwise `False`.
+            `True` if remove semantics would succeed, `False` otherwise.
         """
-        return self.is_gettable(doc)
+        return self.is_gettable(doc) and not self.is_root(doc)
 
     @override
     def __repr__(self) -> str:
+        """Return `ClassName[T]('pointer_string')` representation."""
         type_repr = (
             self._type.__name__ if isinstance(self._type, type) else repr(self._type)
         )

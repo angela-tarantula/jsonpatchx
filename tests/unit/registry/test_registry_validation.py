@@ -8,7 +8,7 @@ from pytest import Subtests
 
 from jsonpatchx.builtins import AddOp, RemoveOp
 from jsonpatchx.builtins import TestOp as BuiltinTestOp
-from jsonpatchx.exceptions import InvalidOperationRegistry, OperationNotRecognized
+from jsonpatchx.exceptions import InvalidOperationRegistry
 from jsonpatchx.registry import StandardRegistry, _RegistrySpec
 from jsonpatchx.schema import OperationSchema
 from jsonpatchx.types import JSONValue
@@ -134,7 +134,7 @@ def test_registry_spec_repr_hash_equality_are_set_based() -> None:
 def test_registry_spec_model_for_and_unknown_rejection() -> None:
     registry = _RegistrySpec.from_typeform(BuiltinTestOp)
     assert registry.model_for("test") is BuiltinTestOp
-    with pytest.raises(OperationNotRecognized):
+    with pytest.raises(KeyError):
         registry.model_for("not-allowed")
 
 

@@ -9,12 +9,12 @@ from typing import Any, Literal, Self, override
 from fastapi import FastAPI
 from fastapi.responses import RedirectResponse
 from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic_core import PydanticCustomError
 
 from jsonpatchx import (
     AddOp,
     JSONValue,
     OperationSchema,
-    OperationValidationError,
     PatchConflictError,
     RemoveOp,
     ReplaceOp,
@@ -499,12 +499,14 @@ class SwapOp(OperationSchema):
     @model_validator(mode="after")
     def _reject_proper_prefixes(self) -> Self:
         if self.a.is_parent_of(self.b):
-            raise OperationValidationError(
-                "pointer 'b' cannot be a child of pointer 'a'"
+            raise PydanticCustomError(
+                "swap_path_conflict",
+                "pointer 'b' cannot be a child of pointer 'a'",
             )
         if self.b.is_parent_of(self.a):
-            raise OperationValidationError(
-                "pointer 'a' cannot be a child of pointer 'b'"
+            raise PydanticCustomError(
+                "swap_path_conflict",
+                "pointer 'a' cannot be a child of pointer 'b'",
             )
         return self
 
