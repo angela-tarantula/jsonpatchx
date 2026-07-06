@@ -439,12 +439,16 @@ class SelectorBackend(Protocol):
 
 
 # Out of the box, JsonPatchX's default JSONPath backend follows upstream
-# python-jsonpath's RFC 9535 path.
+# python-jsonpath's RFC 9535 path only if the jsonpatchx[strict-jsonpath]
+# extra is installed. That extra pulls in python-jsonpath[strict], whose
+# iregexp-check dependency segfaults on import under free-threaded Python.
+# There is no PEP 508 marker that can express "not a free-threaded build" of
+# a given Python version, so this cannot be enforced automatically: install
+# jsonpatchx[strict-jsonpath] only on a standard (GIL) interpreter, never on
+# a free-threaded one (3.13t, 3.14t, ...).
 #
-# The exception is Python 3.14 and later, where the upstream iregexp-check
-# dependency behind python-jsonpath[strict] is not yet compatible with
-# free-threaded Python. JsonPatchX still uses JSONPathEnvironment(strict=True)
-# there, so this only affects regex compliance:
+# Without jsonpatchx[strict-jsonpath] (the default), JsonPatchX still uses
+# JSONPathEnvironment(strict=True), so this only affects regex compliance:
 # - match() and search() use Python's built-in re instead of the third-party
 #   regex engine.
 # - regex patterns are not validated against RFC 9485 I-Regexp.
@@ -463,10 +467,14 @@ class DEFAULT_SELECTOR_CLS:
     environment and yields exact pointer locations for each match.
 
     Disclaimer:
-        This backend follows RFC 9535 path syntax and semantics, except on
-        Python 3.14 and later where regex-related behavior falls back to
-        Python's built-in `re` module because the upstream `iregexp-check`
-        dependency is not yet compatible with free-threaded Python.
+        This backend follows RFC 9535 path syntax and semantics only if the
+        `jsonpatchx[strict-jsonpath]` extra is installed; otherwise
+        regex-related behavior falls back to Python's built-in `re` module.
+        Do not install `jsonpatchx[strict-jsonpath]` on a free-threaded Python
+        build: its upstream `iregexp-check` dependency segfaults on import
+        there, and no PEP 508 marker can select a standard build over a
+        free-threaded build of the same Python version to guard against it
+        automatically.
     """
 
     __slots__ = ("_path", "_selector")

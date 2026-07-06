@@ -144,14 +144,26 @@ instances. Matched values are still revalidated through `JSONSelector[T]` and
 
 The more important limitation is standards compliance, not upstream's `object`
 annotation. Out of the box, JsonPatchX's built-in JSONPath backend follows the
-RFC 9535 path. The exception is Python 3.14 and later, where the upstream
-[`iregexp-check`](https://github.com/jg-rp/rust-iregexp) dependency behind
-`python-jsonpath[strict]` is not yet compatible with free-threaded Python.
+RFC 9535 path only if the optional `jsonpatchx[strict-jsonpath]` extra is
+installed:
 
-JsonPatchX still uses `JSONPathEnvironment(strict=True)` there, so this only
-affects regular expression compliance: `match()` and `search()` fall back to
-Python's built-in `re`, and regular expression patterns are not validated
-against RFC 9485 I-Regexp.
+```sh
+pip install jsonpatchx[strict-jsonpath]
+```
+
+> **Warning:** Do not install `jsonpatchx[strict-jsonpath]` on a free-threaded
+> Python build (3.13t, 3.14t, and later free-threaded variants). Its upstream
+> [`iregexp-check`](https://github.com/jg-rp/rust-iregexp) dependency segfaults
+> on import there. There is no PEP 508 dependency marker that can select a
+> standard build over a free-threaded build of the same Python version, so
+> JsonPatchX cannot block this installation combination for you; only install
+> `strict-jsonpath` on a standard (GIL) interpreter.
+
+JsonPatchX still uses `JSONPathEnvironment(strict=True)` regardless of whether
+`strict-jsonpath` is installed, so the effect of omitting it is limited to
+regular expression compliance: `match()` and `search()` fall back to Python's
+built-in `re`, and regular expression patterns are not validated against RFC
+9485 I-Regexp.
 
 Like pointer backends, selector backends should be immutable or otherwise safe
 to reuse.

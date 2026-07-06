@@ -51,8 +51,7 @@ classifiers = [
 dependencies = [
     "jsonpointer>=3.0.0",
     "pydantic>=2.12.5",
-    "python-jsonpath[strict]>=2.0.2; python_version <= '3.13'",
-    "python-jsonpath>=2.0.2; python_version >= '3.14'",
+    "python-jsonpath>=2.0.2",
     "typing-extensions>=4.15.0",
     "pydantic-core>=2.29.0",
 ]
@@ -68,6 +67,15 @@ Tests = "https://github.com/angela-tarantula/jsonpatchx/actions/workflows/python
 [project.optional-dependencies]
 fastapi = [
     "fastapi>=0.128.0",
+]
+strict-jsonpath = [
+    # Full RFC 9535 JSONPath compliance (RFC 9485 I-Regexp validation and the
+    # third-party `regex` engine for match()/search()). Do not install this
+    # extra on a free-threaded Python build (3.13t, 3.14t, ...): its
+    # `iregexp-check` dependency segfaults on import there. There is no PEP
+    # 508 marker that can express "not free-threaded", so this cannot be
+    # enforced automatically; opt in only on standard (GIL) interpreters.
+    "python-jsonpath[strict]>=2.0.2",
 ]
 
 [dependency-groups]

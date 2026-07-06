@@ -4,7 +4,8 @@ requires-python = ">=3.12"
 resolution-markers = [
     "python_full_version == '3.14.*'",
     "python_full_version >= '3.15'",
-    "python_full_version < '3.14'",
+    "python_full_version == '3.13.*'",
+    "python_full_version < '3.13'",
 ]
 
 [[package]]
@@ -327,13 +328,15 @@ dependencies = [
     { name = "pydantic" },
     { name = "pydantic-core" },
     { name = "python-jsonpath" },
-    { name = "python-jsonpath", extra = ["strict"], marker = "python_full_version < '3.14'" },
     { name = "typing-extensions" },
 ]
 
 [package.optional-dependencies]
 fastapi = [
     { name = "fastapi" },
+]
+strict-jsonpath = [
+    { name = "python-jsonpath", extra = ["strict"] },
 ]
 
 [package.dev-dependencies]
@@ -399,11 +402,11 @@ requires-dist = [
     { name = "jsonpointer", specifier = ">=3.0.0" },
     { name = "pydantic", specifier = ">=2.12.5" },
     { name = "pydantic-core", specifier = ">=2.29.0" },
-    { name = "python-jsonpath", marker = "python_full_version >= '3.14'", specifier = ">=2.0.2" },
-    { name = "python-jsonpath", extras = ["strict"], marker = "python_full_version < '3.14'", specifier = ">=2.0.2" },
+    { name = "python-jsonpath", specifier = ">=2.0.2" },
+    { name = "python-jsonpath", extras = ["strict"], marker = "extra == 'strict-jsonpath'", specifier = ">=2.0.2" },
     { name = "typing-extensions", specifier = ">=4.15.0" },
 ]
-provides-extras = ["fastapi"]
+provides-extras = ["fastapi", "strict-jsonpath"]
 
 [package.metadata.requires-dev]
 ci = [
@@ -1029,8 +1032,8 @@ wheels = [
 
 [package.optional-dependencies]
 strict = [
-    { name = "iregexp-check", marker = "python_full_version < '3.14'" },
-    { name = "regex", marker = "python_full_version < '3.14'" },
+    { name = "iregexp-check" },
+    { name = "regex" },
 ]
 
 [[package]]

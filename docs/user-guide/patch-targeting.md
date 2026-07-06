@@ -44,14 +44,28 @@ Path syntax standardized in
 ```
 
 > Note: The
-> [built-in JSONPath backend](https://github.com/jg-rp/python-jsonpath) is
-> RFC-compliant out of the box, except on Python 3.14 and later, where
-> [python-jsonpath](https://github.com/jg-rp/python-jsonpath)'s
-> [`iregexp-check`](https://github.com/jg-rp/rust-iregexp) dependency is not yet
-> compatible with free-threaded Python. On Python 3.14+, this only affects regex
-> compliance: `match()` and `search()` fall back to Python's built-in `re`, and
-> regex patterns are not validated against
-> [RFC 9485](https://datatracker.ietf.org/doc/html/rfc9485) I-Regexp.
+> [built-in JSONPath backend](https://github.com/jg-rp/python-jsonpath) follows
+> RFC 9535 path syntax and semantics by default. Full regex compliance, however,
+> requires the optional `strict-jsonpath` extra:
+>
+> ```sh
+> pip install jsonpatchx[strict-jsonpath]
+> ```
+>
+> Without it, `match()` and `search()` fall back to Python's built-in `re`
+> instead of the third-party `regex` engine, and regex patterns are not
+> validated against [RFC 9485](https://datatracker.ietf.org/doc/html/rfc9485)
+> I-Regexp.
+
+<!-- keeps the callouts above/below as separate blockquotes -->
+
+> **Warning:** Do not install `jsonpatchx[strict-jsonpath]` on a free-threaded
+> Python build (3.13t, 3.14t, and later free-threaded variants). Its
+> [`iregexp-check`](https://github.com/jg-rp/rust-iregexp) dependency segfaults
+> on import there. There is no PEP 508 dependency marker that can select a
+> standard build over a free-threaded build of the same Python version, so
+> JsonPatchX cannot block this installation combination for you; only install
+> `strict-jsonpath` on a standard (GIL) interpreter.
 
 ### Selector Semantics
 

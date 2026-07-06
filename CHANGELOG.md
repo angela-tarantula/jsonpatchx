@@ -130,6 +130,22 @@ and this project adheres to
 - Tightened `JSONPointer.parse()` and `JSONSelector.parse()` type hints with
   overloads so omitted `type_param` defaults no longer require ignore comments
   and default/custom backend return types are preserved more accurately.
+- `python-jsonpath[strict]` is no longer a default dependency on any Python
+  version. It is now installed only via the new `jsonpatchx[strict-jsonpath]`
+  extra. Its upstream `iregexp-check` dependency segfaults on import under
+  free-threaded Python, and PEP 508 dependency markers cannot select a standard
+  build over a free-threaded build of the same Python version, so JsonPatchX
+  cannot install it automatically only on safe interpreters; install
+  `jsonpatchx[strict-jsonpath]` yourself, and only on a standard (GIL)
+  interpreter, never on a free-threaded one (3.13t, 3.14t, ...). Without it, the
+  built-in `JSONSelector` backend falls back to Python's built-in `re` for
+  `match()`/`search()` and does not validate regular expression patterns against
+  RFC 9485 I-Regexp; see
+  [Targeting Documents with JSON Pointer and JSONPath](docs/user-guide/patch-targeting.md)
+  for the affected behavior and install command.
+- Added an explicit `pydantic-core>=2.29.0` floor. This is the first
+  `pydantic-core` release with a free-threaded-Python wheel; it does not change
+  the resolved version for standard installs.
 
 ## [0.1.0] - 2026-04-24
 
