@@ -19,7 +19,6 @@ from pydantic_core import core_schema as cs
 from jsonpatchx.exceptions import (
     InvalidOperationDefinition,
     PatchError,
-    PatchFailureDetail,
     PatchInternalError,
 )
 from jsonpatchx.types import JSONValue, _validate_JSONValue
@@ -227,6 +226,9 @@ def _apply_ops(
 
     Raises:
         PatchError: Expected patch failures raised by operation implementations.
+            `index`/`operation` are set to identify the raising operation,
+            whether it is a built-in raise site or a custom operation raising
+            one of these directly.
         PatchInternalError: Unexpected exceptions wrapped with structured context.
 
     Notes:
@@ -243,16 +245,13 @@ def _apply_ops(
         try:
             doc = op.apply(doc)
             _validate_JSONValue(doc)
-        except PatchError:
-            # Domain-specific patch errors (e.g. TestOpFailed) should propagate unchanged.
+        except PatchError as e:
+            # Domain-specific patch errors (e.g. TestOpFailed) should propagate
+            # unchanged, but identify which operation raised them.
+            e.index = index
+            e.operation = op
             raise
         except Exception as e:
-            detail = PatchFailureDetail(
-                index=index,
-                op=op,
-                message=str(e),
-                cause_type=type(e).__name__,
-            )
-            raise PatchInternalError(detail, cause=e) from e
+            raise PatchInternalError(str(e), index=index, operation=op, cause=e) from e
 
     return doc

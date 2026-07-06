@@ -12,6 +12,25 @@ and this project adheres to
 
 ### Added
 
+- Every `PatchError` now carries `index`/`operation`, identifying which
+  operation in the patch document is implicated, when there is one. Named
+  `operation` rather than `op` to avoid colliding with `OperationSchema.op`, the
+  RFC 6902 discriminator string field every operation already has (an
+  `exc.op.op` or `{"op": {"op": ...}}` shape would have been confusing).
+  `_apply_ops` attaches both to any `PatchError` raised from inside an
+  operation's `apply()`, including custom operations, not just the built-ins.
+  Neither is settable at construction; only `_apply_ops` sets them, after the
+  fact, since any caller-supplied value would just be overwritten. They are
+  `None` when a failure isn't attributable to a single operation, for example
+  `InvalidPatchResult` raised from the final whole-document re-validation after
+  every operation already applied without conflict.
+- `InvalidPatchResult` gained `errors`, carrying the structured
+  `pydantic.ValidationError.errors()` list when raised from a wrapped validation
+  failure, or `None` when a custom operation raises it directly with no
+  underlying validation error.
+- Every `PatchError` and `InvalidPatchTarget` now expose `error_type`, a stable,
+  machine-readable string identifier independent of the Python class name (for
+  example `"patch_conflict"`, `"invalid_patch_result"`).
 - `DEFAULT_POINTER_CLS` and `DEFAULT_SELECTOR_CLS` are now explicitly supported
   public API and can be imported directly when you want to bind JsonPatchX's
   built-in pointer and selector backends.
@@ -27,6 +46,12 @@ and this project adheres to
 
 ### Removed
 
+- `PatchFailureDetail` has been removed from the public API. `index`/`operation`
+  are now plain attributes on every `PatchError` (see Added above), and
+  `PatchInternalError.cause_type` is now a property derived from `__cause__`, so
+  the separate detail object is no longer needed. `PatchInternalError`'s
+  constructor now takes `message`, `index`, `operation`, and `cause` directly
+  instead of a `PatchFailureDetail`.
 - `OperationValidationError` has been removed from the public API. It was raised
   inside Pydantic model validators, where Pydantic always wraps it in its own
   `ValidationError` before callers can observe it, making it uncatchable as a
@@ -53,6 +78,12 @@ and this project adheres to
 
 ### Changed
 
+- The FastAPI error response body is now one consistent shape for every
+  `PatchError` and `InvalidPatchTarget`:
+  `{"type", "detail", "index", "operation", "errors"}`, replacing the previous
+  `detail: str | PatchFailureDetailResponse` union. `PatchFailureDetailResponse`
+  has been removed; `patch_error_openapi_responses()` now derives its schema
+  directly from `PatchErrorResponse` instead of a hand-maintained inline dict.
 - `InvalidPatchTarget` now subclasses `TypeError` only; it is no longer a
   `PatchError` subclass. Its three raise sites (wrong model instance passed to
   `.apply()`, a target model's `model_dump()` producing non-JSON data, or a

@@ -90,7 +90,11 @@ class _BasePatchModel(_RegistryBoundPatchRoot, Generic[ModelT]):
         Raises:
             InvalidPatchTarget: If `target` is not an instance of the bound model type,
                 or if the model dump is not a valid JSON document.
-            InvalidPatchResult: If the patched output fails validation against the model schema.
+            InvalidPatchResult: If the patched output fails validation against
+                the model schema. `errors` carries the underlying
+                `ValidationError.errors()`; `index`/`op` are `None`, since
+                this is a whole-document re-validation, not attributable to
+                one operation.
             PatchError: Any patch-domain error raised during application.
         """
         if not isinstance(target, self.__target_model__):
@@ -109,7 +113,8 @@ class _BasePatchModel(_RegistryBoundPatchRoot, Generic[ModelT]):
             return self.__target_model__.model_validate(patched)
         except ValidationError as e:
             raise InvalidPatchResult(
-                f"Patched document failed validation for {self.__target_model__.__name__}: {e}"
+                f"Patched document failed validation for {self.__target_model__.__name__}: {e}",
+                errors=e.errors(),
             ) from e
 
 

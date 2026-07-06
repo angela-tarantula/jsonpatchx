@@ -21,15 +21,12 @@ from jsonpatchx.pydantic import JsonPatchFor
 JSON_PATCH_MEDIA_TYPE = "application/json-patch+json"
 
 
-class PatchFailureDetailResponse(BaseModel):
-    index: int
-    op: dict[str, Any]
-    message: str
-    cause_type: str | None = None
-
-
 class PatchErrorResponse(BaseModel):
-    detail: str | PatchFailureDetailResponse
+    type: str
+    detail: str
+    index: int | None = None
+    operation: dict[str, Any] | None = None
+    errors: list[dict[str, Any]] | None = None
 
 
 # Public helpers
@@ -66,7 +63,10 @@ def install_jsonpatch_error_handlers(app: FastAPI) -> None:
         request: Request, exc: InvalidPatchTarget
     ) -> JSONResponse:
         return JSONResponse(
-            status_code=500, content=PatchErrorResponse(detail=str(exc)).model_dump()
+            status_code=500,
+            content=PatchErrorResponse(
+                type=InvalidPatchTarget.error_type, detail=str(exc)
+            ).model_dump(),
         )
 
 
@@ -83,27 +83,7 @@ def patch_error_openapi_responses() -> dict[int | str, dict[str, Any]]:
         def patch_item(...):
             ...
     """
-    patch_error_schema = {
-        "type": "object",
-        "properties": {
-            "detail": {
-                "oneOf": [
-                    {"type": "string"},
-                    {
-                        "type": "object",
-                        "properties": {
-                            "index": {"type": "integer"},
-                            "op": {"type": "object"},
-                            "message": {"type": "string"},
-                            "cause_type": {"type": ["string", "null"]},
-                        },
-                        "required": ["index", "op", "message"],
-                    },
-                ]
-            }
-        },
-        "required": ["detail"],
-    }
+    patch_error_schema = PatchErrorResponse.model_json_schema()
     validation_schema = {"$ref": "#/components/schemas/HTTPValidationError"}
     validation_or_patch_schema = {
         "oneOf": [
@@ -317,30 +297,54 @@ def _patch_error_response_map(exc: PatchError) -> JSONResponse:
           message. Once user-facing error messages are stabilized, assert their
           content too.
     """
+    operation_payload = (
+        exc.operation.model_dump(mode="json", by_alias=True)
+        if exc.operation is not None
+        else None
+    )
+
     if isinstance(exc, PatchInternalError):
-        detail = exc.detail
-        payload = PatchFailureDetailResponse(
-            index=detail.index,
-            op=detail.op.model_dump(mode="json", by_alias=True),
-            message=detail.message,
-            cause_type=detail.cause_type,
-        )
         return JSONResponse(
-            status_code=500, content=PatchErrorResponse(detail=payload).model_dump()
+            status_code=500,
+            content=PatchErrorResponse(
+                type=exc.error_type,
+                detail=str(exc),
+                index=exc.index,
+                operation=operation_payload,
+            ).model_dump(),
         )
 
     if isinstance(exc, InvalidPatchResult):
         return JSONResponse(
-            status_code=422, content=PatchErrorResponse(detail=str(exc)).model_dump()
+            status_code=422,
+            content=PatchErrorResponse(
+                type=exc.error_type,
+                detail=str(exc),
+                index=exc.index,
+                operation=operation_payload,
+                errors=exc.errors,
+            ).model_dump(),
         )
 
     if isinstance(exc, PatchConflictError):
         return JSONResponse(
-            status_code=409, content=PatchErrorResponse(detail=str(exc)).model_dump()
+            status_code=409,
+            content=PatchErrorResponse(
+                type=exc.error_type,
+                detail=str(exc),
+                index=exc.index,
+                operation=operation_payload,
+            ).model_dump(),
         )
 
     return JSONResponse(
-        status_code=500, content=PatchErrorResponse(detail=str(exc)).model_dump()
+        status_code=500,
+        content=PatchErrorResponse(
+            type=exc.error_type,
+            detail=str(exc),
+            index=exc.index,
+            operation=operation_payload,
+        ).model_dump(),
     )
 
 

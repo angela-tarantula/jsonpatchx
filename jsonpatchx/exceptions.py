@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
-from typing import TYPE_CHECKING
+from collections.abc import Mapping, Sequence
+from typing import TYPE_CHECKING, Any, ClassVar
 
 if TYPE_CHECKING:
     from jsonpatchx.schema import OperationSchema
@@ -14,6 +14,16 @@ if TYPE_CHECKING:
 # ├── PatchConflictError             409 — patch valid, document state rejects it
 # │   └── TestOpFailed               409 — RFC 6902 test op value mismatch
 # └── PatchInternalError             500 — unexpected exception during apply
+#
+# Every PatchError carries `index`/`operation`, identifying which operation in
+# the patch document is implicated, when there is one. `_apply_ops` attaches
+# both to any PatchError raised from inside an operation's own apply(),
+# whether a built-in raise site or a custom operation; neither is settable at
+# construction time, since any caller-supplied value would just be overwritten
+# by `_apply_ops` anyway. They stay `None` when a failure is not attributable
+# to one operation (for example, InvalidPatchResult raised from the final
+# whole-document re-validation after every operation already applied without
+# conflict).
 #
 # Non-PatchError exceptions that may surface:
 #   InvalidOperationDefinition(TypeError)  Raised from __init_subclass__ at
@@ -52,7 +62,25 @@ class PatchError(Exception):
 
     This type is not raised directly; it anchors the error hierarchy for tooling
     and API error mapping.
+
+    Attributes:
+        error_type: Stable, machine-readable identifier for this error kind,
+            independent of the Python class name.
+        index: 0-based index of the implicated operation in the patch
+            document, or `None` if this failure is not attributable to a
+            single operation. Not provided by callers; JsonPatchX sets it
+            once the failure is attributed to an operation.
+        operation: The implicated operation, or `None` under the same
+            condition as `index`. Not provided by callers; set under the
+            same condition as `index`.
     """
+
+    error_type: ClassVar[str] = "patch_error"
+
+    def __init__(self, *args: object) -> None:
+        super().__init__(*args)
+        self.index: int | None = None
+        self.operation: OperationSchema | None = None
 
 
 class InvalidPatchResult(PatchError):
@@ -62,7 +90,15 @@ class InvalidPatchResult(PatchError):
     Every operation applied without conflict, but the resulting document is
     unacceptable (for example, it violates the target model's schema). Custom
     operations may also raise this directly to signal that an
-    otherwise-successful application produced an invalid result.
+    otherwise-successful application produced an invalid result; in that case
+    `index`/`operation` identify the raising operation, unlike the
+    whole-document re-validation case, where they are `None`.
+
+    Attributes:
+        errors: Structured validation errors (in the shape of
+            `pydantic.ValidationError.errors()`) when this was raised from a
+            wrapped `ValidationError`, or `None` when raised directly with no
+            underlying validation error.
 
     Examples:
         - Model-aware patching produces a document that violates the target model.
@@ -70,6 +106,16 @@ class InvalidPatchResult(PatchError):
     Typical HTTP mapping:
         422 Unprocessable Entity.
     """
+
+    error_type: ClassVar[str] = "invalid_patch_result"
+
+    def __init__(
+        self,
+        *args: object,
+        errors: Sequence[Mapping[str, Any]] | None = None,
+    ) -> None:
+        super().__init__(*args)
+        self.errors = errors
 
 
 class PatchConflictError(PatchError):
@@ -88,6 +134,8 @@ class PatchConflictError(PatchError):
         409 Conflict (some APIs may prefer 422).
     """
 
+    error_type: ClassVar[str] = "patch_conflict"
+
 
 class TestOpFailed(PatchConflictError):
     """
@@ -100,37 +148,21 @@ class TestOpFailed(PatchConflictError):
         409 Conflict (state mismatch).
     """
 
+    error_type: ClassVar[str] = "test_op_failed"
+
     __test__ = False
-
-
-@dataclass(frozen=True, slots=True)
-class PatchFailureDetail:
-    """
-    Structured failure details for patch application.
-
-    Attributes:
-        index: 0-based index of the operation within the patch document.
-        op: Best-effort JSON-serializable representation of the failing operation.
-            For OperationSchema instances, this is model_dump(mode="json", by_alias=True).
-            For mapping-like inputs, this is dict(op).
-            As a last resort, {"repr": repr(op)}.
-        message: Human-readable error message.
-        cause_type: The exception class name of the underlying cause (useful for logging / API error mapping).
-    """
-
-    index: int
-    op: OperationSchema
-    message: str
-    cause_type: str | None = None
 
 
 class PatchInternalError(PatchError):
     """
     Unexpected exception during patch execution wrapped with structured context.
 
-    This is meant for API layers and debuggability:
-        - points at the exact op index
-        - includes the full op payload (best-effort JSON shape)
+    This is meant for API layers and debuggability: it always identifies the
+    exact operation index and payload, and preserves the original exception
+    as `__cause__`.
+
+    Attributes:
+        cause_type: The exception class name of the underlying cause.
 
     Examples:
         A ZeroDivisionError raised inside a custom op implementation that fails
@@ -140,18 +172,27 @@ class PatchInternalError(PatchError):
         500 Internal Server Error (unexpected failure).
     """
 
-    def __init__(
-        self, detail: PatchFailureDetail, *, cause: BaseException | None = None
-    ):
-        self.detail = detail
-        super().__init__(self._format(detail))
-        if cause is not None:
-            self.__cause__ = cause
+    error_type: ClassVar[str] = "patch_internal_error"
 
-    @staticmethod
-    def _format(d: PatchFailureDetail) -> str:
-        op_name = getattr(d.op, "op")
-        return f"Error applying op[{d.index}] ({op_name}): {d.message}"
+    def __init__(
+        self,
+        message: str,
+        *,
+        index: int,
+        operation: OperationSchema,
+        cause: BaseException,
+    ) -> None:
+        op_name = getattr(operation, "op")
+        formatted = f"Error applying op[{index}] ({op_name}): {message}"
+        super().__init__(formatted)
+        self.index = index
+        self.operation = operation
+        self.__cause__ = cause
+
+    @property
+    def cause_type(self) -> str:
+        """The exception class name of the underlying cause."""
+        return type(self.__cause__).__name__
 
 
 class InvalidOperationDefinition(TypeError):
@@ -182,6 +223,9 @@ class InvalidPatchTarget(TypeError):
     something a patch document's content can trigger: the caller supplied a
     value that cannot serve as a patch target or document.
 
+    Attributes:
+        error_type: Stable, machine-readable identifier for this error kind.
+
     Examples:
         - The document is not a valid JSON value (for example, a `datetime` or
           a custom object).
@@ -194,6 +238,8 @@ class InvalidPatchTarget(TypeError):
     Typical HTTP mapping:
         500 Internal Server Error.
     """
+
+    error_type: ClassVar[str] = "invalid_patch_target"
 
 
 class InvalidJSONPointer(ValueError):

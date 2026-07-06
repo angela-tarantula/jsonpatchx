@@ -86,7 +86,11 @@ async def test_invalid_patch_target_wrong_model_instance(client: AsyncClient) ->
     )
 
     assert response.status_code == 500
-    assert "expects a Event instance, got StrictUser" in response.json()["detail"]
+    body = response.json()
+    assert body["type"] == "invalid_patch_target"
+    assert body["index"] is None
+    assert body["operation"] is None
+    assert "expects a Event instance, got StrictUser" in body["detail"]
 
 
 async def test_invalid_patch_target_non_json_model_dump(client: AsyncClient) -> None:
@@ -116,4 +120,10 @@ async def test_invalid_patch_result_extra_field_rejected(client: AsyncClient) ->
     )
 
     assert response.status_code == 422
-    assert "failed validation for StrictUser" in response.json()["detail"]
+    body = response.json()
+    assert body["type"] == "invalid_patch_result"
+    assert body["index"] is None
+    assert body["operation"] is None
+    assert "failed validation for StrictUser" in body["detail"]
+    assert body["errors"] is not None
+    assert body["errors"][0]["type"] == "extra_forbidden"

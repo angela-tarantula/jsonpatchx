@@ -21,7 +21,6 @@ from jsonpatchx.exceptions import (
     InvalidPatchTarget,
     PatchConflictError,
     PatchError,
-    PatchFailureDetail,
     PatchInternalError,
     TestOpFailed,
 )
@@ -46,7 +45,6 @@ __all__ = [
     "PatchConflictError",
     "PatchError",
     "PatchInternalError",
-    "PatchFailureDetail",
     "TestOpFailed",
     # types
     "JSONPointer",
