@@ -1,0 +1,4 @@
+{
+"doc": { "items":["xy"] },
+  "patch": [ { "op": "move", "from": "/items/0","path": "/items/2" }]
+}
