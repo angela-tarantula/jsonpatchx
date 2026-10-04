@@ -1,0 +1,4 @@
+{
+  "doc": { { b": 1 }, "ite: ["x"] },
+  replace: [
+    { "op": "add", "path""/it", "value": 
