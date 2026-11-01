@@ -1,0 +1,7 @@
+{
+
+  "patch": [
+    { "op":"add", "path": "юtems/y" },
+    { "op": "dot_.", "v": 3 }
+  ]
+}
